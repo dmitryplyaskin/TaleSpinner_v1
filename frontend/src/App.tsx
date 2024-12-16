@@ -1,40 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/ChatWindow';
-import { Sidebar } from './components/Sidebar';
+import { ChatManagement } from './components/chat-management';
+import { SettingsSidebar } from './components/SettingsSidebar';
 import { v4 as uuidv4 } from 'uuid';
-import { getChatHistory } from './components/api';
+import { getChatList, ChatInfo } from './components/api';
 
-interface ChatInfo {
-  id: string;
-  timestamp: string;
+interface LLMSettings {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  frequencyPenalty: number;
+  presencePenalty: number;
 }
 
 function App() {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
   const [chatList, setChatList] = useState<ChatInfo[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSettingsSidebarOpen, setIsSettingsSidebarOpen] = useState(false);
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>({
+    temperature: 0.7,
+    maxTokens: 2000,
+    topP: 1,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+  });
 
   useEffect(() => {
-    // Load chat list from localStorage on mount
-    const savedChats = localStorage.getItem('chatList');
-    if (savedChats) {
-      setChatList(JSON.parse(savedChats));
-    }
+    // Load chat list
+    const loadChats = async () => {
+      try {
+        const chats = await getChatList();
+        console.log('Loaded chats:', chats);
+        setChatList(chats);
+      } catch (error) {
+        console.error('Error loading chats:', error);
+      }
+    };
+    loadChats();
   }, []);
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     const newChatId = uuidv4();
-    const newChat: ChatInfo = {
+    const newChat = {
       id: newChatId,
+      title: 'Новый чат',
       timestamp: new Date().toISOString(),
     };
     
-    setChatList((prev) => {
-      const updated = [newChat, ...prev];
-      localStorage.setItem('chatList', JSON.stringify(updated));
-      return updated;
-    });
-    
+    setChatList((prev) => [newChat, ...prev]);
     setCurrentChatId(newChatId);
   };
 
@@ -42,14 +56,10 @@ function App() {
     setCurrentChatId(chatId);
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
       {isSidebarOpen && (
-        <Sidebar
+        <ChatManagement
           onNewChat={handleNewChat}
           onSelectChat={handleSelectChat}
           chatList={chatList}
@@ -58,10 +68,33 @@ function App() {
       )}
       
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="bg-white border-b p-4 flex items-center">
+        <div className="bg-white border-b p-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="mr-4 p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+            <h1 className="text-xl font-semibold truncate">
+              {currentChatId ? chatList.find(c => c.id === currentChatId)?.title || 'Чат' : 'Выберите чат'}
+            </h1>
+          </div>
           <button
-            onClick={toggleSidebar}
-            className="mr-4 p-2 hover:bg-gray-100 rounded-lg"
+            onClick={() => setIsSettingsSidebarOpen(!isSettingsSidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-lg"
           >
             <svg
               className="w-6 h-6"
@@ -73,18 +106,21 @@ function App() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
           </button>
-          <h1 className="text-xl font-semibold truncate">
-            {currentChatId ? `Чат ${currentChatId.slice(0, 8)}...` : 'Выберите чат'}
-          </h1>
         </div>
         
         <div className="flex-1 overflow-hidden">
           {currentChatId ? (
-            <ChatWindow chatId={currentChatId} />
+            <ChatWindow chatId={currentChatId} llmSettings={llmSettings} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
@@ -100,6 +136,12 @@ function App() {
           )}
         </div>
       </div>
+
+      <SettingsSidebar
+        isOpen={isSettingsSidebarOpen}
+        onClose={() => setIsSettingsSidebarOpen(false)}
+        onSettingsChange={setLlmSettings}
+      />
     </div>
   );
 }

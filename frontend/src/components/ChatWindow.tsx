@@ -3,9 +3,16 @@ import { streamMessage, getChatHistory, ChatMessage } from "./api";
 
 interface ChatWindowProps {
   chatId: string;
+  llmSettings: {
+    temperature: number;
+    maxTokens: number;
+    topP: number;
+    frequencyPenalty: number;
+    presencePenalty: number;
+  };
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, llmSettings }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -14,7 +21,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId }) => {
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const history = await getChatHistory(chatId);
+        const history = await getChatHistory(chatId); 
         setMessages(history.messages || []);
       } catch (error) {
         console.error("Error loading chat history:", error);
@@ -43,7 +50,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId }) => {
     setIsStreaming(true);
 
     try {
-      const messageStream = streamMessage(newMessage, chatId);
+      const messageStream = streamMessage(newMessage, chatId, llmSettings);
       let botMessage: ChatMessage = {
         role: "bot",
         content: "",
@@ -100,7 +107,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId }) => {
   useEffect(scrollToBottom, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full"> 
       <div className="flex-1 overflow-y-auto bg-gray-100">
         <div className="max-w-5xl mx-auto p-4 space-y-4">
           {messages.map((message, index) => (

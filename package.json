@@ -19,7 +19,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "start:dev": "nodemon src/index.js",
+    "start:dev": "nodemon --ignore 'public/' src/index.js",
     "start:frontend": "cd frontend && yarn dev"
   }
 }

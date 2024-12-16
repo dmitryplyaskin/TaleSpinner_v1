@@ -23,6 +23,20 @@ export interface OpenRouterConfig {
   model: string;
 }
 
+export interface LLMSettings {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  frequencyPenalty: number;
+  presencePenalty: number;
+}
+
+export interface ChatInfo {
+  id: string;
+  title: string;
+  timestamp: string;
+}
+
 // Функция для повторных попыток
 async function fetchWithRetry(
   url: string,
@@ -55,7 +69,8 @@ async function fetchWithRetry(
 
 export async function* streamMessage(
   message: string,
-  chatId: string
+  chatId: string,
+  settings: LLMSettings
 ): AsyncGenerator<StreamResponse> {
   try {
     const controller = new AbortController();
@@ -74,6 +89,7 @@ export async function* streamMessage(
         body: JSON.stringify({
           prompt: message,
           chatId,
+          settings
         }),
         signal: controller.signal,
       },
@@ -195,3 +211,13 @@ export async function updateOpenRouterConfig(
     throw error;
   }
 }
+
+export const getChatList = async (): Promise<ChatInfo[]> => {
+  try {
+    const response = await axios.get(`${BASE_URL}/chats`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching chat list:', error);
+    return [];
+  }
+};
