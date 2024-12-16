@@ -1,0 +1,25 @@
+{
+  "name": "rp-llm",
+  "version": "0.0.0",
+  "description": "my pet",
+  "main": "index.js",
+  "author": "Dmitry Plyaskin",
+  "license": "MIT",
+  "dependencies": {
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@types/uuid": "^10.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemon": "^3.1.9",
+    "openai": "^4.76.3",
+    "tailwindcss": "^3.4.16",
+    "uuid": "^11.0.3"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "start:dev": "nodemon src/index.js",
+    "start:frontend": "cd frontend && yarn dev"
+  }
+}

@@ -1,0 +1,40 @@
+# Зависимости
+/node_modules
+/frontend/node_modules
+/.pnp
+.pnp.js
+
+# Локальные файлы, создаваемые средой разработки
+.DS_Store
+
+# Логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Файлы среды
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Выходные файлы сборки
+/build
+/dist
+/.next/
+/out/
+/coverage
+
+# Временные файлы и кэши
+*.log
+*.tsbuildinfo
+.turbo
+.cache
+
+# VS Code
+.vscode
+
+# Папка public
+/public
