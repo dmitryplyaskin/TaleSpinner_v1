@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
-import { ChatListItem } from './ChatListItem';
-import { ChatGrid } from './ChatGrid';
-import { EditChatModal } from './EditChatModal';
-import { ChatInfo, ChatManagementProps } from './types';
+import React, { useState } from "react";
+import { ChatListItem } from "./ChatListItem";
+import { ChatGrid } from "./ChatGrid";
+import { EditChatModal } from "./EditChatModal";
+import { ChatInfo, ChatManagementProps } from "./types";
+import { BASE_URL } from "../api";
+import { $chatList } from "../../store/chats";
+import { useStore } from "effector-react";
 
 export const ChatManagement: React.FC<ChatManagementProps> = ({
   onNewChat,
   onSelectChat,
-  chatList,
   currentChatId,
 }) => {
+  const chatList = useStore($chatList);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingChat, setEditingChat] = useState<ChatInfo | null>(null);
@@ -24,41 +28,41 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
 
   const handleSaveChat = async (chatId: string, newTitle: string) => {
     try {
-      const response = await fetch(`/api/chats/${chatId}/title`, {
-        method: 'PUT',
+      const response = await fetch(`${BASE_URL}/chats/${chatId}`, {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ title: newTitle }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update chat title');
+        throw new Error("Failed to update chat title");
       }
 
       // Обновление произойдет через обновление списка чатов в родительском компоненте
     } catch (error) {
-      console.error('Error updating chat title:', error);
+      console.error("Error updating chat title:", error);
     }
   };
 
   const handleDeleteChat = async (chatId: string) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот чат?')) {
+    if (!window.confirm("Вы уверены, что хотите удалить этот чат?")) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/chats/${chatId}`, {
-        method: 'DELETE',
+      const response = await fetch(`${BASE_URL}/chats/${chatId}`, {
+        method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete chat');
+        throw new Error("Failed to delete chat");
       }
 
       // Обновление произойдет через обновление списка чатов в родительском компоненте
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error("Error deleting chat:", error);
     }
   };
 

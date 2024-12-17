@@ -1,6 +1,6 @@
-import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import React from "react";
+import { formatDistanceToNow } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface ChatListItemProps {
   id: string;
@@ -24,14 +24,17 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
   return (
     <div
       className={`group flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-        isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+        isSelected ? "bg-blue-100" : "hover:bg-gray-100"
       }`}
       onClick={onSelect}
     >
       <div className="flex-grow min-w-0">
         <div className="font-medium truncate">{title}</div>
         <div className="text-sm text-gray-500">
-          {formatDistanceToNow(new Date(timestamp), { addSuffix: true, locale: ru })}
+          {formatDistanceToNow(new Date(timestamp), {
+            addSuffix: true,
+            locale: ru,
+          })}
         </div>
       </div>
       <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">

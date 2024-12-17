@@ -16,12 +16,13 @@ class ChatService {
   loadChat(chatId) {
     const filePath = path.join(this.chatDir, `${chatId}.json`);
     if (!fs.existsSync(filePath)) {
-      return { messages: [], title: 'Новый чат' };
+      return { messages: [], title: 'Новый чат', id: chatId };
     }
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   }
 
   saveChat(chatId, chatData) {
+    console.log(chatData)
     const filePath = path.join(this.chatDir, `${chatId}.json`);
     fs.writeFileSync(filePath, JSON.stringify(chatData, null, 2));
   }

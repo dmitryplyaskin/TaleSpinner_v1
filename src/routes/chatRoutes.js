@@ -76,7 +76,8 @@ router.post('/chat', async (req, res) => {
 });
 
 // Обновление названия чата
-router.put('/chats/:chatId/title', (req, res) => {
+router.put('/chats/:chatId', (req, res) => {
+  console.log(req.body)
   try {
     const { title } = req.body;
     const chat = chatService.updateChatTitle(req.params.chatId, title);

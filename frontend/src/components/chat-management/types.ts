@@ -7,6 +7,5 @@ export interface ChatInfo {
 export interface ChatManagementProps {
   onNewChat: () => void;
   onSelectChat: (chatId: string) => void;
-  chatList: ChatInfo[];
   currentChatId?: string;
 }

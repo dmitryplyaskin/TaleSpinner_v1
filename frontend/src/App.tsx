@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { ChatWindow } from './components/ChatWindow';
-import { ChatManagement } from './components/chat-management';
-import { SettingsSidebar } from './components/SettingsSidebar';
-import { v4 as uuidv4 } from 'uuid';
-import { getChatList, ChatInfo } from './components/api';
+import React, { useState, useEffect } from "react";
+import { ChatWindow } from "./components/ChatWindow";
+import { ChatManagement } from "./components/chat-management";
+import { SettingsSidebar } from "./components/SettingsSidebar";
+import { v4 as uuidv4 } from "uuid";
+import { getChatList, ChatInfo } from "./components/api";
+import { getChatListFx } from "./store/chats";
 
 interface LLMSettings {
   temperature: number;
@@ -27,27 +28,17 @@ function App() {
   });
 
   useEffect(() => {
-    // Load chat list
-    const loadChats = async () => {
-      try {
-        const chats = await getChatList();
-        console.log('Loaded chats:', chats);
-        setChatList(chats);
-      } catch (error) {
-        console.error('Error loading chats:', error);
-      }
-    };
-    loadChats();
+    getChatListFx();
   }, []);
 
   const handleNewChat = async () => {
     const newChatId = uuidv4();
     const newChat = {
       id: newChatId,
-      title: 'Новый чат',
+      title: "Новый чат",
       timestamp: new Date().toISOString(),
     };
-    
+
     setChatList((prev) => [newChat, ...prev]);
     setCurrentChatId(newChatId);
   };
@@ -62,11 +53,10 @@ function App() {
         <ChatManagement
           onNewChat={handleNewChat}
           onSelectChat={handleSelectChat}
-          chatList={chatList}
           currentChatId={currentChatId}
         />
       )}
-      
+
       <div className="flex-1 flex flex-col min-w-0">
         <div className="bg-white border-b p-4 flex items-center justify-between">
           <div className="flex items-center">
@@ -89,7 +79,9 @@ function App() {
               </svg>
             </button>
             <h1 className="text-xl font-semibold truncate">
-              {currentChatId ? chatList.find(c => c.id === currentChatId)?.title || 'Чат' : 'Выберите чат'}
+              {currentChatId
+                ? chatList.find((c) => c.id === currentChatId)?.title || "Чат"
+                : "Выберите чат"}
             </h1>
           </div>
           <button
@@ -117,14 +109,16 @@ function App() {
             </svg>
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-hidden">
           {currentChatId ? (
             <ChatWindow chatId={currentChatId} llmSettings={llmSettings} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
-                <p className="mb-4">Выберите существующий чат или создайте новый</p>
+                <p className="mb-4">
+                  Выберите существующий чат или создайте новый
+                </p>
                 <button
                   onClick={handleNewChat}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
