@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { ChatWindow } from "./components/ChatWindow";
 import { ChatManagement } from "./components/chat-management";
-import { SettingsSidebar } from "./components/SettingsSidebar";
+import { SettingsSidebar } from "./components/settings/SettingsSidebar";
 import { v4 as uuidv4 } from "uuid";
-import { getChatList, ChatInfo } from "./components/api";
-import { getChatListFx } from "./store/chats";
+import { getChatList, ChatInfo, OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from "./components/api";
+import { $chatList, createChatFx, getChatListFx } from "./store/chats";
+import { useUnit } from "effector-react";
 
 interface LLMSettings {
   temperature: number;
@@ -16,7 +17,7 @@ interface LLMSettings {
 
 function App() {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>();
-  const [chatList, setChatList] = useState<ChatInfo[]>([]);
+  const chatList = useUnit($chatList);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsSidebarOpen, setIsSettingsSidebarOpen] = useState(false);
   const [llmSettings, setLlmSettings] = useState<LLMSettings>({
@@ -26,22 +27,12 @@ function App() {
     frequencyPenalty: 0,
     presencePenalty: 0,
   });
+  const [apiConfig, setApiConfig] = useState<OpenRouterConfig | null>(null);
 
   useEffect(() => {
     getChatListFx();
+    getOpenRouterConfig().then(setApiConfig);
   }, []);
-
-  const handleNewChat = async () => {
-    const newChatId = uuidv4();
-    const newChat = {
-      id: newChatId,
-      title: "Новый чат",
-      timestamp: new Date().toISOString(),
-    };
-
-    setChatList((prev) => [newChat, ...prev]);
-    setCurrentChatId(newChatId);
-  };
 
   const handleSelectChat = async (chatId: string) => {
     setCurrentChatId(chatId);
@@ -51,7 +42,7 @@ function App() {
     <div className="flex h-screen overflow-hidden bg-gray-100">
       {isSidebarOpen && (
         <ChatManagement
-          onNewChat={handleNewChat}
+          onNewChat={createChatFx}
           onSelectChat={handleSelectChat}
           currentChatId={currentChatId}
         />
@@ -112,7 +103,10 @@ function App() {
 
         <div className="flex-1 overflow-hidden">
           {currentChatId ? (
-            <ChatWindow chatId={currentChatId} llmSettings={llmSettings} />
+            <ChatWindow
+              chatId={currentChatId}
+              settings={llmSettings}
+            />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
@@ -120,7 +114,7 @@ function App() {
                   Выберите существующий чат или создайте новый
                 </p>
                 <button
-                  onClick={handleNewChat}
+                  onClick={createChatFx}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 >
                   Создать новый чат
@@ -134,7 +128,12 @@ function App() {
       <SettingsSidebar
         isOpen={isSettingsSidebarOpen}
         onClose={() => setIsSettingsSidebarOpen(false)}
-        onSettingsChange={setLlmSettings}
+        onLLMSettingsChange={setLlmSettings}
+        onAPIConfigChange={async (config) => {
+          await updateOpenRouterConfig(config);
+          setApiConfig(config);
+        }}
+        apiConfig={apiConfig}
       />
     </div>
   );

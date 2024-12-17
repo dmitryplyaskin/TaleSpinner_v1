@@ -22,7 +22,6 @@ class ChatService {
   }
 
   saveChat(chatId, chatData) {
-    console.log(chatData)
     const filePath = path.join(this.chatDir, `${chatId}.json`);
     fs.writeFileSync(filePath, JSON.stringify(chatData, null, 2));
   }
@@ -41,6 +40,11 @@ class ChatService {
     chat.title = newTitle;
     this.saveChat(chatId, chat);
     return chat;
+  }
+
+  createChat(data) {
+    this.saveChat(data.id, data);
+    return data;
   }
 
   addMessage(chatId, message) {

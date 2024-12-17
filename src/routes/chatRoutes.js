@@ -13,6 +13,15 @@ router.get('/chats', (req, res) => {
   }
 });
 
+router.post('/chats', (req, res) => {
+  try {
+    const newChat = chatService.createChat(req.body);
+    res.json(newChat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Получение конкретного чата
 router.get('/chats/:chatId', (req, res) => {
   try {

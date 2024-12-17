@@ -1,6 +1,6 @@
-import React from 'react';
-import { ChatListItem } from './ChatListItem';
-import { ChatInfo } from './types';
+import React from "react";
+import { ChatListItem } from "./ChatListItem";
+import { ChatInfo } from "./types";
 
 interface ChatGridProps {
   chats: ChatInfo[];
@@ -20,7 +20,10 @@ export const ChatGrid: React.FC<ChatGridProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
       {chats.map((chat) => (
-        <div key={chat.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+        <div
+          key={chat.id}
+          className="bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+        >
           <ChatListItem
             id={chat.id}
             title={chat.title}
@@ -28,7 +31,7 @@ export const ChatGrid: React.FC<ChatGridProps> = ({
             isSelected={chat.id === currentChatId}
             onSelect={() => onSelectChat(chat.id)}
             onEdit={() => onEditChat(chat.id)}
-            onDelete={() => onDeleteChat(chat.id)}
+            onDelete={() => onDeleteChat(chat)}
           />
         </div>
       ))}
