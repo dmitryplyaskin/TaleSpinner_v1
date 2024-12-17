@@ -1,5 +1,5 @@
-import React from 'react';
-import { OpenRouterConfig } from '../api';
+import React, { useEffect, useState } from 'react';
+import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
 
 interface APIProviderTabProps {
   config: OpenRouterConfig | null;
@@ -10,7 +10,30 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({
   config,
   onConfigChange,
 }) => {
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [models, setModels] = useState<OpenRouterModel[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        setLoading(true);
+        const modelsList = await getOpenRouterModels();
+        setModels(modelsList);
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (config?.apiKey) {
+      fetchModels();
+    }
+  }, [config?.apiKey]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     if (config) {
       onConfigChange({
         ...config,
@@ -53,16 +76,32 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Model ID
+          Model
         </label>
-        <input
-          type="text"
+        <select
           name="modelId"
           value={config?.modelId || ''}
           onChange={handleInputChange}
-          placeholder="Введите ID модели"
           className="w-full p-2 border border-gray-300 rounded-md"
-        />
+          disabled={loading || !config?.apiKey}
+        >
+          <option value="">Выберите модель</option>
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.name} ({model.pricing.prompt} / {model.pricing.completion})
+            </option>
+          ))}
+        </select>
+        {loading && (
+          <p className="text-sm text-gray-500 mt-1">
+            Загрузка списка моделей...
+          </p>
+        )}
+        {!config?.apiKey && (
+          <p className="text-sm text-gray-500 mt-1">
+            Введите API ключ для загрузки списка моделей
+          </p>
+        )}
       </div>
     </div>
   );

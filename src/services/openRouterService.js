@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const OpenAI = require('openai');
+const axios = require('axios');
 
 class OpenRouterService {
   constructor() {
@@ -38,6 +39,23 @@ class OpenRouterService {
         "Authorization": `Bearer ${config.apiKey}`
       },
     });
+  }
+
+  async getModels() {
+    const config = this.getConfig();
+    try {
+      const response = await axios.get('https://openrouter.ai/api/v1/models', {
+        headers: {
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "Chat Application",
+          "Authorization": `Bearer ${config.apiKey}`
+        }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching models:', error);
+      return [];
+    }
   }
 
   async createChatCompletion(messages, settings) {

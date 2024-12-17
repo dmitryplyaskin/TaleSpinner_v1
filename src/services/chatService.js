@@ -49,6 +49,7 @@ class ChatService {
 
   addMessage(chatId, message) {
     const chat = this.loadChat(chatId);
+    console.log(chat);
     chat.messages.push({
       ...message,
       timestamp: new Date().toISOString()

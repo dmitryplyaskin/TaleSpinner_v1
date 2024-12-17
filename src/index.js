@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const chatRoutes = require('./routes/chatRoutes');
 const configRoutes = require('./routes/configRoutes');
+const modelsRoutes = require('./routes/models');
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.static('public'));
 // API Routes
 app.use('/api', chatRoutes);
 app.use('/api', configRoutes);
+app.use('/api', modelsRoutes);
 
 // Start server
 app.listen(port, () => {
