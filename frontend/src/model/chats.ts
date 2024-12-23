@@ -1,12 +1,12 @@
 import { createEffect, createEvent, createStore } from "effector";
 import { BASE_URL } from "../const";
-import { ChatInfo } from "../types/chat";
-import { v4 as uuidv4 } from "uuid";
+import { createEmptyChatCard } from "./fns";
+import { ChatCard } from "../types/chat";
 
-export const $chatList = createStore<ChatInfo[]>([]);
+export const $chatList = createStore<ChatCard[]>([]);
 export const $currentChatId = createStore("");
 
-export const getChatListFx = createEffect<void, ChatInfo[]>(async () => {
+export const getChatListFx = createEffect<void, ChatCard[]>(async () => {
   try {
     const response = await fetch(`${BASE_URL}/chats`).then((response) =>
       response.json()
@@ -51,20 +51,13 @@ export const deleteChatFx = createEffect(async (data) => {
 });
 
 export const createChatFx = createEffect(async () => {
-  const newChatId = uuidv4();
-  const newChat = {
-    id: newChatId,
-    title: "Новый чат",
-    timestamp: new Date().toISOString(),
-  };
-
   try {
     const response = await fetch(`${BASE_URL}/chats`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(newChat),
+      body: JSON.stringify(createEmptyChatCard()),
     });
     return response.json();
   } catch (error) {
@@ -85,6 +78,22 @@ export const saveChatFx = createEffect(async (data) => {
     return response.json();
   } catch (error) {
     console.error("Error saving chat:", error);
+    return null;
+  }
+});
+
+export const sendMessageFx = createEffect(async (data) => {
+  try {
+    const response = await fetch(`${BASE_URL}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  } catch (error) {
+    console.error("Error sending message:", error);
     return null;
   }
 });
@@ -123,7 +132,6 @@ $chatList
 export const selectCurrentChat = createEvent<string>();
 
 $currentChatId.on(selectCurrentChat, (_, data) => data);
-
 
 export const $openEditor = createStore(false);
 export const toggleEditor = createEvent();

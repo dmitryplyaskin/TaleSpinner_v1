@@ -3,8 +3,14 @@ import { ChatWindow } from "./components/ChatWindow";
 import { ChatManagement } from "./components/chat-management";
 import { SettingsSidebar } from "./components/settings/SettingsSidebar";
 import { v4 as uuidv4 } from "uuid";
-import { getChatList, ChatInfo, OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from "./components/api";
-import { $chatList, createChatFx, getChatListFx } from "./store/chats";
+import {
+  getChatList,
+  ChatInfo,
+  OpenRouterConfig,
+  getOpenRouterConfig,
+  updateOpenRouterConfig,
+} from "./components/api";
+import { $chatList, createChatFx, getChatListFx } from "./model/chats";
 import { useUnit } from "effector-react";
 
 interface LLMSettings {
@@ -103,10 +109,7 @@ function App() {
 
         <div className="flex-1 overflow-hidden">
           {currentChatId ? (
-            <ChatWindow
-              chatId={currentChatId}
-              settings={llmSettings}
-            />
+            <ChatWindow chatId={currentChatId} settings={llmSettings} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">

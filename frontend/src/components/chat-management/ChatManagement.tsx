@@ -2,8 +2,14 @@ import React, { useState } from "react";
 import { ChatListItem } from "./ChatListItem";
 import { ChatGrid } from "./ChatGrid";
 import { EditChatModal } from "./EditChatModal";
-import { ChatInfo, ChatManagementProps } from "./types"; 
-import { $chatList, deleteChatFx, editChatFx, saveChatFx, toggleEditor } from "../../store/chats";
+import { ChatInfo, ChatManagementProps } from "./types";
+import {
+  $chatList,
+  deleteChatFx,
+  editChatFx,
+  saveChatFx,
+  toggleEditor,
+} from "../../model/chats";
 import { useUnit } from "effector-react";
 
 export const ChatManagement: React.FC<ChatManagementProps> = ({
@@ -24,8 +30,6 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
       toggleEditor();
     }
   };
-
-  
 
   if (isFullscreen) {
     return (
@@ -106,11 +110,10 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
 
       {editingChat && (
         <EditChatModal
-        
           chatId={editingChat.id}
           initialTitle={editingChat.title}
           onClose={() => {
-            toggleEditor( );
+            toggleEditor();
             setEditingChat(null);
           }}
           onSave={saveChatFx}
