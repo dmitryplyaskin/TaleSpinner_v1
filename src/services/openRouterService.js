@@ -63,7 +63,8 @@ class OpenRouterService {
     const config = this.getConfig();
 
     return await client.chat.completions.create({
-      model: config.model,
+      model: 'amazon/nova-micro-v1',
+      // model: config.model,
       messages: messages.map(msg => ({
         role: msg.role === "bot" ? "assistant" : "user",
         content: msg.content,
