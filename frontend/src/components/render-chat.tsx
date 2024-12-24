@@ -1,4 +1,6 @@
 import { ChatCard } from "../types/chat";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Props = {
   chatCard: ChatCard;
@@ -24,7 +26,10 @@ export const RenderChat: React.FC<Props> = ({ chatCard }) => {
             : "bg-gray-300 mr-8"
         }`}
       >
-        <div className="whitespace-pre-wrap">{message.text}</div>
+        <div className="">
+          {" "}
+          <Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown>{" "}
+        </div>
         <div className="text-xs opacity-70 mt-1">
           {new Date(message.timestamp).toLocaleTimeString()}
         </div>
