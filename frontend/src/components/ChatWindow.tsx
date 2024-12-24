@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { streamMessage, getChatHistory, ChatMessage } from "./api";
 import { RenderChat } from "./render-chat";
+import { v4 as uuidv4 } from "uuid";
+import { ChatCard } from "../types/chat";
 
 interface ChatWindowProps {
   chatId: string;
@@ -17,7 +19,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   chatId,
   llmSettings,
 }) => {
-  const [chat, setChat] = useState(null);
+  const [chat, setChat] = useState<null | ChatCard>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -46,18 +48,25 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleSendMessage = async () => {
     if (newMessage.trim() === "" || isStreaming) return;
 
-    const userMessage: ChatMessage = {
-      role: "user",
-      content: newMessage,
-      timestamp: new Date().toISOString(),
-    };
+    const messagesList = chat?.chatHistories.find(
+      (chatHistory) => chatHistory.id === chat?.activeChatHistoryId
+    )?.messages;
 
-    setMessages((prev) => [...prev, userMessage]);
+    if (messagesList) {
+      messagesList.push({
+        id: uuidv4(),
+        role: "user",
+        content: newMessage,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // setMessages((prev) => [...prev, userMessage]);
     setNewMessage("");
     setIsStreaming(true);
 
     try {
-      const messageStream = streamMessage(newMessage, chatId, llmSettings);
+      const messageStream = streamMessage(messagesList, chat, llmSettings);
       let botMessage: ChatMessage = {
         role: "bot",
         content: "",
@@ -71,6 +80,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           botMessage.content = `Ошибка: ${chunk.error}`;
           break;
         }
+        console.log(chunk);
 
         if (isFirstChunk) {
           setMessages((prev) => [...prev, botMessage]);

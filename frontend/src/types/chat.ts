@@ -22,7 +22,7 @@ export interface ChatHistory {
 
 export interface ChatMessage {
   id: string;
-  text: string;
+  content: string;
   role: "user" | "assistant" | "system";
   timestamp: string;
   parentMessageId?: string;
@@ -32,6 +32,6 @@ export interface ChatMessage {
 
 export interface ChatMessageAlternative {
   id: string;
-  text: string;
+  content: string;
   timestamp: string;
 }

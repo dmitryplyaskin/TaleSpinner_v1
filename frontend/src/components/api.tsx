@@ -68,8 +68,8 @@ async function fetchWithRetry(
 }
 
 export async function* streamMessage(
-  message: string,
-  chatId: string,
+  messagesList: any[],
+  chat: any,
   settings: LLMSettings
 ): AsyncGenerator<StreamResponse> {
   try {
@@ -86,11 +86,7 @@ export async function* streamMessage(
           Connection: "keep-alive",
           "Cache-Control": "no-cache",
         },
-        body: JSON.stringify({
-          prompt: message,
-          chatId,
-          settings
-        }),
+        body: JSON.stringify({ messagesList, chat, settings }),
         signal: controller.signal,
       },
       1
@@ -217,7 +213,7 @@ export const getChatList = async (): Promise<ChatInfo[]> => {
     const response = await axios.get(`${BASE_URL}/chats`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching chat list:', error);
+    console.error("Error fetching chat list:", error);
     return [];
   }
 };

@@ -28,7 +28,9 @@ export const RenderChat: React.FC<Props> = ({ chatCard }) => {
       >
         <div className="">
           {" "}
-          <Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown>{" "}
+          <Markdown remarkPlugins={[remarkGfm]}>
+            {message.content}
+          </Markdown>{" "}
         </div>
         <div className="text-xs opacity-70 mt-1">
           {new Date(message.timestamp).toLocaleTimeString()}
