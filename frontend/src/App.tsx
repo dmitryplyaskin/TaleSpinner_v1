@@ -10,7 +10,7 @@ import {
   getOpenRouterConfig,
   updateOpenRouterConfig,
 } from "./components/api";
-import { $chatList, createChatFx, getChatListFx } from "./model/chats";
+import { $chatList, createChatFx, getChatListFx } from "./model";
 import { useUnit } from "effector-react";
 
 interface LLMSettings {

@@ -29,7 +29,7 @@ export const ChatGrid: React.FC<ChatGridProps> = ({
             title={chat.title}
             timestamp={chat.timestamp}
             isSelected={chat.id === currentChatId}
-            onSelect={() => onSelectChat(chat.id)}
+            onSelect={() => onSelectChat(chat)}
             onEdit={() => onEditChat(chat.id)}
             onDelete={() => onDeleteChat(chat)}
           />

@@ -20,7 +20,9 @@ export const RenderChat: React.FC<Props> = ({ chatCard }) => {
       }`}
     >
       <div
-        className={`rounded-lg p-3 max-w-[70%] break-words ${
+        className={`rounded-lg p-3 ${
+          message.role === "user" ? "max-w-[70%]" : "w-full"
+        }  break-words ${
           message.role === "user"
             ? "bg-blue-500 text-white ml-8"
             : "bg-gray-300 mr-8"

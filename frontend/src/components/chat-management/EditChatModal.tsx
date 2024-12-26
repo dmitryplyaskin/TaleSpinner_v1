@@ -1,6 +1,6 @@
 import { useUnit } from "effector-react";
 import React, { useState } from "react";
-import { $openEditor, toggleEditor } from "../../model/chats";
+import {} from "../../model";
 
 interface EditChatModalProps {
   isOpen: boolean;
@@ -16,7 +16,8 @@ export const EditChatModal: React.FC<EditChatModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const isOpen = useUnit($openEditor);
+  // const isOpen = useUnit($openEditor);
+  const isOpen = false;
   const [title, setTitle] = useState(initialTitle);
 
   if (!isOpen) return null;
@@ -24,7 +25,7 @@ export const EditChatModal: React.FC<EditChatModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(chatId, title);
-    toggleEditor();
+    // toggleEditor();
   };
 
   return (

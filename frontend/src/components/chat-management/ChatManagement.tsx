@@ -8,8 +8,8 @@ import {
   deleteChatFx,
   editChatFx,
   saveChatFx,
-  toggleEditor,
-} from "../../model/chats";
+  // toggleEditor,
+} from "../../model";
 import { useUnit } from "effector-react";
 
 export const ChatManagement: React.FC<ChatManagementProps> = ({
@@ -27,7 +27,7 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
     const chat = chatList.find((c) => c.id === chatId);
     if (chat) {
       setEditingChat(chat);
-      toggleEditor();
+      // toggleEditor();
     }
   };
 

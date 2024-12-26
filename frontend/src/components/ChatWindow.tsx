@@ -77,7 +77,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
       for await (const chunk of messageStream) {
         if ("error" in chunk) {
-          botMessage.content = `Ошибка: ${chunk.error}`;
+          // botMessage.content = `Ошибка: ${chunk.error}`;
           break;
         }
         console.log(chunk);
@@ -99,13 +99,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     } catch (error) {
       console.error("Error:", error);
-      const errorMessage: ChatMessage = {
-        role: "bot",
-        content:
-          "Произошла ошибка при генерации ответа. Пожалуйста, попробуйте еще раз.",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      // const errorMessage: ChatMessage = {
+      //   role: "bot",
+      //   content:
+      //     "Произошла ошибка при генерации ответа. Пожалуйста, попробуйте еще раз.",
+      //   timestamp: new Date().toISOString(),
+      // };
+      // setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsStreaming(false);
     }
