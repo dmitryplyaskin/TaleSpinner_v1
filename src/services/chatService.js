@@ -63,8 +63,8 @@ class ChatService {
         const chatData = this.loadChat(chatId);
         return {
           id: chatId,
-          title: chatData.title || "Новый чат",
-          timestamp: chatData.timestamp || new Date().toISOString(),
+          ...chatData,
+          // chatHistories: undefined,
         };
       })
       .sort(

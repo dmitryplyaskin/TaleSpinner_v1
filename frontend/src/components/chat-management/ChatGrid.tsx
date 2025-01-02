@@ -27,7 +27,7 @@ export const ChatGrid: React.FC<ChatGridProps> = ({
           <ChatListItem
             id={chat.id}
             title={chat.title}
-            timestamp={chat.timestamp}
+            lastUpdatedTimestamp={chat.lastUpdatedTimestamp}
             isSelected={chat.id === currentChatId}
             onSelect={() => onSelectChat(chat)}
             onEdit={() => onEditChat(chat.id)}

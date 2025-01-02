@@ -3,6 +3,8 @@ import { streamMessage, getChatHistory, ChatMessage } from "./api";
 import { RenderChat } from "./render-chat";
 import { v4 as uuidv4 } from "uuid";
 import { ChatCard } from "../types/chat";
+import { $currentChat } from "../model";
+import { useUnit } from "effector-react";
 
 interface ChatWindowProps {
   chatId: string;
@@ -19,27 +21,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   chatId,
   llmSettings,
 }) => {
-  const [chat, setChat] = useState<null | ChatCard>(null);
+  const chat = useUnit($currentChat);
+  // const [chat, setChat] = useState<null | ChatCard>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const loadChatHistory = async () => {
-      try {
-        const history = await getChatHistory(chatId);
+  console.log(chat);
 
-        setMessages(history.messages || []);
-        setChat(history);
-      } catch (error) {
-        console.error("Error loading chat history:", error);
-        setMessages([]);
-      }
-    };
+  // useEffect(() => {
+  //   const loadChatHistory = async () => {
+  //     try {
+  //       const history = await getChatHistory(chatId);
 
-    loadChatHistory();
-  }, [chatId]);
+  //       setMessages(history.messages || []);
+  //       setChat(history);
+  //     } catch (error) {
+  //       console.error("Error loading chat history:", error);
+  //       setMessages([]);
+  //     }
+  //   };
+
+  //   loadChatHistory();
+  // }, [chatId]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(event.target.value);

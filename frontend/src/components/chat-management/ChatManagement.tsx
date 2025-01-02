@@ -8,13 +8,14 @@ import {
   deleteChatFx,
   editChatFx,
   saveChatFx,
+  selectChat,
   // toggleEditor,
 } from "../../model";
 import { useUnit } from "effector-react";
 
 export const ChatManagement: React.FC<ChatManagementProps> = ({
   onNewChat,
-  onSelectChat,
+
   currentChatId,
 }) => {
   const chatList = useUnit($chatList);
@@ -60,8 +61,8 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
             <ChatGrid
               chats={chatList}
               currentChatId={currentChatId}
-              onSelectChat={(chatId) => {
-                onSelectChat(chatId);
+              onSelectChat={(chat) => {
+                selectChat(chat);
                 setIsFullscreen(false);
               }}
               onEditChat={handleEditChat}
@@ -91,7 +92,7 @@ export const ChatManagement: React.FC<ChatManagementProps> = ({
               key={chat.id}
               {...chat}
               isSelected={chat.id === currentChatId}
-              onSelect={() => onSelectChat(chat.id)}
+              onSelect={() => selectChat(chat)}
               onEdit={() => handleEditChat(chat)}
               onDelete={() => deleteChatFx(chat)}
             />

@@ -15,7 +15,7 @@ interface ChatListItemProps {
 export const ChatListItem: React.FC<ChatListItemProps> = ({
   id,
   title,
-  timestamp,
+  lastUpdatedTimestamp,
   isSelected,
   onSelect,
   onEdit,
@@ -31,7 +31,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
       <div className="flex-grow min-w-0">
         <div className="font-medium truncate">{title}</div>
         <div className="text-sm text-gray-500">
-          {formatDistanceToNow(new Date(timestamp), {
+          {formatDistanceToNow(new Date(lastUpdatedTimestamp), {
             addSuffix: true,
             locale: ru,
           })}
