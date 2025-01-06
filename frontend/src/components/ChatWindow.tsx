@@ -7,7 +7,6 @@ import { $currentChat } from "../model";
 import { useUnit } from "effector-react";
 
 interface ChatWindowProps {
-  chatId: string;
   llmSettings: {
     temperature: number;
     maxTokens: number;
@@ -17,34 +16,13 @@ interface ChatWindowProps {
   };
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({
-  chatId,
-  llmSettings,
-}) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
   const chat = useUnit($currentChat);
   // const [chat, setChat] = useState<null | ChatCard>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  console.log(chat);
-
-  // useEffect(() => {
-  //   const loadChatHistory = async () => {
-  //     try {
-  //       const history = await getChatHistory(chatId);
-
-  //       setMessages(history.messages || []);
-  //       setChat(history);
-  //     } catch (error) {
-  //       console.error("Error loading chat history:", error);
-  //       setMessages([]);
-  //     }
-  //   };
-
-  //   loadChatHistory();
-  // }, [chatId]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(event.target.value);

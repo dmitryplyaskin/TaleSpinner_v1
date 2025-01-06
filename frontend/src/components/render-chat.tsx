@@ -8,9 +8,10 @@ type Props = {
 
 export const RenderChat: React.FC<Props> = ({ chatCard }) => {
   if (!chatCard) return null;
-  const selectedChatHistory = chatCard.chatHistories.find(
-    (chatHistory) => chatHistory.id === chatCard.activeChatHistoryId
-  );
+  const selectedChatHistory =
+    chatCard.chatHistories.find(
+      (chatHistory) => chatHistory.id === chatCard.activeChatHistoryId
+    ) || chatCard.chatHistories[0];
 
   return selectedChatHistory.messages.map((message, index) => (
     <div

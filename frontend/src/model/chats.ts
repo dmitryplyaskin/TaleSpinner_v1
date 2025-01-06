@@ -8,4 +8,4 @@ export const selectChat = createEvent<ChatCard | null>();
 $currentChat.on(selectChat, (_, chat) => chat);
 
 
- 
+$currentChat.watch(console.log)

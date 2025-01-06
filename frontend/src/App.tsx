@@ -10,7 +10,7 @@ import {
   getOpenRouterConfig,
   updateOpenRouterConfig,
 } from "./components/api";
-import { $chatList, createChatFx, getChatListFx } from "./model";
+import { $chatList, $currentChat, createChatFx, getChatListFx } from "./model";
 import { useUnit } from "effector-react";
 
 interface LLMSettings {
@@ -22,7 +22,7 @@ interface LLMSettings {
 }
 
 function App() {
-  const [currentChatId, setCurrentChatId] = useState<string | undefined>();
+  const chat = useUnit($currentChat);
   const chatList = useUnit($chatList);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsSidebarOpen, setIsSettingsSidebarOpen] = useState(false);
@@ -50,7 +50,6 @@ function App() {
         <ChatManagement
           onNewChat={createChatFx}
           onSelectChat={handleSelectChat}
-          currentChatId={currentChatId}
         />
       )}
 
@@ -76,9 +75,7 @@ function App() {
               </svg>
             </button>
             <h1 className="text-xl font-semibold truncate">
-              {currentChatId
-                ? chatList.find((c) => c.id === currentChatId)?.title || "Чат"
-                : "Выберите чат"}
+              {chat ? chat?.title || "Чат" : "Выберите чат"}
             </h1>
           </div>
           <button
@@ -108,8 +105,8 @@ function App() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          {currentChatId ? (
-            <ChatWindow chatId={currentChatId} settings={llmSettings} />
+          {chat ? (
+            <ChatWindow settings={llmSettings} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
