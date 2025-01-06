@@ -1,4 +1,11 @@
-import React from 'react';
+import React from "react";
+import { useUnit } from "effector-react";
+import {
+  $llmSettings,
+  updateLLMSettings,
+  llmSettingsFields,
+  LLMSettingsState,
+} from "../../model/llm-settings";
 
 export interface LLMSettings {
   temperature: number;
@@ -13,106 +20,62 @@ interface LLMSettingsTabProps {
   onSettingsChange: (settings: LLMSettings) => void;
 }
 
-export const LLMSettingsTab: React.FC<LLMSettingsTabProps> = ({
-  settings,
-  onSettingsChange,
-}) => {
-  const handleChange = (key: keyof LLMSettings, value: number) => {
-    const newSettings = { ...settings, [key]: value };
-    onSettingsChange(newSettings);
+export const LLMSettingsTab: React.FC = () => {
+  const settings = useUnit($llmSettings);
+
+  const handleChange = (key: keyof LLMSettingsState, value: number) => {
+    updateLLMSettings({ [key]: value });
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Температура ({settings.temperature})
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          value={settings.temperature}
-          onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Контролирует случайность ответов. Более высокие значения делают вывод более случайным.
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Максимум токенов ({settings.maxTokens})
-        </label>
-        <input
-          type="range"
-          min="100"
-          max="4000"
-          step="100"
-          value={settings.maxTokens}
-          onChange={(e) => handleChange('maxTokens', parseInt(e.target.value))}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Максимальное количество токенов в ответе.
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Top P ({settings.topP})
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={settings.topP}
-          onChange={(e) => handleChange('topP', parseFloat(e.target.value))}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Альтернатива температуре, контролирует разнообразие через вероятностное усечение.
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Штраф за частоту ({settings.frequencyPenalty})
-        </label>
-        <input
-          type="range"
-          min="-2"
-          max="2"
-          step="0.1"
-          value={settings.frequencyPenalty}
-          onChange={(e) => handleChange('frequencyPenalty', parseFloat(e.target.value))}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Снижает вероятность повторения одних и тех же фраз.
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Штраф за присутствие ({settings.presencePenalty})
-        </label>
-        <input
-          type="range"
-          min="-2"
-          max="2"
-          step="0.1"
-          value={settings.presencePenalty}
-          onChange={(e) => handleChange('presencePenalty', parseFloat(e.target.value))}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Снижает вероятность обсуждения уже затронутых тем.
-        </p>
-      </div>
+    <div className="grid grid-cols-3 gap-4 p-4">
+      {llmSettingsFields.map((field) => (
+        <div
+          key={field.key}
+          className={`col-span-${field.width} bg-white p-3 rounded-lg shadow-sm border border-gray-200`}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                <div className="group relative">
+                  <svg
+                    className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="invisible group-hover:visible absolute z-10 w-48 p-2 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg shadow-lg left-0 top-6">
+                    {field.tooltip}
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm text-gray-500 mt-1">
+                Значение: {settings[field.key as keyof LLMSettingsState]}
+              </div>
+            </div>
+          </div>
+          <input
+            type={field.type === "range" ? "range" : "number"}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            value={settings[field.key as keyof LLMSettingsState]}
+            onChange={(e) => handleChange(
+              field.key as keyof LLMSettingsState,
+              field.type === "range" ? parseFloat(e.target.value) : Number(e.target.value)
+            )}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+      ))}
     </div>
   );
 };
