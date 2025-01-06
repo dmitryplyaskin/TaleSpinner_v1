@@ -1,0 +1,7 @@
+{
+  "temperature": 1,
+  "maxTokens": 1200,
+  "topP": 0,
+  "frequencyPenalty": -2,
+  "presencePenalty": -2
+}

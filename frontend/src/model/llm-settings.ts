@@ -1,9 +1,11 @@
-import { createStore, createEvent } from 'effector';
+import { createStore, createEvent, createEffect, sample } from "effector";
+import { debounce } from "patronum/debounce";
+import { BASE_URL } from "../const";
 
 export interface LLMSettingField {
   key: string;
   label: string;
-  type: 'range' | 'number' | 'text';
+  type: "range" | "number" | "text";
   tooltip: string;
   width: 1 | 2 | 3;
   defaultValue: number | string;
@@ -30,10 +32,11 @@ export const defaultSettings: LLMSettingsState = {
 
 export const llmSettingsFields: LLMSettingField[] = [
   {
-    key: 'temperature',
-    label: 'Температура',
-    type: 'range',
-    tooltip: 'Контролирует случайность ответов. Более высокие значения делают вывод более случайным.',
+    key: "temperature",
+    label: "Температура",
+    type: "range",
+    tooltip:
+      "Контролирует случайность ответов. Более высокие значения делают вывод более случайным.",
     width: 2,
     defaultValue: 0.7,
     min: 0,
@@ -41,10 +44,10 @@ export const llmSettingsFields: LLMSettingField[] = [
     step: 0.1,
   },
   {
-    key: 'maxTokens',
-    label: 'Максимум токенов',
-    type: 'range',
-    tooltip: 'Максимальное количество токенов в ответе модели.',
+    key: "maxTokens",
+    label: "Максимум токенов",
+    type: "range",
+    tooltip: "Максимальное количество токенов в ответе модели.",
     width: 2,
     defaultValue: 2000,
     min: 100,
@@ -52,10 +55,11 @@ export const llmSettingsFields: LLMSettingField[] = [
     step: 100,
   },
   {
-    key: 'topP',
-    label: 'Top P',
-    type: 'range',
-    tooltip: 'Контролирует разнообразие через nucleus sampling. Меньшие значения делают вывод более сфокусированным.',
+    key: "topP",
+    label: "Top P",
+    type: "range",
+    tooltip:
+      "Контролирует разнообразие через nucleus sampling. Меньшие значения делают вывод более сфокусированным.",
     width: 1,
     defaultValue: 1,
     min: 0,
@@ -63,10 +67,10 @@ export const llmSettingsFields: LLMSettingField[] = [
     step: 0.05,
   },
   {
-    key: 'frequencyPenalty',
-    label: 'Штраф частоты',
-    type: 'range',
-    tooltip: 'Снижает вероятность повторения одних и тех же фраз.',
+    key: "frequencyPenalty",
+    label: "Штраф частоты",
+    type: "range",
+    tooltip: "Снижает вероятность повторения одних и тех же фраз.",
     width: 1,
     defaultValue: 0,
     min: -2,
@@ -74,10 +78,10 @@ export const llmSettingsFields: LLMSettingField[] = [
     step: 0.1,
   },
   {
-    key: 'presencePenalty',
-    label: 'Штраф присутствия',
-    type: 'range',
-    tooltip: 'Поощряет модель говорить о новых темах.',
+    key: "presencePenalty",
+    label: "Штраф присутствия",
+    type: "range",
+    tooltip: "Поощряет модель говорить о новых темах.",
     width: 1,
     defaultValue: 0,
     min: -2,
@@ -90,14 +94,57 @@ export const llmSettingsFields: LLMSettingField[] = [
 export const updateLLMSettings = createEvent<Partial<LLMSettingsState>>();
 export const resetLLMSettings = createEvent();
 
-// Store
-export const $llmSettings = createStore<LLMSettingsState>(defaultSettings)
+// Effects
+export const fetchSettingsFx = createEffect(async () => {
+  const response = await fetch(`${BASE_URL}/settings`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch settings");
+  }
+  return response.json();
+});
 
-$llmSettings.on(updateLLMSettings, (state, payload) => ({
+export const saveSettingsFx = createEffect(
+  async (settings: LLMSettingsState) => {
+    const response = await fetch(`${BASE_URL}/settings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(settings),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to save settings");
+    }
+    return response.json();
+  }
+);
+
+// Debounced save effect
+export const debouncedSaveSettings = debounce({
+  source: updateLLMSettings,
+  timeout: 1000,
+});
+
+// Store
+export const $llmSettings = createStore<LLMSettingsState>(defaultSettings);
+
+// Store updates
+$llmSettings
+  .on(updateLLMSettings, (state, payload) => ({
     ...state,
     ...payload,
   }))
+  .on(fetchSettingsFx.doneData, (_, payload) => payload)
   .reset(resetLLMSettings);
 
+// Initialize settings on app start
+fetchSettingsFx();
 
-  $llmSettings.watch(console.log)
+sample({
+  source: $llmSettings,
+  clock: debouncedSaveSettings,
+  target: saveSettingsFx,
+});
+
+// Debug
+$llmSettings.watch(console.log);

@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const chatRoutes = require('./routes/chatRoutes');
 const configRoutes = require('./routes/configRoutes');
 const modelsRoutes = require('./routes/models');
+const settingsRoutes = require('./routes/settings');
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(express.static('public'));
 app.use('/api', chatRoutes);
 app.use('/api', configRoutes);
 app.use('/api', modelsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Start server
 app.listen(port, () => {
