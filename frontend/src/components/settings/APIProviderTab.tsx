@@ -1,5 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
+import React, { useEffect, useState } from "react";
+import {
+  OpenRouterConfig,
+  OpenRouterModel,
+  getOpenRouterModels,
+} from "../../api/openRouter";
+import { VStack, Input, Text } from "@chakra-ui/react";
+
+import {
+  SelectRoot,
+  SelectTrigger,
+  SelectValueText,
+  SelectContent,
+  SelectItem,
+} from "../ui/select";
+import { Select } from "../ui/select-extended";
+import { FormProvider, useForm } from "react-hook-form";
 
 interface APIProviderTabProps {
   config: OpenRouterConfig | null;
@@ -10,6 +25,8 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({
   config,
   onConfigChange,
 }) => {
+  const methods = useForm({ defaultValues: { provider: "openrouter" } });
+
   const [models, setModels] = useState<OpenRouterModel[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +37,7 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({
         const modelsList = await getOpenRouterModels();
         setModels(modelsList);
       } catch (error) {
-        console.error('Error fetching models:', error);
+        console.error("Error fetching models:", error);
       } finally {
         setLoading(false);
       }
@@ -43,66 +60,76 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          API Provider
-        </label>
-        <select
-          className="w-full p-2 border border-gray-300 rounded-md"
-          value="openrouter"
-          disabled
-        >
-          <option value="openrouter">OpenRouter</option>
-        </select>
-        <p className="text-sm text-gray-500 mt-1">
-          В настоящее время поддерживается только OpenRouter
-        </p>
-      </div>
+    <FormProvider {...methods}>
+      <VStack spacing={6} align="stretch">
+        {/* <FormControl> */}
+        <Select
+          name="provider"
+          label="API Provider"
+          placeholder="Выберите провайдера"
+          options={[{ value: "openrouter", label: "OpenRouter" }]}
+          // isDisabled
+        />
+        {/* <Text>API Provider</Text>
+      <SelectRoot value="openrouter" disabled size="md" variant="outline">
+        <SelectTrigger>
+          <SelectValueText>OpenRouter</SelectValueText>
+        </SelectTrigger>
+      </SelectRoot> */}
+        <Text>В настоящее время поддерживается только OpenRouter</Text>
+        {/* </FormControl> */}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          API Key
-        </label>
-        <input
+        {/* <FormControl> */}
+        <Text>API Key</Text>
+        <Input
           type="password"
           name="apiKey"
-          value={config?.apiKey || ''}
+          value={config?.apiKey || ""}
           onChange={handleInputChange}
           placeholder="Введите API ключ"
-          className="w-full p-2 border border-gray-300 rounded-md"
+          size="md"
         />
-      </div>
+        {/* </FormControl> */}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Model
-        </label>
-        <select
-          name="modelId"
-          value={config?.modelId || ''}
-          onChange={handleInputChange}
-          className="w-full p-2 border border-gray-300 rounded-md"
-          disabled={loading || !config?.apiKey}
-        >
-          <option value="">Выберите модель</option>
+        {/* <FormControl> */}
+        {/* <Text>Model</Text>
+      <SelectRoot
+        name="modelId"
+        value={config?.modelId || ""}
+        onChange={(value) =>
+          handleInputChange({
+            target: { name: "modelId", value },
+          } as React.ChangeEvent<HTMLSelectElement>)
+        }
+        disabled={loading || !config?.apiKey}
+        size="md"
+        variant="outline"
+      >
+        <SelectTrigger>
+          <SelectValueText placeholder="Выберите модель" />
+        </SelectTrigger>
+        <SelectContent>
           {models.map((model) => (
-            <option key={model.id} value={model.id}>
+            <SelectItem
+              key={model.id}
+              item={{
+                label: `${model.name} (${model.pricing.prompt} / ${model.pricing.completion})`,
+                value: model.id,
+              }}
+            >
               {model.name} ({model.pricing.prompt} / {model.pricing.completion})
-            </option>
+            </SelectItem>
           ))}
-        </select>
-        {loading && (
-          <p className="text-sm text-gray-500 mt-1">
-            Загрузка списка моделей...
-          </p>
-        )}
+        </SelectContent>
+      </SelectRoot> */}
+        {/* {loading && <FormHelperText>Загрузка списка моделей...</FormHelperText>}
         {!config?.apiKey && (
-          <p className="text-sm text-gray-500 mt-1">
+          <FormHelperText>
             Введите API ключ для загрузки списка моделей
-          </p>
-        )}
-      </div>
-    </div>
+          </FormHelperText>
+        )} */}
+        {/* </FormControl> */}
+      </VStack>
+    </FormProvider>
   );
 };

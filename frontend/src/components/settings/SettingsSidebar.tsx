@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import { LLMSettingsTab, LLMSettings } from './LLMSettingsTab';
-import { APIProviderTab } from './APIProviderTab';
-import { OpenRouterConfig } from '../api';
+import React, { useState } from "react";
+import { LLMSettingsTab, LLMSettings } from "./LLMSettingsTab";
+import { APIProviderTab } from "./APIProviderTab";
+import { OpenRouterConfig } from "../api";
+import { Button, Flex, Heading, Tabs, Icon } from "@chakra-ui/react";
+import { LuX } from "react-icons/lu";
+import {
+  DrawerRoot,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+} from "../ui/drawer";
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -11,7 +19,7 @@ interface SettingsSidebarProps {
   apiConfig: OpenRouterConfig | null;
 }
 
-type TabType = 'llm' | 'provider';
+type TabType = "llm" | "provider";
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
@@ -20,7 +28,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onAPIConfigChange,
   apiConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('llm');
+  const [activeTab, setActiveTab] = useState<TabType>("llm");
   const [llmSettings, setLLMSettings] = useState<LLMSettings>({
     temperature: 0.7,
     maxTokens: 2000,
@@ -37,70 +45,61 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-80 h-screen bg-white border-l border-gray-200 p-4 fixed right-0 top-0 overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Настройки</h2>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+    <DrawerRoot open={isOpen} onClose={onClose} placement="end" size="md">
+      <DrawerContent>
+        <DrawerHeader borderBottomWidth="1px">
+          <Flex justify="space-between" align="center">
+            <Heading size="md">Settings</Heading>
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              size="sm"
+              aria-label="Закрыть"
+            >
+              <Icon>
+                <LuX />
+              </Icon>
+            </Button>
+          </Flex>
+        </DrawerHeader>
+
+        <DrawerBody>
+          <Tabs.Root
+            colorPalette={"purple"}
+            size={"md"}
+            variant={"enclosed"}
+            // index={activeTab === "llm" ? 0 : 1}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
+            <Tabs.List mb={6}>
+              <Tabs.Trigger
+                value="settings"
+                onClick={() => setActiveTab("llm")}
+              >
+                Настройки LLM
+              </Tabs.Trigger>
+              <Tabs.Trigger
+                value="provider"
+                onClick={() => setActiveTab("provider")}
+              >
+                API Provider
+              </Tabs.Trigger>
+            </Tabs.List>
 
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex">
-            <button
-              onClick={() => setActiveTab('llm')}
-              className={`mr-4 py-2 px-1 border-b-2 ${
-                activeTab === 'llm'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Настройки LLM
-            </button>
-            <button
-              onClick={() => setActiveTab('provider')}
-              className={`py-2 px-1 border-b-2 ${
-                activeTab === 'provider'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              API Provider
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      <div>
-        {activeTab === 'llm' && (
-          <LLMSettingsTab
-            settings={llmSettings}
-            onSettingsChange={handleLLMSettingsChange}
-          />
-        )}
-        {activeTab === 'provider' && (
-          <APIProviderTab
-            config={apiConfig}
-            onConfigChange={onAPIConfigChange}
-          />
-        )}
-      </div>
-    </div>
+            <Tabs.Content value="settings" p={0}>
+              <LLMSettingsTab
+                settings={llmSettings}
+                onSettingsChange={handleLLMSettingsChange}
+              />
+            </Tabs.Content>
+            <Tabs.Content value="provider">
+              <APIProviderTab
+                config={apiConfig}
+                onConfigChange={onAPIConfigChange}
+              />
+            </Tabs.Content>
+          </Tabs.Root>
+        </DrawerBody>
+      </DrawerContent>
+    </DrawerRoot>
   );
 };

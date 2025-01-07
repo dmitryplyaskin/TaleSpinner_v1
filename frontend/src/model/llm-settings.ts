@@ -37,7 +37,7 @@ export const llmSettingsFields: LLMSettingField[] = [
     type: "range",
     tooltip:
       "Контролирует случайность ответов. Более высокие значения делают вывод более случайным.",
-    width: 2,
+    width: 1,
     defaultValue: 0.7,
     min: 0,
     max: 2,
@@ -50,9 +50,9 @@ export const llmSettingsFields: LLMSettingField[] = [
     tooltip: "Максимальное количество токенов в ответе модели.",
     width: 2,
     defaultValue: 2000,
-    min: 100,
-    max: 4000,
-    step: 100,
+    min: 0,
+    max: 40000,
+    step: 50,
   },
   {
     key: "topP",
@@ -145,6 +145,3 @@ sample({
   clock: debouncedSaveSettings,
   target: saveSettingsFx,
 });
-
-// Debug
-$llmSettings.watch(console.log);
