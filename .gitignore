@@ -38,3 +38,8 @@ lerna-debug.log*
 
 # Папка public
 /public
+
+# Папка data
+/data
+
+.windsurfrules
