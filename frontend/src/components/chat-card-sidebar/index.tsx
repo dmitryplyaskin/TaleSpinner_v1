@@ -21,8 +21,6 @@ export const ChatCardSidebar: React.FC = () => {
     closeSidebar("chatCards");
   };
 
-  console.log(list);
-
   if (!isOpen) return null;
 
   return (

@@ -101,11 +101,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
   return (
     <Flex direction="column" h="full">
       <Box flex="1" overflowY="auto" bg="gray.100">
-        <Container maxW="5xl" p={4}>
-          <VStack gap={4} align="stretch">
-            <RenderChat chatCard={chat} />
-            <div ref={messagesEndRef} />
-          </VStack>
+        <Container maxW="6xl" p={4}>
+          <RenderChat chatCard={chat} />
+          <div ref={messagesEndRef} />
         </Container>
       </Box>
 
