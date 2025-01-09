@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { ChatWindow } from "./components/ChatWindow";
-import { ChatManagement } from "./components/chat-management";
 import { SettingsSidebar } from "./components/settings/SettingsSidebar";
-import { v4 as uuidv4 } from "uuid";
 import {
-  getChatList,
-  ChatInfo,
   OpenRouterConfig,
   getOpenRouterConfig,
   updateOpenRouterConfig,
 } from "./components/api";
-import { $chatList, $currentChat, createChatFx, getChatListFx } from "./model";
+import { $currentChat, createChatFx, getChatListFx } from "./model";
 import { useUnit } from "effector-react";
+import {
+  IconButton,
+  Box,
+  Flex,
+  Heading,
+  Button,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import { LuSettings, LuIdCard } from "react-icons/lu";
+import { openSidebar } from "./model/sidebars";
 
 interface LLMSettings {
   temperature: number;
@@ -23,9 +30,7 @@ interface LLMSettings {
 
 function App() {
   const chat = useUnit($currentChat);
-  const chatList = useUnit($chatList);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSettingsSidebarOpen, setIsSettingsSidebarOpen] = useState(false);
+
   const [llmSettings, setLlmSettings] = useState<LLMSettings>({
     temperature: 0.7,
     maxTokens: 2000,
@@ -40,94 +45,63 @@ function App() {
     getOpenRouterConfig().then(setApiConfig);
   }, []);
 
-  const handleSelectChat = async (chatId: string) => {
-    setCurrentChatId(chatId);
-  };
-
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
-      {isSidebarOpen && (
-        <ChatManagement
-          onNewChat={createChatFx}
-          onSelectChat={handleSelectChat}
-        />
-      )}
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="bg-white border-b p-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="mr-4 p-2 hover:bg-gray-100 rounded-lg"
+    <Flex h="100vh" overflow="hidden" bg="gray.50">
+      <Flex flex="1" direction="column" minW="0">
+        <Flex
+          bg="white"
+          borderBottom="1px"
+          borderColor="gray.200"
+          p={4}
+          justify="space-between"
+          align="center"
+        >
+          <Flex align="center" gap={4}>
+            <IconButton
+              variant="outline"
+              size="lg"
+              colorScheme="purple"
+              aria-label="Open chat cards"
+              onClick={() => openSidebar("chat-cards")}
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            <h1 className="text-xl font-semibold truncate">
+              <LuIdCard />
+            </IconButton>
+
+            <Heading size="lg" isTruncated>
               {chat ? chat?.title || "Чат" : "Выберите чат"}
-            </h1>
-          </div>
-          <button
-            onClick={() => setIsSettingsSidebarOpen(!isSettingsSidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </button>
-        </div>
+            </Heading>
+          </Flex>
 
-        <div className="flex-1 overflow-hidden">
+          <IconButton
+            variant="outline"
+            colorScheme="purple"
+            aria-label="Open settings"
+            size="lg"
+            onClick={() => openSidebar("settings")}
+          >
+            <LuSettings />
+          </IconButton>
+        </Flex>
+
+        <Box flex="1" overflow="hidden">
           {chat ? (
             <ChatWindow settings={llmSettings} />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <p className="mb-4">
+            <Flex h="100%" align="center" justify="center">
+              <VStack spacing={4}>
+                <Text color="gray.500">
                   Выберите существующий чат или создайте новый
-                </p>
-                <button
-                  onClick={createChatFx}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
+                </Text>
+                <Button onClick={createChatFx} colorScheme="blue" size="lg">
                   Создать новый чат
-                </button>
-              </div>
-            </div>
+                </Button>
+              </VStack>
+            </Flex>
           )}
-        </div>
-      </div>
+        </Box>
+      </Flex>
 
       <SettingsSidebar
-        isOpen={isSettingsSidebarOpen}
-        onClose={() => setIsSettingsSidebarOpen(false)}
         onLLMSettingsChange={setLlmSettings}
         onAPIConfigChange={async (config) => {
           await updateOpenRouterConfig(config);
@@ -135,7 +109,7 @@ function App() {
         }}
         apiConfig={apiConfig}
       />
-    </div>
+    </Flex>
   );
 }
 

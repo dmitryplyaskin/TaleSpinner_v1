@@ -10,10 +10,10 @@ import {
   DrawerHeader,
   DrawerBody,
 } from "../ui/drawer";
+import { $sidebars, closeSidebar } from "@/model/sidebars";
+import { useUnit } from "effector-react";
 
 interface SettingsSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
   onLLMSettingsChange: (settings: LLMSettings) => void;
   onAPIConfigChange: (config: OpenRouterConfig) => void;
   apiConfig: OpenRouterConfig | null;
@@ -22,12 +22,14 @@ interface SettingsSidebarProps {
 type TabType = "llm" | "provider";
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
-  isOpen,
-  onClose,
   onLLMSettingsChange,
   onAPIConfigChange,
   apiConfig,
 }) => {
+  const { settings: isOpen } = useUnit($sidebars);
+  const handleClose = () => {
+    closeSidebar("settings");
+  };
   const [activeTab, setActiveTab] = useState<TabType>("llm");
   const [llmSettings, setLLMSettings] = useState<LLMSettings>({
     temperature: 0.7,
@@ -45,14 +47,14 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   if (!isOpen) return null;
 
   return (
-    <DrawerRoot open={isOpen} onClose={onClose} placement="end" size="md">
+    <DrawerRoot open={isOpen} onClose={handleClose} placement="end" size="lg">
       <DrawerContent>
         <DrawerHeader borderBottomWidth="1px">
           <Flex justify="space-between" align="center">
             <Heading size="md">Settings</Heading>
             <Button
               variant="ghost"
-              onClick={onClose}
+              onClick={handleClose}
               size="sm"
               aria-label="Закрыть"
             >
