@@ -22,7 +22,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@ui/*": ["./src/ui/*"],
+      "@types/*": ["./src/types/*"],
+      "@model/*": ["./src/model/*"], 
     }
   },
   "include": ["src"]

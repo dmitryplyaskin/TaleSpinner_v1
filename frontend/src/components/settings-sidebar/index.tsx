@@ -1,17 +1,18 @@
 import React, { useState } from "react";
-import { LLMSettingsTab, LLMSettings } from "./LLMSettingsTab";
-import { APIProviderTab } from "./APIProviderTab";
+import { LLMSettingsTab, LLMSettings } from "./settings-tab";
+import { APIProviderTab } from "./api-provoder-tab";
 import { OpenRouterConfig } from "../api";
-import { Button, Flex, Heading, Tabs, Icon } from "@chakra-ui/react";
-import { LuX } from "react-icons/lu";
+import { Flex, Heading, Tabs } from "@chakra-ui/react";
+
 import {
   DrawerRoot,
   DrawerContent,
   DrawerHeader,
   DrawerBody,
 } from "../../ui/chakra-core-ui/drawer";
-import { $sidebars, closeSidebar } from "@/model/sidebars";
+import { $sidebars, closeSidebar } from "@model/sidebars";
 import { useUnit } from "effector-react";
+import { CloseButton } from "@ui/chakra-core-ui/close-button";
 
 interface SettingsSidebarProps {
   onLLMSettingsChange: (settings: LLMSettings) => void;
@@ -19,7 +20,7 @@ interface SettingsSidebarProps {
   apiConfig: OpenRouterConfig | null;
 }
 
-type TabType = "llm" | "provider";
+type TabType = "settings" | "provider";
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onLLMSettingsChange,
@@ -30,7 +31,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const handleClose = () => {
     closeSidebar("settings");
   };
-  const [activeTab, setActiveTab] = useState<TabType>("llm");
+  const [activeTab, setActiveTab] = useState<TabType>("settings");
+
   const [llmSettings, setLLMSettings] = useState<LLMSettings>({
     temperature: 0.7,
     maxTokens: 2000,
@@ -47,21 +49,17 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   if (!isOpen) return null;
 
   return (
-    <DrawerRoot open={isOpen} onClose={handleClose} placement="end" size="lg">
+    <DrawerRoot
+      open={isOpen}
+      placement="end"
+      size="lg"
+      onOpenChange={handleClose}
+    >
       <DrawerContent>
         <DrawerHeader borderBottomWidth="1px">
           <Flex justify="space-between" align="center">
             <Heading size="md">Settings</Heading>
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              size="sm"
-              aria-label="Закрыть"
-            >
-              <Icon>
-                <LuX />
-              </Icon>
-            </Button>
+            <CloseButton onClick={handleClose} />
           </Flex>
         </DrawerHeader>
 
@@ -70,21 +68,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
             colorPalette={"purple"}
             size={"md"}
             variant={"enclosed"}
-            // index={activeTab === "llm" ? 0 : 1}
+            value={activeTab}
+            onValueChange={(e) => setActiveTab(e.value as TabType)}
           >
             <Tabs.List mb={6}>
-              <Tabs.Trigger
-                value="settings"
-                onClick={() => setActiveTab("llm")}
-              >
-                Настройки LLM
-              </Tabs.Trigger>
-              <Tabs.Trigger
-                value="provider"
-                onClick={() => setActiveTab("provider")}
-              >
-                API Provider
-              </Tabs.Trigger>
+              <Tabs.Trigger value="settings">Настройки LLM</Tabs.Trigger>
+              <Tabs.Trigger value="provider">API Provider</Tabs.Trigger>
             </Tabs.List>
 
             <Tabs.Content value="settings" p={0}>

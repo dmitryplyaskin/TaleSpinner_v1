@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ChatWindow } from "./components/ChatWindow";
-import { SettingsSidebar } from "./components/settings/SettingsSidebar";
+import { SettingsSidebar } from "./components/settings-sidebar";
 import {
   OpenRouterConfig,
   getOpenRouterConfig,
@@ -8,18 +8,11 @@ import {
 } from "./components/api";
 import { $currentChat, createChatFx, getChatListFx } from "./model";
 import { useUnit } from "effector-react";
-import {
-  IconButton,
-  Box,
-  Flex,
-  Heading,
-  Button,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Flex, Heading, Button, Text, VStack } from "@chakra-ui/react";
 import { LuSettings, LuIdCard } from "react-icons/lu";
 import { openSidebar } from "./model/sidebars";
 import { IconButtonWithTooltip } from "./ui";
+import { ChatCardSidebar } from "./components/chat-card-sidebar";
 
 interface LLMSettings {
   temperature: number;
@@ -64,7 +57,7 @@ function App() {
               size="lg"
               colorScheme="purple"
               aria-label="Open chat cards"
-              onClick={() => openSidebar("chat-cards")}
+              onClick={() => openSidebar("chatCards")}
               icon={<LuIdCard />}
             />
 
@@ -110,6 +103,7 @@ function App() {
         }}
         apiConfig={apiConfig}
       />
+      <ChatCardSidebar />
     </Flex>
   );
 }

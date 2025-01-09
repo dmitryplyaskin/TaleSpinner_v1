@@ -76,9 +76,6 @@ const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
               </Icon>
             </Tooltip>
           </Flex>
-          <Text fontSize="sm" color="gray.500" mt={1}>
-            Значение: {value}
-          </Text>
         </Box>
       </Flex>
       <Slider
@@ -86,6 +83,7 @@ const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
         max={field.max}
         step={field.step}
         size="md"
+        zIndex={2}
         variant="outline"
         colorPalette="purple"
         value={[value]}
@@ -99,7 +97,6 @@ const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
       <Input
         type="number"
         size="sm"
-        marginTop={2}
         min={field.min}
         max={field.max}
         step={field.step}
