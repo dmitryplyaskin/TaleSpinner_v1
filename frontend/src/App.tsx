@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChatWindow } from "./components/ChatWindow";
+import { ChatWindow } from "./components/chat-window";
 import { SettingsSidebar } from "./components/settings-sidebar";
 import {
   OpenRouterConfig,

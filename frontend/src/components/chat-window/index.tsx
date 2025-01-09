@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { streamMessage, getChatHistory, ChatMessage } from "./api";
+import { streamMessage, getChatHistory, ChatMessage } from "../api";
 import { RenderChat } from "./render-chat";
 import { v4 as uuidv4 } from "uuid";
-import { ChatCard } from "../types/chat";
-import { $currentChat } from "../model";
+import { ChatCard } from "../../types/chat";
+import { $currentChat } from "../../model";
 import { useUnit } from "effector-react";
+import { Flex, Box, Input, Button, Container, VStack } from "@chakra-ui/react";
 
 interface ChatWindowProps {
   llmSettings: {
@@ -18,7 +19,6 @@ interface ChatWindowProps {
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
   const chat = useUnit($currentChat);
-  // const [chat, setChat] = useState<null | ChatCard>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -44,7 +44,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
       });
     }
 
-    // setMessages((prev) => [...prev, userMessage]);
     setNewMessage("");
     setIsStreaming(true);
 
@@ -60,7 +59,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 
       for await (const chunk of messageStream) {
         if ("error" in chunk) {
-          // botMessage.content = `Ошибка: ${chunk.error}`;
           break;
         }
         console.log(chunk);
@@ -82,13 +80,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
       }
     } catch (error) {
       console.error("Error:", error);
-      // const errorMessage: ChatMessage = {
-      //   role: "bot",
-      //   content:
-      //     "Произошла ошибка при генерации ответа. Пожалуйста, попробуйте еще раз.",
-      //   timestamp: new Date().toISOString(),
-      // };
-      // setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsStreaming(false);
     }
@@ -108,38 +99,41 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
   useEffect(scrollToBottom, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto bg-gray-100">
-        <div className="max-w-5xl mx-auto p-4 space-y-4">
-          <RenderChat chatCard={chat} />
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
+    <Flex direction="column" h="full">
+      <Box flex="1" overflowY="auto" bg="gray.100">
+        <Container maxW="5xl" p={4}>
+          <VStack gap={4} align="stretch">
+            <RenderChat chatCard={chat} />
+            <div ref={messagesEndRef} />
+          </VStack>
+        </Container>
+      </Box>
 
-      <div className="p-4 bg-white border-t shadow-md">
-        <div className="max-w-5xl mx-auto flex space-x-4">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder="Введите сообщение..."
-            disabled={isStreaming}
-            className="flex-grow p-2 border rounded-lg focus:outline-none focus:border-blue-500"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={isStreaming || !newMessage.trim()}
-            className={`px-4 py-2 text-white rounded-lg whitespace-nowrap ${
-              isStreaming || !newMessage.trim()
-                ? "bg-gray-400"
-                : "bg-blue-500 hover:bg-blue-600"
-            }`}
-          >
-            {isStreaming ? "Отправка..." : "Отправить"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <Box p={4} bg="white" borderTop="1px" borderColor="gray.200" shadow="md">
+        <Container maxW="5xl">
+          <Flex gap={4}>
+            <Input
+              value={newMessage}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder="Введите сообщение..."
+              isDisabled={isStreaming}
+              flex="1"
+              p={2}
+              borderRadius="lg"
+              _focus={{ borderColor: "blue.500" }}
+            />
+            <Button
+              onClick={handleSendMessage}
+              isDisabled={isStreaming || !newMessage.trim()}
+              colorScheme={isStreaming || !newMessage.trim() ? "gray" : "blue"}
+              whiteSpace="nowrap"
+            >
+              {isStreaming ? "Отправка..." : "Отправить"}
+            </Button>
+          </Flex>
+        </Container>
+      </Box>
+    </Flex>
   );
 };
