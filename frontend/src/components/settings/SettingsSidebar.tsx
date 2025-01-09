@@ -9,7 +9,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerBody,
-} from "../ui/drawer";
+} from "../../ui/chakra-core-ui/drawer";
 import { $sidebars, closeSidebar } from "@/model/sidebars";
 import { useUnit } from "effector-react";
 

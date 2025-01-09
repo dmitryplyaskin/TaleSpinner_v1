@@ -12,8 +12,8 @@ import {
   SelectValueText,
   SelectContent,
   SelectItem,
-} from "../ui/select";
-import { Select } from "../ui/select-extended";
+} from "../../ui/chakra-core-ui/select";
+import { Select } from "../../ui/chakra-core-ui/select-extended";
 import { FormProvider, useForm } from "react-hook-form";
 
 interface APIProviderTabProps {

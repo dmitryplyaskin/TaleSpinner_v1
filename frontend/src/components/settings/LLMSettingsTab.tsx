@@ -9,8 +9,8 @@ import {
 } from "../../model/llm-settings";
 import { Box, SimpleGrid, Text, Icon, Flex, Input } from "@chakra-ui/react";
 import { LuInfo } from "react-icons/lu";
-import { Tooltip } from "../ui/tooltip";
-import { Slider } from "../ui/slider";
+import { Tooltip } from "../../ui/chakra-core-ui/tooltip";
+import { Slider } from "../../ui/chakra-core-ui/slider";
 
 export interface LLMSettings {
   temperature: number;

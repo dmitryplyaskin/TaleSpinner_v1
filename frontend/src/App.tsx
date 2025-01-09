@@ -19,6 +19,7 @@ import {
 } from "@chakra-ui/react";
 import { LuSettings, LuIdCard } from "react-icons/lu";
 import { openSidebar } from "./model/sidebars";
+import { IconButtonWithTooltip } from "./ui";
 
 interface LLMSettings {
   temperature: number;
@@ -57,30 +58,30 @@ function App() {
           align="center"
         >
           <Flex align="center" gap={4}>
-            <IconButton
+            <IconButtonWithTooltip
+              tooltip="Chat cards"
               variant="outline"
               size="lg"
               colorScheme="purple"
               aria-label="Open chat cards"
               onClick={() => openSidebar("chat-cards")}
-            >
-              <LuIdCard />
-            </IconButton>
+              icon={<LuIdCard />}
+            />
 
             <Heading size="lg" isTruncated>
               {chat ? chat?.title || "Чат" : "Выберите чат"}
             </Heading>
           </Flex>
 
-          <IconButton
+          <IconButtonWithTooltip
+            tooltip="Settings"
             variant="outline"
             colorScheme="purple"
             aria-label="Open settings"
             size="lg"
             onClick={() => openSidebar("settings")}
-          >
-            <LuSettings />
-          </IconButton>
+            icon={<LuSettings />}
+          />
         </Flex>
 
         <Box flex="1" overflow="hidden">
