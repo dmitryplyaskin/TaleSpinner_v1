@@ -1,10 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const chatRoutes = require('./routes/chatRoutes');
-const configRoutes = require('./routes/configRoutes');
-const modelsRoutes = require('./routes/models');
-const settingsRoutes = require('./routes/settings');
+const chatRoutes = require("./routes/chatRoutes");
+const configRoutes = require("./routes/configRoutes");
+const modelsRoutes = require("./routes/models");
+const settingsRoutes = require("./routes/settings");
+const userPersonRoutes = require("./routes/userPerson.routes");
 
 dotenv.config();
 
@@ -16,13 +17,14 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 // API Routes
-app.use('/api', chatRoutes);
-app.use('/api', configRoutes);
-app.use('/api', modelsRoutes);
-app.use('/api/settings', settingsRoutes);
+app.use("/api", chatRoutes);
+app.use("/api", configRoutes);
+app.use("/api", modelsRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api", userPersonRoutes);
 
 // Start server
 app.listen(port, () => {
