@@ -1,7 +1,7 @@
 import { Box, Flex, Text, Textarea } from '@chakra-ui/react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { LuPen } from 'react-icons/lu';
+import { LuPen, LuCheck, LuX } from 'react-icons/lu';
 import { ChatMessage } from '../api';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
@@ -20,6 +20,16 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 		setIsEditing(true);
 	};
 
+	const handleConfirmEdit = () => {
+		// TODO: Add logic to save edited content
+		setIsEditing(false);
+	};
+
+	const handleCancelEdit = () => {
+		setContent(data.content);
+		setIsEditing(false);
+	};
+
 	const isUser = data.role === 'user';
 
 	return (
@@ -36,7 +46,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 				position="relative"
 				maxW={isUser ? '70%' : 'full'}
 				w={isEditing ? 'full' : 'auto'}
-				p={3}
+				p={4}
 				borderRadius="lg"
 				bg={isUser ? 'purple.50' : 'white'}
 				borderWidth={1}
@@ -52,19 +62,39 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					>
 						{isUser ? 'You' : 'AI Assistant'}
 					</Text>
-					<Box ml="auto">
-						<IconButtonWithTooltip
-							position="absolute"
-							top={1}
-							right={1}
-							size="xs"
-							variant="ghost"
-							colorScheme="purple"
-							icon={<LuPen />}
-							tooltip="Edit message"
-							aria-label="Edit message"
-							onClick={handleOpenEdit}
-						/>
+					<Box ml="auto" gap={2}>
+						{isEditing ? (
+							<Flex gap={1}>
+								<IconButtonWithTooltip
+									size="xs"
+									variant="solid"
+									colorPalette="red"
+									icon={<LuX />}
+									tooltip="Cancel edit"
+									aria-label="Cancel edit"
+									onClick={handleCancelEdit}
+								/>
+								<IconButtonWithTooltip
+									size="xs"
+									variant="solid"
+									colorPalette="green"
+									icon={<LuCheck />}
+									tooltip="Confirm edit"
+									aria-label="Confirm edit"
+									onClick={handleConfirmEdit}
+								/>
+							</Flex>
+						) : (
+							<IconButtonWithTooltip
+								size="xs"
+								variant="ghost"
+								colorPalette="purple"
+								icon={<LuPen />}
+								tooltip="Edit message"
+								aria-label="Edit message"
+								onClick={handleOpenEdit}
+							/>
+						)}
 					</Box>
 				</Flex>
 				<Box mt={2} w={'100%'}>
