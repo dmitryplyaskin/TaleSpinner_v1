@@ -1,11 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const chatRoutes = require("./routes/chatRoutes");
-const configRoutes = require("./routes/configRoutes");
-const modelsRoutes = require("./routes/models");
-const settingsRoutes = require("./routes/settings");
-const userPersonRoutes = require("./routes/userPerson.routes");
+const chatRoutes = require("./routes/chat-routes");
+const configRoutes = require("./routes/config-routes");
+const modelsRoutes = require("./routes/models-routes");
+const settingsRoutes = require("./routes/settings-routes");
+const userPersonRoutes = require("./routes/user-persons-routes");
 
 dotenv.config();
 

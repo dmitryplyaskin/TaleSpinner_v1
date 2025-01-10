@@ -1,9 +1,9 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const openRouterService = require('../services/openRouterService');
+const openRouterService = require("../services/open-router-service");
 
 // Получение конфигурации OpenRouter
-router.get('/config/openrouter', (req, res) => {
+router.get("/config/openrouter", (req, res) => {
   try {
     const config = openRouterService.getConfig();
     res.json(config);
@@ -13,7 +13,7 @@ router.get('/config/openrouter', (req, res) => {
 });
 
 // Обновление конфигурации OpenRouter
-router.post('/config/openrouter', (req, res) => {
+router.post("/config/openrouter", (req, res) => {
   try {
     openRouterService.updateConfig(req.body);
     res.json({ success: true });

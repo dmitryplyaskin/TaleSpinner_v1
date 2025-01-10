@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const settingsService = require("../services/settingsService");
+const settingsService = require("../services/settings-service");
 
 router.get("/", async (req, res) => {
   try {
