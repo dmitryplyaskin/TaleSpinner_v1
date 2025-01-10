@@ -15,6 +15,11 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	const [content, setContent] = useState(data.content);
 	const [isEditing, setIsEditing] = useState(false);
 
+	const handleOpenEdit = () => {
+		setContent(data.content);
+		setIsEditing(true);
+	};
+
 	const isUser = data.role === 'user';
 
 	return (
@@ -58,9 +63,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 							icon={<LuPen />}
 							tooltip="Edit message"
 							aria-label="Edit message"
-							onClick={() => {
-								setIsEditing(true);
-							}}
+							onClick={handleOpenEdit}
 						/>
 					</Box>
 				</Flex>
