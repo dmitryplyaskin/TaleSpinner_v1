@@ -16,7 +16,7 @@ type MessageProps = {
 export const Message: React.FC<MessageProps> = ({ data }) => {
 	const [content, setContent] = useState(data.content);
 	const [isEditing, setIsEditing] = useState(false);
-	console.log(data);
+
 	const handleOpenEdit = () => {
 		setContent(data.content);
 		setIsEditing(true);
