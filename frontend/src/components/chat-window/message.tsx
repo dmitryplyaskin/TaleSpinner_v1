@@ -2,10 +2,12 @@ import { Box, Flex, Text, Textarea } from '@chakra-ui/react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { LuPen, LuCheck, LuX } from 'react-icons/lu';
-import { ChatMessage } from '../api';
+
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { useState } from 'react';
+import { updateMessageContent } from '@model/chats';
+import { ChatMessage } from '@types/chat';
 
 type MessageProps = {
 	data: ChatMessage;
@@ -14,7 +16,7 @@ type MessageProps = {
 export const Message: React.FC<MessageProps> = ({ data }) => {
 	const [content, setContent] = useState(data.content);
 	const [isEditing, setIsEditing] = useState(false);
-
+	console.log(data);
 	const handleOpenEdit = () => {
 		setContent(data.content);
 		setIsEditing(true);
@@ -22,6 +24,10 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 
 	const handleConfirmEdit = () => {
 		// TODO: Add logic to save edited content
+		updateMessageContent({
+			messageId: data.id,
+			content,
+		});
 		setIsEditing(false);
 	};
 
