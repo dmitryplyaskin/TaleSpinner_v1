@@ -3,36 +3,41 @@ export interface ChatCard {
 	title: string;
 	createdTimestamp: string;
 	lastUpdatedTimestamp: string;
+	lastMessage?: Message;
 	systemPrompt?: string;
-	introMessages: ChatMessage[];
+	introMessages: Message[];
 	chatHistories: ChatHistory[];
 	activeChatHistoryId: string | null;
 	metadata?: Record<string, any>;
-	rating?: number; // Оценка карточки пользователем
-	isFavorite?: boolean; // Добавлена ли карточка в избранное
-	imagePath?: string; // Путь к картинке карточки
+	rating?: '1' | '2' | '3' | '4' | '5';
+	isFavorite?: boolean;
+	imagePath?: string;
+	currentChat?: CurrentChat;
 }
-
 export interface ChatHistory {
 	id: string;
 	name?: string;
 	createdTimestamp: string;
+	selectedIntroMessageId?: string;
 	messages: ChatMessage[];
 }
 
 export interface ChatMessage {
 	id: string;
-	content: string;
+	type: 'default';
+	content: Message[];
 	role: 'user' | 'assistant' | 'system';
 	timestamp: string;
-	parentMessageId?: string;
-	isFirstInBranch?: boolean;
-	currentMessageId?: string;
-	alternatives?: ChatMessageAlternative[];
+	currentContentId?: string;
 }
 
-export interface ChatMessageAlternative {
+export interface Message {
 	id: string;
 	content: string;
 	timestamp: string;
+}
+
+export interface CurrentChat {
+	chatHistory: ChatHistory;
+	messages: ChatMessage[];
 }

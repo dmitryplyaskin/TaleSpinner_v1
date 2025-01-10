@@ -14,11 +14,12 @@ type MessageProps = {
 };
 
 export const Message: React.FC<MessageProps> = ({ data }) => {
-	const [content, setContent] = useState(data.content);
+	const sourceContent = data.content[0].content;
+	const [content, setContent] = useState(sourceContent);
 	const [isEditing, setIsEditing] = useState(false);
 
 	const handleOpenEdit = () => {
-		setContent(data.content);
+		setContent(sourceContent);
 		setIsEditing(true);
 	};
 
@@ -26,13 +27,14 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 		// TODO: Add logic to save edited content
 		updateMessageContent({
 			messageId: data.id,
+			contentId: data.content[0].id,
 			content,
 		});
 		setIsEditing(false);
 	};
 
 	const handleCancelEdit = () => {
-		setContent(data.content);
+		setContent(sourceContent);
 		setIsEditing(false);
 	};
 
@@ -112,7 +114,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 							onChange={(e) => setContent(e.target.value)}
 						/>
 					) : (
-						<Markdown remarkPlugins={[remarkGfm]}>{data.content}</Markdown>
+						<Markdown remarkPlugins={[remarkGfm]}>{sourceContent}</Markdown>
 					)}
 				</Box>
 				<Text fontSize="xs" opacity={0.7} mt={1}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { streamMessage, ChatMessage } from '../api';
 import { RenderChat } from './render-chat';
 import { v4 as uuidv4 } from 'uuid';
-import { $currentChat } from '../../model';
+import { $currentChatFormatted } from '../../model';
 import { useUnit } from 'effector-react';
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
 
@@ -17,7 +17,7 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
-	const chat = useUnit($currentChat);
+	const chat = useUnit($currentChatFormatted);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [newMessage, setNewMessage] = useState('');
 	const [isStreaming, setIsStreaming] = useState(false);
@@ -115,7 +115,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 							onKeyPress={handleKeyPress}
 							placeholder="Введите сообщение..."
 							autoresize
-							isDisabled={isStreaming}
+							disabled={isStreaming}
 							flex="1"
 							size={'lg'}
 							borderRadius="lg"
@@ -123,7 +123,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 						/>
 						<Button
 							onClick={handleSendMessage}
-							isDisabled={isStreaming || !newMessage.trim()}
+							disabled={isStreaming || !newMessage.trim()}
 							colorScheme={isStreaming || !newMessage.trim() ? 'gray' : 'blue'}
 							whiteSpace="nowrap"
 						>
