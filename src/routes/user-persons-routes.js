@@ -57,4 +57,24 @@ router.delete("/user-persons/:id", async (req, res) => {
   }
 });
 
+// Получение настроек пользователя
+router.get("/user-persons/settings", async (req, res) => {
+  try {
+    const settings = await userPersonService.getUserPersonSettings();
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Обновление настроек пользователя
+router.put("/user-persons/settings", async (req, res) => {
+  try {
+    await userPersonService.saveUserPersonSettings(req.body);
+    res.json({ message: "User person settings updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

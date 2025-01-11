@@ -82,6 +82,36 @@ class UserPersonService {
       throw error;
     }
   }
+
+  async getUserPersonSettings() {
+    try {
+      const filePath = path.join(this.dir, ".settings.json");
+      if (!fs.existsSync(filePath)) {
+        await fileService.saveFile(
+          filePath,
+          JSON.stringify({
+            selectedUserPersonId: null,
+            isUserPersonEnabled: false,
+          })
+        );
+      }
+      const settings = await fileService.readJson(filePath);
+      return settings;
+    } catch (error) {
+      console.error(`Ошибка при чтении файла ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  async saveUserPersonSettings(settings) {
+    try {
+      const filePath = path.join(this.dir, ".settings.json");
+      await fileService.saveFile(filePath, JSON.stringify(settings));
+    } catch (error) {
+      console.error(`Ошибка при сохранении файла ${filePath}:`, error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new UserPersonService();
