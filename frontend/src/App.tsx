@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/chat-window';
 import { SettingsSidebar } from './components/settings-sidebar';
-import {
-	OpenRouterConfig,
-	getOpenRouterConfig,
-	updateOpenRouterConfig,
-} from './components/api';
+import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
 import { $currentChat, createChatFx, getChatListFx } from './model';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Heading, Button, Text, VStack } from '@chakra-ui/react';
@@ -13,6 +9,7 @@ import { LuSettings, LuIdCard } from 'react-icons/lu';
 import { openSidebar } from './model/sidebars';
 import { IconButtonWithTooltip } from './ui';
 import { ChatCardSidebar } from './components/chat-card-sidebar';
+import { UserPersonSidebar } from './components/user-person-sidebar';
 
 interface LLMSettings {
 	temperature: number;
@@ -42,14 +39,7 @@ function App() {
 	return (
 		<Flex h="100vh" overflow="hidden" bg="gray.50">
 			<Flex flex="1" direction="column" minW="0">
-				<Flex
-					bg="white"
-					borderBottom="1px"
-					borderColor="gray.200"
-					p={4}
-					justify="space-between"
-					align="center"
-				>
+				<Flex bg="white" borderBottom="1px" borderColor="gray.200" p={4} justify="space-between" align="center">
 					<Flex align="center" gap={4}>
 						<IconButtonWithTooltip
 							tooltip="Chat cards"
@@ -64,6 +54,15 @@ function App() {
 						<Heading size="lg" isTruncated>
 							{chat ? chat?.title || 'Чат' : 'Выберите чат'}
 						</Heading>
+						<IconButtonWithTooltip
+							tooltip="User persons"
+							variant="outline"
+							size="lg"
+							colorScheme="purple"
+							aria-label="Open user persons"
+							onClick={() => openSidebar('userPersons')}
+							icon={<LuIdCard />}
+						/>
 					</Flex>
 
 					<IconButtonWithTooltip
@@ -83,9 +82,7 @@ function App() {
 					) : (
 						<Flex h="100%" align="center" justify="center">
 							<VStack spacing={4}>
-								<Text color="gray.500">
-									Выберите существующий чат или создайте новый
-								</Text>
+								<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
 								<Button onClick={createChatFx} colorScheme="blue" size="lg">
 									Создать новый чат
 								</Button>
@@ -104,6 +101,7 @@ function App() {
 				apiConfig={apiConfig}
 			/>
 			<ChatCardSidebar />
+			<UserPersonSidebar />
 		</Flex>
 	);
 }

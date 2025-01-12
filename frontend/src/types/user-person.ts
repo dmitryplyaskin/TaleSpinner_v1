@@ -3,21 +3,15 @@ export interface UserPerson {
 	name: string;
 	prefix?: string;
 	imagePath?: string;
-	content:
-		| {
-				type: 'default';
-				value: string;
-		  }
-		| {
-				type: 'extended';
-				value: {
-					id: string;
-					tagName?: string;
-					name?: string;
-					value: string;
-					isEnabled: boolean;
-				};
-		  };
+	type: 'default' | 'extended';
+	contentTypeDefault?: string;
+	contentTypeExtended?: {
+		id: string;
+		tagName?: string;
+		name?: string;
+		value: string;
+		isEnabled: boolean;
+	}[];
 }
 
 export interface UserPersonSettings {
