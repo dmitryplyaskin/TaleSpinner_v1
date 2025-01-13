@@ -14,4 +14,12 @@ export const apiRoutes = {
 			update: () => `${BASE_URL}/user-persons/settings`,
 		},
 	},
+	chat: {
+		list: () => `${BASE_URL}/chats`,
+		getById: (id: string) => `${BASE_URL}/chats/${id}`,
+		create: () => `${BASE_URL}/chats`,
+		update: (id: string) => `${BASE_URL}/chats/${id}`,
+		delete: (id: string) => `${BASE_URL}/chats/${id}`,
+		chat: () => `${BASE_URL}/chat`,
+	},
 };

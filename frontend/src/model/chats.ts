@@ -1,7 +1,8 @@
-import { createEvent, createStore } from 'effector';
+import { createEffect, createEvent, createStore, sample } from 'effector';
 
 import { ChatCard, ChatMessage } from '../types/chat';
 import { v4 as uuidv4 } from 'uuid';
+import { BASE_URL } from '../const';
 
 export const $currentChat = createStore<ChatCard | null>(null);
 export const selectChat = createEvent<ChatCard | null>();
@@ -21,62 +22,72 @@ export const deleteMessage = createEvent<{
 	contentId: string;
 }>();
 
-$currentChat.on(
-	updateMessageContent,
-	(state, { messageId, content: newContent, contentId }) => {
-		if (!state) return null;
+export const addUserMessage = createEvent<{ message: ChatMessage; chatHistoryId: string }>();
 
-		const currentChatHistory =
-			state.chatHistories.find(
-				(history) => history.id === state.activeChatHistoryId,
-			) || state.chatHistories[0];
-
-		const newChatHistory = {
-			...currentChatHistory,
-			messages: currentChatHistory.messages.map((message) => {
-				if (message.id !== messageId) return message;
-
-				const content = message.content.map((content) => {
-					if (content.id !== contentId) return content;
-
-					return {
-						...content,
-						content: newContent,
-					};
-				});
-
-				return {
-					...message,
-					content,
-				};
-			}),
-		};
-
-		return {
-			...state,
-			chatHistories: state.chatHistories.map((history) =>
-				history.id === state.activeChatHistoryId ? newChatHistory : history,
-			),
-		};
-	},
-);
-
-$currentChat.on(deleteMessage, (state, { messageId, contentId }) => {
+$currentChat.on(addUserMessage, (state, { message, chatHistoryId }) => {
 	if (!state) return null;
 
 	const currentChatHistory =
-		state.chatHistories.find(
-			(history) => history.id === state.activeChatHistoryId,
-		) || state.chatHistories[0];
+		state.chatHistories.find((history) => history.id === chatHistoryId) || state.chatHistories[0];
+
+	const newChatHistory = {
+		...currentChatHistory,
+		messages: [...currentChatHistory.messages, message],
+	};
+
+	return {
+		...state,
+		chatHistories: state.chatHistories.map((history) => (history.id === chatHistoryId ? newChatHistory : history)),
+	};
+});
+
+$currentChat.on(updateMessageContent, (state, { messageId, content: newContent, contentId }) => {
+	if (!state) return null;
+
+	const currentChatHistory =
+		state.chatHistories.find((history) => history.id === state.activeChatHistoryId) || state.chatHistories[0];
 
 	const newChatHistory = {
 		...currentChatHistory,
 		messages: currentChatHistory.messages.map((message) => {
 			if (message.id !== messageId) return message;
 
-			const newContent = message.content.filter(
-				(content) => content.id !== contentId,
-			);
+			const content = message.content.map((content) => {
+				if (content.id !== contentId) return content;
+
+				return {
+					...content,
+					content: newContent,
+				};
+			});
+
+			return {
+				...message,
+				content,
+			};
+		}),
+	};
+
+	return {
+		...state,
+		chatHistories: state.chatHistories.map((history) =>
+			history.id === state.activeChatHistoryId ? newChatHistory : history,
+		),
+	};
+});
+
+$currentChat.on(deleteMessage, (state, { messageId, contentId }) => {
+	if (!state) return null;
+
+	const currentChatHistory =
+		state.chatHistories.find((history) => history.id === state.activeChatHistoryId) || state.chatHistories[0];
+
+	const newChatHistory = {
+		...currentChatHistory,
+		messages: currentChatHistory.messages.map((message) => {
+			if (message.id !== messageId) return message;
+
+			const newContent = message.content.filter((content) => content.id !== contentId);
 
 			return {
 				...message,
@@ -97,16 +108,10 @@ export const $currentChatFormatted = $currentChat.map((chat) => {
 	if (!chat) return null;
 
 	const currentChatHistory =
-		chat.chatHistories.find(
-			(history) => history.id === chat.activeChatHistoryId,
-		) ||
-		chat.chatHistories[0] ||
-		{};
+		chat.chatHistories.find((history) => history.id === chat.activeChatHistoryId) || chat.chatHistories[0] || {};
 
 	const introMessage =
-		chat.introMessages.find(
-			(message) => message.id === currentChatHistory.selectedIntroMessageId,
-		) || null;
+		chat.introMessages.find((message) => message.id === currentChatHistory.selectedIntroMessageId) || null;
 
 	const messages = [] as ChatMessage[];
 
@@ -124,9 +129,7 @@ export const $currentChatFormatted = $currentChat.map((chat) => {
 
 	currentChatHistory?.messages.forEach((message) => {
 		const currentMsgId = message.currentContentId;
-		const currentMsg = message.content.find(
-			(content) => content.id === currentMsgId,
-		);
+		const currentMsg = message.content.find((content) => content.id === currentMsgId);
 		if (currentMsg) {
 			messages.push({ ...message, content: [currentMsg] });
 		} else {
@@ -141,4 +144,26 @@ export const $currentChatFormatted = $currentChat.map((chat) => {
 			messages: messages,
 		},
 	} as ChatCard;
+});
+
+export const saveCurrentChatFx = createEffect<ChatCard | null, void>(async (data) => {
+	if (!data) return;
+	try {
+		const response = await fetch(`${BASE_URL}/chats/${data.id}`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(data),
+		});
+		return response.json();
+	} catch (error) {
+		console.error('Error saving chat:', error);
+		return null;
+	}
+});
+
+sample({
+	clock: $currentChat,
+	target: saveCurrentChatFx,
 });

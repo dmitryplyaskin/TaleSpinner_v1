@@ -5,29 +5,49 @@ const openRouterService = require("../services/open-router-service");
 const { v4: uuidv4 } = require("uuid");
 
 // Получение списка чатов
-router.get("/chats", (req, res) => {
+router.get("/chats", async (req, res) => {
   try {
-    const chats = chatService.getChatList();
+    const chats = await chatService.getChatList();
     res.json(chats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post("/chats", (req, res) => {
+router.get("/chats/:chatId", async (req, res) => {
   try {
-    const newChat = chatService.createChat(req.body);
+    const chat = await chatService.loadChat(req.params.chatId);
+    res.json(chat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/chats:chatId", async (req, res) => {
+  try {
+    const newChat = await chatService.createChat(req.body);
     res.json(newChat);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Получение конкретного чата
-router.get("/chats/:chatId", (req, res) => {
+router.put("/chats/:chatId", async (req, res) => {
   try {
-    const chat = chatService.loadChat(req.params.chatId);
-    res.json(chat);
+    const updatedChat = await chatService.updateChat(
+      req.params.chatId,
+      req.body
+    );
+    res.json(updatedChat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/chats/:chatId", async (req, res) => {
+  try {
+    const deletedChat = await chatService.deleteChat(req.params.chatId);
+    res.json(deletedChat);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -36,16 +56,26 @@ router.get("/chats/:chatId", (req, res) => {
 // Создание нового сообщения в чате
 router.post("/chat", async (req, res) => {
   try {
-    const { messagesList, chat, settings } = req.body;
-    // if (!prompt) {
-    //   throw new Error("No prompt provided");
-    // }
+    const {
+      chat,
+      messages,
+      settings,
+      newChatMessage,
+      chatHistoryId,
+      chatMessageId,
+      messageId,
+    } = req.body;
 
-    // // Добавляем сообщение пользователя
-    const newChat = chatService.addMessage(
-      chat.id,
-      chat.activeChatHistoryId,
-      messagesList[messagesList.length - 1]
+    const currentChat = await chatService.loadChat(chatId);
+    const currentChatHistory = currentChat.chatHistories.find(
+      (history) => history.id === chatHistoryId
+    );
+    const currentChatMessage = currentChatHistory.messages.find(
+      (message) => message.id === chatMessageId
+    );
+
+    const currentMessageContent = currentChatMessage.content.find(
+      (content) => content.id === messageId
     );
 
     // Настраиваем SSE
@@ -53,11 +83,9 @@ router.post("/chat", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
+    console.log(req.body);
     // Получаем поток ответов от OpenRouter
-    const messageStream = openRouterService.streamResponse(
-      messagesList,
-      settings
-    );
+    const messageStream = openRouterService.streamResponse(messages, settings);
 
     let botResponse = "";
     for await (const chunk of messageStream) {
@@ -69,15 +97,18 @@ router.post("/chat", async (req, res) => {
 
       botResponse += chunk.content;
       res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
+
+      currentMessageContent.content = botResponse;
+      await chatService.updateChat(currentChat);
     }
 
-    // Сохраняем ответ бота
-    chatService.addMessage(chat.id, chat.activeChatHistoryId, {
-      id: uuidv4(),
-      role: "assistant",
-      content: botResponse,
-      timestamp: new Date().toISOString(),
-    });
+    // // Сохраняем ответ бота
+    // chatService.addMessage(chat.id, chat.activeChatHistoryId, {
+    //   id: uuidv4(),
+    //   role: "assistant",
+    //   content: botResponse,
+    //   timestamp: new Date().toISOString(),
+    // });
 
     res.write("data: [DONE]\n\n");
     res.end();
@@ -85,32 +116,6 @@ router.post("/chat", async (req, res) => {
     console.error("Chat error:", error);
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
-  }
-});
-
-// Обновление названия чата
-router.put("/chats/:chatId", (req, res) => {
-  console.log(req.body);
-  try {
-    const { title } = req.body;
-    const chat = chatService.updateChatTitle(req.params.chatId, title);
-    res.json(chat);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Удаление чата
-router.delete("/chats/:chatId", (req, res) => {
-  try {
-    const success = chatService.deleteChat(req.params.chatId);
-    if (success) {
-      res.json({ message: "Chat deleted successfully" });
-    } else {
-      res.status(404).json({ error: "Chat not found" });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 });
 

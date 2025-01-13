@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { streamMessage, ChatMessage } from '../api';
+import { streamMessage } from '../api';
 import { RenderChat } from './render-chat';
 import { v4 as uuidv4 } from 'uuid';
-import { $currentChatFormatted } from '../../model';
+import { $currentChatFormatted, addUserMessage } from '../../model';
 import { useUnit } from 'effector-react';
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
+import { ChatMessage } from '@types/chat';
 
 interface ChatWindowProps {
 	llmSettings: {
@@ -19,40 +20,60 @@ interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 	const chat = useUnit($currentChatFormatted);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
-	const [newMessage, setNewMessage] = useState('');
+	const [text, setText] = useState('');
 	const [isStreaming, setIsStreaming] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-		setNewMessage(event.target.value);
+		setText(event.target.value);
 	};
 
 	const handleSendMessage = async () => {
-		if (newMessage.trim() === '' || isStreaming) return;
+		if (text.trim() === '' || isStreaming) return;
 
+		const chatHistoryId = chat?.activeChatHistoryId || (chat?.chatHistories[0]?.id as string);
 		const messagesList = chat?.chatHistories.find(
 			(chatHistory) => chatHistory.id === chat?.activeChatHistoryId,
 		)?.messages;
 
 		if (messagesList) {
-			messagesList.push({
+			const msgId = uuidv4();
+			const newMessage = {
 				id: uuidv4(),
+				content: [{ id: msgId, content: text, timestamp: new Date().toISOString() }],
+				currentContentId: msgId,
 				role: 'user',
-				content: newMessage,
+				type: 'default',
 				timestamp: new Date().toISOString(),
-			});
+			} as ChatMessage;
+
+			addUserMessage({ message: newMessage, chatHistoryId });
+			messagesList.push(newMessage);
 		}
 
-		setNewMessage('');
+		setText('');
 		setIsStreaming(true);
 
 		try {
-			const messageStream = streamMessage(messagesList, chat, llmSettings);
-			let botMessage: ChatMessage = {
-				role: 'bot',
-				content: '',
+			const botChatMessageId = uuidv4();
+			const botMessageId = uuidv4();
+			const newBotMessage = {
+				id: botChatMessageId,
+				content: [{ id: botMessageId, content: '', timestamp: new Date().toISOString() }],
+				role: 'assistant',
+				type: 'default',
 				timestamp: new Date().toISOString(),
-			};
+			} as ChatMessage;
+
+			const messageStream = streamMessage({
+				chat,
+				messagesList,
+				settings: llmSettings,
+				newChatMessage: newBotMessage,
+				chatHistoryId,
+				chatMessageId: botChatMessageId,
+				messageId: botMessageId,
+			});
 
 			let isFirstChunk = true;
 
@@ -63,19 +84,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 				console.log(chunk);
 
 				if (isFirstChunk) {
-					setMessages((prev) => [...prev, botMessage]);
+					// setMessages((prev) => [...prev, botMessage]);
 					isFirstChunk = false;
 				}
 
-				botMessage.content += chunk.content;
-				setMessages((prev) => {
-					const newMessages = [...prev];
-					const lastMessage = newMessages[newMessages.length - 1];
-					if (lastMessage.role === 'bot') {
-						lastMessage.content = botMessage.content;
-					}
-					return newMessages;
-				});
+				// botMessage.content += chunk.content;
+				// setMessages((prev) => {
+				// 	const newMessages = [...prev];
+				// 	const lastMessage = newMessages[newMessages.length - 1];
+				// 	if (lastMessage.role === 'bot') {
+				// 		lastMessage.content = botMessage.content;
+				// 	}
+				// 	return newMessages;
+				// });
 			}
 		} catch (error) {
 			console.error('Error:', error);
@@ -110,7 +131,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 				<Container maxW="6xl">
 					<Flex gap={4}>
 						<Textarea
-							value={newMessage}
+							value={text}
 							onChange={handleInputChange}
 							onKeyPress={handleKeyPress}
 							placeholder="Введите сообщение..."
@@ -123,8 +144,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 						/>
 						<Button
 							onClick={handleSendMessage}
-							disabled={isStreaming || !newMessage.trim()}
-							colorScheme={isStreaming || !newMessage.trim() ? 'gray' : 'blue'}
+							disabled={isStreaming || !text.trim()}
+							colorScheme={isStreaming || !text.trim() ? 'gray' : 'blue'}
 							whiteSpace="nowrap"
 						>
 							{isStreaming ? 'Отправка...' : 'Отправить'}
