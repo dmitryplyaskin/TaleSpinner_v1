@@ -34,10 +34,7 @@ router.post("/chats:chatId", async (req, res) => {
 
 router.put("/chats/:chatId", async (req, res) => {
   try {
-    const updatedChat = await chatService.updateChat(
-      req.params.chatId,
-      req.body
-    );
+    const updatedChat = await chatService.updateChat(req.body);
     res.json(updatedChat);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -66,10 +63,11 @@ router.post("/chat", async (req, res) => {
       messageId,
     } = req.body;
 
-    const currentChat = await chatService.loadChat(chatId);
+    const currentChat = await chatService.getChat(chat.id);
     const currentChatHistory = currentChat.chatHistories.find(
       (history) => history.id === chatHistoryId
     );
+
     const currentChatMessage = currentChatHistory.messages.find(
       (message) => message.id === chatMessageId
     );
@@ -101,14 +99,6 @@ router.post("/chat", async (req, res) => {
       currentMessageContent.content = botResponse;
       await chatService.updateChat(currentChat);
     }
-
-    // // Сохраняем ответ бота
-    // chatService.addMessage(chat.id, chat.activeChatHistoryId, {
-    //   id: uuidv4(),
-    //   role: "assistant",
-    //   content: botResponse,
-    //   timestamp: new Date().toISOString(),
-    // });
 
     res.write("data: [DONE]\n\n");
     res.end();

@@ -3,6 +3,7 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 import { ChatCard, ChatMessage } from '../types/chat';
 import { v4 as uuidv4 } from 'uuid';
 import { BASE_URL } from '../const';
+import { condition } from 'patronum/condition';
 
 export const $currentChat = createStore<ChatCard | null>(null);
 export const selectChat = createEvent<ChatCard | null>();
@@ -82,18 +83,24 @@ $currentChat.on(deleteMessage, (state, { messageId, contentId }) => {
 	const currentChatHistory =
 		state.chatHistories.find((history) => history.id === state.activeChatHistoryId) || state.chatHistories[0];
 
+	let newMessages = currentChatHistory.messages.map((message) => {
+		if (message.id !== messageId) return message;
+
+		const newContent = message.content.filter((content) => content.id !== contentId);
+
+		return {
+			...message,
+			content: newContent,
+		};
+	});
+
+	if (newMessages[newMessages.length - 1].content.length === 0) {
+		newMessages = newMessages.slice(0, -1);
+	}
+
 	const newChatHistory = {
 		...currentChatHistory,
-		messages: currentChatHistory.messages.map((message) => {
-			if (message.id !== messageId) return message;
-
-			const newContent = message.content.filter((content) => content.id !== contentId);
-
-			return {
-				...message,
-				content: newContent,
-			};
-		}),
+		messages: newMessages,
 	};
 
 	return {
@@ -150,7 +157,7 @@ export const saveCurrentChatFx = createEffect<ChatCard | null, void>(async (data
 	if (!data) return;
 	try {
 		const response = await fetch(`${BASE_URL}/chats/${data.id}`, {
-			method: 'POST',
+			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -163,7 +170,18 @@ export const saveCurrentChatFx = createEffect<ChatCard | null, void>(async (data
 	}
 });
 
-sample({
-	clock: $currentChat,
-	target: saveCurrentChatFx,
+const $stopSave = createStore(false);
+export const toggleStopSave = createEvent();
+
+$stopSave.on(toggleStopSave, (stop) => !stop);
+
+condition({
+	source: $currentChat,
+	if: $stopSave,
+	else: saveCurrentChatFx,
 });
+
+// sample({
+// 	clock: $currentChat,
+// 	target: saveCurrentChatFx,
+// });

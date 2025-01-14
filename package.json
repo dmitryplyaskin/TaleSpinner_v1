@@ -24,10 +24,12 @@
     "start:frontend": "cd frontend && yarn dev"
   },
   "nodemonConfig": {
+    "watch": [
+      "src/*"
+    ],
     "ignore": [
-      "public/", 
-      "frontend/",
-      "data/"
+      "data/*",
+      "public/*"
     ]
   }
 }

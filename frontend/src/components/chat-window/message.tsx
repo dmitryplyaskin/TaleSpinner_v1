@@ -1,12 +1,12 @@
 import { Box, Flex, Text, Textarea } from '@chakra-ui/react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { LuPen, LuCheck, LuX } from 'react-icons/lu';
+import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { useState } from 'react';
-import { updateMessageContent } from '@model/chats';
+import { deleteMessage, updateMessageContent } from '@model/chats';
 import { ChatMessage } from '@types/chat';
 
 type MessageProps = {
@@ -21,6 +21,13 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	const handleOpenEdit = () => {
 		setContent(sourceContent);
 		setIsEditing(true);
+	};
+
+	const handleDelete = () => {
+		deleteMessage({
+			messageId: data.id,
+			contentId: data.content[0].id,
+		});
 	};
 
 	const handleConfirmEdit = () => {
@@ -42,14 +49,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 
 	return (
 		<Flex justify={isUser ? 'flex-end' : 'flex-start'} gap={2}>
-			{!isUser && (
-				<Avatar
-					size="lg"
-					name="AI Assistant"
-					src="/ai-avatar.png"
-					bg="purple.500"
-				/>
-			)}
+			{!isUser && <Avatar size="lg" name="AI Assistant" src="/ai-avatar.png" bg="purple.500" />}
 			<Box
 				position="relative"
 				maxW={isUser ? '70%' : 'full'}
@@ -63,11 +63,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 				mr={isUser ? 0 : '50px'}
 			>
 				<Flex align="center">
-					<Text
-						fontSize="sm"
-						fontWeight="semibold"
-						color={isUser ? 'purple.600' : 'gray.800'}
-					>
+					<Text fontSize="sm" fontWeight="semibold" color={isUser ? 'purple.600' : 'gray.800'}>
 						{isUser ? 'You' : 'AI Assistant'}
 					</Text>
 					<Box ml="auto" gap={2}>
@@ -93,26 +89,32 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 								/>
 							</Flex>
 						) : (
-							<IconButtonWithTooltip
-								size="xs"
-								variant="ghost"
-								colorPalette="purple"
-								icon={<LuPen />}
-								tooltip="Edit message"
-								aria-label="Edit message"
-								onClick={handleOpenEdit}
-							/>
+							<Flex gap={1}>
+								<IconButtonWithTooltip
+									size="xs"
+									variant="ghost"
+									colorPalette="purple"
+									icon={<LuPen />}
+									tooltip="Edit message"
+									aria-label="Edit message"
+									onClick={handleOpenEdit}
+								/>
+								<IconButtonWithTooltip
+									size="xs"
+									variant="ghost"
+									colorPalette="red"
+									icon={<LuTrash />}
+									tooltip="Delete message"
+									aria-label="Delete message"
+									onClick={handleDelete}
+								/>
+							</Flex>
 						)}
 					</Box>
 				</Flex>
 				<Box mt={2} w={'100%'}>
 					{isEditing ? (
-						<Textarea
-							w={'100%'}
-							autoresize
-							value={content}
-							onChange={(e) => setContent(e.target.value)}
-						/>
+						<Textarea w={'100%'} autoresize value={content} onChange={(e) => setContent(e.target.value)} />
 					) : (
 						<Markdown remarkPlugins={[remarkGfm]}>{sourceContent}</Markdown>
 					)}
@@ -121,9 +123,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					{new Date(data.timestamp).toLocaleTimeString()}
 				</Text>
 			</Box>
-			{isUser && (
-				<Avatar size="lg" name="User" src="/user-avatar.png" bg="purple.500" />
-			)}
+			{isUser && <Avatar size="lg" name="User" src="/user-avatar.png" bg="purple.500" />}
 		</Flex>
 	);
 };

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { streamMessage } from '../api';
 import { RenderChat } from './render-chat';
 import { v4 as uuidv4 } from 'uuid';
-import { $currentChatFormatted, addUserMessage } from '../../model';
+import { $currentChatFormatted, addUserMessage, toggleStopSave } from '../../model';
 import { useUnit } from 'effector-react';
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
-import { ChatMessage } from '@types/chat';
+import { ChatMessage, Message } from '@types/chat';
 
 interface ChatWindowProps {
 	llmSettings: {
@@ -65,6 +65,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 				timestamp: new Date().toISOString(),
 			} as ChatMessage;
 
+			addUserMessage({ message: newBotMessage, chatHistoryId });
+
 			const messageStream = streamMessage({
 				chat,
 				messagesList,
@@ -87,17 +89,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 					// setMessages((prev) => [...prev, botMessage]);
 					isFirstChunk = false;
 				}
+				newBotMessage.content[0] = {
+					...newBotMessage.content[0],
+					content: newBotMessage.content[0].content + chunk.content,
+				} as Message;
 
-				// botMessage.content += chunk.content;
-				// setMessages((prev) => {
-				// 	const newMessages = [...prev];
-				// 	const lastMessage = newMessages[newMessages.length - 1];
-				// 	if (lastMessage.role === 'bot') {
-				// 		lastMessage.content = botMessage.content;
-				// 	}
-				// 	return newMessages;
-				// });
+				toggleStopSave();
+
+				addUserMessage({
+					message: newBotMessage,
+					chatHistoryId,
+				});
 			}
+			toggleStopSave();
 		} catch (error) {
 			console.error('Error:', error);
 		} finally {
