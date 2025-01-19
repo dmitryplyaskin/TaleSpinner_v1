@@ -9,6 +9,7 @@ import {
 	SelectContent,
 	SelectItem,
 } from '../../ui/chakra-core-ui/select-copy';
+import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList } from '@choc-ui/chakra-autocomplete';
 
 import { FormProvider, useForm } from 'react-hook-form';
 
@@ -52,23 +53,24 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 		}
 	};
 
+	const options = [
+		{ value: 'openrouter', label: 'OpenRouter' },
+		{ value: 'openai', label: 'OpenAI' },
+	];
+
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={6} align="stretch">
-				<SelectRoot searchable>
-					{/* Кнопка раскрытия (указываем clearable, если хотим иконку очистки) */}
-					<SelectTrigger clearable>
-						{/* Текст значения */}
-						<SelectValueText placeholder="Выберите опцию 123" />
-					</SelectTrigger>
-
-					{/* Содержимое выпадающего списка (тут будет поле поиска + опции) */}
-					<SelectContent zIndex={1500}>
-						<SelectItem item={{ value: 'apple', label: 'Apple' }}>Apple</SelectItem>
-						<SelectItem item={{ value: 'banana', label: 'Banana' }}>Banana</SelectItem>
-						<SelectItem item={{ value: 'cherry', label: 'Cherry' }}>Cherry</SelectItem>
-					</SelectContent>
-				</SelectRoot>
+				<AutoComplete openOnFocus>
+					<AutoCompleteInput variant="subtle" />
+					<AutoCompleteList>
+						{options.map(({ label, value }, cid) => (
+							<AutoCompleteItem key={`option-${cid}`} value={value} textTransform="capitalize">
+								{label}
+							</AutoCompleteItem>
+						))}
+					</AutoCompleteList>
+				</AutoComplete>
 
 				{/* <FormControl> */}
 				{/* <Select
