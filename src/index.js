@@ -6,6 +6,7 @@ const configRoutes = require("./routes/config-routes");
 const modelsRoutes = require("./routes/models-routes");
 const settingsRoutes = require("./routes/settings-routes");
 const userPersonRoutes = require("./routes/user-persons-routes");
+const generateRoutes = require("./routes/generate-routes");
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use("/api", configRoutes);
 app.use("/api", modelsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api", userPersonRoutes);
+app.use("/api", generateRoutes);
 
 // Start server
 app.listen(port, () => {

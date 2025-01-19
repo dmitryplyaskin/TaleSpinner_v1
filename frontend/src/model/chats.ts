@@ -3,7 +3,7 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 import { ChatCard, ChatMessage } from '../types/chat';
 import { v4 as uuidv4 } from 'uuid';
 import { BASE_URL } from '../const';
-import { condition } from 'patronum/condition';
+import { debounce } from 'patronum/debounce';
 
 export const $currentChat = createStore<ChatCard | null>(null);
 export const selectChat = createEvent<ChatCard | null>();
@@ -23,6 +23,13 @@ export const deleteMessage = createEvent<{
 	contentId: string;
 }>();
 
+export const updateUserMessageContent = createEvent<{
+	messageId: string;
+	contentId: string;
+	content: string;
+	historyId: string;
+}>();
+
 export const addUserMessage = createEvent<{ message: ChatMessage; chatHistoryId: string }>();
 
 $currentChat.on(addUserMessage, (state, { message, chatHistoryId }) => {
@@ -39,6 +46,40 @@ $currentChat.on(addUserMessage, (state, { message, chatHistoryId }) => {
 	return {
 		...state,
 		chatHistories: state.chatHistories.map((history) => (history.id === chatHistoryId ? newChatHistory : history)),
+	};
+});
+
+$currentChat.on(updateUserMessageContent, (state, { messageId, content: newContent, contentId, historyId }) => {
+	if (!state) return null;
+
+	const currentChatHistory = state.chatHistories.find((history) => history.id === historyId) || state.chatHistories[0];
+
+	const newChatHistory = {
+		...currentChatHistory,
+		messages: currentChatHistory.messages.map((message) => {
+			if (message.id !== messageId) return message;
+
+			const content = message.content.map((content) => {
+				if (content.id !== contentId) return content;
+
+				return {
+					...content,
+					content: newContent,
+				};
+			});
+
+			return {
+				...message,
+				content,
+			};
+		}),
+	};
+
+	return {
+		...state,
+		chatHistories: state.chatHistories.map((history) =>
+			history.id === state.activeChatHistoryId ? newChatHistory : history,
+		),
 	};
 });
 
@@ -153,6 +194,15 @@ export const $currentChatFormatted = $currentChat.map((chat) => {
 	} as ChatCard;
 });
 
+export const $currentChatHistoryMessages = $currentChatFormatted.map((chat) => {
+	if (!chat) return [];
+
+	const currentChatHistory =
+		chat.chatHistories.find((history) => history.id === chat.activeChatHistoryId) || chat.chatHistories[0] || {};
+
+	return currentChatHistory?.messages || [];
+});
+
 export const saveCurrentChatFx = createEffect<ChatCard | null, void>(async (data) => {
 	if (!data) return;
 	try {
@@ -170,18 +220,17 @@ export const saveCurrentChatFx = createEffect<ChatCard | null, void>(async (data
 	}
 });
 
-const $stopSave = createStore(false);
-export const toggleStopSave = createEvent();
+const saveTrigger = createEvent();
 
-$stopSave.on(toggleStopSave, (stop) => !stop);
+const debounceSave = debounce(saveTrigger, 1000);
 
-condition({
-	source: $currentChat,
-	if: $stopSave,
-	else: saveCurrentChatFx,
+sample({
+	clock: [updateMessageContent, deleteMessage, updateUserMessageContent],
+	target: saveTrigger,
 });
 
-// sample({
-// 	clock: $currentChat,
-// 	target: saveCurrentChatFx,
-// });
+sample({
+	source: $currentChat,
+	clock: debounceSave,
+	target: saveCurrentChatFx,
+});

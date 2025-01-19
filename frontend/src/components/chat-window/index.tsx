@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { streamMessage } from '../api';
 import { RenderChat } from './render-chat';
 import { v4 as uuidv4 } from 'uuid';
-import { $currentChatFormatted, addUserMessage, toggleStopSave } from '../../model';
+import { $currentChatFormatted, addUserMessage, updateUserMessageContent } from '../../model';
 import { useUnit } from 'effector-react';
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
 import { ChatMessage, Message } from '@types/chat';
@@ -18,8 +18,6 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
-	const chat = useUnit($currentChatFormatted);
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [text, setText] = useState('');
 	const [isStreaming, setIsStreaming] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,6 +28,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 
 	const handleSendMessage = async () => {
 		if (text.trim() === '' || isStreaming) return;
+
+		const chat = $currentChatFormatted.getState();
 
 		const chatHistoryId = chat?.activeChatHistoryId || (chat?.chatHistories[0]?.id as string);
 		const messagesList = chat?.chatHistories.find(
@@ -67,14 +67,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 
 			addUserMessage({ message: newBotMessage, chatHistoryId });
 
+			const messages =
+				messagesList?.map((x) => ({
+					role: x.role,
+					content: x.content[0].content,
+					timestamp: x.timestamp,
+				})) || [];
+
 			const messageStream = streamMessage({
-				chat,
-				messagesList,
+				messages,
 				settings: llmSettings,
-				newChatMessage: newBotMessage,
-				chatHistoryId,
-				chatMessageId: botChatMessageId,
-				messageId: botMessageId,
 			});
 
 			let isFirstChunk = true;
@@ -83,10 +85,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 				if ('error' in chunk) {
 					break;
 				}
-				console.log(chunk);
 
 				if (isFirstChunk) {
-					// setMessages((prev) => [...prev, botMessage]);
 					isFirstChunk = false;
 				}
 				newBotMessage.content[0] = {
@@ -94,14 +94,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 					content: newBotMessage.content[0].content + chunk.content,
 				} as Message;
 
-				toggleStopSave();
-
-				addUserMessage({
-					message: newBotMessage,
-					chatHistoryId,
+				updateUserMessageContent({
+					messageId: newBotMessage.id,
+					historyId: chatHistoryId,
+					content: newBotMessage.content[0].content,
+					contentId: newBotMessage.content[0].id,
 				});
 			}
-			toggleStopSave();
 		} catch (error) {
 			console.error('Error:', error);
 		} finally {
@@ -116,17 +115,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 		}
 	};
 
-	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-	};
+	// const scrollToBottom = () => {
+	// 	messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+	// };
 
-	useEffect(scrollToBottom, [messages]);
+	// useEffect(scrollToBottom, [messages]);
 
 	return (
 		<Flex direction="column" h="full">
 			<Box flex="1" overflowY="auto" bg="gray.100">
 				<Container maxW="6xl" p={4}>
-					<RenderChat chatCard={chat} />
+					<RenderChat />
 					<div ref={messagesEndRef} />
 				</Container>
 			</Box>

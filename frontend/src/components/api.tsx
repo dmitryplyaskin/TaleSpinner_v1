@@ -64,36 +64,17 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, de
 }
 
 type Stream = {
-	chat: ChatCard;
-	messagesList: ChatMessage[];
+	messages: { role: string; content: string; timestamp: string }[];
 	settings: LLMSettings;
-	newChatMessage: ChatMessage;
-	chatHistoryId: string;
-	chatMessageId: string;
-	messageId: string;
 };
 
-export async function* streamMessage({
-	chat,
-	messagesList,
-	settings,
-	newChatMessage,
-	chatHistoryId,
-	chatMessageId,
-	messageId,
-}: Stream): AsyncGenerator<StreamResponse> {
+export async function* streamMessage({ settings, messages }: Stream): AsyncGenerator<StreamResponse> {
 	try {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
 
-		const messages = messagesList.map((message) => ({
-			role: message.role,
-			content: message.content[0].content,
-			timestamp: message.timestamp,
-		}));
-
 		const response = await fetchWithRetry(
-			`${BASE_URL}/chat`,
+			`${BASE_URL}/generate`,
 			{
 				method: 'POST',
 				headers: {
@@ -102,7 +83,7 @@ export async function* streamMessage({
 					Connection: 'keep-alive',
 					'Cache-Control': 'no-cache',
 				},
-				body: JSON.stringify({ chat, messages, settings, newChatMessage, chatHistoryId, chatMessageId, messageId }),
+				body: JSON.stringify({ messages, settings }),
 				signal: controller.signal,
 			},
 			1,
