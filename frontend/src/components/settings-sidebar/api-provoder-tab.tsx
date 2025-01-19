@@ -2,8 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
 import { VStack, Input, Text } from '@chakra-ui/react';
 
-import { SelectRoot, SelectTrigger, SelectValueText, SelectContent, SelectItem } from '../../ui/chakra-core-ui/select';
-import { Select } from '../../ui/chakra-core-ui/select-extended';
+import {
+	SelectRoot,
+	SelectTrigger,
+	SelectValueText,
+	SelectContent,
+	SelectItem,
+} from '../../ui/chakra-core-ui/select-copy';
+
 import { FormProvider, useForm } from 'react-hook-form';
 
 interface APIProviderTabProps {
@@ -13,8 +19,8 @@ interface APIProviderTabProps {
 
 export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfigChange }) => {
 	const methods = useForm({ defaultValues: { provider: 'openrouter' } });
-	const a = methods.watch();
-	console.log(a);
+	// const a = methods.watch();
+	// console.log(a);
 
 	const [models, setModels] = useState<OpenRouterModel[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -49,8 +55,23 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={6} align="stretch">
+				<SelectRoot searchable>
+					{/* Кнопка раскрытия (указываем clearable, если хотим иконку очистки) */}
+					<SelectTrigger clearable>
+						{/* Текст значения */}
+						<SelectValueText placeholder="Выберите опцию 123" />
+					</SelectTrigger>
+
+					{/* Содержимое выпадающего списка (тут будет поле поиска + опции) */}
+					<SelectContent zIndex={1500}>
+						<SelectItem item={{ value: 'apple', label: 'Apple' }}>Apple</SelectItem>
+						<SelectItem item={{ value: 'banana', label: 'Banana' }}>Banana</SelectItem>
+						<SelectItem item={{ value: 'cherry', label: 'Cherry' }}>Cherry</SelectItem>
+					</SelectContent>
+				</SelectRoot>
+
 				{/* <FormControl> */}
-				<Select
+				{/* <Select
 					name="provider"
 					label="API Provider"
 					placeholder="Выберите провайдера"
@@ -61,7 +82,7 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 					isClearable
 					// isMulti
 					// isDisabled
-				/>
+				/> */}
 				{/* <Text>API Provider</Text>
       <SelectRoot value="openrouter" disabled size="md" variant="outline">
         <SelectTrigger>
