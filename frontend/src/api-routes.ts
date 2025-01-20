@@ -22,4 +22,8 @@ export const apiRoutes = {
 		delete: (id: string) => `${BASE_URL}/chats/${id}`,
 		chat: () => `${BASE_URL}/chat`,
 	},
+	sidebars: {
+		get: () => `${BASE_URL}/sidebars`,
+		save: () => `${BASE_URL}/sidebars`,
+	},
 };

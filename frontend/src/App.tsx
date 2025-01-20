@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/chat-window';
-import { SettingsSidebar } from './components/settings-sidebar';
+// import { SettingsSidebar } from './components/settings-sidebar';
 import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
 import { $currentChat, createChatFx, getChatListFx } from './model';
 import { useUnit } from 'effector-react';
-import { Box, Flex, Heading, Button, Text, VStack } from '@chakra-ui/react';
-import { LuSettings, LuIdCard } from 'react-icons/lu';
-import { openSidebar } from './model/sidebars';
-import { IconButtonWithTooltip } from './ui';
+import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
+
 import { ChatCardSidebar } from './components/chat-card-sidebar';
-import { UserPersonSidebar } from './components/user-person-sidebar';
+// import { UserPersonSidebar } from './components/user-person-sidebar';
+import { LeftBar } from './left-bar';
 
 interface LLMSettings {
 	temperature: number;
@@ -38,44 +37,8 @@ function App() {
 
 	return (
 		<Flex h="100vh" overflow="hidden" bg="gray.50">
+			<LeftBar />
 			<Flex flex="1" direction="column" minW="0">
-				<Flex bg="white" borderBottom="1px" borderColor="gray.200" p={4} justify="space-between" align="center">
-					<Flex align="center" gap={4}>
-						<IconButtonWithTooltip
-							tooltip="Chat cards"
-							variant="outline"
-							size="lg"
-							colorScheme="purple"
-							aria-label="Open chat cards"
-							onClick={() => openSidebar('chatCards')}
-							icon={<LuIdCard />}
-						/>
-
-						<Heading size="lg" isTruncated>
-							{chat ? chat?.title || 'Чат' : 'Выберите чат'}
-						</Heading>
-						<IconButtonWithTooltip
-							tooltip="User persons"
-							variant="outline"
-							size="lg"
-							colorScheme="purple"
-							aria-label="Open user persons"
-							onClick={() => openSidebar('userPersons')}
-							icon={<LuIdCard />}
-						/>
-					</Flex>
-
-					<IconButtonWithTooltip
-						tooltip="Settings"
-						variant="outline"
-						colorScheme="purple"
-						aria-label="Open settings"
-						size="lg"
-						onClick={() => openSidebar('settings')}
-						icon={<LuSettings />}
-					/>
-				</Flex>
-
 				<Box flex="1" overflow="hidden">
 					{chat ? (
 						<ChatWindow settings={llmSettings} />
@@ -92,16 +55,16 @@ function App() {
 				</Box>
 			</Flex>
 
-			<SettingsSidebar
+			{/* <SettingsSidebar
 				onLLMSettingsChange={setLlmSettings}
 				onAPIConfigChange={async (config) => {
 					await updateOpenRouterConfig(config);
 					setApiConfig(config);
 				}}
 				apiConfig={apiConfig}
-			/>
+			/> */}
 			<ChatCardSidebar />
-			<UserPersonSidebar />
+			{/* <UserPersonSidebar /> */}
 		</Flex>
 	);
 }
