@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/chat-window';
-// import { SettingsSidebar } from './components/settings-sidebar';
+import { SettingsSidebar } from './components/settings-sidebar';
 import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
 import { $currentChat, createChatFx, getChatListFx } from './model';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
 import { ChatCardSidebar } from './components/chat-card-sidebar';
-// import { UserPersonSidebar } from './components/user-person-sidebar';
+import { UserPersonSidebar } from './components/user-person-sidebar';
 import { LeftBar } from './left-bar';
 
 interface LLMSettings {
@@ -55,16 +55,16 @@ function App() {
 				</Box>
 			</Flex>
 
-			{/* <SettingsSidebar
+			<SettingsSidebar
 				onLLMSettingsChange={setLlmSettings}
 				onAPIConfigChange={async (config) => {
 					await updateOpenRouterConfig(config);
 					setApiConfig(config);
 				}}
 				apiConfig={apiConfig}
-			/> */}
+			/>
 			<ChatCardSidebar />
-			{/* <UserPersonSidebar /> */}
+			<UserPersonSidebar />
 		</Flex>
 	);
 }

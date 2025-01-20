@@ -1,5 +1,5 @@
 import { $sidebars, changeSidebarSettings, SidebarName } from '@model/sidebars';
-import { useUnit } from 'effector-react';
+import { useStoreMap } from 'effector-react';
 import { DrawerRoot, DrawerContent, DrawerHeader, DrawerBody } from './chakra-core-ui/drawer';
 import { Flex, Heading, IconButton } from '@chakra-ui/react';
 import { CloseButton } from './chakra-core-ui/close-button';
@@ -15,9 +15,14 @@ type Props = {
 };
 
 export const Drawer: React.FC<Props> = ({ name, title, children }) => {
-	const {
-		[name]: { isOpen, isFullscreen, placement, size, contained },
-	} = useUnit($sidebars);
+	const sidebar = useStoreMap({
+		store: $sidebars,
+		keys: [name],
+		fn: (sidebars, [key]) => sidebars[key],
+	});
+
+	const { isOpen, isFullscreen, placement, size, contained } = sidebar;
+
 	const handleClose = () => {
 		changeSidebarSettings({ name, settings: { isOpen: false } });
 	};

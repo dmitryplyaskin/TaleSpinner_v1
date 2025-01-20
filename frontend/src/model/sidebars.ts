@@ -81,3 +81,5 @@ sample({
 	clock: $sidebars,
 	target: saveSettingsFx,
 });
+
+getSettingsFx();
