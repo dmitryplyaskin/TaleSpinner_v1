@@ -9,7 +9,7 @@ class OpenRouterService {
       __dirname,
       "..",
       "..",
-      "public",
+      "data",
       "config",
       "openrouter.json"
     );
@@ -69,9 +69,7 @@ class OpenRouterService {
     const client = this.createClient();
     const config = this.getConfig();
 
-    console.log("messages", messages);
-    console.log("settings", settings);
-    // console.log("config", config);
+    console.log("config", config);
 
     return await client.chat.completions.create({
       model: config?.model || "amazon/nova-micro-v1",
