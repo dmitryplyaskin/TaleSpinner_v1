@@ -1,7 +1,6 @@
 import { Button, Stack } from '@chakra-ui/react';
 import { ChatCard } from '../../types/chat';
 import * as Dialog from '@ui/chakra-core-ui/dialog';
-import { Field } from '@ui/chakra-core-ui/field';
 import { FormProvider, useForm } from 'react-hook-form';
 import { FormInput } from '@ui/form-components';
 
@@ -20,8 +19,6 @@ export const EditChatModal: React.FC<Props> = ({ isOpen, onClose, chat }) => {
 	});
 
 	const handleSave = async () => {
-		// await saveChatFx({ ...chat, title, imagePath });
-		// handleSubmit()
 		onClose();
 	};
 
