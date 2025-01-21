@@ -8,6 +8,7 @@ const settingsRoutes = require("./routes/settings-routes");
 const userPersonRoutes = require("./routes/user-persons-routes");
 const generateRoutes = require("./routes/generate-routes");
 const sidebarsRoutes = require("./routes/sidebars-routes");
+const imagesRoutes = require("./routes/images-routes");
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api", userPersonRoutes);
 app.use("/api", generateRoutes);
 app.use("/api", sidebarsRoutes);
+app.use("/api/images", imagesRoutes);
 
 // Start server
 app.listen(port, () => {
