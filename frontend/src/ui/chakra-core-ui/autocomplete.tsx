@@ -59,16 +59,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 		}
 	};
 
-	const listRef = React.useRef<HTMLDivElement>(null);
-
 	return (
-		<Box position="relative" ref={listRef}>
+		<Box position="relative">
 			<AutoComplete
 				multiple={isMulti}
 				openOnFocus
 				onChange={handleChange}
 				value={selectedItems.map((item) => item.value)}
-				rollNavigation
 			>
 				<AutoCompleteInput as={Input} placeholder={placeholder} variant="outline">
 					{({ tags }) =>

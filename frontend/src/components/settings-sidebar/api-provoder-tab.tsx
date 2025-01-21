@@ -12,6 +12,7 @@ import {
 import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList } from '@choc-ui/chakra-autocomplete';
 
 import { FormProvider, useForm } from 'react-hook-form';
+import { Autocomplete } from '@ui/chakra-core-ui/autocomplete';
 
 interface APIProviderTabProps {
 	config: OpenRouterConfig | null;
@@ -61,7 +62,7 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={6} align="stretch">
-				<AutoComplete openOnFocus>
+				{/* <AutoComplete openOnFocus>
 					<AutoCompleteInput variant="subtle" />
 					<AutoCompleteList>
 						{options.map(({ label, value }, cid) => (
@@ -70,7 +71,8 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 							</AutoCompleteItem>
 						))}
 					</AutoCompleteList>
-				</AutoComplete>
+				</AutoComplete> */}
+				<Autocomplete options={options} />
 
 				{/* <FormControl> */}
 				{/* <Select
