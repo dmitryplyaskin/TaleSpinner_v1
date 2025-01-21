@@ -36,11 +36,19 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 		isMulti ? (Array.isArray(value) ? value : []) : value ? [value as Option] : [],
 	);
 
-	const handleChange = (values: string[]) => {
-		const selectedOptions = values.map((val) => options.find((opt) => opt.value === val)!);
-		setSelectedItems(selectedOptions);
-		if (onChange) {
-			onChange(isMulti ? selectedOptions : selectedOptions[0]);
+	const handleChange = (values: string[] | string) => {
+		if (typeof values === 'string') {
+			const selectedOptions = [options.find((opt) => opt.value === values)!];
+			setSelectedItems(selectedOptions);
+			if (onChange) {
+				onChange(isMulti ? selectedOptions : selectedOptions[0]);
+			}
+		} else {
+			const selectedOptions = values.map((val) => options.find((opt) => opt.value === val)!);
+			setSelectedItems(selectedOptions);
+			if (onChange) {
+				onChange(isMulti ? selectedOptions : selectedOptions[0]);
+			}
 		}
 	};
 
@@ -51,13 +59,16 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 		}
 	};
 
+	const listRef = React.useRef<HTMLDivElement>(null);
+
 	return (
-		<Box position="relative">
+		<Box position="relative" ref={listRef}>
 			<AutoComplete
 				multiple={isMulti}
 				openOnFocus
 				onChange={handleChange}
 				value={selectedItems.map((item) => item.value)}
+				rollNavigation
 			>
 				<AutoCompleteInput as={Input} placeholder={placeholder} variant="outline">
 					{({ tags }) =>

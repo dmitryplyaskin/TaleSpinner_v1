@@ -10,13 +10,22 @@ import { Drawer } from '@ui/drawer';
 export const ChatCardSidebar: React.FC = () => {
 	const list = useUnit($chatList);
 
+	if (!list.length) return null;
+
 	return (
 		<Drawer name="chatCards" title="Chat cards">
 			<Flex direction="column" gap="4">
-				{list.map((chat) => (
-					<CharacterCard key={chat.id} data={chat} />
-				))}
+				<CharacterCard data={list[0]} />
 			</Flex>
 		</Drawer>
 	);
+	// return (
+	// 	<Drawer name="chatCards" title="Chat cards">
+	// 		<Flex direction="column" gap="4">
+	// 			{list.map((chat) => (
+	// 				<CharacterCard key={chat.id} data={chat} />
+	// 			))}
+	// 		</Flex>
+	// 	</Drawer>
+	// );
 };

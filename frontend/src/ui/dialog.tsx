@@ -10,6 +10,8 @@ export interface DialogProps {
 	size?: 'sm' | 'md' | 'lg' | 'xl' | 'cover';
 	footer?: ReactNode;
 	showCloseButton?: boolean;
+	closeOnInteractOutside?: boolean;
+	closeOnEscape?: boolean;
 }
 
 export const Dialog: React.FC<DialogProps> = ({
@@ -20,11 +22,19 @@ export const Dialog: React.FC<DialogProps> = ({
 	size = 'md',
 	footer,
 	showCloseButton = true,
+	closeOnInteractOutside,
+	closeOnEscape,
 }) => {
 	if (!isOpen) return null;
 
 	return (
-		<DialogPrimitive.DialogRoot open={isOpen} onOpenChange={() => onClose()} size={size}>
+		<DialogPrimitive.DialogRoot
+			open={isOpen}
+			onOpenChange={() => onClose()}
+			size={size}
+			closeOnInteractOutside={closeOnInteractOutside}
+			closeOnEscape={closeOnEscape}
+		>
 			<DialogPrimitive.DialogBackdrop />
 			<DialogPrimitive.DialogContent>
 				<DialogPrimitive.DialogHeader>
