@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { createDataPath } = require("../utils");
 const fileService = require("./file-service");
+const { v4: uuidv4 } = require("uuid");
 
 const DIR_NAME = "chats";
 class ChatService {
@@ -52,8 +53,26 @@ class ChatService {
     try {
       const filePath = path.join(this.dir, `${data.id}.json`);
       await fileService.saveFile(filePath, JSON.stringify(data));
+      return data;
     } catch (error) {
       console.error(`Ошибка при сохранении файла ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  async duplicateChat(chatId) {
+    try {
+      const originalChat = await this.getChat(chatId);
+      const duplicatedChat = {
+        ...originalChat,
+        id: uuidv4(),
+        title: `${originalChat.title} (копия)`,
+        timestamp: new Date().toISOString(),
+      };
+      await this.createChat(duplicatedChat);
+      return duplicatedChat;
+    } catch (error) {
+      console.error(`Ошибка при дублировании чата ${chatId}:`, error);
       throw error;
     }
   }
@@ -62,6 +81,7 @@ class ChatService {
     try {
       const filePath = path.join(this.dir, `${data.id}.json`);
       await fileService.updateFile(filePath, JSON.stringify(data));
+      return data;
     } catch (error) {
       console.error(`Ошибка при сохранении файла ${filePath}:`, error);
       throw error;
@@ -72,6 +92,7 @@ class ChatService {
     try {
       const filePath = path.join(this.dir, `${chatId}.json`);
       await fileService.deleteFile(filePath);
+      return { id: chatId };
     } catch (error) {
       console.error(`Ошибка при удалении файла ${filePath}:`, error);
       throw error;

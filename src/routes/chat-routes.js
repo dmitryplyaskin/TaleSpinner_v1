@@ -23,10 +23,19 @@ router.get("/chats/:chatId", async (req, res) => {
   }
 });
 
-router.post("/chats:chatId", async (req, res) => {
+router.post("/chats", async (req, res) => {
   try {
     const newChat = await chatService.createChat(req.body);
     res.json(newChat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/chats/:chatId/duplicate", async (req, res) => {
+  try {
+    const duplicatedChat = await chatService.duplicateChat(req.params.chatId);
+    res.json(duplicatedChat);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

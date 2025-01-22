@@ -2,10 +2,11 @@ import { Card, HStack, Stack, Text } from '@chakra-ui/react';
 import { selectChat } from '@model/chats';
 import { ChatCard } from '../../types/chat';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
-import { LuPencil } from 'react-icons/lu';
+import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { useState } from 'react';
 import { EditChatModal } from './edit-chat-modal';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { deleteChatFx, duplicateChatFx } from '@model/chat-list';
 
 type Props = {
 	data: ChatCard;
@@ -21,6 +22,16 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 	const handleEditClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		setIsEditModalOpen(true);
+	};
+
+	const handleDeleteClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		deleteChatFx(data);
+	};
+
+	const handleDuplicateClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		duplicateChatFx(data);
 	};
 
 	return (
@@ -42,17 +53,32 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 								last msg in chat
 							</Text>
 						</Stack>
-						<IconButtonWithTooltip
-							aria-label="Редактировать чат"
-							variant="ghost"
-							size="sm"
-							position="absolute"
-							tooltip="Редактировать чат"
-							top="2"
-							right="2"
-							onClick={handleEditClick}
-							icon={<LuPencil />}
-						/>
+						<HStack position="absolute" top="2" right="2" gap="1">
+							<IconButtonWithTooltip
+								aria-label="Дублировать чат"
+								variant="ghost"
+								size="sm"
+								tooltip="Дублировать чат"
+								onClick={handleDuplicateClick}
+								icon={<LuCopy />}
+							/>
+							<IconButtonWithTooltip
+								aria-label="Редактировать чат"
+								variant="ghost"
+								size="sm"
+								tooltip="Редактировать чат"
+								onClick={handleEditClick}
+								icon={<LuPencil />}
+							/>
+							<IconButtonWithTooltip
+								aria-label="Удалить чат"
+								variant="ghost"
+								size="sm"
+								tooltip="Удалить чат"
+								onClick={handleDeleteClick}
+								icon={<LuTrash2 />}
+							/>
+						</HStack>
 					</HStack>
 				</Card.Body>
 			</Card.Root>

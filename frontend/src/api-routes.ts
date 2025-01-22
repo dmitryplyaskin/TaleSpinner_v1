@@ -20,6 +20,7 @@ export const apiRoutes = {
 		create: () => `${BASE_URL}/chats`,
 		update: (id: string) => `${BASE_URL}/chats/${id}`,
 		delete: (id: string) => `${BASE_URL}/chats/${id}`,
+		duplicate: (id: string) => `${BASE_URL}/chats/${id}/duplicate`,
 		chat: () => `${BASE_URL}/chat`,
 	},
 	sidebars: {
