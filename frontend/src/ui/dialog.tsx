@@ -30,13 +30,15 @@ export const Dialog: React.FC<DialogProps> = ({
 	return (
 		<DialogPrimitive.DialogRoot
 			open={isOpen}
-			onOpenChange={() => onClose()}
+			onOpenChange={onClose}
 			size={size}
 			closeOnInteractOutside={closeOnInteractOutside}
 			closeOnEscape={closeOnEscape}
+			scrollBehavior="inside"
+			persistentElements={[() => document.querySelector('.chakra-popover__positioner')]}
 		>
 			<DialogPrimitive.DialogBackdrop />
-			<DialogPrimitive.DialogContent>
+			<DialogPrimitive.DialogContent maxHeight={'none'}>
 				<DialogPrimitive.DialogHeader>
 					<DialogPrimitive.DialogTitle>{title}</DialogPrimitive.DialogTitle>
 					{showCloseButton && <DialogPrimitive.DialogCloseTrigger onClick={onClose} />}

@@ -36,6 +36,7 @@ export const Drawer: React.FC<Props> = ({ name, title, children }) => {
 			size={isFullscreen ? 'full' : size}
 			contained={contained}
 			onOpenChange={handleClose}
+			persistentElements={[() => document.querySelector('.chakra-popover__positioner')]}
 		>
 			<DrawerContent>
 				<DrawerHeader>

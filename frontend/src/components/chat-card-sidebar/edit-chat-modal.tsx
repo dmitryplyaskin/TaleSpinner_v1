@@ -1,8 +1,9 @@
 import { Stack } from '@chakra-ui/react';
-import { ChatCard } from '../../types/chat';
 import { Dialog } from '@ui/dialog';
 import { FormProvider, useForm } from 'react-hook-form';
 import { FormInput, FormTextarea, FormAutocomplete } from '@ui/form-components';
+import { useUnit } from 'effector-react';
+import { $editingCard, $isEditModalOpen, closeEditModal } from '@model/chats';
 
 type CharacterCardV2 = {
 	name: string;
@@ -19,16 +20,12 @@ type CharacterCardV2 = {
 	tags: Array<{ value: string; label: string }>;
 };
 
-type Props = {
-	isOpen: boolean;
-	onClose: () => void;
-	chat: ChatCard;
-};
+export const EditChatModal: React.FC = () => {
+	const [isOpen, editingCard] = useUnit([$isEditModalOpen, $editingCard]);
 
-export const EditChatModal: React.FC<Props> = ({ isOpen, onClose, chat }) => {
 	const form = useForm<CharacterCardV2>({
 		defaultValues: {
-			name: chat.title || '',
+			name: editingCard?.title || '',
 			description: '',
 			personality: '',
 			scenario: '',
@@ -45,22 +42,23 @@ export const EditChatModal: React.FC<Props> = ({ isOpen, onClose, chat }) => {
 
 	const handleSubmit = form.handleSubmit(async (data) => {
 		// Здесь будет логика сохранения
-		onClose();
+		closeEditModal();
 	});
 
-	if (!isOpen) return null;
+	if (!isOpen || !editingCard) return null;
 
 	return (
-		<FormProvider {...form}>
-			<form id="dialog-form" onSubmit={handleSubmit}>
-				<Dialog
-					isOpen={isOpen}
-					onClose={onClose}
-					title="Редактировать карточку персонажа"
-					size="cover"
-					closeOnEscape={false}
-					closeOnInteractOutside={false}
-				>
+		<Dialog
+			isOpen={isOpen}
+			onClose={closeEditModal}
+			title="Редактировать карточку персонажа"
+			size="cover"
+			closeOnEscape={false}
+			closeOnInteractOutside={false}
+		>
+			{' '}
+			<FormProvider {...form}>
+				<form id="dialog-form" onSubmit={handleSubmit}>
 					<Stack gap={4}>
 						<FormInput name="name" label="Имя персонажа" placeholder="Введите имя персонажа" />
 						<FormTextarea
@@ -108,8 +106,8 @@ export const EditChatModal: React.FC<Props> = ({ isOpen, onClose, chat }) => {
 							// isMulti={true}
 						/>
 					</Stack>
-				</Dialog>
-			</form>
-		</FormProvider>
+				</form>
+			</FormProvider>
+		</Dialog>
 	);
 };
