@@ -44,9 +44,9 @@ function App() {
 						<ChatWindow settings={llmSettings} />
 					) : (
 						<Flex h="100%" align="center" justify="center">
-							<VStack spacing={4}>
+							<VStack gap={4}>
 								<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
-								<Button onClick={createChatFx} colorScheme="blue" size="lg">
+								<Button onClick={() => createChatFx()} colorScheme="blue" size="lg">
 									Создать новый чат
 								</Button>
 							</VStack>
