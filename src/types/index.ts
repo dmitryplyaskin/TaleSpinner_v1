@@ -1,8 +1,11 @@
-export interface Chat {
+import { BaseEntity } from "@core/types/common";
+
+export interface Chat extends BaseEntity {
   id: string;
   title: string;
   messages: ChatMessage[];
   timestamp: string;
+  [key: string]: any;
 }
 
 export interface ChatMessage {

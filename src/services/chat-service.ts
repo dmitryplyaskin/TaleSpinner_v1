@@ -1,100 +1,33 @@
-import path from "path";
-import { createDataPath } from "../utils";
-import fileService from "./file-service";
-import { v4 as uuidv4 } from "uuid";
 import { Chat } from "../types";
 import { BaseService } from "@core/services/base-service";
 
-const DIR_NAME = "chats";
-
-class ChatService extends BaseService {
-  protected dir: string;
-
+class ChatService extends BaseService<Chat> {
   constructor() {
-    super();
-    this.dir = createDataPath(DIR_NAME);
-    this.ensureDirectory();
+    super("chats", { logger: console });
   }
 
   async getChatList(): Promise<Chat[]> {
-    try {
-      const files = await fileService.getFileList(this.dir, ".json");
-      const data: Chat[] = [];
-
-      for await (const file of files) {
-        const filePath = path.join(this.dir, file);
-        const chat = await fileService.readJson<Chat>(filePath);
-        data.push(chat);
-      }
-
-      return data.sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-    } catch (error) {
-      console.error("Ошибка при получении списка чатов:", error);
-      throw error;
-    }
+    return await this.getAllJSON();
   }
 
   async getChat(chatId: string): Promise<Chat> {
-    try {
-      const filePath = path.join(this.dir, `${chatId}.json`);
-      return await fileService.readJson<Chat>(filePath);
-    } catch (error) {
-      console.error(`Ошибка при получении чата ${chatId}:`, error);
-      throw error;
-    }
+    return await this.getJSONById(chatId);
   }
 
   async createChat(data: Chat): Promise<Chat> {
-    try {
-      const filePath = path.join(this.dir, `${data.id}.json`);
-      await fileService.saveFile(filePath, JSON.stringify(data));
-      return data;
-    } catch (error) {
-      console.error("Ошибка при создании чата:", error);
-      throw error;
-    }
+    return await this.createJSON(data);
   }
 
   async duplicateChat(chatId: string): Promise<Chat> {
-    try {
-      const originalChat = await this.getChat(chatId);
-      const duplicatedChat: Chat = {
-        ...originalChat,
-        id: uuidv4(),
-        title: `${originalChat.title} (копия)`,
-        timestamp: new Date().toISOString(),
-      };
-      await this.createChat(duplicatedChat);
-      return duplicatedChat;
-    } catch (error) {
-      console.error(`Ошибка при дублировании чата ${chatId}:`, error);
-      throw error;
-    }
+    return await this.duplicateJSON(chatId);
   }
 
   async updateChat(data: Chat): Promise<Chat> {
-    try {
-      const filePath = path.join(this.dir, `${data.id}.json`);
-      await fileService.updateFile(filePath, JSON.stringify(data));
-      return data;
-    } catch (error) {
-      console.error("Ошибка при обновлении чата:", error);
-      throw error;
-    }
+    return await this.updateJSON(data.id, data);
   }
 
-  async deleteChat(chatId: string): Promise<{ id: string }> {
-    try {
-      const filePath = path.join(this.dir, `${chatId}.json`);
-      await fileService.deleteFile(filePath);
-      return { id: chatId };
-    } catch (error) {
-      console.error(`Ошибка при удалении чата ${chatId}:`, error);
-      throw error;
-    }
+  async deleteChat(chatId: string): Promise<void> {
+    return await this.deleteJSON(chatId);
   }
 }
 

@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get("/", async (_req: Request, res: Response): Promise<void> => {
   try {
-    const settings = await settingsService.getSettings();
+    const settings = await settingsService.getConfig();
     res.json(settings);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
@@ -15,7 +15,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const settings = await settingsService.saveSettings(req.body as Settings);
+    const settings = await settingsService.saveConfig(req.body as Settings);
     res.json(settings);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });

@@ -15,7 +15,9 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["./shared/*"],
-      "@core/*": ["./src/core/*"]
+      "@core/*": ["./src/core/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@types/*": ["./src/types/*"]
     },
     "typeRoots": ["../node_modules/@types", "./types"]
   },
