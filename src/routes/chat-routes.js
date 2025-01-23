@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const chatService = require("../services/chat-service");
-const openRouterService = require("../services/open-router-service");
-const { v4: uuidv4 } = require("uuid");
 
 // Получение списка чатов
 router.get("/chats", async (req, res) => {

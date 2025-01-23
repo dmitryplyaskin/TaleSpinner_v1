@@ -20,17 +20,30 @@
     "uuid": "^11.0.3"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "start:dev": "nodemon src/index.js",
-    "start:frontend": "cd frontend && yarn dev"
+    "start": "node dist/index.js",
+    "start:dev": "nodemon",
+    "start:frontend": "cd frontend && yarn dev",
+    "build": "tsc -p src/tsconfig.json",
+    "build:watch": "tsc -p src/tsconfig.json -w",
+    "dev": "nodemon"
   },
   "nodemonConfig": {
     "watch": [
-      "src/*"
+      "src"
     ],
+    "ext": ".ts,.js",
     "ignore": [
-      "data/*",
-      "public/*"
-    ]
+      "src/**/*.spec.ts"
+    ],
+    "exec": "ts-node ./src/index.js"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.9",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/multer": "^1.4.11"
   }
 }
