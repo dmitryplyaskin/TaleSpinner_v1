@@ -98,10 +98,6 @@ class ChatService {
       throw error;
     }
   }
-
-  async addChatMessage() {}
-
-  async updateChatMessage() {}
 }
 
 module.exports = new ChatService();

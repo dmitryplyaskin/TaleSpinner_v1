@@ -4,6 +4,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { FormInput, FormTextarea, FormAutocomplete } from '@ui/form-components';
 import { useUnit } from 'effector-react';
 import { $editingCard, $isEditModalOpen, closeEditModal } from '@model/chats';
+import { useEffect } from 'react';
 
 type CharacterCardV2 = {
 	name: string;
@@ -25,7 +26,7 @@ export const EditChatModal: React.FC = () => {
 
 	const form = useForm<CharacterCardV2>({
 		defaultValues: {
-			name: editingCard?.title || '',
+			name: '',
 			description: '',
 			personality: '',
 			scenario: '',
@@ -39,6 +40,25 @@ export const EditChatModal: React.FC = () => {
 			tags: [],
 		},
 	});
+
+	useEffect(() => {
+		if (editingCard) {
+			form.reset({
+				name: editingCard.title || '',
+				description: editingCard.metadata?.description || '',
+				personality: editingCard.metadata?.personality || '',
+				scenario: editingCard.metadata?.scenario || '',
+				first_mes: editingCard.metadata?.first_mes || '',
+				mes_example: editingCard.metadata?.mes_example || '',
+				creator_notes: editingCard.metadata?.creator_notes || '',
+				system_prompt: editingCard.metadata?.system_prompt || '',
+				post_history_instructions: editingCard.metadata?.post_history_instructions || '',
+				creator: editingCard.metadata?.creator || '',
+				character_version: editingCard.metadata?.character_version || '1.0',
+				tags: editingCard.metadata?.tags || [],
+			});
+		}
+	}, [editingCard, form]);
 
 	const handleSubmit = form.handleSubmit(async (data) => {
 		// Здесь будет логика сохранения
