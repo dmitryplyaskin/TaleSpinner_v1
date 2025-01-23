@@ -1,14 +1,14 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const chatRoutes = require("./routes/chat-routes");
-const configRoutes = require("./routes/config-routes");
-const modelsRoutes = require("./routes/models-routes");
-const settingsRoutes = require("./routes/settings-routes");
-const userPersonRoutes = require("./routes/user-persons-routes");
-const generateRoutes = require("./routes/generate-routes");
-const sidebarsRoutes = require("./routes/sidebars-routes");
-const imagesRoutes = require("./routes/images-routes");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import chatRoutes from "./routes/chat-routes";
+import configRoutes from "./routes/config-routes";
+import modelsRoutes from "./routes/models-routes";
+import settingsRoutes from "./routes/settings-routes";
+import userPersonRoutes from "./routes/user-persons-routes";
+import generateRoutes from "./routes/generate-routes";
+import sidebarsRoutes from "./routes/sidebars-routes";
+import imagesRoutes from "./routes/images-routes";
 
 dotenv.config();
 

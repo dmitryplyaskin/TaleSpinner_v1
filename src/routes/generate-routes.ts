@@ -1,19 +1,21 @@
-const express = require("express");
+import express, { Request, Response } from "express";
+import openRouterService from "../services/open-router-service";
+
 const router = express.Router();
-const openRouterService = require("../services/open-router-service");
-const { v4: uuidv4 } = require("uuid");
 
-// Создание нового сообщения в чате
-router.post("/generate", async (req, res) => {
+interface GenerateRequest {
+  messages: Array<{ role: string; content: string }>;
+  settings: Record<string, unknown>;
+}
+
+router.post("/generate", async (req: Request, res: Response) => {
   try {
-    const { messages, settings } = req.body;
+    const { messages, settings } = req.body as GenerateRequest;
 
-    // Настраиваем SSE
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Получаем поток ответов от OpenRouter
     const messageStream = openRouterService.streamResponse(messages, settings);
 
     let botResponse = "";
@@ -32,9 +34,11 @@ router.post("/generate", async (req, res) => {
     res.end();
   } catch (error) {
     console.error("Chat error:", error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ error: (error as Error).message })}\n\n`
+    );
     res.end();
   }
 });
 
-module.exports = router;
+export default router;

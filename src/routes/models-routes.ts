@@ -1,8 +1,9 @@
-const express = require("express");
-const router = express.Router();
-const openRouterService = require("../services/open-router-service");
+import express, { Request, Response } from "express";
+import openRouterService from "../services/open-router-service";
 
-router.get("/models", async (req, res) => {
+const router = express.Router();
+
+router.get("/models", async (_req: Request, res: Response): Promise<void> => {
   try {
     const models = await openRouterService.getModels();
     res.json(models);
@@ -12,4 +13,4 @@ router.get("/models", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

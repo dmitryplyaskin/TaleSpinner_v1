@@ -1,30 +1,34 @@
-const fs = require("fs");
-const path = require("path");
-const { createDataPath } = require("../utils");
-const fileService = require("./file-service");
-const { v4: uuidv4 } = require("uuid");
+import fs from "fs";
+import path from "path";
+import { createDataPath } from "../utils";
+import fileService from "./file-service";
+import { v4 as uuidv4 } from "uuid";
+import { Chat } from "../types";
 
 const DIR_NAME = "chats";
+
 class ChatService {
+  private dir: string;
+
   constructor() {
     this.dir = createDataPath(DIR_NAME);
     this.ensureChatDirectory();
   }
 
-  ensureChatDirectory() {
+  private ensureChatDirectory(): void {
     if (!fs.existsSync(this.dir)) {
       fs.mkdirSync(this.dir, { recursive: true });
     }
   }
 
-  async getChatList(sortSettings) {
+  async getChatList(): Promise<Chat[]> {
     try {
       const files = await fileService.getFileList(this.dir, ".json");
-      const data = [];
+      const data: Chat[] = [];
 
       for await (const file of files) {
         const filePath = path.join(this.dir, file);
-        const chat = await fileService.readJson(filePath);
+        const chat = await fileService.readJson<Chat>(filePath);
         data.push(chat);
       }
 
@@ -33,37 +37,36 @@ class ChatService {
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
     } catch (error) {
-      console.error(`Ошибка при чтении файла ${filePath}:`, error);
+      console.error("Ошибка при получении списка чатов:", error);
       throw error;
     }
   }
 
-  async getChat(chatId) {
+  async getChat(chatId: string): Promise<Chat> {
     try {
       const filePath = path.join(this.dir, `${chatId}.json`);
-      const chat = await fileService.readJson(filePath);
-      return chat;
+      return await fileService.readJson<Chat>(filePath);
     } catch (error) {
-      console.error(`Ошибка при чтении файла ${filePath}:`, error);
+      console.error(`Ошибка при получении чата ${chatId}:`, error);
       throw error;
     }
   }
 
-  async createChat(data) {
+  async createChat(data: Chat): Promise<Chat> {
     try {
       const filePath = path.join(this.dir, `${data.id}.json`);
       await fileService.saveFile(filePath, JSON.stringify(data));
       return data;
     } catch (error) {
-      console.error(`Ошибка при сохранении файла ${filePath}:`, error);
+      console.error("Ошибка при создании чата:", error);
       throw error;
     }
   }
 
-  async duplicateChat(chatId) {
+  async duplicateChat(chatId: string): Promise<Chat> {
     try {
       const originalChat = await this.getChat(chatId);
-      const duplicatedChat = {
+      const duplicatedChat: Chat = {
         ...originalChat,
         id: uuidv4(),
         title: `${originalChat.title} (копия)`,
@@ -77,27 +80,27 @@ class ChatService {
     }
   }
 
-  async updateChat(data) {
+  async updateChat(data: Chat): Promise<Chat> {
     try {
       const filePath = path.join(this.dir, `${data.id}.json`);
       await fileService.updateFile(filePath, JSON.stringify(data));
       return data;
     } catch (error) {
-      console.error(`Ошибка при сохранении файла ${filePath}:`, error);
+      console.error("Ошибка при обновлении чата:", error);
       throw error;
     }
   }
 
-  async deleteChat(chatId) {
+  async deleteChat(chatId: string): Promise<{ id: string }> {
     try {
       const filePath = path.join(this.dir, `${chatId}.json`);
       await fileService.deleteFile(filePath);
       return { id: chatId };
     } catch (error) {
-      console.error(`Ошибка при удалении файла ${filePath}:`, error);
+      console.error(`Ошибка при удалении чата ${chatId}:`, error);
       throw error;
     }
   }
 }
 
-module.exports = new ChatService();
+export default new ChatService();

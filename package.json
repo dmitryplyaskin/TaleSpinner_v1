@@ -23,8 +23,8 @@
     "start": "node dist/index.js",
     "start:dev": "nodemon",
     "start:frontend": "cd frontend && yarn dev",
-    "build": "tsc -p src/tsconfig.json",
-    "build:watch": "tsc -p src/tsconfig.json -w",
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json -w",
     "dev": "nodemon"
   },
   "nodemonConfig": {

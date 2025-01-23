@@ -4,7 +4,9 @@
   ],
   "ext": ".ts,.js",
   "ignore": [
-    "src/**/*.spec.ts"
+    "src/**/*.spec.ts",
+    "data/*",
+    "public/*"
   ],
-  "exec": "ts-node ./src/index.js"
+  "exec": "ts-node ./src/index.ts"
 }

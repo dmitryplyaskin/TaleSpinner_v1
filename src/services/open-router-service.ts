@@ -1,9 +1,22 @@
-const fs = require("fs");
-const path = require("path");
-const OpenAI = require("openai");
-const axios = require("axios");
+import fs from "fs";
+import path from "path";
+import OpenAI from "openai";
+import axios from "axios";
+import { ChatCompletionMessageParam } from "openai/resources";
+
+interface OpenRouterConfig {
+  apiKey: string;
+  model?: string;
+}
+
+interface OpenRouterResponse {
+  content: string;
+  error: string | null;
+}
 
 class OpenRouterService {
+  private configPath: string;
+
   constructor() {
     this.configPath = path.join(
       __dirname,
@@ -16,29 +29,30 @@ class OpenRouterService {
     this.ensureConfigDirectory();
   }
 
-  ensureConfigDirectory() {
+  private ensureConfigDirectory(): void {
     const configDir = path.dirname(this.configPath);
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
     }
   }
 
-  getConfig() {
+  getConfig(): OpenRouterConfig {
     if (!fs.existsSync(this.configPath)) {
       throw new Error("OpenRouter configuration file not found");
     }
     return JSON.parse(fs.readFileSync(this.configPath, "utf-8"));
   }
 
-  updateConfig(config) {
+  updateConfig(config: OpenRouterConfig): void {
     fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
   }
 
-  createClient() {
+  private createClient(): OpenAI {
     const config = this.getConfig();
     return new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: config.apiKey,
+      // @ts-ignore
       headers: {
         "HTTP-Referer": "http://localhost:5000",
         "X-Title": "Chat Application",
@@ -48,7 +62,7 @@ class OpenRouterService {
     });
   }
 
-  async getModels() {
+  async getModels(): Promise<any[]> {
     const config = this.getConfig();
     try {
       const response = await axios.get("https://openrouter.ai/api/v1/models", {
@@ -65,21 +79,25 @@ class OpenRouterService {
     }
   }
 
-  async createChatCompletion(messages, settings = {}) {
+  async createChatCompletion(
+    messages: Array<{ role: string; content: string }>,
+    settings: Record<string, unknown> = {}
+  ): Promise<any> {
     const client = this.createClient();
     const config = this.getConfig();
 
-    console.log("config", config);
-
     return await client.chat.completions.create({
       model: config?.model || "amazon/nova-micro-v1",
-      messages: messages,
+      messages: messages as ChatCompletionMessageParam[],
       ...settings,
       stream: true,
     });
   }
 
-  async *streamResponse(messages, settings) {
+  async *streamResponse(
+    messages: Array<{ role: string; content: string }>,
+    settings: Record<string, unknown>
+  ): AsyncGenerator<OpenRouterResponse> {
     try {
       const response = await this.createChatCompletion(messages, settings);
       let fullResponse = "";
@@ -95,10 +113,10 @@ class OpenRouterService {
       return fullResponse;
     } catch (error) {
       console.error("OpenRouter API Error:", error);
-      yield { content: "", error: error.message };
+      yield { content: "", error: (error as Error).message };
       return "";
     }
   }
 }
 
-module.exports = new OpenRouterService();
+export default new OpenRouterService();

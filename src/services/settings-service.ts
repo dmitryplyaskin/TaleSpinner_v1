@@ -1,15 +1,17 @@
-const fs = require("fs").promises;
-const path = require("path");
-const { DATA_PATH } = require("../const");
+import fs from "fs/promises";
+import path from "path";
+import { DATA_PATH } from "../const";
+import { Settings } from "../types";
 
 const SETTINGS_FILE = path.join(DATA_PATH, "config", "sampler-settings.json");
 
 class SettingsService {
-  async ensureSettingsFile() {
+  async ensureSettingsFile(): Promise<Settings> {
     try {
       await fs.access(SETTINGS_FILE);
+      return {} as Settings;
     } catch {
-      const defaultSettings = {
+      const defaultSettings: Settings = {
         temperature: 0.7,
         maxTokens: 2000,
         topP: 1,
@@ -21,23 +23,21 @@ class SettingsService {
         SETTINGS_FILE,
         JSON.stringify(defaultSettings, null, 2)
       );
-      console.log(defaultSettings);
       return defaultSettings;
     }
   }
 
-  async getSettings() {
+  async getSettings(): Promise<Settings> {
     await this.ensureSettingsFile();
-    console.log(SETTINGS_FILE);
     const data = await fs.readFile(SETTINGS_FILE, "utf8");
     return JSON.parse(data);
   }
 
-  async saveSettings(settings) {
+  async saveSettings(settings: Settings): Promise<Settings> {
     await this.ensureSettingsFile();
     await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
     return settings;
   }
 }
 
-module.exports = new SettingsService();
+export default new SettingsService();
