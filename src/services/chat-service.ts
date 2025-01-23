@@ -1,24 +1,19 @@
-import fs from "fs";
 import path from "path";
 import { createDataPath } from "../utils";
 import fileService from "./file-service";
 import { v4 as uuidv4 } from "uuid";
 import { Chat } from "../types";
+import { BaseService } from "@core/services/base-service";
 
 const DIR_NAME = "chats";
 
-class ChatService {
-  private dir: string;
+class ChatService extends BaseService {
+  protected dir: string;
 
   constructor() {
+    super();
     this.dir = createDataPath(DIR_NAME);
-    this.ensureChatDirectory();
-  }
-
-  private ensureChatDirectory(): void {
-    if (!fs.existsSync(this.dir)) {
-      fs.mkdirSync(this.dir, { recursive: true });
-    }
+    this.ensureDirectory();
   }
 
   async getChatList(): Promise<Chat[]> {
