@@ -9,6 +9,7 @@ import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 import { ChatCardSidebar } from './components/chat-card-sidebar';
 import { UserPersonSidebar } from './components/user-person-sidebar';
 import { LeftBar } from './left-bar';
+import { Toaster } from '@ui/chakra-core-ui/toaster';
 
 interface LLMSettings {
 	temperature: number;
@@ -36,36 +37,39 @@ function App() {
 	}, []);
 
 	return (
-		<Flex h="100vh" overflow="hidden" bg="gray.50">
-			<LeftBar />
-			<Flex flex="1" direction="column" minW="0">
-				<Box flex="1" overflow="hidden">
-					{chat ? (
-						<ChatWindow settings={llmSettings} />
-					) : (
-						<Flex h="100%" align="center" justify="center">
-							<VStack gap={4}>
-								<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
-								<Button onClick={() => createChatFx()} colorScheme="blue" size="lg">
-									Создать новый чат
-								</Button>
-							</VStack>
-						</Flex>
-					)}
-				</Box>
-			</Flex>
+		<>
+			<Flex h="100vh" overflow="hidden" bg="gray.50">
+				<LeftBar />
+				<Flex flex="1" direction="column" minW="0">
+					<Box flex="1" overflow="hidden">
+						{chat ? (
+							<ChatWindow settings={llmSettings} />
+						) : (
+							<Flex h="100%" align="center" justify="center">
+								<VStack gap={4}>
+									<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
+									<Button onClick={() => createChatFx()} colorScheme="blue" size="lg">
+										Создать новый чат
+									</Button>
+								</VStack>
+							</Flex>
+						)}
+					</Box>
+				</Flex>
 
-			<SettingsSidebar
-				onLLMSettingsChange={setLlmSettings}
-				onAPIConfigChange={async (config) => {
-					await updateOpenRouterConfig(config);
-					setApiConfig(config);
-				}}
-				apiConfig={apiConfig}
-			/>
-			<ChatCardSidebar />
-			<UserPersonSidebar />
-		</Flex>
+				<SettingsSidebar
+					onLLMSettingsChange={setLlmSettings}
+					onAPIConfigChange={async (config) => {
+						await updateOpenRouterConfig(config);
+						setApiConfig(config);
+					}}
+					apiConfig={apiConfig}
+				/>
+				<ChatCardSidebar />
+				<UserPersonSidebar />
+			</Flex>
+			<Toaster />
+		</>
 	);
 }
 
