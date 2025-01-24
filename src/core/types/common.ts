@@ -5,7 +5,7 @@ export interface BaseEntity {
 }
 
 export interface BaseConfig {
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface ServiceOptions {

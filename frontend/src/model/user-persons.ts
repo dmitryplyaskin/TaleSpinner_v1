@@ -79,26 +79,26 @@ $userPersons
 		return userPersons.filter((up) => up.id !== id);
 	});
 
-export const getUserPersonListFx = createEffect<void, UserPerson[]>(async () => {
+export const getUserPersonListFx = createEffect<void, { data: UserPerson[] }>(async () => {
 	try {
 		const response = await fetch(apiRoutes.userPerson.person.list()).then((response) => response.json());
 
 		return response;
 	} catch (error) {
 		console.error('Error fetching user person list:', error);
-		return [];
+		return { data: [] };
 	}
 });
 
-$userPersons.on(getUserPersonListFx.doneData, (_, payload) => payload);
+$userPersons.on(getUserPersonListFx.doneData, (_, { data }) => data);
 
-export const getUserPersonFx = createEffect<string, UserPerson>(async (id) => {
+export const getUserPersonFx = createEffect<string, { data: UserPerson }>(async (id) => {
 	try {
 		const response = await fetch(apiRoutes.userPerson.person.getById(id)).then((response) => response.json());
-		return response;
+		return { data: response };
 	} catch (error) {
 		console.error('Error fetching user person:', error);
-		return null;
+		return { data: null };
 	}
 });
 
