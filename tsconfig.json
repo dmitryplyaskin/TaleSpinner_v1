@@ -17,7 +17,8 @@
       "@shared/*": ["./shared/*"],
       "@core/*": ["./src/core/*"],
       "@utils/*": ["./src/utils/*"],
-      "@types/*": ["./src/types/*"]
+      "@types/*": ["./src/types/*"],
+      "@services/*": ["./src/services/*"]
     },
     "typeRoots": ["../node_modules/@types", "./types"]
   },

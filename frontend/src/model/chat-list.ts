@@ -6,7 +6,7 @@ import { ChatCard } from '../types/chat';
 export const $chatList = createStore<ChatCard[]>([]);
 export const $currentChatId = createStore('');
 
-export const getChatListFx = createEffect<void, ChatCard[]>(async () => {
+export const getChatListFx = createEffect<void, { data: ChatCard[] }>(async () => {
 	try {
 		const response = await fetch(apiRoutes.chat.list()).then((response) => response.json());
 		return response;
@@ -31,7 +31,7 @@ export const deleteChatFx = createEffect<ChatCard, void>(async (data) => {
 	}
 });
 
-export const createChatFx = createEffect<void, ChatCard>(async () => {
+export const createChatFx = createEffect<void, { data: ChatCard }>(async () => {
 	try {
 		const response = await fetch(apiRoutes.chat.create(), {
 			method: 'POST',
@@ -47,7 +47,7 @@ export const createChatFx = createEffect<void, ChatCard>(async () => {
 	}
 });
 
-export const duplicateChatFx = createEffect<ChatCard, ChatCard>(async (data) => {
+export const duplicateChatFx = createEffect<ChatCard, { data: ChatCard }>(async (data) => {
 	try {
 		const response = await fetch(apiRoutes.chat.duplicate(data.id), {
 			method: 'POST',
@@ -63,7 +63,7 @@ export const duplicateChatFx = createEffect<ChatCard, ChatCard>(async (data) => 
 });
 
 $chatList
-	.on(getChatListFx.doneData, (_, data) => data)
+	.on(getChatListFx.doneData, (_, { data }) => data)
 	.on(deleteChatFx.done, (state, { params }) => state.filter((chat) => chat.id !== params.id))
-	.on(createChatFx.doneData, (state, data) => [data, ...state])
-	.on(duplicateChatFx.doneData, (state, data) => [data, ...state]);
+	.on(createChatFx.doneData, (state, { data }) => [data, ...state])
+	.on(duplicateChatFx.doneData, (state, { data }) => [data, ...state]);

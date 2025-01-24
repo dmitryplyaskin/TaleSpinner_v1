@@ -30,43 +30,42 @@ export abstract class BaseService<T extends BaseEntity> {
     return uuidv4();
   }
 
-  protected getFilePath(name: string): string {
-    return path.join(this.dir, name);
+  protected getFilePath(id: string): string {
+    return path.join(this.dir, `${id}.json`);
   }
 
-  protected getJSONPath(name: string): string {
-    return path.join(this.dir, `${name}.json`);
-  }
-
-  protected async readJson<R>(filePath: string): Promise<R> {
+  protected async readEntity(id: string): Promise<T> {
     try {
-      const content = await fs.readFile(`${filePath}.json`, "utf8");
+      const filePath = this.getFilePath(id);
+      const content = await fs.readFile(filePath, "utf8");
       return JSON.parse(content);
     } catch (error) {
-      this.logger?.error("Failed to read JSON file", { filePath, error });
+      this.logger?.error("Failed to read entity", { id, error });
       throw error;
     }
   }
 
-  protected async writeJson<T>(filePath: string, data: T): Promise<void> {
+  protected async writeEntity(id: string, data: T): Promise<void> {
     try {
-      await fs.writeFile(`${filePath}.json`, JSON.stringify(data, null, 2));
+      const filePath = this.getFilePath(id);
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2));
     } catch (error) {
-      this.logger?.error("Failed to write JSON file", { filePath, error });
+      this.logger?.error("Failed to write entity", { id, error });
       throw error;
     }
   }
 
-  protected async deleteJson(filePath: string): Promise<void> {
+  protected async deleteEntity(id: string): Promise<void> {
     try {
-      await fs.unlink(`${filePath}.json`);
+      const filePath = this.getFilePath(id);
+      await fs.unlink(filePath);
     } catch (error) {
-      this.logger?.error("Failed to delete JSON file", { filePath, error });
+      this.logger?.error("Failed to delete entity", { id, error });
       throw error;
     }
   }
 
-  async getAllJSON(): Promise<T[]> {
+  async getAll(): Promise<T[]> {
     try {
       const files = await fs.readdir(this.dir);
       const jsonFiles = files
@@ -74,7 +73,7 @@ export abstract class BaseService<T extends BaseEntity> {
         .map((file) => file.replace(".json", ""));
 
       const entities = await Promise.all(
-        jsonFiles.map((file) => this.readJson<T>(path.join(this.dir, file)))
+        jsonFiles.map((id) => this.readEntity(id))
       );
 
       return entities.sort(
@@ -87,18 +86,11 @@ export abstract class BaseService<T extends BaseEntity> {
     }
   }
 
-  async getJSONById(id: string): Promise<T> {
-    try {
-      return await this.readJson<T>(this.getFilePath(id));
-    } catch (error) {
-      this.logger?.error("Failed to get entity by id", { id, error });
-      throw error;
-    }
+  async getById(id: string): Promise<T> {
+    return await this.readEntity(id);
   }
 
-  async createJSON(
-    data: Omit<T, "id" | "createdAt" | "updatedAt">
-  ): Promise<T> {
+  async create(data: Omit<T, "id" | "createdAt" | "updatedAt">): Promise<T> {
     try {
       const now = new Date().toISOString();
       const entity = {
@@ -108,7 +100,7 @@ export abstract class BaseService<T extends BaseEntity> {
         updatedAt: now,
       } as T;
 
-      await this.writeJson(this.getFilePath(entity.id), entity);
+      await this.writeEntity(entity.id, entity);
       return entity;
     } catch (error) {
       this.logger?.error("Failed to create entity", { data, error });
@@ -116,9 +108,9 @@ export abstract class BaseService<T extends BaseEntity> {
     }
   }
 
-  async updateJSON(id: string, data: Partial<T>): Promise<T> {
+  async update(id: string, data: Partial<T>): Promise<T> {
     try {
-      const existing = await this.getJSONById(id);
+      const existing = await this.getById(id);
       const updated = {
         ...existing,
         ...data,
@@ -126,7 +118,7 @@ export abstract class BaseService<T extends BaseEntity> {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.writeJson(this.getFilePath(id), updated);
+      await this.writeEntity(id, updated);
       return updated;
     } catch (error) {
       this.logger?.error("Failed to update entity", { id, data, error });
@@ -134,31 +126,24 @@ export abstract class BaseService<T extends BaseEntity> {
     }
   }
 
-  async deleteJSON(id: string): Promise<void> {
-    try {
-      await fs.unlink(this.getFilePath(id));
-    } catch (error) {
-      this.logger?.error("Failed to delete entity", { id, error });
-      throw error;
-    }
+  async delete(id: string): Promise<void> {
+    await this.deleteEntity(id);
   }
 
-  async duplicateJSON(
-    id: string,
-    newName: string = this.createUUID()
-  ): Promise<T> {
+  async duplicate(id: string): Promise<T> {
     try {
-      const existing = await this.getJSONById(id);
-      console.log(existing);
+      const existing = await this.getById(id);
       const duplicated = {
         ...existing,
         id: this.createUUID(),
-        timestamp: new Date().toISOString(),
-      };
-      await this.createJSON(duplicated);
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as T;
+
+      await this.writeEntity(duplicated.id, duplicated);
       return duplicated;
     } catch (error) {
-      this.logger?.error("Failed to duplicate entity", { id, newName, error });
+      this.logger?.error("Failed to duplicate entity", { id, error });
       throw error;
     }
   }

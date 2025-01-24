@@ -40,7 +40,17 @@ export const asyncHandler = <T extends RequestHandler>(
 ): RequestHandler => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await handler(req, res, next);
+      const result = await handler(req, res, next);
+
+      // Если ответ уже отправлен, ничего не делаем
+      if (res.headersSent) {
+        return;
+      }
+
+      // Если есть результат и он не undefined, отправляем его
+      if (result !== undefined) {
+        res.json(result);
+      }
     } catch (error) {
       const context = createErrorContext(req);
 

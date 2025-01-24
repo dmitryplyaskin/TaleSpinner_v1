@@ -7,27 +7,27 @@ class ChatService extends BaseService<Chat> {
   }
 
   async getChatList(): Promise<Chat[]> {
-    return await this.getAllJSON();
+    return await this.getAll();
   }
 
   async getChat(chatId: string): Promise<Chat> {
-    return await this.getJSONById(chatId);
+    return await this.getById(chatId);
   }
 
   async createChat(data: Chat): Promise<Chat> {
-    return await this.createJSON(data);
+    return await this.create(data);
   }
 
   async duplicateChat(chatId: string): Promise<Chat> {
-    return await this.duplicateJSON(chatId);
+    return await this.duplicate(chatId);
   }
 
   async updateChat(data: Chat): Promise<Chat> {
-    return await this.updateJSON(data.id, data);
+    return await this.update(data.id, data);
   }
 
   async deleteChat(chatId: string): Promise<void> {
-    return await this.deleteJSON(chatId);
+    return await this.delete(chatId);
   }
 }
 

@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import chatRoutes from "./routes/chat-routes";
+
 import configRoutes from "./routes/config-routes";
 import modelsRoutes from "./routes/models-routes";
 import settingsRoutes from "./routes/settings-routes";
@@ -9,6 +9,7 @@ import userPersonRoutes from "./routes/user-persons-routes";
 import generateRoutes from "./routes/generate-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
 import imagesRoutes from "./routes/images-routes";
+import { routes } from "./api/routes";
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // API Routes
-app.use("/api", chatRoutes);
+app.use("/api", routes);
 app.use("/api", configRoutes);
 app.use("/api", modelsRoutes);
 app.use("/api/settings", settingsRoutes);
