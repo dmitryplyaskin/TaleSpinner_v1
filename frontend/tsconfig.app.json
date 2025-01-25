@@ -25,6 +25,7 @@
       "@ui/*": ["./src/ui/*"],
       "@types/*": ["./src/types/*"],
       "@model/*": ["./src/model/*"], 
+      "@shared/*": ["../shared/*"],
     }
   },
   "include": ["src"]

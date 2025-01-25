@@ -1,4 +1,4 @@
-import { UserPerson, UserPersonSettings } from '@types/user-person';
+import { UserPerson, UserPersonSettings } from '@shared/types/user-person';
 import { createEffect, createEvent, createStore, sample } from 'effector';
 import { apiRoutes } from '../api-routes';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,15 +8,16 @@ const defaultSettings = {
 	selectedUserPersonId: null,
 };
 
-export const createEmptyUserPerson = () =>
-	({
+export const createEmptyUserPerson = () => {
+	return {
 		id: uuidv4(),
 		name: 'Новый пользователь',
 		content: {
 			type: 'default',
 			value: '',
 		},
-	} as UserPerson);
+	} as UserPerson;
+};
 
 export const $userPersonsSettings = createStore<UserPersonSettings>(defaultSettings);
 
