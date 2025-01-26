@@ -1,5 +1,6 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 import { apiRoutes } from '../api-routes';
+import { asyncHandler } from './utils/async-handler';
 
 export type SidebarName = 'settings' | 'chatCards' | 'userPersons';
 
@@ -49,31 +50,32 @@ $sidebars.on(changeSidebarSettings, (sidebars, { name, settings }) => ({
 	},
 }));
 
-export const saveSettingsFx = createEffect<SidebarSettings, void>(async (settings) => {
-	try {
+export const saveSettingsFx = createEffect<SidebarSettings, void>((settings) =>
+	asyncHandler(async () => {
+		const newSettings = { ...settings };
+		Object.keys(newSettings).forEach((key) => {
+			newSettings[key as keyof SidebarSettings] = {
+				...newSettings[key as keyof SidebarSettings],
+				isOpen: false,
+			};
+		});
 		const response = await fetch(apiRoutes.sidebars.save(), {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify(settings),
+			body: JSON.stringify(newSettings),
 		});
 		return response.json();
-	} catch (error) {
-		console.error('Error saving settings:', error);
-		return null;
-	}
-});
+	}, 'Error saving settings'),
+);
 
-export const getSettingsFx = createEffect<void, SidebarSettings>(async () => {
-	try {
+export const getSettingsFx = createEffect<void, SidebarSettings>(() =>
+	asyncHandler(async () => {
 		const response = await fetch(apiRoutes.sidebars.get()).then((response) => response.json());
 		return response;
-	} catch (error) {
-		console.error('Error getting settings:', error);
-		return null;
-	}
-});
+	}, 'Error getting settings'),
+);
 
 $sidebars.on(getSettingsFx.doneData, (_, payload) => payload);
 
