@@ -3,7 +3,7 @@ import { UserPersonSettings as UserPersonSettingsType } from "@shared/types/user
 
 class UserPersonSettings extends ConfigService<UserPersonSettingsType> {
   constructor() {
-    super("user-person-settings");
+    super("user-person-settings.json", { logger: console });
   }
 
   getDefaultConfig(): UserPersonSettingsType {

@@ -20,7 +20,7 @@ router
   .post(asyncHandler(controllers.duplicateUserPerson));
 
 router
-  .route("/user-persons/settings")
+  .route("/settings/user-person")
   .get(asyncHandler(controllers.getUserPersonSettings))
   .post(asyncHandler(controllers.setUserPersonSettings));
 

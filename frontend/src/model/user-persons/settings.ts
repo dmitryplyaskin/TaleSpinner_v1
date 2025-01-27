@@ -39,3 +39,5 @@ sample({
 	clock: updateUserPersonSettings,
 	target: saveUserPersonSettingsFx,
 });
+
+getUserPersonSettingsFx();

@@ -10,8 +10,8 @@ export const apiRoutes = {
 			delete: (id: string) => `${BASE_URL}/user-persons/${id}`,
 		},
 		settings: {
-			get: () => `${BASE_URL}/user-persons/settings`,
-			update: () => `${BASE_URL}/user-persons/settings`,
+			get: () => `${BASE_URL}/settings/user-person`,
+			update: () => `${BASE_URL}/settings/user-person`,
 		},
 	},
 	chat: {

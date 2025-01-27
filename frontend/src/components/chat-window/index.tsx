@@ -3,7 +3,7 @@ import { streamMessage } from '../api';
 import { RenderChat } from './render-chat';
 import { v4 as uuidv4 } from 'uuid';
 import { $currentChatFormatted, addUserMessage, updateUserMessageContent } from '../../model';
-import { useUnit } from 'effector-react';
+
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
 import { ChatMessage, Message } from '@types/chat';
 
