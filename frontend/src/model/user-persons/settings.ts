@@ -12,7 +12,7 @@ export const $userPersonsSettings = createStore<UserPersonSettings>(defaultSetti
 
 export const updateUserPersonSettings = createEvent<UserPersonSettings>();
 
-export const getUserPersonSettingsFx = createEffect<void, UserPersonSettings>(() =>
+export const getUserPersonSettingsFx = createEffect<void, { data: UserPersonSettings }>(() =>
 	asyncHandler(async () => {
 		const response = await fetch(apiRoutes.userPerson.settings.get());
 		return response.json();
@@ -32,7 +32,7 @@ export const saveUserPersonSettingsFx = createEffect<UserPersonSettings, void>((
 );
 
 $userPersonsSettings
-	.on(getUserPersonSettingsFx.doneData, (_, payload) => payload)
+	.on(getUserPersonSettingsFx.doneData, (_, { data }) => data)
 	.on(updateUserPersonSettings, (_, payload) => payload);
 
 sample({

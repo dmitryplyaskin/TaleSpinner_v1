@@ -10,6 +10,7 @@ import { ChatCardSidebar } from './components/chat-card-sidebar';
 import { UserPersonSidebar } from './components/user-person-sidebar';
 import { LeftBar } from './left-bar';
 import { Toaster } from '@ui/chakra-core-ui/toaster';
+import './model/llm-orchestration';
 
 interface LLMSettings {
 	temperature: number;

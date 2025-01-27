@@ -8,5 +8,5 @@
     "data/*",
     "public/*"
   ],
-  "exec": "node --enable-source-maps --trace-warnings -r ts-node/register -r tsconfig-paths/register ./src/index.ts"
+  "exec": "node --enable-source-maps --trace-warnings --no-deprecation -r ts-node/register -r tsconfig-paths/register ./src/index.ts"
 }
