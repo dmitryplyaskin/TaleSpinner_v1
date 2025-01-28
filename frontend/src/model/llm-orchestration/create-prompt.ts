@@ -19,22 +19,23 @@ type CreatePromptProps = {
 
 export const createPrompt = (data: CreatePromptProps) => {
 	const template = Handlebars.compile(data.systemPrompt);
-	console.log(data.userPerson?.person, data.userPerson?.settings.selectedUserPersonId);
+	// console.log(data.userPerson?.person, data.userPerson?.settings.selectedUserPersonId);
 	const res = template({
 		user: data.userPerson?.person?.find((x) => x.id === data.userPerson?.settings.selectedUserPersonId)
 			?.contentTypeDefault,
 	});
 
-	console.log(res);
+	// console.log(res);
 };
 
 setTimeout(() => {
 	createPrompt({
 		chatCard: $currentChat.getState(),
 		llmSettings: {},
-		systemPrompt: `
-	Привет, проверка чего то
-	{{user}}`,
+		systemPrompt: `Привет, проверка чего то
+{{user}}
+
+Начнем ролевую игру`,
 		template: '',
 		userPerson: {
 			settings: $userPersonsSettings.getState(),
