@@ -29,6 +29,7 @@ export const apiRoutes = {
 	},
 	files: {
 		upload: () => `${BASE_URL}/files/upload`,
+		uploadCard: () => `${BASE_URL}/files/upload-card`,
 		getById: (filename: string) => `${BASE_URL}/files/${filename}`,
 		delete: (filename: string) => `${BASE_URL}/files/${filename}`,
 		metadata: (filename: string) => `${BASE_URL}/files/metadata/${filename}`,

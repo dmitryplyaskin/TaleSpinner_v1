@@ -32,6 +32,12 @@ router.post(
   asyncHandler(controllers.uploadFiles)
 );
 
+router.post(
+  "/files/upload-card",
+  upload.array("files", 10),
+  asyncHandler(controllers.uploadCards)
+);
+
 router
   .route("/files/:filename")
   .get(asyncHandler(controllers.getFile))

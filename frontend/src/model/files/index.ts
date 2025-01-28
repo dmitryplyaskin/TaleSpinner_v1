@@ -1,3 +1,13 @@
-export { $uploadedFiles, uploadFiles, deleteFile, uploadFilesFx, deleteFileFx, getFileMetadataFx } from './files';
+export {
+	$uploadedFiles,
+	$processedCardFiles,
+	uploadFiles,
+	uploadCardFiles,
+	deleteFile,
+	uploadFilesFx,
+	uploadCardFilesFx,
+	deleteFileFx,
+	getFileMetadataFx,
+} from './files';
 
-export type { UploadedFile, UploadResponse } from './types';
+export type { UploadedFile, UploadResponse, CardMetadata, ProcessedCardFile, CardUploadResponse } from './types';
