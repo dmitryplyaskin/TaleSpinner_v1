@@ -29,3 +29,17 @@ export interface Settings {
   frequencyPenalty: number;
   presencePenalty: number;
 }
+
+export interface SidebarSettings {
+  isOpen: boolean;
+  isFullscreen: boolean;
+  placement: string;
+  size: string;
+  contained: boolean;
+}
+
+export interface SidebarState {
+  settings: SidebarSettings;
+  chatCards: SidebarSettings;
+  userPersons: SidebarSettings;
+}

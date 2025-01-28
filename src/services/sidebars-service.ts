@@ -1,17 +1,5 @@
-import fs from "fs";
-import path from "path";
-import { createDataPath } from "../utils";
-import fileService from "./file-service";
-
-const CONFIG_FILE = "sidebars.json";
-
-interface SidebarSettings {
-  isOpen: boolean;
-  isFullscreen: boolean;
-  placement: string;
-  size: string;
-  contained: boolean;
-}
+import { ConfigService } from "@core/services/config-service";
+import { SidebarSettings } from "../types";
 
 interface SidebarState {
   settings: SidebarSettings;
@@ -19,68 +7,44 @@ interface SidebarState {
   userPersons: SidebarSettings;
 }
 
-class SidebarsService {
-  private configPath: string;
-  private filePath: string;
-
+class SidebarsService extends ConfigService<SidebarState> {
   constructor() {
-    this.configPath = createDataPath("config");
-    this.filePath = path.join(this.configPath, CONFIG_FILE);
-    this.ensureConfigDirectory();
+    super("sidebars.json", { logger: console });
   }
 
-  private ensureConfigDirectory(): void {
-    if (!fs.existsSync(this.configPath)) {
-      fs.mkdirSync(this.configPath, { recursive: true });
-    }
+  protected getDefaultConfig(): SidebarState {
+    return {
+      settings: {
+        isOpen: false,
+        isFullscreen: false,
+        placement: "start",
+        size: "lg",
+        contained: false,
+      },
+      chatCards: {
+        isOpen: false,
+        isFullscreen: false,
+        placement: "start",
+        size: "lg",
+        contained: false,
+      },
+      userPersons: {
+        isOpen: false,
+        isFullscreen: false,
+        placement: "start",
+        size: "lg",
+        contained: false,
+      },
+    };
   }
 
   async getSettings(): Promise<SidebarState> {
-    try {
-      if (!fs.existsSync(this.filePath)) {
-        return {
-          settings: {
-            isOpen: false,
-            isFullscreen: false,
-            placement: "start",
-            size: "lg",
-            contained: false,
-          },
-          chatCards: {
-            isOpen: false,
-            isFullscreen: false,
-            placement: "start",
-            size: "lg",
-            contained: false,
-          },
-          userPersons: {
-            isOpen: false,
-            isFullscreen: false,
-            placement: "start",
-            size: "lg",
-            contained: false,
-          },
-        };
-      }
-
-      return await fileService.readJson<SidebarState>(this.filePath);
-    } catch (error) {
-      console.error("Ошибка при чтении настроек сайдбаров:", error);
-      throw error;
-    }
+    return this.getConfig();
   }
 
   async saveSettings(settings: SidebarState): Promise<SidebarState> {
-    try {
-      await fileService.saveFile(
-        this.filePath,
-        JSON.stringify(settings, null, 2)
-      );
-      return settings;
-    } catch (error) {
-      console.error("Ошибка при сохранении настроек сайдбаров:", error);
-      throw error;
-    }
+    await this.saveConfig(settings);
+    return settings;
   }
 }
 

@@ -1,21 +1,8 @@
 import express, { Request, Response } from "express";
 import sidebarsService from "../services/sidebars-service";
+import { SidebarState } from "../types";
 
 const router = express.Router();
-
-interface SidebarSettings {
-  isOpen: boolean;
-  isFullscreen: boolean;
-  placement: string;
-  size: string;
-  contained: boolean;
-}
-
-interface SidebarState {
-  settings: SidebarSettings;
-  chatCards: SidebarSettings;
-  userPersons: SidebarSettings;
-}
 
 router.get("/sidebars", async (_req: Request, res: Response): Promise<void> => {
   try {

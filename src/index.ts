@@ -7,7 +7,6 @@ import modelsRoutes from "./routes/models-routes";
 import settingsRoutes from "./routes/settings-routes";
 import generateRoutes from "./routes/generate-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
-import imagesRoutes from "./routes/images-routes";
 import { routes } from "./api/routes";
 
 dotenv.config();
@@ -29,7 +28,6 @@ app.use("/api", modelsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api", generateRoutes);
 app.use("/api", sidebarsRoutes);
-app.use("/api/images", imagesRoutes);
 
 // Start server
 app.listen(port, () => {

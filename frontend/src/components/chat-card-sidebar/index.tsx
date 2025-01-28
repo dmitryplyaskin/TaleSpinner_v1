@@ -5,19 +5,30 @@ import { LuPlus, LuUpload } from 'react-icons/lu';
 
 import { useUnit } from 'effector-react';
 import { $chatList, createChatFx } from '@model/chat-list';
+import { uploadFiles, uploadFilesFx } from '@model/files';
 import { CharacterCard } from './chat-card';
 import { Drawer } from '@ui/drawer';
 import { EditChatModal } from './edit-chat-modal';
 import { FileUploadRoot, FileUploadTrigger } from '@ui/chakra-core-ui/file-upload';
+import { toaster } from '@ui/chakra-core-ui/toaster';
 
 export const ChatCardSidebar: React.FC = () => {
 	const list = useUnit($chatList);
 	const createChat = useUnit(createChatFx);
+	const uploadFilesFn = useUnit(uploadFiles);
 
-	const handleFileChange = (details: FileUploadFileAcceptDetails) => {
+	const handleFileChange = async (details: FileUploadFileAcceptDetails) => {
 		if (!details.files?.length) return;
-		// TODO: Здесь будет логика обработки загруженных файлов
-		console.log('Загружены файлы:', details.files);
+
+		try {
+			await uploadFilesFn(Array.from(details.files));
+			toaster.success({
+				title: 'Успешно',
+				description: 'Файлы успешно загружены',
+			});
+		} catch (error) {
+			toaster.error({ title: 'Не удалось загрузить файлы' });
+		}
 	};
 
 	return (
@@ -28,7 +39,14 @@ export const ChatCardSidebar: React.FC = () => {
 						<Button onClick={() => createChat()} colorScheme="blue">
 							<LuPlus /> Создать карточку
 						</Button>
-						<FileUploadRoot maxFiles={10} onFileAccept={handleFileChange}>
+						<FileUploadRoot
+							maxFiles={10}
+							onFileAccept={handleFileChange}
+							accept={{
+								'image/png': ['.png'],
+								'application/json': ['.json'],
+							}}
+						>
 							<FileUploadTrigger asChild>
 								<Button colorScheme="green">
 									<LuUpload /> Импорт

@@ -27,4 +27,10 @@ export const apiRoutes = {
 		get: () => `${BASE_URL}/sidebars`,
 		save: () => `${BASE_URL}/sidebars`,
 	},
+	files: {
+		upload: () => `${BASE_URL}/files/upload`,
+		getById: (filename: string) => `${BASE_URL}/files/${filename}`,
+		delete: (filename: string) => `${BASE_URL}/files/${filename}`,
+		metadata: (filename: string) => `${BASE_URL}/files/metadata/${filename}`,
+	},
 };
