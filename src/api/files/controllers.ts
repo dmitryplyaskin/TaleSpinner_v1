@@ -6,6 +6,35 @@ import sharp from "sharp";
 import fs from "fs/promises";
 import { CardUploadResponse, ProcessedCardFile } from "./types";
 
+interface CharacterComment {
+  keyword: string;
+  text: string;
+}
+
+function findCharacterData(metadata: sharp.Metadata): string | null {
+  if (!metadata.comments || !Array.isArray(metadata.comments)) {
+    return null;
+  }
+
+  const charaComment = metadata.comments.find(
+    (comment: CharacterComment) => comment.keyword === "chara" && comment.text
+  );
+
+  if (!charaComment) {
+    return null;
+  }
+
+  try {
+    const decodedText = Buffer.from(charaComment.text, "base64").toString(
+      "utf-8"
+    );
+    return decodedText;
+  } catch (error) {
+    console.error("Error decoding base64:", error);
+    return null;
+  }
+}
+
 export const uploadFiles: AsyncRequestHandler = async (req) => {
   if (!req.files || !Array.isArray(req.files)) {
     throw new Error("Файлы не были загружены");
@@ -106,10 +135,11 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         const image = sharp(file.buffer);
         const metadata = await image.metadata();
 
-        // TODO: Здесь будет проверка необходимых полей метаданных
-        // if (!metadata.customField) {
-        //   throw new Error("Missing required metadata fields");
-        // }
+        // Проверяем наличие данных character-карточки
+        const characterData = findCharacterData(metadata);
+        if (!characterData) {
+          throw new Error("PNG файл не содержит данных character-карточки");
+        }
 
         await fs.writeFile(filePath, file.buffer);
 
@@ -123,7 +153,9 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
             height: metadata.height || 0,
             format: metadata.format || "unknown",
             // @ts-ignore
-            customMetadata: metadata?.customMetadata as any,
+            customMetadata: {
+              characterData: JSON.parse(characterData),
+            },
           },
           type: "png",
         });
