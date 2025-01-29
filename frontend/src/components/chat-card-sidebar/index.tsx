@@ -1,49 +1,19 @@
 import React from 'react';
 
-import { Flex, Button, Stack, FileUploadFileAcceptDetails } from '@chakra-ui/react';
-import { LuPlus, LuUpload } from 'react-icons/lu';
+import { Flex, Button, Stack } from '@chakra-ui/react';
+import { LuPlus } from 'react-icons/lu';
 
 import { useUnit } from 'effector-react';
 import { $chatList, createChatFx } from '@model/chat-list';
-import { uploadCardFiles } from '@model/files';
+
 import { CharacterCard } from './chat-card';
 import { Drawer } from '@ui/drawer';
 import { EditChatModal } from './edit-chat-modal';
-import { FileUploadRoot, FileUploadTrigger } from '@ui/chakra-core-ui/file-upload';
-import { toaster } from '@ui/chakra-core-ui/toaster';
+import { Upload } from './components/upload';
 
 export const ChatCardSidebar: React.FC = () => {
 	const list = useUnit($chatList);
 	const createChat = useUnit(createChatFx);
-	const uploadCardFilesFn = useUnit(uploadCardFiles);
-
-	const handleFileChange = async (details: FileUploadFileAcceptDetails) => {
-		if (!details.files?.length) return;
-
-		try {
-			const result = await uploadCardFilesFn(Array.from(details.files));
-
-			console.log(result);
-
-			// if (result.failedFiles.length > 0) {
-			// 	result.failedFiles.forEach(({ originalName, error }) => {
-			// 		toaster.error({
-			// 			title: `Ошибка обработки файла ${originalName}`,
-			// 			description: error,
-			// 		});
-			// 	});
-			// }
-
-			// if (result.processedFiles.length > 0) {
-			// 	toaster.success({
-			// 		title: 'Успешно',
-			// 		description: 'Файлы успешно загружены',
-			// 	});
-			// }
-		} catch (error) {
-			toaster.error({ title: 'Не удалось загрузить файлы' });
-		}
-	};
 
 	return (
 		<>
@@ -53,21 +23,9 @@ export const ChatCardSidebar: React.FC = () => {
 						<Button onClick={() => createChat()} colorScheme="blue">
 							<LuPlus /> Создать карточку
 						</Button>
-						<FileUploadRoot
-							maxFiles={10}
-							onFileAccept={handleFileChange}
-							accept={{
-								'image/png': ['.png'],
-								'application/json': ['.json'],
-							}}
-						>
-							<FileUploadTrigger asChild>
-								<Button colorScheme="green">
-									<LuUpload /> Импорт
-								</Button>
-							</FileUploadTrigger>
-						</FileUploadRoot>
+						<Upload />
 					</Stack>
+
 					{list.map((chat) => (
 						<CharacterCard key={chat.id} data={chat} />
 					))}

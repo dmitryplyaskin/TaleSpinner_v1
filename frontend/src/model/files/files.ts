@@ -6,8 +6,6 @@ import { UploadedFile, UploadResponse, CardUploadResponse, ProcessedCardFile } f
 export const $uploadedFiles = createStore<UploadedFile[]>([]);
 export const $processedCardFiles = createStore<ProcessedCardFile[]>([]);
 
-export const uploadFiles = createEvent<File[]>();
-export const uploadCardFiles = createEvent<File[]>();
 export const deleteFile = createEvent<string>();
 
 export const uploadFilesFx = createEffect<File[], UploadResponse>(async (files) =>
@@ -25,7 +23,7 @@ export const uploadFilesFx = createEffect<File[], UploadResponse>(async (files) 
 	}, 'Error uploading files'),
 );
 
-export const uploadCardFilesFx = createEffect<File[], CardUploadResponse>(async (files) =>
+export const uploadCardFilesFx = createEffect<File[], { data: CardUploadResponse }>(async (files) =>
 	asyncHandler(async () => {
 		const formData = new FormData();
 		files.forEach((file) => {
@@ -59,17 +57,7 @@ $uploadedFiles
 	.on(uploadFilesFx.doneData, (_, { files }) => files)
 	.on(deleteFileFx.done, (state, { params: filename }) => state.filter((file) => file.filename !== filename));
 
-$processedCardFiles.on(uploadCardFilesFx.doneData, (_, { processedFiles }) => processedFiles);
-
-sample({
-	clock: uploadFiles,
-	target: uploadFilesFx,
-});
-
-sample({
-	clock: uploadCardFiles,
-	target: uploadCardFilesFx,
-});
+$processedCardFiles.on(uploadCardFilesFx.doneData, (_, { data }) => data.processedFiles);
 
 sample({
 	clock: deleteFile,

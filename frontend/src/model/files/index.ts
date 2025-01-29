@@ -1,8 +1,6 @@
 export {
 	$uploadedFiles,
 	$processedCardFiles,
-	uploadFiles,
-	uploadCardFiles,
 	deleteFile,
 	uploadFilesFx,
 	uploadCardFilesFx,
