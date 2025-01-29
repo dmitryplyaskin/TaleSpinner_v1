@@ -20,8 +20,6 @@ export const Upload = () => {
 		try {
 			const result = await uploadCardFilesFn(Array.from(details.files));
 
-			console.log(result);
-
 			if (result.data.failedFiles.length > 0) {
 				result.data.failedFiles.forEach(({ originalName, error }) => {
 					toaster.error({

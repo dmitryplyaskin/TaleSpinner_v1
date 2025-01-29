@@ -38,14 +38,14 @@ router.post(
   asyncHandler(controllers.uploadCards)
 );
 
-router
-  .route("/files/:filename")
-  .get(asyncHandler(controllers.getFile))
-  .delete(asyncHandler(controllers.deleteFile));
-
 router.get(
   "/files/metadata/:filename",
   asyncHandler(controllers.getFileMetadata)
 );
+
+router
+  .route("/files/:filename")
+  .get(asyncHandler(controllers.getFile))
+  .delete(asyncHandler(controllers.deleteFile));
 
 export default router;
