@@ -120,7 +120,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
   const cardImagesPath = path.join(
     process.cwd(),
     "data",
-    "files",
+    "media",
     "card-images"
   );
   await fs.mkdir(cardImagesPath, { recursive: true });
@@ -146,7 +146,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/files/card-images/${filename}`,
+          path: `/media/card-images/${filename}`,
           metadata: {
             ...metadata,
             width: metadata.width || 0,
@@ -165,7 +165,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/files/card-images/${filename}`,
+          path: `/media/card-images/${filename}`,
           metadata: {
             width: 0,
             height: 0,

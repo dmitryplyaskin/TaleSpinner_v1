@@ -41,7 +41,7 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 		>
 			<Card.Body>
 				<HStack gap="3">
-					<Avatar src={data.imagePath} name={data.title} />
+					<Avatar src={`http://localhost:5000${data.imagePath}`} name={data.title} />
 					<Stack gap="0">
 						<Text fontWeight="semibold" textStyle="sm">
 							{data.title}
