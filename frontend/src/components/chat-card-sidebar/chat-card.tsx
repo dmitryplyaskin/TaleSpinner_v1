@@ -30,8 +30,6 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 		duplicateChatFx(data);
 	};
 
-	console.log(data.imagePath);
-
 	return (
 		<Card.Root
 			w="100%"

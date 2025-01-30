@@ -2,7 +2,7 @@ import { Flex } from '@chakra-ui/react';
 import { changeSidebarSettings } from '@model/sidebars';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuIdCard, LuSettings, LuSquareUser } from 'react-icons/lu';
+import { LuCode, LuIdCard, LuSettings, LuSquareUser } from 'react-icons/lu';
 
 export const LeftBar = () => {
 	return (
@@ -50,6 +50,17 @@ export const LeftBar = () => {
 						aria-label="Open user persons"
 						onClick={() => changeSidebarSettings({ name: 'userPersons', settings: { isOpen: true } })}
 						icon={<LuSquareUser />}
+					/>
+				</div>
+				<div>
+					<IconButtonWithTooltip
+						tooltip="Pipeline"
+						variant="outline"
+						colorScheme="purple"
+						aria-label="Open pipeline"
+						size="lg"
+						onClick={() => changeSidebarSettings({ name: 'pipeline', settings: { isOpen: true } })}
+						icon={<LuCode />}
 					/>
 				</div>
 			</Flex>

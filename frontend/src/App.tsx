@@ -11,6 +11,7 @@ import { UserPersonSidebar } from './components/user-person-sidebar';
 import { LeftBar } from './left-bar';
 import { Toaster } from '@ui/chakra-core-ui/toaster';
 import './model/llm-orchestration';
+import { PipelineSidebar } from './components/pipeline-sidebar';
 
 interface LLMSettings {
 	temperature: number;
@@ -68,6 +69,7 @@ function App() {
 				/>
 				<ChatCardSidebar />
 				<UserPersonSidebar />
+				<PipelineSidebar />
 			</Flex>
 			<Toaster />
 		</>

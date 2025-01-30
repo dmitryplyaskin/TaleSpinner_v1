@@ -2,15 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
 import { VStack, Input, Text } from '@chakra-ui/react';
 
-import {
-	SelectRoot,
-	SelectTrigger,
-	SelectValueText,
-	SelectContent,
-	SelectItem,
-} from '../../ui/chakra-core-ui/select-copy';
-import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList } from '@choc-ui/chakra-autocomplete';
-
 import { FormProvider, useForm } from 'react-hook-form';
 import { Autocomplete } from '@ui/chakra-core-ui/autocomplete';
 
@@ -21,8 +12,6 @@ interface APIProviderTabProps {
 
 export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfigChange }) => {
 	const methods = useForm({ defaultValues: { provider: 'openrouter' } });
-	// const a = methods.watch();
-	// console.log(a);
 
 	const [models, setModels] = useState<OpenRouterModel[]>([]);
 	const [loading, setLoading] = useState(false);
