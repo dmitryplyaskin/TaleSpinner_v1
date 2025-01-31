@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Input, Box, Text, Flex, InputProps } from '@chakra-ui/react';
 import { PopoverRoot, PopoverBody, PopoverContent, PopoverTrigger } from './chakra-core-ui/popover';
-import { LuX, LuChevronDown, LuChevronUp } from 'react-icons/lu';
+import { LuX, LuChevronDown } from 'react-icons/lu';
 import { Tag } from './chakra-core-ui/tag';
 
 export interface AutocompleteOption {
@@ -105,7 +105,7 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 			setInternalValue(newValue);
 		}
 
-		setInputText('');
+		setInputText(isMulti ? '' : option.title);
 		onChange?.(newValue);
 		onSelect?.(option);
 
@@ -140,14 +140,20 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	const defaultRenderInput = (inputProps: InputProps) => (
 		<Flex position="relative" flexDirection="column" gap={2}>
 			<Flex position="relative" alignItems="center">
-				<Input {...inputProps} pr="60px" value={inputText} />
+				<Input {...inputProps} pr="60px" value={isMulti ? inputText : selectedOptions[0]?.title || inputText} />
 				<Flex position="absolute" right="2" gap="2" alignItems="center">
-					{inputText && !inputProps.disabled && (
+					{((isMulti && inputText) || (!isMulti && value.length > 0)) && !inputProps.disabled && (
 						<Box
 							as="button"
 							onClick={(e) => {
 								e.stopPropagation();
 								setInputText('');
+								if (!isMulti) {
+									if (!controlledValue) {
+										setInternalValue([]);
+									}
+									onChange?.([]);
+								}
 							}}
 							cursor="pointer"
 							color="gray.500"
@@ -169,7 +175,6 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 			<PopoverRoot
 				open={open && !isDisabled}
 				onOpenChange={(e) => {
-					console.log(e);
 					setOpen(e.open);
 				}}
 				closeOnEscape
@@ -179,21 +184,21 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 				<PopoverTrigger width="100%">
 					{renderInput
 						? renderInput({
-								value,
+								value: isMulti ? inputText : selectedOptions[0]?.title || inputText,
 								onChange: handleInputChange,
 								placeholder,
 								disabled: isDisabled,
 								...inputProps,
 						  })
 						: defaultRenderInput({
-								value,
+								value: isMulti ? inputText : selectedOptions[0]?.title || inputText,
 								onChange: handleInputChange,
 								placeholder,
 								disabled: isDisabled,
 								...inputProps,
 						  })}
 				</PopoverTrigger>
-				{selectedOptions.length > 0 && (
+				{isMulti && selectedOptions.length > 0 && (
 					<Flex gap={2} mt={2} flexWrap="wrap">
 						{selectedOptions.map((option) => (
 							<Tag

@@ -47,7 +47,7 @@ export const PipelineSidebar: React.FC = () => {
 					{ title: 'Grape', value: 'grape' },
 					{ title: 'Honeydew', value: 'honeydew' },
 				]}
-				isMulti
+				// isMulti
 			/>
 			<FormProvider {...methods}>
 				<VStack gap={4} align="stretch">
