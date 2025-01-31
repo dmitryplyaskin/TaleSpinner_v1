@@ -1,17 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
-import { VStack, Input, Text } from '@chakra-ui/react';
+import { VStack, Text } from '@chakra-ui/react';
 
 import { FormProvider, useForm } from 'react-hook-form';
-import { Autocomplete } from '@ui/chakra-core-ui/autocomplete';
+import { FormAutocomplete, FormInput } from '@ui/form-components';
 
 interface APIProviderTabProps {
 	config: OpenRouterConfig | null;
-	onConfigChange: (config: OpenRouterConfig) => void;
 }
 
-export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfigChange }) => {
-	const methods = useForm({ defaultValues: { provider: 'openrouter' } });
+export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config }) => {
+	const methods = useForm({
+		defaultValues: {
+			provider: ['openrouter'],
+			openRouterModel: 'deepseek/deepseek-chat',
+			apiKey: config?.apiKey || '',
+		},
+	});
+
+	const provider = methods.watch('provider');
 
 	const [models, setModels] = useState<OpenRouterModel[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -34,15 +41,6 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 		}
 	}, [config?.apiKey]);
 
-	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-		if (config) {
-			onConfigChange({
-				...config,
-				[e.target.name]: e.target.value,
-			});
-		}
-	};
-
 	const options = [
 		{ value: 'openrouter', label: 'OpenRouter' },
 		{ value: 'openai', label: 'OpenAI' },
@@ -51,83 +49,23 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config, onConfig
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={6} align="stretch">
-				{/* <AutoComplete openOnFocus>
-					<AutoCompleteInput variant="subtle" />
-					<AutoCompleteList>
-						{options.map(({ label, value }, cid) => (
-							<AutoCompleteItem key={`option-${cid}`} value={value} textTransform="capitalize">
-								{label}
-							</AutoCompleteItem>
-						))}
-					</AutoCompleteList>
-				</AutoComplete> */}
-				<Autocomplete options={options} />
+				<FormAutocomplete name="provider" label="API Provider" options={options} disableFilterOptions />
 
-				{/* <FormControl> */}
-				{/* <Select
-					name="provider"
-					label="API Provider"
-					placeholder="Выберите провайдера"
-					options={[
-						{ value: 'openrouter', label: 'OpenRouter' },
-						{ value: 'openai', label: 'OpenAI' },
-					]}
-					isClearable
-					// isMulti
-					// isDisabled
-				/> */}
-				{/* <Text>API Provider</Text>
-      <SelectRoot value="openrouter" disabled size="md" variant="outline">
-        <SelectTrigger>
-          <SelectValueText>OpenRouter</SelectValueText>
-        </SelectTrigger>
-      </SelectRoot> */}
 				<Text>В настоящее время поддерживается только OpenRouter</Text>
-				{/* </FormControl> */}
 
-				{/* <FormControl> */}
-				<Text>API Key</Text>
-				<Input
-					type="password"
-					name="apiKey"
-					value={config?.apiKey || ''}
-					onChange={handleInputChange}
-					placeholder="Введите API ключ"
-					size="md"
-				/>
-				{/* </FormControl> */}
+				<FormInput label="API Key" inputProps={{ type: 'password' }} name="apiKey" placeholder="Введите API ключ" />
+				{provider.includes('openrouter') && (
+					<FormAutocomplete
+						name="openRouterModel"
+						label="Model"
+						options={models.map((model) => ({
+							label: model.name,
+							value: model.id,
+						}))}
+						disableFilterOptions
+					/>
+				)}
 
-				{/* <FormControl> */}
-				{/* <Text>Model</Text>
-      <SelectRoot
-        name="modelId"
-        value={config?.modelId || ""}
-        onChange={(value) =>
-          handleInputChange({
-            target: { name: "modelId", value },
-          } as React.ChangeEvent<HTMLSelectElement>)
-        }
-        disabled={loading || !config?.apiKey}
-        size="md"
-        variant="outline"
-      >
-        <SelectTrigger>
-          <SelectValueText placeholder="Выберите модель" />
-        </SelectTrigger>
-        <SelectContent>
-          {models.map((model) => (
-            <SelectItem
-              key={model.id}
-              item={{
-                label: `${model.name} (${model.pricing.prompt} / ${model.pricing.completion})`,
-                value: model.id,
-              }}
-            >
-              {model.name} ({model.pricing.prompt} / {model.pricing.completion})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </SelectRoot> */}
 				{/* {loading && <FormHelperText>Загрузка списка моделей...</FormHelperText>}
         {!config?.apiKey && (
           <FormHelperText>

@@ -1,8 +1,8 @@
-import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
 import { Field, FieldProps } from '../chakra-core-ui/field';
-import { Autocomplete, AutocompleteProps } from '../chakra-core-ui/autocomplete';
+import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
+import { CustomAutocomplete, CustomAutocompleteProps } from '../custom-autocomplete';
 
-type FormAutocompleteProps = Omit<AutocompleteProps, 'value' | 'onChange'> & {
+type FormAutocompleteProps = Omit<CustomAutocompleteProps, 'value' | 'onChange' | 'defaultValue'> & {
 	name: string;
 	label: string;
 	fieldProps?: FieldProps;
@@ -18,7 +18,7 @@ export const FormAutocomplete: React.FC<FormAutocompleteProps> = ({
 }) => {
 	const { control } = useFormContext();
 	const {
-		field: { value, onChange },
+		field,
 		formState: { errors },
 	} = useController({
 		name,
@@ -30,7 +30,13 @@ export const FormAutocomplete: React.FC<FormAutocompleteProps> = ({
 
 	return (
 		<Field {...fieldProps} label={label} invalid={!!errors[name]} errorText={errorMessage}>
-			<Autocomplete {...autocompleteProps} value={value} onChange={onChange} />
+			<CustomAutocomplete
+				{...autocompleteProps}
+				value={field.value || []}
+				onChange={(value) => {
+					field.onChange(value);
+				}}
+			/>
 		</Field>
 	);
 };

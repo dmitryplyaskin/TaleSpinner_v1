@@ -5,7 +5,7 @@ import { LuX, LuChevronDown } from 'react-icons/lu';
 import { Tag } from './chakra-core-ui/tag';
 
 export interface AutocompleteOption {
-	title: string;
+	label: string;
 	value: string;
 	[key: string]: any;
 }
@@ -46,6 +46,9 @@ export interface CustomAutocompleteProps {
 	autoFocus?: boolean;
 	isLoading?: boolean;
 	isMulti?: boolean;
+
+	// Отключение фильтрации опций
+	disableFilterOptions?: boolean;
 }
 
 export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
@@ -69,6 +72,7 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	autoFocus = false,
 	isLoading = false,
 	isMulti = false,
+	disableFilterOptions = false,
 }) => {
 	const [internalValue, setInternalValue] = useState<string[]>(defaultValue);
 	const [inputText, setInputText] = useState('');
@@ -78,11 +82,12 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 
 	const defaultFilterFunction = useCallback(
 		(option: AutocompleteOption, input: string) =>
-			option.title.toLowerCase().includes(input.toLowerCase()) && !value.includes(option.value),
+			option.label.toLowerCase().includes(input.toLowerCase()) && !value.includes(option.value),
 		[value],
 	);
 
 	const filteredOptions = useMemo(() => {
+		if (value[0] && disableFilterOptions) return options;
 		const filterFn = filterFunction || defaultFilterFunction;
 		return options.filter((option) => filterFn(option, inputText));
 	}, [options, inputText, filterFunction, defaultFilterFunction]);
@@ -105,7 +110,7 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 			setInternalValue(newValue);
 		}
 
-		setInputText(isMulti ? '' : option.title);
+		setInputText(isMulti ? '' : option.label);
 		onChange?.(newValue);
 		onSelect?.(option);
 
@@ -133,14 +138,14 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 			_hover={optionStyles.hover || { bg: 'gray.100' }}
 			{...(isSelected ? optionStyles.selected : {})}
 		>
-			{option.title}
+			{option.label}
 		</Text>
 	);
 
 	const defaultRenderInput = (inputProps: InputProps) => (
 		<Flex position="relative" flexDirection="column" gap={2}>
 			<Flex position="relative" alignItems="center">
-				<Input {...inputProps} pr="60px" value={isMulti ? inputText : selectedOptions[0]?.title || inputText} />
+				<Input {...inputProps} pr="60px" value={isMulti ? inputText : selectedOptions[0]?.label || inputText} />
 				<Flex position="absolute" right="2" gap="2" alignItems="center">
 					{((isMulti && inputText) || (!isMulti && value.length > 0)) && !inputProps.disabled && (
 						<Box
@@ -184,14 +189,14 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 				<PopoverTrigger width="100%">
 					{renderInput
 						? renderInput({
-								value: isMulti ? inputText : selectedOptions[0]?.title || inputText,
+								value: isMulti ? inputText : selectedOptions[0]?.label || inputText,
 								onChange: handleInputChange,
 								placeholder,
 								disabled: isDisabled,
 								...inputProps,
 						  })
 						: defaultRenderInput({
-								value: isMulti ? inputText : selectedOptions[0]?.title || inputText,
+								value: isMulti ? inputText : selectedOptions[0]?.label || inputText,
 								onChange: handleInputChange,
 								placeholder,
 								disabled: isDisabled,
@@ -209,7 +214,7 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 								onClose={() => handleRemoveTag(option.value)}
 								closable
 							>
-								{option.title}
+								{option.label}
 							</Tag>
 						))}
 					</Flex>
