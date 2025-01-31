@@ -40,7 +40,14 @@ export const PipelineSidebar: React.FC = () => {
 				options={[
 					{ title: 'Apple', value: 'apple' },
 					{ title: 'Banana', value: 'banana' },
+					{ title: 'Cherry', value: 'cherry' },
+					{ title: 'Date', value: 'date' },
+					{ title: 'Elderberry', value: 'elderberry' },
+					{ title: 'Fig', value: 'fig' },
+					{ title: 'Grape', value: 'grape' },
+					{ title: 'Honeydew', value: 'honeydew' },
 				]}
+				isMulti
 			/>
 			<FormProvider {...methods}>
 				<VStack gap={4} align="stretch">

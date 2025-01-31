@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Input, Box, Text, Flex, InputProps } from '@chakra-ui/react';
 import { PopoverRoot, PopoverBody, PopoverContent, PopoverTrigger } from './chakra-core-ui/popover';
 import { LuX, LuChevronDown, LuChevronUp } from 'react-icons/lu';
+import { Tag } from './chakra-core-ui/tag';
 
 export interface AutocompleteOption {
 	title: string;
@@ -13,9 +14,9 @@ export interface CustomAutocompleteProps {
 	// Основные пропсы
 	options: AutocompleteOption[];
 	onSelect?: (option: AutocompleteOption) => void;
-	onChange?: (value: string) => void;
-	value?: string;
-	defaultValue?: string;
+	onChange?: (value: string[]) => void;
+	value?: string[];
+	defaultValue?: string[];
 
 	// Кастомизация внешнего вида
 	maxHeight?: number | string;
@@ -44,6 +45,7 @@ export interface CustomAutocompleteProps {
 	isDisabled?: boolean;
 	autoFocus?: boolean;
 	isLoading?: boolean;
+	isMulti?: boolean;
 }
 
 export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
@@ -51,7 +53,7 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	onSelect,
 	onChange,
 	value: controlledValue,
-	defaultValue = '',
+	defaultValue = [],
 	maxHeight = '500px',
 	width = '100%',
 	placeholder = 'Search...',
@@ -66,29 +68,28 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	isDisabled = false,
 	autoFocus = false,
 	isLoading = false,
+	isMulti = false,
 }) => {
-	const [internalValue, setInternalValue] = useState(defaultValue);
+	const [internalValue, setInternalValue] = useState<string[]>(defaultValue);
+	const [inputText, setInputText] = useState('');
 	const [open, setOpen] = useState(false);
 
 	const value = controlledValue !== undefined ? controlledValue : internalValue;
 
-	// Дефолтная функция фильтрации
 	const defaultFilterFunction = useCallback(
-		(option: AutocompleteOption, input: string) => option.title.toLowerCase().includes(input.toLowerCase()),
-		[],
+		(option: AutocompleteOption, input: string) =>
+			option.title.toLowerCase().includes(input.toLowerCase()) && !value.includes(option.value),
+		[value],
 	);
 
 	const filteredOptions = useMemo(() => {
 		const filterFn = filterFunction || defaultFilterFunction;
-		return options.filter((option) => filterFn(option, value));
-	}, [options, value, filterFunction, defaultFilterFunction]);
+		return options.filter((option) => filterFn(option, inputText));
+	}, [options, inputText, filterFunction, defaultFilterFunction]);
 
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newValue = e.target.value;
-		if (!controlledValue) {
-			setInternalValue(newValue);
-		}
-		onChange?.(newValue);
+		setInputText(newValue);
 
 		if (newValue.length >= minCharsToShow) {
 			if (!open) setOpen(true);
@@ -98,14 +99,30 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	};
 
 	const handleSelect = (option: AutocompleteOption) => {
+		const newValue = isMulti ? [...value, option.value] : [option.value];
+
 		if (!controlledValue) {
-			setInternalValue(option.title);
+			setInternalValue(newValue);
 		}
+
+		setInputText('');
+		onChange?.(newValue);
 		onSelect?.(option);
-		if (closeOnSelect) {
+
+		if (closeOnSelect && !isMulti) {
 			setOpen(false);
 		}
 	};
+
+	const handleRemoveTag = (valueToRemove: string) => {
+		const newValue = value.filter((v) => v !== valueToRemove);
+		if (!controlledValue) {
+			setInternalValue(newValue);
+		}
+		onChange?.(newValue);
+	};
+
+	const selectedOptions = options.filter((opt) => value.includes(opt.value));
 
 	const defaultRenderOption = (option: AutocompleteOption, isSelected: boolean) => (
 		<Text
@@ -121,34 +138,31 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 	);
 
 	const defaultRenderInput = (inputProps: InputProps) => (
-		<Flex position="relative" alignItems="center">
-			<Input {...inputProps} pr="60px" />
-			<Flex position="absolute" right="2" gap="2" alignItems="center">
-				{inputProps.value && !inputProps.disabled && (
-					<Box
-						as="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							if (!controlledValue) {
-								setInternalValue('');
-							}
-							onChange?.('');
-						}}
-						cursor="pointer"
-						color="gray.500"
-						_hover={{ color: 'gray.700' }}
-					>
-						<LuX size={16} />
+		<Flex position="relative" flexDirection="column" gap={2}>
+			<Flex position="relative" alignItems="center">
+				<Input {...inputProps} pr="60px" value={inputText} />
+				<Flex position="absolute" right="2" gap="2" alignItems="center">
+					{inputText && !inputProps.disabled && (
+						<Box
+							as="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								setInputText('');
+							}}
+							cursor="pointer"
+							color="gray.500"
+							_hover={{ color: 'gray.700' }}
+						>
+							<LuX size={16} />
+						</Box>
+					)}
+					<Box color="gray.500" transition="transform 0.2s" transform={open ? 'rotate(180deg)' : 'rotate(0deg)'}>
+						<LuChevronDown size={16} />
 					</Box>
-				)}
-				<Box color="gray.500" transition="transform 0.2s" transform={open ? 'rotate(180deg)' : 'rotate(0deg)'}>
-					<LuChevronDown size={16} />
-				</Box>
+				</Flex>
 			</Flex>
 		</Flex>
 	);
-
-	const currentSelectedOption = options.find((opt) => opt.value === value);
 
 	return (
 		<Box width={width}>
@@ -179,6 +193,22 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 								...inputProps,
 						  })}
 				</PopoverTrigger>
+				{selectedOptions.length > 0 && (
+					<Flex gap={2} mt={2} flexWrap="wrap">
+						{selectedOptions.map((option) => (
+							<Tag
+								key={option.value}
+								size="md"
+								variant="subtle"
+								colorScheme="blue"
+								onClose={() => handleRemoveTag(option.value)}
+								closable
+							>
+								{option.title}
+							</Tag>
+						))}
+					</Flex>
+				)}
 
 				<PopoverContent width="100%">
 					<PopoverBody p={0}>
@@ -191,8 +221,8 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 								filteredOptions.map((option) => (
 									<Box key={option.value} onClick={() => handleSelect(option)}>
 										{renderOption
-											? renderOption(option, option.value === currentSelectedOption?.value)
-											: defaultRenderOption(option, option.value === currentSelectedOption?.value)}
+											? renderOption(option, option.value === selectedOptions[0]?.value)
+											: defaultRenderOption(option, option.value === selectedOptions[0]?.value)}
 									</Box>
 								))
 							) : (
