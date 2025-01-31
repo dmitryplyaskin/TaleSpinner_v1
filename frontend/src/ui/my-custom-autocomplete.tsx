@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Input, Box, Text, Flex, InputProps } from '@chakra-ui/react';
 import { PopoverRoot, PopoverBody, PopoverContent, PopoverTrigger } from './chakra-core-ui/popover';
+import { LuX, LuChevronDown, LuChevronUp } from 'react-icons/lu';
 
 export interface AutocompleteOption {
 	title: string;
@@ -119,7 +120,33 @@ export const CustomAutocomplete: React.FC<CustomAutocompleteProps> = ({
 		</Text>
 	);
 
-	const defaultRenderInput = (inputProps: InputProps) => <Input {...inputProps} />;
+	const defaultRenderInput = (inputProps: InputProps) => (
+		<Flex position="relative" alignItems="center">
+			<Input {...inputProps} pr="60px" />
+			<Flex position="absolute" right="2" gap="2" alignItems="center">
+				{inputProps.value && !inputProps.disabled && (
+					<Box
+						as="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							if (!controlledValue) {
+								setInternalValue('');
+							}
+							onChange?.('');
+						}}
+						cursor="pointer"
+						color="gray.500"
+						_hover={{ color: 'gray.700' }}
+					>
+						<LuX size={16} />
+					</Box>
+				)}
+				<Box color="gray.500" transition="transform 0.2s" transform={open ? 'rotate(180deg)' : 'rotate(0deg)'}>
+					<LuChevronDown size={16} />
+				</Box>
+			</Flex>
+		</Flex>
+	);
 
 	const currentSelectedOption = options.find((opt) => opt.value === value);
 
