@@ -4,6 +4,7 @@ import { Drawer } from '@ui/drawer';
 import { LuPlus } from 'react-icons/lu';
 import { useFieldArray, FormProvider, useForm } from 'react-hook-form';
 import { PipelineForm } from './pipeline-form';
+import { CustomAutocomplete } from '@ui/my-custom-autocomplete';
 
 type PipelineFormData = {
 	pipelines: Array<{
@@ -35,6 +36,12 @@ export const PipelineSidebar: React.FC = () => {
 
 	return (
 		<Drawer name="pipeline" title="Pipeline">
+			<CustomAutocomplete
+				options={[
+					{ title: 'Apple', value: 'apple' },
+					{ title: 'Banana', value: 'banana' },
+				]}
+			/>
 			<FormProvider {...methods}>
 				<VStack gap={4} align="stretch">
 					<VStack gap={2} align="stretch">
