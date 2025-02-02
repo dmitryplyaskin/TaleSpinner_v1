@@ -1,13 +1,14 @@
 import { LLMSettingsState } from '@model/llm-settings';
 import { UserPersonSettings } from '@shared/types/user-person';
-import { ChatCard } from '@types/chat';
+
 import { UserPerson } from '../../../../shared/types/user-person';
 import Handlebars from 'handlebars';
 import { $userPersons, $userPersonsSettings } from '@model/user-persons';
-import { $currentChat } from '@model/chats';
+import { AgentCard } from '@shared/types/agent-card';
+import { $currentAgentCard } from '@model/chat-service';
 
 type CreatePromptProps = {
-	chatCard?: ChatCard;
+	chatCard?: AgentCard;
 	llmSettings?: LLMSettingsState;
 	systemPrompt?: string;
 	template?: string;
@@ -30,7 +31,7 @@ export const createPrompt = (data: CreatePromptProps) => {
 
 setTimeout(() => {
 	createPrompt({
-		chatCard: $currentChat.getState(),
+		chatCard: $currentAgentCard.getState(),
 		llmSettings: {},
 		systemPrompt: `Привет, проверка чего то
 {{user}}

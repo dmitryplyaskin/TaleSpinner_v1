@@ -1,14 +1,14 @@
 import { Card, HStack, Stack, Text } from '@chakra-ui/react';
-import { openEditModal } from '@model/chats';
-import { ChatCard } from '../../types/chat';
+
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { deleteChatFx, duplicateChatFx } from '@model/chat-list';
 import { setCurrentAgentCard } from '@model/chat-service';
+import { AgentCard } from '@shared/types/agent-card';
 
 type Props = {
-	data: ChatCard;
+	data: AgentCard;
 };
 
 export const CharacterCard: React.FC<Props> = ({ data }) => {
@@ -18,7 +18,7 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 
 	const handleEditClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		openEditModal(data);
+		// openEditModal(data);
 	};
 
 	const handleDeleteClick = (e: React.MouseEvent) => {

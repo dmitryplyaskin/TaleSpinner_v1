@@ -1,22 +1,8 @@
-// api.ts
-import { ChatCard, ChatMessage } from '@types/chat';
-import axios from 'axios';
-
 export const BASE_URL = 'http://localhost:5000/api';
 
 export interface StreamResponse {
 	content: string;
 	error?: string;
-}
-
-// export interface ChatMessage {
-// 	role: 'user' | 'bot';
-// 	content: string;
-// 	timestamp: string;
-// }
-
-export interface ChatHistory {
-	messages: ChatMessage[];
 }
 
 export interface OpenRouterConfig {
@@ -30,12 +16,6 @@ export interface LLMSettings {
 	topP: number;
 	frequencyPenalty: number;
 	presencePenalty: number;
-}
-
-export interface ChatInfo {
-	id: string;
-	title: string;
-	timestamp: string;
 }
 
 // Функция для повторных попыток
@@ -156,21 +136,6 @@ export async function* streamMessage({ settings, messages }: Stream): AsyncGener
 	}
 }
 
-export async function getChatHistory(chatId: string): Promise<ChatHistory> {
-	try {
-		const response = await fetchWithRetry(`${BASE_URL}/chats/${chatId}`, {
-			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		});
-		return await response.json();
-	} catch (error) {
-		console.error('Error fetching chat history:', error);
-		return { messages: [] };
-	}
-}
-
 export async function getOpenRouterConfig(): Promise<OpenRouterConfig> {
 	try {
 		const response = await fetchWithRetry(`${BASE_URL}/config/openrouter`, {
@@ -200,13 +165,3 @@ export async function updateOpenRouterConfig(config: OpenRouterConfig): Promise<
 		throw error;
 	}
 }
-
-export const getChatList = async (): Promise<ChatInfo[]> => {
-	try {
-		const response = await axios.get(`${BASE_URL}/chats`);
-		return response.data;
-	} catch (error) {
-		console.error('Error fetching chat list:', error);
-		return [];
-	}
-};

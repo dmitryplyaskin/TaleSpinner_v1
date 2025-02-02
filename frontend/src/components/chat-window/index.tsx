@@ -39,14 +39,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 		const userMessage = createNewMessage({ role: 'user', content: text });
 		addNewUserMessage(userMessage.message);
 
-		const assistantMessage = createNewMessage({ role: 'assistant', content: 'processing...' });
-		addNewAssistantMessage(assistantMessage.message);
-
 		setText('');
 		setIsStreaming(true);
 
 		try {
 			const messages = buildMessages($currentAgentCard.getState()!);
+
+			const assistantMessage = createNewMessage({ role: 'assistant', content: 'processing...' });
+			addNewAssistantMessage(assistantMessage.message);
 
 			const messageStream = streamMessage({
 				messages,
