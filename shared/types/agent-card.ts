@@ -67,7 +67,7 @@ export interface InteractionMessage {
   /** Время отправки сообщения (ISO-8601 строка) */
   timestamp: string;
   /** Идентификатор активного (выбранного) свайпа из массива swipes */
-  activeSwipeId?: string;
+  activeSwipeId: string;
 }
 
 /**

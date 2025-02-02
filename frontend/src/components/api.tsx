@@ -64,7 +64,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, de
 }
 
 type Stream = {
-	messages: { role: string; content: string; timestamp: string }[];
+	messages: { role: string; content: string }[];
 	settings: LLMSettings;
 };
 

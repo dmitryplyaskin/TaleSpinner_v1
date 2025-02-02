@@ -2,7 +2,7 @@ import { createEffect, createStore } from 'effector';
 import { apiRoutes } from '../api-routes';
 import { ChatCard } from '../types/chat';
 import { asyncHandler } from './utils/async-handler';
-import { createNewAgentCard } from '../utils/create-new-agent-card';
+import { createNewAgentCard } from '../utils/creation-helper-agent-card';
 
 export const $chatList = createStore<ChatCard[]>([]);
 export const $currentChatId = createStore('');

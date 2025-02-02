@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/chat-window';
 import { SettingsSidebar } from './components/settings-sidebar';
 import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
-import { $currentChat, createChatFx, getChatListFx } from './model';
+import { createChatFx, getChatListFx } from './model';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
@@ -12,6 +12,7 @@ import { LeftBar } from './left-bar';
 import { Toaster } from '@ui/chakra-core-ui/toaster';
 import './model/llm-orchestration';
 import { PipelineSidebar } from './components/pipeline-sidebar';
+import { $isAgentSelected } from '@model/chat-service';
 
 interface LLMSettings {
 	temperature: number;
@@ -22,7 +23,7 @@ interface LLMSettings {
 }
 
 function App() {
-	const chat = useUnit($currentChat);
+	const isAgentSelected = useUnit($isAgentSelected);
 
 	const [llmSettings, setLlmSettings] = useState<LLMSettings>({
 		temperature: 0.7,
@@ -44,7 +45,7 @@ function App() {
 				<LeftBar />
 				<Flex flex="1" direction="column" minW="0">
 					<Box flex="1" overflow="hidden">
-						{chat ? (
+						{isAgentSelected ? (
 							<ChatWindow settings={llmSettings} />
 						) : (
 							<Flex h="100%" align="center" justify="center">

@@ -1,10 +1,11 @@
 import { Card, HStack, Stack, Text } from '@chakra-ui/react';
-import { selectChat, openEditModal } from '@model/chats';
+import { openEditModal } from '@model/chats';
 import { ChatCard } from '../../types/chat';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { deleteChatFx, duplicateChatFx } from '@model/chat-list';
+import { setCurrentAgentCard } from '@model/chat-service';
 
 type Props = {
 	data: ChatCard;
@@ -12,7 +13,7 @@ type Props = {
 
 export const CharacterCard: React.FC<Props> = ({ data }) => {
 	const handleSelect = () => {
-		selectChat(data);
+		setCurrentAgentCard(data);
 	};
 
 	const handleEditClick = (e: React.MouseEvent) => {

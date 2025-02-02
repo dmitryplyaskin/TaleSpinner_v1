@@ -167,6 +167,7 @@ $currentChat.on(deleteMessage, (state, { messageId, contentId }) => {
 
 export const $currentChatFormatted = $currentChat.map((chat) => {
 	if (!chat) return null;
+	return null;
 
 	const currentChatHistory =
 		chat.chatHistories.find((history) => history.id === chat.activeChatHistoryId) || chat.chatHistories[0] || {};

@@ -5,43 +5,47 @@ import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
-import { useState } from 'react';
-import { deleteMessage, updateMessageContent } from '@model/chats';
-import { ChatMessage } from '@types/chat';
+import { useMemo, useState } from 'react';
+import { deleteMessage, updateSwipe } from '@model/chat-service';
+import { InteractionMessage } from '@shared/types/agent-card';
 
 type MessageProps = {
-	data: ChatMessage;
+	data: InteractionMessage;
 };
 
 export const Message: React.FC<MessageProps> = ({ data }) => {
-	const sourceContent = data.content[0].content;
-	const [content, setContent] = useState(sourceContent);
+	const selectedSwipe = useMemo(() => data.swipes.find((swipe) => swipe.id === data.activeSwipeId), [data]);
+	const answer = useMemo(
+		() => selectedSwipe?.components.find((component) => component.type === 'answer'),
+		[selectedSwipe],
+	);
+
+	const answerContent = answer?.content || '';
+
+	const [content, setContent] = useState(answerContent);
 	const [isEditing, setIsEditing] = useState(false);
 
 	const handleOpenEdit = () => {
-		setContent(sourceContent);
+		setContent(answerContent);
 		setIsEditing(true);
 	};
 
 	const handleDelete = () => {
-		deleteMessage({
-			messageId: data.id,
-			contentId: data.content[0].id,
-		});
+		deleteMessage(data.id);
 	};
 
 	const handleConfirmEdit = () => {
-		// TODO: Add logic to save edited content
-		updateMessageContent({
+		updateSwipe({
 			messageId: data.id,
-			contentId: data.content[0].id,
+			swipeId: selectedSwipe?.id!,
+			componentId: answer?.id!,
 			content,
 		});
 		setIsEditing(false);
 	};
 
 	const handleCancelEdit = () => {
-		setContent(sourceContent);
+		setContent(answerContent);
 		setIsEditing(false);
 	};
 
@@ -116,7 +120,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					{isEditing ? (
 						<Textarea w={'100%'} autoresize value={content} onChange={(e) => setContent(e.target.value)} />
 					) : (
-						<Markdown remarkPlugins={[remarkGfm]}>{sourceContent}</Markdown>
+						<Markdown remarkPlugins={[remarkGfm]}>{answerContent}</Markdown>
 					)}
 				</Box>
 				<Text fontSize="xs" opacity={0.7} mt={1}>

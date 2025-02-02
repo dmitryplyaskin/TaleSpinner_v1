@@ -1,11 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { streamMessage } from '../api';
 import { RenderChat } from './render-chat';
-import { v4 as uuidv4 } from 'uuid';
-import { $currentChatFormatted, addUserMessage, updateUserMessageContent } from '../../model';
 
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
-import { ChatMessage, Message } from '@types/chat';
+
+import {
+	$currentAgentCard,
+	addNewAssistantMessage,
+	addNewUserMessage,
+	updateSwipe,
+	updateSwipeStream,
+} from '@model/chat-service';
+import { createNewMessage } from '../../utils/creation-helper-agent-card';
+import { buildMessages } from '../../utils/build-messages';
 
 interface ChatWindowProps {
 	llmSettings: {
@@ -29,50 +36,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 	const handleSendMessage = async () => {
 		if (text.trim() === '' || isStreaming) return;
 
-		const chat = $currentChatFormatted.getState();
+		const userMessage = createNewMessage({ role: 'user', content: text });
+		addNewUserMessage(userMessage.message);
 
-		const chatHistoryId = chat?.activeChatHistoryId || (chat?.chatHistories[0]?.id as string);
-		const messagesList = chat?.chatHistories.find(
-			(chatHistory) => chatHistory.id === chat?.activeChatHistoryId,
-		)?.messages;
-
-		if (messagesList) {
-			const msgId = uuidv4();
-			const newMessage = {
-				id: uuidv4(),
-				content: [{ id: msgId, content: text, timestamp: new Date().toISOString() }],
-				currentContentId: msgId,
-				role: 'user',
-				type: 'default',
-				timestamp: new Date().toISOString(),
-			} as ChatMessage;
-
-			addUserMessage({ message: newMessage, chatHistoryId });
-			messagesList.push(newMessage);
-		}
+		const assistantMessage = createNewMessage({ role: 'assistant', content: 'processing...' });
+		addNewAssistantMessage(assistantMessage.message);
 
 		setText('');
 		setIsStreaming(true);
 
 		try {
-			const botChatMessageId = uuidv4();
-			const botMessageId = uuidv4();
-			const newBotMessage = {
-				id: botChatMessageId,
-				content: [{ id: botMessageId, content: '', timestamp: new Date().toISOString() }],
-				role: 'assistant',
-				type: 'default',
-				timestamp: new Date().toISOString(),
-			} as ChatMessage;
-
-			addUserMessage({ message: newBotMessage, chatHistoryId });
-
-			const messages =
-				messagesList?.map((x) => ({
-					role: x.role,
-					content: x.content[0].content,
-					timestamp: x.timestamp,
-				})) || [];
+			const messages = buildMessages($currentAgentCard.getState()!);
 
 			const messageStream = streamMessage({
 				messages,
@@ -87,19 +61,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 				}
 
 				if (isFirstChunk) {
+					updateSwipe({
+						messageId: assistantMessage.messageId,
+						swipeId: assistantMessage.swipeId,
+						componentId: assistantMessage.contentId,
+						content: '',
+					});
+
 					isFirstChunk = false;
 				}
-				newBotMessage.content[0] = {
-					...newBotMessage.content[0],
-					content: newBotMessage.content[0].content + chunk.content,
-				} as Message;
 
-				updateUserMessageContent({
-					messageId: newBotMessage.id,
-					historyId: chatHistoryId,
-					content: newBotMessage.content[0].content,
-					contentId: newBotMessage.content[0].id,
+				updateSwipeStream({
+					messageId: assistantMessage.messageId,
+					swipeId: assistantMessage.swipeId,
+					componentId: assistantMessage.contentId,
+					content: chunk.content,
 				});
+
+				// if (messagesEndRef.current) {
+				// 	if (messagesEndRef.current.scrollHeight > messagesEndRef.current.clientHeight) {
+				// 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+				// 	}
+				// }
 			}
 		} catch (error) {
 			console.error('Error:', error);
@@ -114,12 +97,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 			handleSendMessage();
 		}
 	};
-
-	// const scrollToBottom = () => {
-	// 	messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-	// };
-
-	// useEffect(scrollToBottom, [messages]);
 
 	return (
 		<Flex direction="column" h="full">

@@ -1,9 +1,9 @@
-import { AgentCard } from '@shared/types/agent-card';
+import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
 import { produce } from 'immer';
-import { v4 as uuidv4 } from 'uuid';
 
-export const addNewUserMessage = (agentCard: AgentCard, content: string) =>
+const addNewUserMessage = (agentCard: AgentCard | null, message: InteractionMessage) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
 		const branchId = draft.activeBranch?.branch.id ?? draft.interactionBranches[0]?.id;
 
 		if (!branchId) return;
@@ -12,35 +12,25 @@ export const addNewUserMessage = (agentCard: AgentCard, content: string) =>
 
 		if (!branch) return;
 
-		const messageId = uuidv4();
-		const swipeId = uuidv4();
-		const contentId = uuidv4();
-
-		branch.messages.push({
-			id: messageId,
-			type: 'default',
-			role: 'user',
-			timestamp: new Date().toISOString(),
-			activeSwipeId: swipeId,
-			swipes: [
-				{
-					id: swipeId,
-					components: [
-						{
-							id: contentId,
-							type: 'answer',
-							content: content,
-						},
-					],
-
-					timestamp: new Date().toISOString(),
-				},
-			],
-		});
+		branch.messages.push(message);
 	});
 
-export const updateSwipeStream = (
-	agentCard: AgentCard,
+const addNewAssistantMessage = (agentCard: AgentCard | null, message: InteractionMessage) =>
+	produce(agentCard, (draft) => {
+		if (!draft) return;
+		const branchId = draft.activeBranch?.branch.id ?? draft.interactionBranches[0]?.id;
+
+		if (!branchId) return;
+
+		const branch = draft.interactionBranches.find((branch) => branch.id === branchId) || draft.interactionBranches[0];
+
+		if (!branch) return;
+
+		branch.messages.push(message);
+	});
+
+const updateSwipeStream = (
+	agentCard: AgentCard | null,
 	params: {
 		messageId: string;
 		swipeId: string;
@@ -49,6 +39,7 @@ export const updateSwipeStream = (
 	},
 ) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
 		const { messageId, swipeId, componentId, content } = params;
 
 		const branch = draft.interactionBranches.find((branch) =>
@@ -68,8 +59,8 @@ export const updateSwipeStream = (
 		component.content += content;
 	});
 
-export const createNewSwipe = (
-	agentCard: AgentCard,
+const createNewSwipe = (
+	agentCard: AgentCard | null,
 	params: {
 		messageId: string;
 		swipeId: string;
@@ -78,6 +69,7 @@ export const createNewSwipe = (
 	},
 ) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
 		const { messageId, swipeId, componentId, content } = params;
 
 		const branch = draft.interactionBranches.find((branch) =>
@@ -98,8 +90,8 @@ export const createNewSwipe = (
 		});
 	});
 
-export const updateSwipe = (
-	agentCard: AgentCard,
+const updateSwipe = (
+	agentCard: AgentCard | null,
 	params: {
 		messageId: string;
 		swipeId: string;
@@ -108,6 +100,7 @@ export const updateSwipe = (
 	},
 ) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
 		const { messageId, swipeId, componentId, content } = params;
 
 		const branch = draft.interactionBranches.find((branch) =>
@@ -127,8 +120,9 @@ export const updateSwipe = (
 		component.content = content;
 	});
 
-export const deleteMessage = (agentCard: AgentCard, messageId: string) =>
+const deleteMessage = (agentCard: AgentCard | null, messageId: string) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
 		const branch = draft.interactionBranches.find((branch) =>
 			branch.messages.some((message) => message.id === messageId),
 		);
@@ -137,11 +131,14 @@ export const deleteMessage = (agentCard: AgentCard, messageId: string) =>
 		branch.messages = branch.messages.filter((message) => message.id !== messageId);
 	});
 
-export const deleteSwipe = (agentCard: AgentCard, messageId: string, swipeId: string) =>
+const deleteSwipe = (agentCard: AgentCard | null, params: { messageId: string; swipeId: string }) =>
 	produce(agentCard, (draft) => {
+		if (!draft) return;
+		const { messageId, swipeId } = params;
 		const branch = draft.interactionBranches.find((branch) =>
 			branch.messages.some((message) => message.id === messageId),
 		);
+
 		if (!branch) return;
 
 		const message = branch.messages.find((message) => message.id === messageId);
@@ -149,3 +146,13 @@ export const deleteSwipe = (agentCard: AgentCard, messageId: string, swipeId: st
 
 		message.swipes = message.swipes.filter((swipe) => swipe.id !== swipeId);
 	});
+
+export const reducers = {
+	addNewUserMessage,
+	addNewAssistantMessage,
+	updateSwipeStream,
+	createNewSwipe,
+	updateSwipe,
+	deleteMessage,
+	deleteSwipe,
+};
