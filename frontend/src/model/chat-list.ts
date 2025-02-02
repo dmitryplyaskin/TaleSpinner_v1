@@ -1,8 +1,8 @@
 import { createEffect, createStore } from 'effector';
 import { apiRoutes } from '../api-routes';
-import { createEmptyChatCard } from './fns';
 import { ChatCard } from '../types/chat';
 import { asyncHandler } from './utils/async-handler';
+import { createNewAgentCard } from '../utils/create-new-agent-card';
 
 export const $chatList = createStore<ChatCard[]>([]);
 export const $currentChatId = createStore('');
@@ -33,7 +33,7 @@ export const createChatFx = createEffect<void, { data: ChatCard }>(() =>
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify(createEmptyChatCard()),
+			body: JSON.stringify(createNewAgentCard()),
 		});
 		return response.json();
 	}, 'Error creating chat'),

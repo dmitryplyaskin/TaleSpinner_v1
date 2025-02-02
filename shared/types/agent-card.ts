@@ -18,7 +18,7 @@ export interface AgentCard {
   /** Системная подсказка, влияющая на поведение агента */
   systemPrompt?: string;
   /** Вступительные варианты (свайпы), которые могут быть показаны при инициализации диалога */
-  introSwipes: Swipe[];
+  introSwipes: InteractionMessage;
   /** Ветки взаимодействий (истории/сценарии общения) */
   interactionBranches: InteractionBranch[];
   /** Идентификатор активной ветки взаимодействия */
@@ -76,7 +76,7 @@ export interface InteractionMessage {
 export interface Swipe {
   /** Уникальный идентификатор свайпа */
   id: string;
-  /** Компоненты, составляющие данный свайп (например, CoT, основной ответ, анализ) */
+  /** Содержимое свайпа (например, основной ответ, анализ) */
   components: SwipeComponent[];
   /** Время создания свайпа (ISO-8601 строка) */
   timestamp: string;
