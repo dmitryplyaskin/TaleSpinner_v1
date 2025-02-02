@@ -51,25 +51,18 @@ type Stream = {
 export async function* streamMessage({ settings, messages }: Stream): AsyncGenerator<StreamResponse> {
 	try {
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
 
-		const response = await fetchWithRetry(
-			`${BASE_URL}/generate`,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'text/event-stream',
-					Connection: 'keep-alive',
-					'Cache-Control': 'no-cache',
-				},
-				body: JSON.stringify({ messages, settings }),
-				signal: controller.signal,
+		const response = await fetch(`${BASE_URL}/generate`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'text/event-stream',
+				Connection: 'keep-alive',
+				'Cache-Control': 'no-cache',
 			},
-			1,
-		);
-
-		clearTimeout(timeoutId);
+			body: JSON.stringify({ messages, settings }),
+			signal: controller.signal,
+		});
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
