@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { streamMessage } from '../api';
+
 import { RenderChat } from './render-chat';
 
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
@@ -13,6 +13,7 @@ import {
 } from '@model/chat-service';
 import { createNewMessage } from '../../utils/creation-helper-agent-card';
 import { buildMessages } from '../../utils/build-messages';
+import { generate, streamController } from '@model/llm-orchestration';
 
 interface ChatWindowProps {
 	llmSettings: {
@@ -28,13 +29,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 	const [text, setText] = useState('');
 	const [isStreaming, setIsStreaming] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const [steamId, setStreamId] = useState('');
 
 	const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setText(event.target.value);
 	};
 
 	const handleSendMessage = async () => {
-		if (text.trim() === '' || isStreaming) return;
+		if (isStreaming) {
+			streamController.abortStream(steamId);
+			return;
+		}
+
+		if (!text.trim()) {
+			return;
+		}
 
 		const userMessage = createNewMessage({ role: 'user', content: text });
 		addNewUserMessage(userMessage.message);
@@ -45,45 +54,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 		try {
 			const messages = buildMessages($currentAgentCard.getState()!);
 
-			const assistantMessage = createNewMessage({ role: 'assistant', content: 'processing...' });
+			const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
 			addNewAssistantMessage(assistantMessage.message);
 
-			const messageStream = streamMessage({
+			const streamId_ = streamController.createStream();
+			setStreamId(streamId_);
+
+			await generate({
+				llmSettings,
 				messages,
-				settings: llmSettings,
-			});
-
-			let isFirstChunk = true;
-
-			for await (const chunk of messageStream) {
-				if ('error' in chunk) {
-					break;
-				}
-
-				if (isFirstChunk) {
-					updateSwipe({
+				stream: true,
+				streamId: streamId_,
+				streamCb: ({ chunk }) => {
+					updateSwipeStream({
 						messageId: assistantMessage.messageId,
 						swipeId: assistantMessage.swipeId,
 						componentId: assistantMessage.contentId,
-						content: '',
+						content: chunk,
 					});
+				},
+			});
 
-					isFirstChunk = false;
-				}
+			setIsStreaming(false);
 
-				updateSwipeStream({
-					messageId: assistantMessage.messageId,
-					swipeId: assistantMessage.swipeId,
-					componentId: assistantMessage.contentId,
-					content: chunk.content,
-				});
-
-				// if (messagesEndRef.current) {
-				// 	if (messagesEndRef.current.scrollHeight > messagesEndRef.current.clientHeight) {
-				// 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-				// 	}
-				// }
-			}
+			// if (messagesEndRef.current) {
+			// 	if (messagesEndRef.current.scrollHeight > messagesEndRef.current.clientHeight) {
+			// 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+			// 	}
+			// }
 		} catch (error) {
 			console.error('Error:', error);
 		} finally {
@@ -94,6 +92,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 	const handleKeyPress = (event: React.KeyboardEvent) => {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
+
 			handleSendMessage();
 		}
 	};
@@ -124,11 +123,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 						/>
 						<Button
 							onClick={handleSendMessage}
-							disabled={isStreaming || !text.trim()}
-							colorScheme={isStreaming || !text.trim() ? 'gray' : 'blue'}
+							disabled={isStreaming ? false : !text.trim()}
+							colorScheme={isStreaming ? 'red' : 'blue'}
 							whiteSpace="nowrap"
 						>
-							{isStreaming ? 'Отправка...' : 'Отправить'}
+							{isStreaming ? 'Оборвать' : 'Отправить'}
 						</Button>
 					</Flex>
 				</Container>
