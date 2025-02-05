@@ -28,7 +28,7 @@ export async function* streamMessage({ settings, messages, streamId }: Stream): 
 				Connection: 'keep-alive',
 				'Cache-Control': 'no-cache',
 			},
-			body: JSON.stringify({ messages, settings }),
+			body: JSON.stringify({ messages, settings, streamId: currentStreamId }),
 			signal,
 		});
 

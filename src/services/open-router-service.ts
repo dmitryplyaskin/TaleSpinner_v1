@@ -81,28 +81,42 @@ class OpenRouterService {
 
   async createChatCompletion(
     messages: Array<{ role: string; content: string }>,
-    settings: Record<string, unknown> = {}
+    settings: Record<string, unknown> = {},
+    signal?: AbortSignal
   ): Promise<any> {
     const client = this.createClient();
     const config = this.getConfig();
 
-    return await client.chat.completions.create({
-      model: config?.model || "amazon/nova-micro-v1",
-      messages: messages as ChatCompletionMessageParam[],
-      ...settings,
-      stream: true,
-    });
+    return await client.chat.completions.create(
+      {
+        model: config?.model || "amazon/nova-micro-v1",
+        messages: messages as ChatCompletionMessageParam[],
+        ...settings,
+        stream: true,
+      },
+      { signal }
+    );
   }
 
   async *streamResponse(
     messages: Array<{ role: string; content: string }>,
-    settings: Record<string, unknown>
+    settings: Record<string, unknown>,
+    abortController?: AbortController
   ): AsyncGenerator<OpenRouterResponse> {
     try {
-      const response = await this.createChatCompletion(messages, settings);
+      const response = await this.createChatCompletion(
+        messages,
+        settings,
+        abortController?.signal
+      );
+
       let fullResponse = "";
 
       for await (const chunk of response) {
+        if (abortController?.signal.aborted) {
+          return fullResponse;
+        }
+
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
           fullResponse += content;
@@ -112,6 +126,10 @@ class OpenRouterService {
 
       return fullResponse;
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return "";
+      }
+
       console.error("OpenRouter API Error:", error);
       yield { content: "", error: (error as Error).message };
       return "";
