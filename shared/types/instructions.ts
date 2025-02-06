@@ -10,5 +10,4 @@ export type InstructionType = {
 export type InstructionSettingsType = {
   selectedId: string | null;
   enableInstruction: boolean;
-  instructions: InstructionType[];
 };

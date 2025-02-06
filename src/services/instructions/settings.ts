@@ -1,13 +1,12 @@
 import { ConfigService } from "@core/services/config-service";
 import { InstructionSettingsType } from "@shared/types/instructions";
 
-type InstructionSettings = Omit<InstructionSettingsType, "instructions">;
-class InstructionsSettings extends ConfigService<InstructionSettings> {
+class InstructionsSettings extends ConfigService<InstructionSettingsType> {
   constructor() {
     super("instructions-settings.json", { logger: console });
   }
 
-  protected getDefaultConfig(): InstructionSettings {
+  protected getDefaultConfig(): InstructionSettingsType {
     return {
       selectedId: null,
       enableInstruction: true,

@@ -1,17 +1,15 @@
 import { InstructionSettingsType } from '@shared/types/instructions';
-import { createEffect, createEvent, createStore, sample } from 'effector';
+import { combine, createEffect, createEvent, createStore, sample } from 'effector';
 import { apiRoutes } from '../../api-routes';
 import { asyncHandler } from '../utils/async-handler';
+import { $instructions } from './instruction';
 
-export const $instructionsSettings = createStore<InstructionSettingsType>({
+export const $instructionsSettingsCore = createStore<InstructionSettingsType>({
 	selectedId: null,
 	enableInstruction: true,
-	instructions: [],
 });
 
 export const updateInstructionsSettings = createEvent<InstructionSettingsType>();
-
-$instructionsSettings.on(updateInstructionsSettings, (_, settings) => settings);
 
 export const getInstructionsSettingsFx = createEffect<void, { data: InstructionSettingsType }>(() =>
 	asyncHandler(async () => {
@@ -19,8 +17,6 @@ export const getInstructionsSettingsFx = createEffect<void, { data: InstructionS
 		return response.json();
 	}, 'Error fetching instructions settings'),
 );
-
-$instructionsSettings.on(getInstructionsSettingsFx.doneData, (_, { data }) => data);
 
 export const updateInstructionsSettingsFx = createEffect<InstructionSettingsType, void>((settings) =>
 	asyncHandler(async () => {
@@ -32,6 +28,14 @@ export const updateInstructionsSettingsFx = createEffect<InstructionSettingsType
 			body: JSON.stringify(settings),
 		});
 	}, 'Error updating instructions settings'),
+);
+
+$instructionsSettingsCore
+	.on(getInstructionsSettingsFx.doneData, (_, { data }) => data)
+	.on(updateInstructionsSettings, (_, settings) => settings);
+
+export const $selectedInstruction = combine($instructionsSettingsCore, $instructions, (settings, instructions) =>
+	instructions.find((instruction) => instruction.id === settings.selectedId),
 );
 
 sample({

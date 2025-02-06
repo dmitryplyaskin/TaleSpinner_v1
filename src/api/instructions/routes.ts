@@ -12,13 +12,17 @@ import { asyncHandler } from "../common/middleware/async-handler";
 
 const router = Router();
 
-router.get("/instructions", asyncHandler(getInstructionsList));
-router.get("/instructions/:instructionId", asyncHandler(getInstruction));
-router.post("/instructions", asyncHandler(createInstruction));
-router.put("/instructions/:instructionId", asyncHandler(updateInstruction));
-router.delete("/instructions/:instructionId", asyncHandler(deleteInstruction));
+router
+  .get("/instructions", asyncHandler(getInstructionsList))
+  .post("/instructions", asyncHandler(createInstruction));
 
-router.get("/settings/instructions", asyncHandler(getInstructionsSettings));
-router.post("/settings/instructions", asyncHandler(setInstructionsSettings));
+router
+  .get("/instructions/:instructionId", asyncHandler(getInstruction))
+  .put("/instructions/:instructionId", asyncHandler(updateInstruction))
+  .delete("/instructions/:instructionId", asyncHandler(deleteInstruction));
+
+router
+  .get("/settings/instructions", asyncHandler(getInstructionsSettings))
+  .post("/settings/instructions", asyncHandler(setInstructionsSettings));
 
 export default router;
