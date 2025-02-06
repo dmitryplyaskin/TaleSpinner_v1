@@ -5,6 +5,8 @@ interface SidebarState {
   settings: SidebarSettings;
   chatCards: SidebarSettings;
   userPersons: SidebarSettings;
+  pipeline: SidebarSettings;
+  instructions: SidebarSettings;
 }
 
 class SidebarsService extends ConfigService<SidebarState> {
@@ -29,6 +31,20 @@ class SidebarsService extends ConfigService<SidebarState> {
         contained: false,
       },
       userPersons: {
+        isOpen: false,
+        isFullscreen: false,
+        placement: "start",
+        size: "lg",
+        contained: false,
+      },
+      pipeline: {
+        isOpen: false,
+        isFullscreen: false,
+        placement: "start",
+        size: "lg",
+        contained: false,
+      },
+      instructions: {
         isOpen: false,
         isFullscreen: false,
         placement: "start",

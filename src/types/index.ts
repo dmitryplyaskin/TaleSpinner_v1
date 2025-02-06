@@ -42,4 +42,6 @@ export interface SidebarState {
   settings: SidebarSettings;
   chatCards: SidebarSettings;
   userPersons: SidebarSettings;
+  pipeline: SidebarSettings;
+  instructions: SidebarSettings;
 }
