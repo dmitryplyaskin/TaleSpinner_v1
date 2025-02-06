@@ -8,16 +8,17 @@ import {
   getInstructionsSettings,
   setInstructionsSettings,
 } from "./controllers";
+import { asyncHandler } from "../common/middleware/async-handler";
 
 const router = Router();
 
-router.get("/instructions", getInstructionsList);
-router.get("/instructions/:instructionId", getInstruction);
-router.post("/instructions", createInstruction);
-router.put("/instructions/:instructionId", updateInstruction);
-router.delete("/instructions/:instructionId", deleteInstruction);
+router.get("/instructions", asyncHandler(getInstructionsList));
+router.get("/instructions/:instructionId", asyncHandler(getInstruction));
+router.post("/instructions", asyncHandler(createInstruction));
+router.put("/instructions/:instructionId", asyncHandler(updateInstruction));
+router.delete("/instructions/:instructionId", asyncHandler(deleteInstruction));
 
-router.get("/instructions/settings", getInstructionsSettings);
-router.post("/instructions/settings", setInstructionsSettings);
+router.get("/settings/instructions", asyncHandler(getInstructionsSettings));
+router.post("/settings/instructions", asyncHandler(setInstructionsSettings));
 
 export default router;

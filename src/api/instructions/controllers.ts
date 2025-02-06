@@ -35,6 +35,7 @@ export const deleteInstruction: AsyncRequestHandler = async (req) => {
 };
 
 export const getInstructionsSettings: AsyncRequestHandler = async (req) => {
+  console.log("getInstructionsSettings", req.body);
   const settings = await InstructionsSettingsService.getConfig();
   return { data: settings };
 };

@@ -1,4 +1,2 @@
-import InstructionsService from "./instructions";
-import InstructionsSettingsService from "./settings";
-
-export { InstructionsService, InstructionsSettingsService };
+export { default as InstructionsService } from "./instructions";
+export { default as InstructionsSettingsService } from "./settings";

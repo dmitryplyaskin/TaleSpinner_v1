@@ -41,8 +41,8 @@ export const apiRoutes = {
 		update: (id: string) => `${BASE_URL}/instructions/${id}`,
 		delete: (id: string) => `${BASE_URL}/instructions/${id}`,
 		settings: {
-			get: () => `${BASE_URL}/instructions/settings`,
-			update: () => `${BASE_URL}/instructions/settings`,
+			get: () => `${BASE_URL}/settings/instructions`,
+			update: () => `${BASE_URL}/settings/instructions`,
 		},
 	},
 };
