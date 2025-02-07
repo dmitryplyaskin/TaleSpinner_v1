@@ -2,17 +2,13 @@ import { Flex, Button } from '@chakra-ui/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { FormTextarea } from '@ui/form-components/form-textarea';
 import { InstructionType } from '@shared/types/instructions';
-import {
-	$selectedInstruction,
-	createEmptyInstruction,
-	createInstruction,
-	updateInstruction,
-} from '@model/instructions';
+import { instructionsModel } from '@model/instructions';
 import { FormInput } from '@ui/form-components';
 import { useUnit } from 'effector-react';
+import { createEmptyInstruction } from '@model/instructions/instruction';
 
 export const InstructionEditor: React.FC = () => {
-	const selectedInstruction = useUnit($selectedInstruction);
+	const selectedInstruction = useUnit(instructionsModel.$selectedItem);
 
 	const methods = useForm<InstructionType>({
 		defaultValues: selectedInstruction || createEmptyInstruction(),
@@ -22,9 +18,9 @@ export const InstructionEditor: React.FC = () => {
 
 	const onSubmit = (data: InstructionType) => {
 		if (selectedInstruction) {
-			updateInstruction({ ...data, updatedAt: new Date().toISOString() });
+			instructionsModel.updateItemFx({ ...data, updatedAt: new Date().toISOString() });
 		} else {
-			createInstruction(data);
+			instructionsModel.createItemFx(data);
 		}
 	};
 

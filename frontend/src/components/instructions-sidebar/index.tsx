@@ -1,13 +1,7 @@
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
 import { InstructionEditor } from './instruction-editor';
-import {
-	$instructions,
-	$instructionsSettingsCore,
-	getInstructionsListFx,
-	getInstructionsSettingsFx,
-	updateInstructionsSettings,
-} from '@model/instructions';
+import { instructionsModel } from '@model/instructions';
 import { Drawer } from '@ui/drawer';
 import { Box } from '@chakra-ui/react';
 import { Flex } from '@chakra-ui/react';
@@ -18,20 +12,20 @@ import { LuCopy } from 'react-icons/lu';
 import { CustomAutocomplete } from '@ui/custom-autocomplete';
 
 export const InstructionsSidebar = () => {
-	const instructions = useUnit($instructions);
-	const settings = useUnit($instructionsSettingsCore);
+	const instructions = useUnit(instructionsModel.$items);
+	const settings = useUnit(instructionsModel.$settings);
 
 	useEffect(() => {
-		getInstructionsSettingsFx();
-		getInstructionsListFx();
+		instructionsModel.getItemsFx();
+		instructionsModel.getSettingsFx();
 	}, []);
 
 	return (
 		<Drawer name="instructions" title="Инструкции">
 			<Flex gap={2}>
 				<CustomAutocomplete
-					value={settings.selectedId ? [settings.selectedId] : []}
-					onChange={(value) => updateInstructionsSettings({ ...settings, selectedId: value[0] })}
+					value={settings?.selectedId ? [settings.selectedId] : []}
+					onChange={(value) => instructionsModel.updateSettingsFx({ ...settings, selectedId: value[0] })}
 					options={instructions.map((instr) => ({
 						label: instr.name,
 						value: instr.id,

@@ -1,21 +1,14 @@
-import { createEffect, createEvent, StoreWritable } from 'effector';
+import { createEffect, StoreWritable } from 'effector';
 import { FabricItems } from './types';
 import { CommonModelItemType } from '@shared/types/common-model-types';
 import { asyncHandler } from '@model/utils/async-handler';
 import { v4 as uuidv4 } from 'uuid';
+
 export const createItemsModel = <ItemType extends CommonModelItemType>(
 	itemsParams: FabricItems<ItemType>,
 	$items: StoreWritable<ItemType[]>,
 	fabricName: string,
 ) => {
-	const getItems = createEvent<void>();
-	const getItemById = createEvent<string>();
-
-	const createItem = createEvent<ItemType>();
-	const updateItem = createEvent<ItemType>();
-	const deleteItem = createEvent<string>();
-	const duplicateItem = createEvent<string>();
-
 	const getItemsFx = createEffect<void, { data: ItemType[] }>(() =>
 		asyncHandler(async () => {
 			const response = await fetch(itemsParams.route);
@@ -30,6 +23,38 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 		}, `Error fetching ${fabricName} item by id`),
 	);
 
+	const createItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
+		asyncHandler(async () => {
+			const response = await fetch(itemsParams.route, { method: 'POST', body: JSON.stringify(item) });
+			return response.json();
+		}, `Error creating ${fabricName} item`),
+	);
+
+	const updateItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
+		asyncHandler(async () => {
+			const response = await fetch(itemsParams.route + '/' + item.id, { method: 'PUT', body: JSON.stringify(item) });
+			return response.json();
+		}, `Error updating ${fabricName} item`),
+	);
+
+	const deleteItemFx = createEffect<string, { data: ItemType }>((id) =>
+		asyncHandler(async () => {
+			if (!window.confirm(`Вы уверены, что хотите удалить этот ${fabricName}?`)) {
+				return;
+			}
+			const response = await fetch(itemsParams.route + '/' + id, { method: 'DELETE' });
+			return response.json();
+		}, `Error deleting ${fabricName} item`),
+	);
+
+	const duplicateItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
+		asyncHandler(async () => {
+			const newItem = { ...item, id: uuidv4(), name: `${item.name} (copy)` };
+			const response = await fetch(itemsParams.route, { method: 'POST', body: JSON.stringify(newItem) });
+			return response.json();
+		}, `Error duplicating ${fabricName} item`),
+	);
+
 	$items
 		.on(getItemsFx.doneData, (_, { data }) => data)
 		.on(getItemByIdFx.doneData, (state, { data }) =>
@@ -39,20 +64,16 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 		);
 
 	$items
-		.on(createItem, (state, item) => [...state, item])
-		.on(updateItem, (state, item) => state.map((i) => (i.id === item.id ? item : i)))
-		.on(deleteItem, (state, id) => state.filter((i) => i.id !== id))
-		.on(duplicateItem, (state, id) => {
-			const item = state.find((i) => i.id === id);
-			return item ? [...state, { ...item, id: uuidv4(), name: `${item.name} (copy)` }] : state;
-		});
+		.on([createItemFx.doneData, duplicateItemFx.doneData], (state, { data }) => [...state, data])
+		.on(updateItemFx.doneData, (state, { data }) => state.map((i) => (i.id === data.id ? data : i)))
+		.on(deleteItemFx.done, (state, { params }) => state.filter((i) => i.id !== params));
 
 	return {
-		getItems,
-		getItemById,
-		createItem,
-		updateItem,
-		deleteItem,
-		duplicateItem,
+		getItemsFx,
+		getItemByIdFx,
+		createItemFx,
+		updateItemFx,
+		deleteItemFx,
+		duplicateItemFx,
 	};
 };

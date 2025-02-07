@@ -1,13 +1,15 @@
-export type InstructionType = {
+import {
+  CommonModelItemType,
+  CommonModelSettingsType,
+} from "./common-model-types";
+
+export interface InstructionType extends CommonModelItemType {
   id: string;
   name: string;
   instruction: string;
   createdAt: string;
   updatedAt: string;
   [key: string]: any;
-};
+}
 
-export type InstructionSettingsType = {
-  selectedId: string | null;
-  enableInstruction: boolean;
-};
+export interface InstructionSettingsType extends CommonModelSettingsType {}
