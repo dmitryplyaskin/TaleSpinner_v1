@@ -22,8 +22,8 @@ export const createFabric = <SettingsType extends CommonModelSettingsType, ItemT
 	);
 
 	sample({
-		clock: [createItemFx.done, updateItemFx.done],
-		fn: (item) => ({ selectedId: item.params.id } as Partial<SettingsType>),
+		clock: [createItemFx.doneData, duplicateItemFx.doneData],
+		fn: ({ data }) => ({ selectedId: data.id } as Partial<SettingsType>),
 		target: updateSettingsFx,
 	});
 

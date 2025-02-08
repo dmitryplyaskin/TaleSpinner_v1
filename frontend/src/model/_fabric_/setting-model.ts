@@ -19,7 +19,6 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 	const updateSettingsFx = createEffect<Partial<SettingsType>, void>((settings) =>
 		asyncHandler(async () => {
 			if (!settings) throw new Error(`Settings are not found for ${fabricName}`);
-			console.log(settings);
 			const response = await fetch(`${BASE_URL}${fabricParams.route}`, {
 				method: 'POST',
 				headers: {

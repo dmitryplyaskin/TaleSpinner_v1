@@ -9,14 +9,18 @@ import { LuTrash2 } from 'react-icons/lu';
 import { LuPlus } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { LuCopy } from 'react-icons/lu';
-import { CustomAutocomplete } from '@ui/custom-autocomplete';
 import { InstructionType } from '@shared/types/instructions';
+import { Select } from 'chakra-react-select';
 
 export const InstructionsSidebar = () => {
 	const instructions = useUnit(instructionsModel.$items);
 	const settings = useUnit(instructionsModel.$settings);
+	console.log(settings);
 
-	console.log(instructions);
+	const options = instructions.map((instr) => ({
+		label: instr.name,
+		value: instr.id,
+	}));
 
 	useEffect(() => {
 		instructionsModel.getItemsFx();
@@ -26,15 +30,12 @@ export const InstructionsSidebar = () => {
 	return (
 		<Drawer name="instructions" title="Инструкции">
 			<Flex gap={2}>
-				<CustomAutocomplete
-					value={settings?.selectedId ? [settings.selectedId] : []}
-					onChange={(value) => instructionsModel.updateSettingsFx({ ...settings, selectedId: value[0] })}
-					disableFilterOptions
-					options={instructions.map((instr) => ({
-						label: instr.name,
-						value: instr.id,
-					}))}
+				<Select
+					value={settings?.selectedId ? options.find((instr) => instr.value === settings.selectedId) : null}
+					onChange={(selected) => instructionsModel.updateSettingsFx({ ...settings, selectedId: selected?.value })}
+					options={options}
 				/>
+
 				<Box display="flex" gap={2} alignSelf="flex-end">
 					<IconButtonWithTooltip
 						tooltip="Создать инструкцию"
@@ -64,7 +65,7 @@ export const InstructionsSidebar = () => {
 				</Box>
 			</Flex>
 
-			<InstructionEditor />
+			{settings.selectedId && <InstructionEditor />}
 		</Drawer>
 	);
 };

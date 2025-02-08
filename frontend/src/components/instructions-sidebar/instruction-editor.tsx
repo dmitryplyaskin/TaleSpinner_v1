@@ -31,7 +31,7 @@ export const InstructionEditor: React.FC = () => {
 
 	return (
 		<FormProvider {...methods}>
-			<Flex direction="column" h="100%" gap={4} mt={4}>
+			<Flex direction="column" gap={4} mt={4}>
 				<FormInput name="name" label="Название" placeholder="Введите название инструкции" />
 
 				<FormTextarea
