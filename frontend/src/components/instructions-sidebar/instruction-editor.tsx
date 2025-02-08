@@ -6,6 +6,7 @@ import { instructionsModel } from '@model/instructions';
 import { FormInput } from '@ui/form-components';
 import { useUnit } from 'effector-react';
 import { createEmptyInstruction } from '@model/instructions/instruction';
+import { useEffect } from 'react';
 
 export const InstructionEditor: React.FC = () => {
 	const selectedInstruction = useUnit(instructionsModel.$selectedItem);
@@ -23,6 +24,10 @@ export const InstructionEditor: React.FC = () => {
 			instructionsModel.createItemFx(data);
 		}
 	};
+
+	useEffect(() => {
+		methods.reset(selectedInstruction || createEmptyInstruction());
+	}, [selectedInstruction]);
 
 	return (
 		<FormProvider {...methods}>

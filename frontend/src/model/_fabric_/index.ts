@@ -1,4 +1,4 @@
-import { createStore, combine } from 'effector';
+import { createStore, combine, sample } from 'effector';
 import { Fabric } from './types';
 import { createSettingsModel } from './setting-model';
 import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
@@ -20,6 +20,18 @@ export const createFabric = <SettingsType extends CommonModelSettingsType, ItemT
 		$items,
 		fabric.fabricName,
 	);
+
+	sample({
+		clock: [createItemFx.done, updateItemFx.done],
+		fn: (item) => ({ selectedId: item.params.id } as Partial<SettingsType>),
+		target: updateSettingsFx,
+	});
+
+	sample({
+		clock: [deleteItemFx.done],
+		fn: () => ({ selectedId: null } as Partial<SettingsType>),
+		target: updateSettingsFx,
+	});
 
 	return {
 		$settings,

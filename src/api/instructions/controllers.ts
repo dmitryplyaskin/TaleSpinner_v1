@@ -31,16 +31,16 @@ export const updateInstruction: AsyncRequestHandler = async (req) => {
 
 export const deleteInstruction: AsyncRequestHandler = async (req) => {
   await InstructionsService.delete(req.params.instructionId);
-  return { data: {} };
+  return { data: { id: req.params.instructionId } };
 };
 
 export const getInstructionsSettings: AsyncRequestHandler = async (req) => {
-  console.log("getInstructionsSettings", req.body);
   const settings = await InstructionsSettingsService.getConfig();
   return { data: settings };
 };
 
 export const setInstructionsSettings: AsyncRequestHandler = async (req) => {
+  console.log("setInstructionsSettings", req.body);
   const settings = await InstructionsSettingsService.saveConfig(req.body);
   return { data: settings };
 };

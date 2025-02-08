@@ -53,8 +53,6 @@ export const $sidebars = createStore<SidebarSettings>({
 	},
 });
 
-$sidebars.watch(console.log);
-
 export const changeSidebarSettings = createEvent<{ name: SidebarName; settings: Partial<SidebarSetting> }>();
 
 $sidebars.on(changeSidebarSettings, (sidebars, { name, settings }) => ({

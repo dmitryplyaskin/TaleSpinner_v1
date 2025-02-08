@@ -9,7 +9,7 @@ class InstructionsSettings extends ConfigService<InstructionSettingsType> {
   protected getDefaultConfig(): InstructionSettingsType {
     return {
       selectedId: null,
-      enableInstruction: true,
+      enabled: true,
     };
   }
 }
