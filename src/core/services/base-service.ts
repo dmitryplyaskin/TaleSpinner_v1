@@ -90,60 +90,41 @@ export class BaseService<T extends BaseEntity> {
     return await this.readEntity(id);
   }
 
-  async create(data: Omit<T, "id" | "createdAt" | "updatedAt">): Promise<T> {
+  async create(data: T): Promise<T> {
     try {
-      const now = new Date().toISOString();
-      const entity = {
-        ...data,
-        id: this.createUUID(),
-        createdAt: now,
-        updatedAt: now,
-      } as T;
-
-      await this.writeEntity(entity.id, entity);
-      return entity;
+      await this.writeEntity(data.id, data);
+      return data;
     } catch (error) {
       this.logger?.error("Failed to create entity", { data, error });
       throw error;
     }
   }
 
-  async update(id: string, data: Partial<T>): Promise<T> {
+  async update(data: T): Promise<T> {
     try {
-      const existing = await this.getById(id);
-      const updated = {
-        ...existing,
-        ...data,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await this.writeEntity(id, updated);
-      return updated;
+      await this.writeEntity(data.id, data);
+      return data;
     } catch (error) {
-      this.logger?.error("Failed to update entity", { id, data, error });
+      this.logger?.error("Failed to update entity", {
+        id: data.id,
+        data,
+        error,
+      });
       throw error;
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<string> {
     await this.deleteEntity(id);
+    return id;
   }
 
-  async duplicate(id: string): Promise<T> {
+  async duplicate(data: T): Promise<T> {
     try {
-      const existing = await this.getById(id);
-      const duplicated = {
-        ...existing,
-        id: this.createUUID(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as T;
-
-      await this.writeEntity(duplicated.id, duplicated);
-      return duplicated;
+      await this.writeEntity(data.id, data);
+      return data;
     } catch (error) {
-      this.logger?.error("Failed to duplicate entity", { id, error });
+      this.logger?.error("Failed to duplicate entity", { id: data.id, error });
       throw error;
     }
   }

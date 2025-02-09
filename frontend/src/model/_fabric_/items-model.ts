@@ -1,4 +1,4 @@
-import { createEffect, StoreWritable } from 'effector';
+import { createEffect, createStore } from 'effector';
 import { FabricItems } from './types';
 import { CommonModelItemType } from '@shared/types/common-model-types';
 import { asyncHandler } from '@model/utils/async-handler';
@@ -7,9 +7,10 @@ import { BASE_URL } from '../../const';
 
 export const createItemsModel = <ItemType extends CommonModelItemType>(
 	itemsParams: FabricItems<ItemType>,
-	$items: StoreWritable<ItemType[]>,
 	fabricName: string,
 ) => {
+	const $items = createStore<ItemType[]>(itemsParams.defaultValue || []);
+
 	const getItemsFx = createEffect<void, { data: ItemType[] }>(() =>
 		asyncHandler(async () => {
 			const response = await fetch(`${BASE_URL}${itemsParams.route}`);
@@ -39,13 +40,15 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const updateItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
 		asyncHandler(async () => {
+			const newItem = { ...item, updatedAt: new Date().toISOString() };
 			const response = await fetch(`${BASE_URL}${itemsParams.route}/${item.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify(item),
+				body: JSON.stringify(newItem),
 			});
+
 			return response.json();
 		}, `Error updating ${fabricName} item`),
 	);
@@ -64,7 +67,13 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const duplicateItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
 		asyncHandler(async () => {
-			const newItem = { ...item, id: uuidv4(), name: `${item.name} (copy)` };
+			const newItem = {
+				...item,
+				id: uuidv4(),
+				name: `${item.name} (copy)`,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
 			const response = await fetch(`${BASE_URL}${itemsParams.route}`, {
 				method: 'POST',
 				headers: {
@@ -90,6 +99,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 		.on(deleteItemFx.doneData, (state, { data }) => state.filter((i) => i.id !== data.id));
 
 	return {
+		$items,
 		getItemsFx,
 		getItemByIdFx,
 		createItemFx,

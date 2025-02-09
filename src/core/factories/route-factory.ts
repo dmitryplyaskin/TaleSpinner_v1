@@ -18,7 +18,11 @@ export class RouteFactory<T extends BaseEntity, S extends BaseConfig> {
 
   constructor(
     private controllerFactory: ControllerFactory<T, S>,
-    private basePath: string
+    private basePath: string,
+    private routerParams?: {
+      disableDefaultRoutes?: boolean;
+      disableSettingsRoutes?: boolean;
+    }
   ) {
     // Инициализируем роутер и стандартные маршруты
     this.router = Router();
@@ -27,21 +31,25 @@ export class RouteFactory<T extends BaseEntity, S extends BaseConfig> {
 
   // Метод для создания стандартных маршрутов
   private createDefaultRoutes(): void {
-    this.router
-      .route(`/${this.basePath}`)
-      .get(asyncHandler(this.controllerFactory.getList))
-      .post(asyncHandler(this.controllerFactory.create));
+    if (!this.routerParams?.disableDefaultRoutes) {
+      this.router
+        .route(`/${this.basePath}`)
+        .get(asyncHandler(this.controllerFactory.getList))
+        .post(asyncHandler(this.controllerFactory.create));
 
-    this.router
-      .route(`/${this.basePath}/:id`)
-      .get(asyncHandler(this.controllerFactory.getById))
-      .put(asyncHandler(this.controllerFactory.update))
-      .delete(asyncHandler(this.controllerFactory.delete));
+      this.router
+        .route(`/${this.basePath}/:id`)
+        .get(asyncHandler(this.controllerFactory.getById))
+        .put(asyncHandler(this.controllerFactory.update))
+        .delete(asyncHandler(this.controllerFactory.delete));
+    }
 
-    this.router
-      .route(`/settings/${this.basePath}`)
-      .get(asyncHandler(this.controllerFactory.getSettings))
-      .post(asyncHandler(this.controllerFactory.setSettings));
+    if (!this.routerParams?.disableSettingsRoutes) {
+      this.router
+        .route(`/settings/${this.basePath}`)
+        .get(asyncHandler(this.controllerFactory.getSettings))
+        .post(asyncHandler(this.controllerFactory.setSettings));
+    }
   }
 
   /**

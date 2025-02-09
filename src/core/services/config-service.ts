@@ -30,7 +30,6 @@ export abstract class ConfigService<T extends BaseConfig> {
       const content = await fs.readFile(this.configPath, "utf8");
       return JSON.parse(content);
     } catch (error) {
-      console.log("getConfig error", error);
       const defaultConfig = this.getDefaultConfig();
       await this.saveConfig(defaultConfig);
       return defaultConfig;

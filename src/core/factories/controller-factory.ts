@@ -25,13 +25,13 @@ export class ControllerFactory<T extends BaseEntity, S extends BaseConfig> {
   };
 
   update: AsyncRequestHandler = async (req) => {
-    const item = await this.service.update(req.params.id, req.body);
+    const item = await this.service.update(req.body);
     return { data: item };
   };
 
   delete: AsyncRequestHandler = async (req) => {
-    await this.service.delete(req.params.id);
-    return { data: { id: req.params.id } };
+    const id = await this.service.delete(req.params.id);
+    return { data: { id } };
   };
 
   getSettings: AsyncRequestHandler = async () => {

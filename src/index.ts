@@ -8,7 +8,7 @@ import modelsRoutes from "./routes/models-routes";
 import settingsRoutes from "./routes/settings-routes";
 import generateRoutes from "./routes/generate-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
-import { routes } from "./api/routes";
+import { routes } from "./api/_routes_";
 import staticRouter from "./api/static";
 
 dotenv.config();

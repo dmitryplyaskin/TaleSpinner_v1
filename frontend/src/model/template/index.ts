@@ -1,8 +1,8 @@
-import { createFabric } from '@model/_fabric_';
+import { createModel } from '@model/_fabric_';
 import { TemplateType, TemplateSettingsType } from '@shared/types/templates';
 import { v4 as uuidv4 } from 'uuid';
 
-export const templatesModel = createFabric<TemplateSettingsType, TemplateType>({
+export const templatesModel = createModel<TemplateSettingsType, TemplateType>({
 	settings: {
 		route: '/settings/templates',
 	},
