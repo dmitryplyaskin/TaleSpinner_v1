@@ -15,7 +15,6 @@ import { Select } from 'chakra-react-select';
 export const InstructionsSidebar = () => {
 	const instructions = useUnit(instructionsModel.$items);
 	const settings = useUnit(instructionsModel.$settings);
-	console.log(settings);
 
 	const options = instructions.map((instr) => ({
 		label: instr.name,

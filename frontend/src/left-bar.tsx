@@ -2,7 +2,7 @@ import { Flex } from '@chakra-ui/react';
 import { changeSidebarSettings } from '@model/sidebars';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText } from 'react-icons/lu';
+import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2 } from 'react-icons/lu';
 
 export const LeftBar = () => {
 	return (
@@ -61,6 +61,17 @@ export const LeftBar = () => {
 						aria-label="Open instructions"
 						onClick={() => changeSidebarSettings({ name: 'instructions', settings: { isOpen: true } })}
 						icon={<LuFileText />}
+					/>
+				</div>
+				<div>
+					<IconButtonWithTooltip
+						tooltip="Templates"
+						variant="outline"
+						colorScheme="purple"
+						aria-label="Open templates"
+						size="lg"
+						onClick={() => changeSidebarSettings({ name: 'templates', settings: { isOpen: true } })}
+						icon={<LuFileCode2 />}
 					/>
 				</div>
 				<div>

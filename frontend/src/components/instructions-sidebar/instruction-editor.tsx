@@ -5,7 +5,7 @@ import { InstructionType } from '@shared/types/instructions';
 import { instructionsModel } from '@model/instructions';
 import { FormInput } from '@ui/form-components';
 import { useUnit } from 'effector-react';
-import { createEmptyInstruction } from '@model/instructions/instruction';
+import { createEmptyInstruction } from '@model/instructions';
 import { useEffect } from 'react';
 
 export const InstructionEditor: React.FC = () => {

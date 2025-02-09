@@ -4,7 +4,7 @@ import { createDataPath } from "../../utils";
 import { BaseEntity, Logger, ServiceOptions } from "@core/types/common";
 import { v4 as uuidv4 } from "uuid";
 
-export abstract class BaseService<T extends BaseEntity> {
+export class BaseService<T extends BaseEntity> {
   protected readonly dir: string;
   protected readonly logger?: Logger;
 

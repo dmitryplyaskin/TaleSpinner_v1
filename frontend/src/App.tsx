@@ -14,6 +14,7 @@ import './model/llm-orchestration';
 import { PipelineSidebar } from './components/pipeline-sidebar';
 import { $isAgentSelected } from '@model/chat-service';
 import { InstructionsSidebar } from './components/instructions-sidebar';
+import { TemplateSidebar } from './components/template-sidebar';
 
 interface LLMSettings {
 	temperature: number;
@@ -73,6 +74,7 @@ function App() {
 				<UserPersonSidebar />
 				<PipelineSidebar />
 				<InstructionsSidebar />
+				<TemplateSidebar />
 			</Flex>
 
 			<Toaster />
