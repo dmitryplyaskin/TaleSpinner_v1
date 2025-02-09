@@ -10,7 +10,7 @@ export interface AgentCard extends CommonModelItemType {
   /** Уникальный идентификатор карточки */
   id: string;
   /** Название или имя агента/персонажа */
-  title: string;
+  name: string;
   /** Дата и время создания карточки (строка в формате ISO-8601) */
   createdAt: string;
   /** Дата и время последнего обновления карточки */

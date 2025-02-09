@@ -23,7 +23,7 @@ export const uploadFilesFx = createEffect<File[], UploadResponse>(async (files) 
 	}, 'Error uploading files'),
 );
 
-export const uploadCardFilesFx = createEffect<File[], { data: CardUploadResponse }>(async (files) =>
+export const uploadAgentCardFilesFx = createEffect<File[], { data: CardUploadResponse }>(async (files) =>
 	asyncHandler(async () => {
 		const formData = new FormData();
 		files.forEach((file) => {
@@ -57,7 +57,7 @@ $uploadedFiles
 	.on(uploadFilesFx.doneData, (_, { files }) => files)
 	.on(deleteFileFx.done, (state, { params: filename }) => state.filter((file) => file.filename !== filename));
 
-$processedCardFiles.on(uploadCardFilesFx.doneData, (_, { data }) => data.processedFiles);
+$processedCardFiles.on(uploadAgentCardFilesFx.doneData, (_, { data }) => data.processedFiles);
 
 sample({
 	clock: deleteFile,

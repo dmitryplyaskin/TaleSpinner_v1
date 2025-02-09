@@ -1,4 +1,3 @@
-import { AgentCard } from '@shared/types/agent-card';
-import { createItemsModel } from '@model/_fabric_/items-model';
+import './create-uploaded-agent-card';
 
-export const chatListModel = createItemsModel<AgentCard>({ route: '/chat' }, 'chat');
+export * from './create-model';

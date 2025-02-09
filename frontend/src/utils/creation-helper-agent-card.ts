@@ -15,7 +15,6 @@ export const createNewAgentCard = (params?: { title?: string; systemPrompt?: str
 	const newCard: AgentCard = {
 		id: uuidv4(),
 		name: params?.title || 'New Chat',
-		title: params?.title || 'New Chat',
 		createdAt: now,
 		updatedAt: now,
 		introSwipes: {
@@ -70,4 +69,26 @@ export const createNewMessage = (params: { role: 'user' | 'assistant'; content: 
 		swipeId,
 		contentId,
 	};
+};
+
+export const createNewSwipe = (params: { content: string }) => {
+	const { content } = params;
+
+	const now = new Date().toISOString();
+	const swipeId = uuidv4();
+	const contentId = uuidv4();
+
+	const swipe = {
+		id: swipeId,
+		components: [
+			{
+				id: contentId,
+				type: 'answer',
+				content: content,
+			},
+		],
+		timestamp: now,
+	};
+
+	return { swipe, swipeId, contentId };
 };

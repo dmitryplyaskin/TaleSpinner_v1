@@ -90,7 +90,7 @@ class OpenRouterService {
     // @ts-ignore
     return await client.chat.completions.create(
       {
-        model: config?.model || "deepseek/deepseek-r1:free",
+        model: config?.model || "deepseek/deepseek-chat:free",
         messages: messages as ChatCompletionMessageParam[],
         ...settings,
         include_reasoning: true,

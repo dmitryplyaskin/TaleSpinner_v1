@@ -3,7 +3,7 @@ export {
 	$processedCardFiles,
 	deleteFile,
 	uploadFilesFx,
-	uploadCardFilesFx,
+	uploadAgentCardFilesFx,
 	deleteFileFx,
 	getFileMetadataFx,
 } from './files';

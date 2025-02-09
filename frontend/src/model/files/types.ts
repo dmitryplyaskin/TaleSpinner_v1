@@ -14,7 +14,6 @@ export interface CardMetadata {
 	width: number;
 	height: number;
 	format: string;
-	customMetadata?: Record<string, any>;
 }
 
 export interface ProcessedCardFile {
@@ -22,6 +21,7 @@ export interface ProcessedCardFile {
 	filename: string;
 	path: string;
 	metadata: CardMetadata;
+	characterData: Record<string, any>[];
 	type: 'png' | 'json';
 }
 

@@ -147,15 +147,12 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
           originalName: file.originalname,
           filename,
           path: `/media/card-images/${filename}`,
+          characterData: [JSON.parse(characterData)],
           metadata: {
             ...metadata,
             width: metadata.width || 0,
             height: metadata.height || 0,
             format: metadata.format || "unknown",
-            // @ts-ignore
-            customMetadata: {
-              characterData: JSON.parse(characterData),
-            },
           },
           type: "png",
         });
