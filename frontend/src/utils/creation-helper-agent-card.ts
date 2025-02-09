@@ -14,6 +14,7 @@ export const createNewAgentCard = (params?: { title?: string; systemPrompt?: str
 	// Создаем базовый объект карточки
 	const newCard: AgentCard = {
 		id: uuidv4(),
+		name: params?.title || 'New Chat',
 		title: params?.title || 'New Chat',
 		createdAt: now,
 		updatedAt: now,

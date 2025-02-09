@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChatWindow } from './components/chat-window';
 import { SettingsSidebar } from './components/settings-sidebar';
 import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
-import { createChatFx, getChatListFx } from './model';
+import { chatListModel } from './model/chat-list';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
@@ -15,6 +15,7 @@ import { PipelineSidebar } from './components/pipeline-sidebar';
 import { $isAgentSelected } from '@model/chat-service';
 import { InstructionsSidebar } from './components/instructions-sidebar';
 import { TemplateSidebar } from './components/template-sidebar';
+import { createNewAgentCard } from './utils/creation-helper-agent-card';
 
 interface LLMSettings {
 	temperature: number;
@@ -37,7 +38,7 @@ function App() {
 	const [apiConfig, setApiConfig] = useState<OpenRouterConfig | null>(null);
 
 	useEffect(() => {
-		getChatListFx();
+		chatListModel.getItemsFx();
 		getOpenRouterConfig().then(setApiConfig);
 	}, []);
 
@@ -53,7 +54,7 @@ function App() {
 							<Flex h="100%" align="center" justify="center">
 								<VStack gap={4}>
 									<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
-									<Button onClick={() => createChatFx()} colorScheme="blue" size="lg">
+									<Button onClick={() => chatListModel.createItemFx(createNewAgentCard())} colorScheme="blue" size="lg">
 										Создать новый чат
 									</Button>
 								</VStack>

@@ -3,7 +3,7 @@ import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
 import { reducers } from './reducers';
 import { controllers } from './controllers';
 import { debounce } from 'patronum/debounce';
-import { updateChat } from '../chat-list';
+import { chatListModel } from '../chat-list';
 
 export const $currentAgentCard = createStore<AgentCard | null>(null);
 export const setCurrentAgentCard = createEvent<AgentCard>();
@@ -73,5 +73,5 @@ sample({
 sample({
 	source: $currentAgentCard,
 	clock: debounceSave,
-	target: [saveCurrentAgentCardFx, updateChat],
+	target: [saveCurrentAgentCardFx, chatListModel.updateItemFx],
 });

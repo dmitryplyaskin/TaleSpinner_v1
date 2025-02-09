@@ -4,23 +4,23 @@ import { Flex, Button, Stack } from '@chakra-ui/react';
 import { LuPlus } from 'react-icons/lu';
 
 import { useUnit } from 'effector-react';
-import { $chatList, createChatFx } from '@model/chat-list';
+import { chatListModel } from '@model/chat-list';
 
 import { CharacterCard } from './chat-card';
 import { Drawer } from '@ui/drawer';
 import { EditChatModal } from './edit-chat-modal';
 import { Upload } from './components/upload';
+import { createNewAgentCard } from '../../utils/creation-helper-agent-card';
 
 export const ChatCardSidebar: React.FC = () => {
-	const list = useUnit($chatList);
-	const createChat = useUnit(createChatFx);
+	const list = useUnit(chatListModel.$items);
 
 	return (
 		<>
 			<Drawer name="chatCards" title="Chat cards">
 				<Flex direction="column" gap="4">
 					<Stack direction="row" gap={4}>
-						<Button onClick={() => createChat()} colorScheme="blue">
+						<Button onClick={() => chatListModel.createItemFx(createNewAgentCard())} colorScheme="blue">
 							<LuPlus /> Создать карточку
 						</Button>
 						<Upload />

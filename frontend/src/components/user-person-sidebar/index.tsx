@@ -1,17 +1,18 @@
 import React, { useEffect } from 'react';
 import { Flex } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { $userPersons, getUserPersonListFx, createUserPerson, createEmptyUserPerson } from '@model/user-persons';
+import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
 import { UserPersonCard } from './user-person-card';
 import { LuPlus } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Drawer } from '@ui/drawer';
 
 export const UserPersonSidebar: React.FC = () => {
-	const persons = useUnit($userPersons);
+	const persons = useUnit(userPersonsModel.$items);
 
 	useEffect(() => {
-		getUserPersonListFx();
+		userPersonsModel.getItemsFx();
+		userPersonsModel.getSettingsFx();
 	}, []);
 
 	return (
@@ -23,7 +24,7 @@ export const UserPersonSidebar: React.FC = () => {
 				colorPalette="blue"
 				aria-label="Add person"
 				onClick={() => {
-					createUserPerson(createEmptyUserPerson());
+					userPersonsModel.createItemFx(createEmptyUserPerson());
 				}}
 				icon={<LuPlus />}
 			/>

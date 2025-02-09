@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
-import { UserPerson } from '@types/user-person';
+
 import { UserPersonEditor } from './user-person-editor';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
-import { deleteUserPerson } from '@model/user-persons';
+import { userPersonsModel } from '@model/user-persons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { UserPerson } from '@shared/types/user-person';
 
 interface UserPersonCardProps {
 	data: UserPerson;
@@ -18,7 +19,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 	};
 
 	const handleDelete = () => {
-		deleteUserPerson(data.id);
+		userPersonsModel.deleteItemFx(data.id);
 	};
 
 	if (isEditing) {
@@ -53,9 +54,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 					/>
 				</Flex>
 			</Flex>
-			<Text noOfLines={2} color="gray.600">
-				{data.type === 'default' ? data.contentTypeDefault : 'Расширенная персона'}
-			</Text>
+			<Text color="gray.600">{data.type === 'default' ? data.contentTypeDefault : 'Расширенная персона'}</Text>
 		</Box>
 	);
 };

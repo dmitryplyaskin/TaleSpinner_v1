@@ -1,4 +1,9 @@
-export interface UserPerson {
+import {
+  CommonModelItemType,
+  CommonModelSettingsType,
+} from "./common-model-types";
+
+export interface UserPerson extends CommonModelItemType {
   id: string;
   createdAt: string;
   updatedAt: string;
@@ -16,7 +21,4 @@ export interface UserPerson {
   }[];
 }
 
-export interface UserPersonSettings {
-  selectedUserPersonId: string | null;
-  isUserPersonEnabled: boolean;
-}
+export interface UserPersonSettings extends CommonModelSettingsType {}

@@ -3,7 +3,7 @@ import { Card, HStack, Stack, Text } from '@chakra-ui/react';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { deleteChatFx, duplicateChatFx } from '@model/chat-list';
+import { chatListModel } from '@model/chat-list';
 import { setCurrentAgentCard } from '@model/chat-service';
 import { AgentCard } from '@shared/types/agent-card';
 
@@ -23,12 +23,12 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 
 	const handleDeleteClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		deleteChatFx(data);
+		chatListModel.deleteItemFx(data.id);
 	};
 
 	const handleDuplicateClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		duplicateChatFx(data);
+		chatListModel.duplicateItemFx(data);
 	};
 
 	return (

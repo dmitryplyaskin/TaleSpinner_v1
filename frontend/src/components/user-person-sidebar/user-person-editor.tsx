@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Flex, Input, Textarea, IconButton, VStack } from '@chakra-ui/react';
-import { UserPerson } from '@types/user-person';
-import { updateUserPerson } from '@model/user-persons';
+import { UserPerson } from '@shared/types/user-person';
+import { userPersonsModel } from '@model/user-persons';
 import { LuPlus, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 import { Field } from '@ui/chakra-core-ui/field';
@@ -17,7 +17,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 	const [contentType, setContentType] = useState(data.type);
 
 	const handleSave = () => {
-		updateUserPerson(personData);
+		userPersonsModel.updateItemFx(personData);
 		onClose();
 	};
 

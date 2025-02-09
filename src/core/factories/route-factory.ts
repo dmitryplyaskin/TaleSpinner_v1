@@ -1,6 +1,10 @@
 import { Router, RequestHandler } from "express";
 import { asyncHandler } from "@core/middleware/async-handler";
-import { ControllerFactory } from "./controller-factory";
+import {
+  ConfigController,
+  CrudController,
+  GeneralController,
+} from "./controller-factory";
 import { BaseEntity, BaseConfig } from "@core/types/common";
 
 // Тип для допустимых HTTP-методов
@@ -17,12 +21,12 @@ export class RouteFactory<T extends BaseEntity, S extends BaseConfig> {
   private router: Router;
 
   constructor(
-    private controllerFactory: ControllerFactory<T, S>,
-    private basePath: string,
-    private routerParams?: {
-      disableDefaultRoutes?: boolean;
-      disableSettingsRoutes?: boolean;
-    }
+    private controllersFactory: {
+      crud?: CrudController<T>;
+      config?: ConfigController<S>;
+      general?: GeneralController<T, S>;
+    },
+    private basePath: string
   ) {
     // Инициализируем роутер и стандартные маршруты
     this.router = Router();
@@ -31,24 +35,33 @@ export class RouteFactory<T extends BaseEntity, S extends BaseConfig> {
 
   // Метод для создания стандартных маршрутов
   private createDefaultRoutes(): void {
-    if (!this.routerParams?.disableDefaultRoutes) {
+    const crud =
+      this.controllersFactory.crud || this.controllersFactory.general;
+    const config =
+      this.controllersFactory.config || this.controllersFactory.general;
+
+    if (crud) {
       this.router
         .route(`/${this.basePath}`)
-        .get(asyncHandler(this.controllerFactory.getList))
-        .post(asyncHandler(this.controllerFactory.create));
+        .get(asyncHandler(crud.getList))
+        .post(asyncHandler(crud.create));
 
       this.router
         .route(`/${this.basePath}/:id`)
-        .get(asyncHandler(this.controllerFactory.getById))
-        .put(asyncHandler(this.controllerFactory.update))
-        .delete(asyncHandler(this.controllerFactory.delete));
+        .get(asyncHandler(crud.getById))
+        .put(asyncHandler(crud.update))
+        .delete(asyncHandler(crud.delete));
+
+      this.router
+        .route(`/${this.basePath}/:id/duplicate`)
+        .post(asyncHandler(crud.duplicate));
     }
 
-    if (!this.routerParams?.disableSettingsRoutes) {
+    if (config) {
       this.router
         .route(`/settings/${this.basePath}`)
-        .get(asyncHandler(this.controllerFactory.getSettings))
-        .post(asyncHandler(this.controllerFactory.setSettings));
+        .get(asyncHandler(config.getSettings))
+        .post(asyncHandler(config.setSettings));
     }
   }
 

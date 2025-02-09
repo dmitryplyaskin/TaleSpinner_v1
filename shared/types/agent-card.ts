@@ -1,8 +1,10 @@
+import { CommonModelItemType } from "./common-model-types";
+
 /**
  * Представляет карточку агента/персонажа, которая содержит основную информацию,
  * историю взаимодействий и дополнительные данные (metadata) для разных сценариев.
  */
-export interface AgentCard {
+export interface AgentCard extends CommonModelItemType {
   /** Версия карточки */
   version?: string;
   /** Уникальный идентификатор карточки */

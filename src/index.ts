@@ -9,7 +9,7 @@ import settingsRoutes from "./routes/settings-routes";
 import generateRoutes from "./routes/generate-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
 import { routes } from "./api/_routes_";
-import staticRouter from "./api/static";
+import staticRouter from "./api/static.api";
 
 dotenv.config();
 

@@ -1,10 +1,10 @@
-import { AsyncRequestHandler } from "../common/middleware/async-handler";
 import fileService from "@services/file-service";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import sharp from "sharp";
 import fs from "fs/promises";
 import { CardUploadResponse, ProcessedCardFile } from "./types";
+import { AsyncRequestHandler } from "@core/middleware/async-handler";
 
 interface CharacterComment {
   keyword: string;
