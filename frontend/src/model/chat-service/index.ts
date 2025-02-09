@@ -57,9 +57,9 @@ $currentAgentCard
 	.on(deleteMessage, reducers.deleteMessage)
 	.on(deleteSwipe, reducers.deleteSwipe);
 
-export const saveCurrentAgentCardFx = createEffect<AgentCard | null, any>((agentCard) =>
-	controllers.saveCurrentAgentCard(agentCard),
-);
+// export const saveCurrentAgentCardFx = createEffect<AgentCard | null, any>((agentCard) =>
+// 	controllers.saveCurrentAgentCard(agentCard),
+// );
 
 const saveTrigger = createEvent();
 
@@ -73,5 +73,5 @@ sample({
 sample({
 	source: $currentAgentCard,
 	clock: debounceSave,
-	target: [saveCurrentAgentCardFx, chatListModel.updateItemFx],
+	target: [chatListModel.updateItemFx],
 });

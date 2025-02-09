@@ -87,11 +87,13 @@ class OpenRouterService {
     const client = this.createClient();
     const config = this.getConfig();
 
+    // @ts-ignore
     return await client.chat.completions.create(
       {
-        model: config?.model || "amazon/nova-micro-v1",
+        model: config?.model || "deepseek/deepseek-r1:free",
         messages: messages as ChatCompletionMessageParam[],
         ...settings,
+        include_reasoning: true,
         stream: true,
       },
       { signal }
@@ -117,6 +119,7 @@ class OpenRouterService {
           return fullResponse;
         }
 
+        // console.log(chunk.choices[0]?.delta);
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
           fullResponse += content;
