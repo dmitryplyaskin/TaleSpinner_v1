@@ -1,6 +1,5 @@
 import { Box, Flex, Text, Textarea } from '@chakra-ui/react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+
 import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -8,6 +7,7 @@ import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { useMemo, useState } from 'react';
 import { deleteMessage, updateSwipe } from '@model/chat-service';
 import { InteractionMessage } from '@shared/types/agent-card';
+import { RenderMd } from '@ui/render-md';
 
 type MessageProps = {
 	data: InteractionMessage;
@@ -120,7 +120,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					{isEditing ? (
 						<Textarea w={'100%'} autoresize value={content} onChange={(e) => setContent(e.target.value)} />
 					) : (
-						<Markdown remarkPlugins={[remarkGfm]}>{answerContent}</Markdown>
+						<RenderMd content={answerContent} />
 					)}
 				</Box>
 				<Text fontSize="xs" opacity={0.7} mt={1}>

@@ -21,7 +21,10 @@ export const $currentChat = $currentAgentCard.map((agentCard) => {
 
 	if (!activeBranch) return [];
 
-	let messages = activeBranch.messages;
+	const messages = activeBranch.messages;
+	if (messages.length === 0 && agentCard.introSwipes.swipes.length > 0) {
+		messages.push(agentCard.introSwipes);
+	}
 
 	return messages;
 });
