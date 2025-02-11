@@ -70,6 +70,10 @@ export interface InteractionMessage {
   timestamp: string;
   /** Идентификатор активного (выбранного) свайпа из массива swipes */
   activeSwipeId: string;
+  /** Флаг, указывающий, является ли сообщение вступительным */
+  isIntro?: boolean;
+  /** Флаг, указывающий, является ли сообщение последним в ветке */
+  isLast?: boolean;
 }
 
 /**

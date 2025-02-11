@@ -1,11 +1,11 @@
-import { Box, Flex, Text, Textarea } from '@chakra-ui/react';
+import { Box, Flex, Text, Textarea, VStack } from '@chakra-ui/react';
 
-import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
+import { LuPen, LuCheck, LuX, LuTrash, LuArrowLeft, LuArrowRight } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { useMemo, useState } from 'react';
-import { deleteMessage, updateSwipe } from '@model/chat-service';
+import { changeSwipe, deleteMessage, updateSwipe } from '@model/chat-service';
 import { InteractionMessage } from '@shared/types/agent-card';
 import { RenderMd } from '@ui/render-md';
 
@@ -50,6 +50,14 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	};
 
 	const isUser = data.role === 'user';
+	const isSwiped = data.swipes.length > 1;
+	const handleSwipeChange = (direction: 'left' | 'right') => {
+		if (data.isIntro) {
+			changeSwipe(direction);
+		}
+	};
+
+	const currentSwipe = data.swipes.findIndex((swipe) => swipe.id === data.activeSwipeId) + 1;
 
 	return (
 		<Flex justify={isUser ? 'flex-end' : 'flex-start'} gap={2}>
@@ -67,10 +75,15 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 				mr={isUser ? 0 : '50px'}
 			>
 				<Flex align="center">
-					<Text fontSize="sm" fontWeight="semibold" color={isUser ? 'purple.600' : 'gray.800'}>
-						{isUser ? 'You' : 'AI Assistant'}
-					</Text>
-					<Box ml="auto" gap={2}>
+					<VStack align="flex-start" gap={0}>
+						<Text fontSize="sm" fontWeight="semibold" color={isUser ? 'purple.600' : 'gray.800'}>
+							{isUser ? 'You' : 'AI Assistant'}
+						</Text>
+						<Text fontSize="xs" opacity={0.7}>
+							{new Date(data.timestamp).toLocaleTimeString()}
+						</Text>
+					</VStack>
+					<Box ml="auto" gap={2} alignSelf="flex-start">
 						{isEditing ? (
 							<Flex gap={1}>
 								<IconButtonWithTooltip
@@ -123,9 +136,31 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 						<RenderMd content={answerContent} />
 					)}
 				</Box>
-				<Text fontSize="xs" opacity={0.7} mt={1}>
-					{new Date(data.timestamp).toLocaleTimeString()}
-				</Text>
+				{isSwiped && (
+					<Flex justify="flex-end" align="center" gap={2} mt={2}>
+						{currentSwipe > 1 && (
+							<IconButtonWithTooltip
+								size="xs"
+								variant="ghost"
+								colorPalette="purple"
+								icon={<LuArrowLeft />}
+								tooltip="Go back"
+								onClick={() => handleSwipeChange('left')}
+							/>
+						)}
+						<Text fontSize="xs" opacity={0.7}>
+							{currentSwipe} / {data.swipes.length}
+						</Text>
+						<IconButtonWithTooltip
+							size="xs"
+							variant="ghost"
+							colorPalette="purple"
+							icon={<LuArrowRight />}
+							tooltip="Go forward"
+							onClick={() => handleSwipeChange('right')}
+						/>
+					</Flex>
+				)}
 			</Box>
 			{isUser && <Avatar size="lg" name="User" src="/user-avatar.png" bg="purple.500" />}
 		</Flex>

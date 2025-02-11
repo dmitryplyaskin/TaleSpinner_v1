@@ -1,4 +1,5 @@
 import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
+import * as creationHelper from '@utils/creation-helper-agent-card';
 import { produce } from 'immer';
 
 const addNewUserMessage = (agentCard: AgentCard | null, message: InteractionMessage) =>
@@ -147,6 +148,42 @@ const deleteSwipe = (agentCard: AgentCard | null, params: { messageId: string; s
 		message.swipes = message.swipes.filter((swipe) => swipe.id !== swipeId);
 	});
 
+const addNewSwipe = (agentCard: AgentCard | null) =>
+	produce(agentCard, (draft) => {
+		if (!draft) return;
+
+		const branch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
+		if (!branch) return;
+
+		const message = branch.messages[branch.messages.length - 1];
+		if (!message) return;
+
+		const newSwipe = creationHelper.createNewSwipe({ content: '' });
+
+		message.swipes.push(newSwipe.swipe);
+		message.activeSwipeId = newSwipe.swipeId;
+	});
+
+const changeSwipe = (agentCard: AgentCard | null, direction: 'left' | 'right') =>
+	produce(agentCard, (draft) => {
+		if (!draft) return;
+
+		const branch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
+		if (!branch) return;
+
+		const message = branch.messages[branch.messages.length - 1];
+		if (!message) return;
+
+		const swipeIndex = message.swipes.findIndex((swipe) => swipe.id === message.activeSwipeId);
+		if (swipeIndex === -1) return;
+
+		if (direction === 'left') {
+			message.activeSwipeId = message.swipes[swipeIndex - 1].id;
+		} else {
+			message.activeSwipeId = message.swipes[swipeIndex + 1].id;
+		}
+	});
+
 export const reducers = {
 	addNewUserMessage,
 	addNewAssistantMessage,
@@ -155,4 +192,6 @@ export const reducers = {
 	updateSwipe,
 	deleteMessage,
 	deleteSwipe,
+	addNewSwipe,
+	changeSwipe,
 };

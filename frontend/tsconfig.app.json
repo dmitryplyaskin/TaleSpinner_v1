@@ -26,6 +26,7 @@
       "@types/*": ["./src/types/*"],
       "@model/*": ["./src/model/*"], 
       "@shared/*": ["../shared/*"],
+      "@utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src"]
