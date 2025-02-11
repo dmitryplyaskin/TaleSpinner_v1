@@ -5,10 +5,10 @@ import { UserPersonEditor } from './user-person-editor';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { userPersonsModel } from '@model/user-persons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { UserPerson } from '@shared/types/user-person';
+import { UserPersonType } from '@shared/types/user-person';
 
 interface UserPersonCardProps {
-	data: UserPerson;
+	data: UserPersonType;
 }
 
 export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {

@@ -8,6 +8,7 @@ export const createNewAgentCard = (params?: { title?: string; systemPrompt?: str
 	const initialBranch: InteractionBranch = {
 		id: uuidv4(),
 		createdAt: now,
+		isStarted: false,
 		messages: [],
 	};
 

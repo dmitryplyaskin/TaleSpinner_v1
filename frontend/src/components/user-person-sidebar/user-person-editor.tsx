@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, Flex, Input, Textarea, IconButton, VStack } from '@chakra-ui/react';
-import { UserPerson } from '@shared/types/user-person';
+import { UserPersonType } from '@shared/types/user-person';
 import { userPersonsModel } from '@model/user-persons';
 import { LuPlus, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,12 +8,12 @@ import { Field } from '@ui/chakra-core-ui/field';
 import { Switch } from '@ui/chakra-core-ui/switch';
 
 interface UserPersonEditorProps {
-	data: UserPerson;
+	data: UserPersonType;
 	onClose: () => void;
 }
 
 export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClose }) => {
-	const [personData, setPersonData] = useState<UserPerson>(data);
+	const [personData, setPersonData] = useState<UserPersonType>(data);
 	const [contentType, setContentType] = useState(data.type);
 
 	const handleSave = () => {

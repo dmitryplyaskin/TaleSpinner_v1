@@ -1,8 +1,8 @@
 import { createModel } from '@model/_fabric_';
-import { UserPerson, UserPersonSettings } from '@shared/types/user-person';
+import { UserPersonType, UserPersonSettingsType } from '@shared/types/user-person';
 import { v4 as uuidv4 } from 'uuid';
 
-export const userPersonsModel = createModel<UserPersonSettings, UserPerson>({
+export const userPersonsModel = createModel<UserPersonSettingsType, UserPersonType>({
 	settings: {
 		route: '/settings/user-persons',
 	},
@@ -13,7 +13,7 @@ export const userPersonsModel = createModel<UserPersonSettings, UserPerson>({
 	fabricName: 'user-persons',
 });
 
-export const createEmptyUserPerson = (): UserPerson => ({
+export const createEmptyUserPerson = (): UserPersonType => ({
 	id: uuidv4(),
 	name: 'Новый пользователь',
 	createdAt: new Date().toISOString(),

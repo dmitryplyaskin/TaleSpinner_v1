@@ -90,7 +90,8 @@ class OpenRouterService {
     // @ts-ignore
     return await client.chat.completions.create(
       {
-        model: config?.model || "perplexity/sonar",
+        model:
+          config?.model || "google/gemini-2.0-flash-lite-preview-02-05:free",
         messages: messages as ChatCompletionMessageParam[],
         ...settings,
         include_reasoning: true,

@@ -1,8 +1,8 @@
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
 import {
-  UserPerson as UserPersonType,
-  UserPersonSettings as UserPersonSettingsType,
+  UserPersonType as UserPersonType,
+  UserPersonSettingsType as UserPersonSettingsType,
 } from "@shared/types/user-person";
 
 class UserPersons extends BaseService<UserPersonType> {

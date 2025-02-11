@@ -47,8 +47,8 @@ export interface InteractionBranch {
   name?: string;
   /** Дата создания ветки (строка в формате ISO-8601) */
   createdAt: string;
-  /** Идентификатор выбранного вступительного свайпа для данной ветки */
-  selectedIntroSwipeId?: string;
+  /** Флаг, указывающий, является ли ветка начатой */
+  isStarted?: boolean;
   /** Сообщения (взаимодействия) в рамках этой ветки */
   messages: InteractionMessage[];
 }

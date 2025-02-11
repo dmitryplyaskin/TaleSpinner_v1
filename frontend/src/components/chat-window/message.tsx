@@ -1,13 +1,14 @@
 import { Box, Flex, Text, Textarea, VStack } from '@chakra-ui/react';
 
-import { LuPen, LuCheck, LuX, LuTrash, LuArrowLeft, LuArrowRight } from 'react-icons/lu';
+import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { useMemo, useState } from 'react';
-import { changeSwipe, deleteMessage, updateSwipe } from '@model/chat-service';
+import { deleteMessage, updateSwipe } from '@model/chat-service';
 import { InteractionMessage } from '@shared/types/agent-card';
 import { RenderMd } from '@ui/render-md';
+import { SwipeControls } from './swipe-controls';
 
 type MessageProps = {
 	data: InteractionMessage;
@@ -50,14 +51,6 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	};
 
 	const isUser = data.role === 'user';
-	const isSwiped = data.swipes.length > 1;
-	const handleSwipeChange = (direction: 'left' | 'right') => {
-		if (data.isIntro) {
-			changeSwipe(direction);
-		}
-	};
-
-	const currentSwipe = data.swipes.findIndex((swipe) => swipe.id === data.activeSwipeId) + 1;
 
 	return (
 		<Flex justify={isUser ? 'flex-end' : 'flex-start'} gap={2}>
@@ -136,31 +129,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 						<RenderMd content={answerContent} />
 					)}
 				</Box>
-				{isSwiped && (
-					<Flex justify="flex-end" align="center" gap={2} mt={2}>
-						{currentSwipe > 1 && (
-							<IconButtonWithTooltip
-								size="xs"
-								variant="ghost"
-								colorPalette="purple"
-								icon={<LuArrowLeft />}
-								tooltip="Go back"
-								onClick={() => handleSwipeChange('left')}
-							/>
-						)}
-						<Text fontSize="xs" opacity={0.7}>
-							{currentSwipe} / {data.swipes.length}
-						</Text>
-						<IconButtonWithTooltip
-							size="xs"
-							variant="ghost"
-							colorPalette="purple"
-							icon={<LuArrowRight />}
-							tooltip="Go forward"
-							onClick={() => handleSwipeChange('right')}
-						/>
-					</Flex>
-				)}
+				<SwipeControls data={data} />
 			</Box>
 			{isUser && <Avatar size="lg" name="User" src="/user-avatar.png" bg="purple.500" />}
 		</Flex>

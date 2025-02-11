@@ -3,7 +3,7 @@ import {
   CommonModelSettingsType,
 } from "./common-model-types";
 
-export interface UserPerson extends CommonModelItemType {
+export interface UserPersonType extends CommonModelItemType {
   id: string;
   createdAt: string;
   updatedAt: string;
@@ -21,4 +21,4 @@ export interface UserPerson extends CommonModelItemType {
   }[];
 }
 
-export interface UserPersonSettings extends CommonModelSettingsType {}
+export interface UserPersonSettingsType extends CommonModelSettingsType {}

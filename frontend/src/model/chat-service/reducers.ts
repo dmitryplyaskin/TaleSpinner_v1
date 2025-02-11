@@ -184,6 +184,26 @@ const changeSwipe = (agentCard: AgentCard | null, direction: 'left' | 'right') =
 		}
 	});
 
+const updater = (agentCard: AgentCard | null) =>
+	produce(agentCard, (draft) => {
+		if (!draft) return;
+
+		const branch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
+		if (!branch) return;
+
+		if (branch.messages.length > 1 || (branch.messages.length === 1 && !branch.messages[0].isIntro)) {
+			branch.isStarted = true;
+		}
+
+		branch.messages.forEach((message) => {
+			if (message.isLast) {
+				message.isLast = false;
+			}
+		});
+		const lastMessage = branch.messages[branch.messages.length - 1];
+		lastMessage.isLast = true;
+	});
+
 export const reducers = {
 	addNewUserMessage,
 	addNewAssistantMessage,
@@ -194,4 +214,5 @@ export const reducers = {
 	deleteSwipe,
 	addNewSwipe,
 	changeSwipe,
+	updater,
 };
