@@ -1,4 +1,4 @@
-export * from './create-prompt';
+export * from './render-template';
 export * from './stream';
 export * from './stream-controller';
 export * from './generate';

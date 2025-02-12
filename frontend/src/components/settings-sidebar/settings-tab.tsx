@@ -19,7 +19,7 @@ export interface LLMSettings {
 	presencePenalty: number;
 }
 
-export const LLMSettingsTab: React.FC = () => {
+export const SamplerSettingsTab: React.FC = () => {
 	const settings = useUnit(samplersModel.$settings);
 	const items = useUnit(samplersModel.$items);
 

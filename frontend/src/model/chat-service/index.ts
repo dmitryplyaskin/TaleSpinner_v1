@@ -4,6 +4,7 @@ import { reducers } from './reducers';
 import { debounce } from 'patronum/debounce';
 import { chatListModel } from '../chat-list';
 import { produce } from 'immer';
+import { renderTemplate } from '@model/llm-orchestration';
 
 export const $currentAgentCard = createStore<AgentCard | null>(null);
 export const setCurrentAgentCard = createEvent<AgentCard>();
@@ -11,7 +12,7 @@ export const setCurrentAgentCard = createEvent<AgentCard>();
 $currentAgentCard.on(setCurrentAgentCard, (_, card) =>
 	produce(card, (draft) => {
 		const activeBranch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
-		if (!activeBranch || !activeBranch.isStarted) return;
+		if (!activeBranch || activeBranch.isStarted) return;
 
 		const messages = activeBranch.messages.map((x, index, arr) =>
 			arr.length - 1 === index ? { ...x, isLast: true } : x,
@@ -19,12 +20,21 @@ $currentAgentCard.on(setCurrentAgentCard, (_, card) =>
 
 		if (messages.length === 0 && draft.introSwipes.swipes.length > 0) {
 			const introSwipes = { ...draft.introSwipes, isIntro: true } as InteractionMessage;
+			introSwipes.swipes.forEach((x) => {
+				x.components.forEach((y) => {
+					if (y.type === 'answer') {
+						y.content = renderTemplate(y.content);
+					}
+				});
+			});
 			messages.push(introSwipes);
 		}
 
 		activeBranch.messages = messages;
 	}),
 );
+
+$currentAgentCard.watch(console.log);
 
 export const $isAgentSelected = $currentAgentCard.map((agentCard) => !!agentCard);
 
@@ -39,8 +49,6 @@ export const $currentChat = $currentAgentCard.map((agentCard) => {
 
 	return activeBranch.messages;
 });
-
-$currentAgentCard.watch(console.log);
 
 export const addNewUserMessage = createEvent<InteractionMessage>();
 export const addNewAssistantMessage = createEvent<InteractionMessage>();
