@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { useStoreMap, useUnit } from 'effector-react';
-import { $llmSettings, llmSettingsFields, LLMSettingsState, LLMSettingField } from '../../model/llm-settings';
+import React, { useEffect } from 'react';
+import { useUnit } from 'effector-react';
+import { llmSettingsFields, LLMSettingField } from '../../model/llm-settings';
 import { Box, SimpleGrid, Text, Icon, Flex, Input } from '@chakra-ui/react';
-import { LuCopy, LuInfo, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
 import { Tooltip } from '../../ui/chakra-core-ui/tooltip';
 import { Slider } from '../../ui/chakra-core-ui/slider';
 import { Select } from 'chakra-react-select';
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { SamplerItemSettingsType, SamplersItemType } from '@shared/types/samplers';
+import { FormProvider, useController, useForm, UseFormReturn } from 'react-hook-form';
 
 export interface LLMSettings {
 	temperature: number;
@@ -21,17 +22,33 @@ export interface LLMSettings {
 export const LLMSettingsTab: React.FC = () => {
 	const settings = useUnit(samplersModel.$settings);
 	const items = useUnit(samplersModel.$items);
-	const [state, setState] = useState<SamplerItemSettingsType>({});
 
-	const handleChange = (key: keyof LLMSettingsState, value: number) => {
-		setState({ [key]: value });
-		// updateLLMSettings({ [key]: value });
+	const methods = useForm<SamplerItemSettingsType>({
+		defaultValues: items.find((instr) => instr.id === settings.selectedId)?.settings,
+	});
+
+	useEffect(() => {
+		methods.reset(items.find((instr) => instr.id === settings.selectedId)?.settings);
+	}, [settings.selectedId]);
+
+	const handleSave = () => {
+		const item = items.find((instr) => instr.id === settings.selectedId) as SamplersItemType;
+		const newItem = { ...item, settings: methods.getValues() } as SamplersItemType;
+
+		samplersModel.updateItemFx(newItem);
 	};
 
 	useEffect(() => {
-		samplersModel.getItemsFx();
-		samplersModel.getSettingsFx();
-	}, []);
+		const { unsubscribe } = methods.watch((data) => {
+			const item = items.find((instr) => instr.id === settings.selectedId) as SamplersItemType;
+			const newItem = { ...item, settings: data } as SamplersItemType;
+
+			samplersModel.changeItemDebounced(newItem);
+		});
+		return () => {
+			unsubscribe();
+		};
+	}, [methods.watch]);
 
 	const options = items.map((item) => ({
 		label: item.name,
@@ -49,10 +66,16 @@ export const LLMSettingsTab: React.FC = () => {
 				/>
 				<Box display="flex" gap={2} alignSelf="flex-end">
 					<IconButtonWithTooltip
+						tooltip="Сохранить шаблон"
+						icon={<LuSave />}
+						aria-label="Save template"
+						onClick={handleSave}
+					/>
+					<IconButtonWithTooltip
 						tooltip="Создать шаблон"
 						icon={<LuPlus />}
 						aria-label="Create template"
-						onClick={() => samplersModel.createItemFx(createEmptySampler(state))}
+						onClick={() => samplersModel.createItemFx(createEmptySampler(methods.getValues()))}
 					/>
 					<IconButtonWithTooltip
 						tooltip="Дублировать шаблон"
@@ -74,25 +97,26 @@ export const LLMSettingsTab: React.FC = () => {
 				</Box>
 			</Flex>
 
-			<SimpleGrid columns={3} gap={4}>
-				{llmSettingsFields.map((field) => (
-					<Item key={field.key} field={field} handleChange={handleChange} />
-				))}
-			</SimpleGrid>
+			<FormProvider {...methods}>
+				<SimpleGrid columns={3} gap={4}>
+					{llmSettingsFields.map((field) => (
+						<Item key={field.key} field={field} methods={methods} />
+					))}
+				</SimpleGrid>
+			</FormProvider>
 		</Flex>
 	);
 };
 
 type ItemProps = {
 	field: LLMSettingField;
-	handleChange: (key: keyof LLMSettingsState, value: number) => void;
+	methods: UseFormReturn<SamplerItemSettingsType>;
 };
 
-const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
-	const value = useStoreMap({
-		store: $llmSettings,
-		keys: [field.key],
-		fn: (llmSettings, key) => llmSettings[key as keyof LLMSettingsState],
+const Item: React.FC<ItemProps> = ({ field, methods }) => {
+	const formField = useController({
+		name: field.key,
+		control: methods.control,
 	});
 
 	return (
@@ -116,12 +140,11 @@ const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
 				max={field.max}
 				step={field.step}
 				size="md"
-				zIndex={2}
 				variant="outline"
 				colorPalette="purple"
-				value={[value]}
+				value={[formField.field.value]}
 				onChange={(value) => {
-					handleChange(field.key as keyof LLMSettingsState, Number(value.target.value));
+					formField.field.onChange(Number(value.target.value));
 				}}
 			/>
 			<Input
@@ -130,12 +153,12 @@ const Item: React.FC<ItemProps> = ({ field, handleChange }) => {
 				min={field.min}
 				max={field.max}
 				step={field.step}
-				value={value}
+				value={formField.field.value}
 				onChange={(e) => {
-					handleChange(field.key as keyof LLMSettingsState, Number(e.target.value));
+					formField.field.onChange(Number(e.target.value));
 				}}
 				onBlur={(e) => {
-					handleChange(field.key as keyof LLMSettingsState, Number(e.target.value));
+					formField.field.onBlur();
 				}}
 			/>
 		</Box>

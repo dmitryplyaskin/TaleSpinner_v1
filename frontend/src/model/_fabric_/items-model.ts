@@ -1,15 +1,17 @@
-import { createEffect, createStore } from 'effector';
+import { createEffect, createEvent, createStore } from 'effector';
 import { FabricItems } from './types';
 import { CommonModelItemType } from '@shared/types/common-model-types';
 import { asyncHandler } from '@model/utils/async-handler';
 import { v4 as uuidv4 } from 'uuid';
 import { BASE_URL } from '../../const';
+import { debounce } from 'patronum/debounce';
 
 export const createItemsModel = <ItemType extends CommonModelItemType>(
 	itemsParams: FabricItems<ItemType>,
 	fabricName: string,
 ) => {
 	const $items = createStore<ItemType[]>(itemsParams.defaultValue || []);
+	const changeItem = createEvent<ItemType>();
 
 	const getItemsFx = createEffect<void, { data: ItemType[] }>(() =>
 		asyncHandler(async () => {
@@ -85,6 +87,9 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 		}, `Error duplicating ${fabricName} item`),
 	);
 
+	const changeItemDebounced = createEvent<ItemType>();
+	const changeItemDebounced_ = debounce(changeItemDebounced, 1000);
+
 	$items
 		.on(getItemsFx.doneData, (_, { data }) => data)
 		.on(getItemByIdFx.doneData, (state, { data }) =>
@@ -96,7 +101,8 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 	$items
 		.on([createItemFx.doneData, duplicateItemFx.doneData], (state, { data }) => [...state, data])
 		.on(updateItemFx.doneData, (state, { data }) => state.map((i) => (i.id === data.id ? data : i)))
-		.on(deleteItemFx.doneData, (state, { data }) => state.filter((i) => i.id !== data.id));
+		.on(deleteItemFx.doneData, (state, { data }) => state.filter((i) => i.id !== data.id))
+		.on([changeItem, changeItemDebounced_], (state, item) => state.map((i) => (i.id === item.id ? item : i)));
 
 	return {
 		$items,
@@ -106,5 +112,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 		updateItemFx,
 		deleteItemFx,
 		duplicateItemFx,
+		changeItem,
+		changeItemDebounced,
 	};
 };

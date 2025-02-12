@@ -8,12 +8,21 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 	fabric: Fabric<SettingsType, ItemType>,
 ) => {
 	const { getSettingsFx, updateSettingsFx, $settings } = createSettingsModel(fabric.settings, fabric.fabricName);
-	const { getItemsFx, getItemByIdFx, createItemFx, updateItemFx, deleteItemFx, duplicateItemFx, $items } =
-		createItemsModel(fabric.items, fabric.fabricName);
+	const {
+		getItemsFx,
+		getItemByIdFx,
+		createItemFx,
+		updateItemFx,
+		deleteItemFx,
+		duplicateItemFx,
+		$items,
+		changeItemDebounced,
+		changeItem,
+	} = createItemsModel(fabric.items, fabric.fabricName);
 
 	const $selectedItem = combine($settings, $items, (settings, items) => {
 		if (!settings) return null;
-		return items.find((item) => item.id === settings.selectedId);
+		return items.find((item) => item.id === settings.selectedId) || null;
 	});
 
 	sample({
@@ -42,5 +51,7 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		updateItemFx,
 		deleteItemFx,
 		duplicateItemFx,
+		changeItemDebounced,
+		changeItem,
 	};
 };

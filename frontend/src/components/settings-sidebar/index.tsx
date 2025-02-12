@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LLMSettingsTab, LLMSettings } from './settings-tab';
 import { APIProviderTab } from './api-provoder-tab';
 import { OpenRouterConfig } from '../api';
 import { Tabs } from '@chakra-ui/react';
 
 import { Drawer } from '@ui/drawer';
+import { samplersModel } from '@model/samplers';
 
 interface SettingsSidebarProps {
 	onLLMSettingsChange: (settings: LLMSettings) => void;
@@ -33,6 +34,11 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 		setLLMSettings(newSettings);
 		onLLMSettingsChange(newSettings);
 	};
+
+	useEffect(() => {
+		samplersModel.getItemsFx();
+		samplersModel.getSettingsFx();
+	}, []);
 
 	return (
 		<Drawer name="settings" title="Settings">
