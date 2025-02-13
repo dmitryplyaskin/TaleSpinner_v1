@@ -8,33 +8,41 @@ import { renderTemplate } from '@model/llm-orchestration';
 
 export const $currentAgentCard = createStore<AgentCard | null>(null);
 export const setCurrentAgentCard = createEvent<AgentCard>();
+const firstChatHistoryInit = createEvent();
 
-$currentAgentCard.on(setCurrentAgentCard, (_, card) =>
-	produce(card, (draft) => {
-		const activeBranch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
-		if (!activeBranch || activeBranch.isStarted) return;
+$currentAgentCard
+	.on(setCurrentAgentCard, (_, card) => card)
+	.on(firstChatHistoryInit, (card) =>
+		produce(card, (draft) => {
+			if (!draft) return;
+			const activeBranch = draft.interactionBranches.find((branch) => branch.id === draft.activeBranchId);
+			if (!activeBranch || activeBranch.isStarted) return;
 
-		const messages = activeBranch.messages.map((x, index, arr) =>
-			arr.length - 1 === index ? { ...x, isLast: true } : x,
-		);
+			const messages = activeBranch.messages.map((x, index, arr) =>
+				arr.length - 1 === index ? { ...x, isLast: true } : x,
+			);
 
-		if (messages.length === 0 && draft.introSwipes.swipes.length > 0) {
-			const introSwipes = { ...draft.introSwipes, isIntro: true } as InteractionMessage;
-			introSwipes.swipes.forEach((x) => {
-				x.components.forEach((y) => {
-					if (y.type === 'answer') {
-						y.content = renderTemplate(y.content);
-					}
+			if (messages.length === 0 && draft.introSwipes.swipes.length > 0) {
+				console.log('messages', messages);
+				const introSwipes = { ...draft.introSwipes, isIntro: true, isLast: true } as InteractionMessage;
+				introSwipes.swipes.forEach((x) => {
+					x.components.forEach((y) => {
+						if (y.type === 'answer') {
+							y.content = renderTemplate(y.content);
+						}
+					});
 				});
-			});
-			messages.push(introSwipes);
-		}
+				messages.push(introSwipes);
+			}
 
-		activeBranch.messages = messages;
-	}),
-);
+			activeBranch.messages = messages;
+		}),
+	);
 
-$currentAgentCard.watch(console.log);
+sample({
+	clock: debounce(setCurrentAgentCard, 200),
+	target: firstChatHistoryInit,
+});
 
 export const $isAgentSelected = $currentAgentCard.map((agentCard) => !!agentCard);
 

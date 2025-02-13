@@ -1,7 +1,7 @@
 import { Stack } from '@chakra-ui/react';
 import { Dialog } from '@ui/dialog';
 import { FormProvider, useForm } from 'react-hook-form';
-import { FormInput, FormTextarea, FormAutocomplete } from '@ui/form-components';
+import { FormInput, FormTextarea } from '@ui/form-components';
 import { useUnit } from 'effector-react';
 import { $editingCard, $isEditModalOpen, closeEditModal } from '@model/chats';
 import { useEffect } from 'react';
@@ -115,7 +115,7 @@ export const EditChatModal: React.FC = () => {
 						/>
 						<FormInput name="creator" label="Создатель" placeholder="Ваше имя или псевдоним" />
 						<FormInput name="character_version" label="Версия" placeholder="Версия карточки персонажа" />
-						<FormAutocomplete
+						{/* <FormAutocomplete
 							name="tags"
 							label="Теги"
 							placeholder="Выберите теги"
@@ -124,7 +124,7 @@ export const EditChatModal: React.FC = () => {
 								{ value: '2', label: '2' },
 							]}
 							// isMulti={true}
-						/>
+						/> */}
 					</Stack>
 				</form>
 			</FormProvider>

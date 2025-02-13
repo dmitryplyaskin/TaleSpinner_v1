@@ -3,7 +3,7 @@ import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../ap
 import { VStack, Text } from '@chakra-ui/react';
 
 import { FormProvider, useForm } from 'react-hook-form';
-import { FormAutocomplete, FormInput } from '@ui/form-components';
+import { FormInput } from '@ui/form-components';
 
 interface APIProviderTabProps {
 	config: OpenRouterConfig | null;
@@ -49,7 +49,7 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config }) => {
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={6} align="stretch">
-				<FormAutocomplete name="provider" label="API Provider" options={options} disableFilterOptions />
+				{/* <FormAutocomplete name="provider" label="API Provider" options={options} disableFilterOptions />
 
 				<Text>В настоящее время поддерживается только OpenRouter</Text>
 
@@ -64,7 +64,7 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config }) => {
 						}))}
 						disableFilterOptions
 					/>
-				)}
+				)} */}
 
 				{/* {loading && <FormHelperText>Загрузка списка моделей...</FormHelperText>}
         {!config?.apiKey && (

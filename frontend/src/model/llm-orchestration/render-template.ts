@@ -3,30 +3,96 @@ import { instructionsModel } from '@model/instructions';
 import { userPersonsModel } from '@model/user-persons';
 import Handlebars from 'handlebars';
 
-export const renderTemplate = (content: string) => {
-	const user = userPersonsModel.$selectedItem.getState();
-	const char = $currentAgentCard.getState();
-	const systemPrompt = instructionsModel.$selectedItem.getState();
-	const template = Handlebars.compile(content);
+// Кэш для хранения скомпилированных шаблонов
+const templateCache = new Map<string, HandlebarsTemplateDelegate>();
 
-	const res = template({
-		user: user?.name,
-		persona: user?.type === 'default' ? user.contentTypeDefault : null,
-		char: char?.metadata?.name as string,
-		description: char?.metadata?.description as string,
-		system: systemPrompt?.instruction,
-	});
+// Функция компиляции с кэшированием
+const compileWithCache = (templateString: string): HandlebarsTemplateDelegate => {
+	if (!templateCache.has(templateString)) {
+		try {
+			const compiled = Handlebars.compile(templateString);
+			templateCache.set(templateString, compiled);
+		} catch (error) {
+			console.error('Template compilation error:', error);
+			throw new Error(`Template compilation failed: ${error.message}`);
+		}
+	}
+	return templateCache.get(templateString)!;
+};
 
-	console.log({
-		res,
-		content,
-		template,
-		user: user?.name,
-		persona: user?.type === 'default' ? user.contentTypeDefault : null,
-		char: char?.metadata?.name as string,
-		description: char?.metadata?.description as string,
-		system: systemPrompt?.instruction,
-	});
+// Обработка ошибок при рендеринге
+const safeRender = (template: HandlebarsTemplateDelegate, context: any): string => {
+	try {
+		return template(context);
+	} catch (error) {
+		console.error('Template rendering error:', error);
+		return `[Rendering Error: ${error.message}]`;
+	}
+};
 
-	return res;
+// Рекурсивная обработка с кэшированием и обработкой ошибок
+const compileNestedTemplates = (data: any, context: any): any => {
+	try {
+		if (typeof data === 'string') {
+			const template = compileWithCache(data);
+			return safeRender(template, context);
+		}
+
+		if (Array.isArray(data)) {
+			return data.map((item) => compileNestedTemplates(item, context));
+		}
+
+		if (typeof data === 'object' && data !== null) {
+			return Object.fromEntries(
+				Object.entries(data).map(([key, value]) => [key, compileNestedTemplates(value, context)]),
+			);
+		}
+
+		return data;
+	} catch (error) {
+		console.error('Nested template processing error:', error);
+		return `[Nested Processing Error: ${error.message}]`;
+	}
+};
+
+export const renderTemplate = (content: string): string => {
+	try {
+		const user = userPersonsModel.$selectedItem.getState();
+		const char = $currentAgentCard.getState()?.metadata;
+		const systemPrompt = instructionsModel.$selectedItem.getState();
+
+		// Безопасное создание контекста
+		const rawContext = {
+			user: user?.name,
+			persona: user?.type === 'default' ? user.contentTypeDefault : undefined,
+			char: char?.name,
+			description: char?.description,
+			system: systemPrompt?.instruction,
+			scenario: char?.scenario,
+			personality: char?.personality,
+			first_mes: char?.first_mes,
+			mes_example: char?.mes_example,
+			creator_notes: char?.creator_notes,
+			system_prompt: char?.system_prompt,
+			post_history_instructions: char?.post_history_instructions,
+		};
+
+		// Обработка вложенных шаблонов
+		const processedContext = compileNestedTemplates(rawContext, rawContext);
+
+		// Компиляция основного шаблона
+		const template = compileWithCache(content);
+		const result = safeRender(template, processedContext);
+
+		console.debug('Template rendered successfully:', {
+			original: content,
+			result,
+			context: processedContext,
+		});
+
+		return result;
+	} catch (error) {
+		console.error('Global template error:', error);
+		return `[Global Error: ${error.message}]`;
+	}
 };
