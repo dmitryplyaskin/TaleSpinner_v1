@@ -3,13 +3,10 @@ import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../ap
 import { VStack, Text } from '@chakra-ui/react';
 
 import { FormProvider, useForm } from 'react-hook-form';
-import { FormInput } from '@ui/form-components';
 
-interface APIProviderTabProps {
-	config: OpenRouterConfig | null;
-}
+interface APIProviderTabProps {}
 
-export const APIProviderTab: React.FC<APIProviderTabProps> = ({ config }) => {
+export const APIProviderTab: React.FC<APIProviderTabProps> = () => {
 	const methods = useForm({
 		defaultValues: {
 			provider: ['openrouter'],

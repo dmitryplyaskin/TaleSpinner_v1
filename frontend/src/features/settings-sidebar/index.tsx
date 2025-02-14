@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { SamplerSettingsTab } from './settings-tab';
 import { APIProviderTab } from './api-provoder-tab';
-import { OpenRouterConfig } from '../api';
+
 import { Tabs } from '@chakra-ui/react';
 
 import { Drawer } from '@ui/drawer';
 import { samplersModel } from '@model/samplers';
 
 interface SettingsSidebarProps {
-	onAPIConfigChange: (config: OpenRouterConfig) => void;
-	apiConfig: OpenRouterConfig | null;
+	// onAPIConfigChange: (config: OpenRouterConfig) => void;
+	// apiConfig: OpenRouterConfig | null;
 }
 
 type TabType = 'settings' | 'provider';
 
-export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ onAPIConfigChange, apiConfig }) => {
+export const SettingsSidebar: React.FC<SettingsSidebarProps> = () => {
 	const [activeTab, setActiveTab] = useState<TabType>('settings');
 
 	useEffect(() => {
@@ -39,9 +39,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ onAPIConfigCha
 				<Tabs.Content value="settings" p={0}>
 					<SamplerSettingsTab />
 				</Tabs.Content>
-				<Tabs.Content value="provider">
-					<APIProviderTab config={apiConfig} onConfigChange={onAPIConfigChange} />
-				</Tabs.Content>
+				<Tabs.Content value="provider">{/* <APIProviderTab /> */}</Tabs.Content>
 			</Tabs.Root>
 		</Drawer>
 	);
