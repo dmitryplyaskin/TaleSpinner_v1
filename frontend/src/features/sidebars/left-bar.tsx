@@ -1,8 +1,55 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { changeSidebarSettings } from '@model/sidebars';
-
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2 } from 'react-icons/lu';
+import { IconType } from 'react-icons';
+import type { SidebarName } from '@model/sidebars';
+
+type SidebarButton = {
+	name: SidebarName;
+	tooltip: string;
+	icon: IconType;
+	ariaLabel: string;
+};
+
+const sidebarButtons: SidebarButton[] = [
+	{
+		name: 'agentCards',
+		tooltip: 'Chat cards',
+		icon: LuIdCard,
+		ariaLabel: 'Open chat cards',
+	},
+	{
+		name: 'settings',
+		tooltip: 'Settings',
+		icon: LuSettings,
+		ariaLabel: 'Open settings',
+	},
+	{
+		name: 'userPersons',
+		tooltip: 'User persons',
+		icon: LuSquareUser,
+		ariaLabel: 'Open user persons',
+	},
+	{
+		name: 'instructions',
+		tooltip: 'Instructions',
+		icon: LuFileText,
+		ariaLabel: 'Open instructions',
+	},
+	{
+		name: 'templates',
+		tooltip: 'Templates',
+		icon: LuFileCode2,
+		ariaLabel: 'Open templates',
+	},
+	{
+		name: 'pipeline',
+		tooltip: 'Pipeline',
+		icon: LuCode,
+		ariaLabel: 'Open pipeline',
+	},
+] as const;
 
 export const LeftBar = () => {
 	return (
@@ -19,72 +66,19 @@ export const LeftBar = () => {
 			align="center"
 			zIndex={2}
 		>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="Chat cards"
-					variant="outline"
-					size="lg"
-					colorScheme="purple"
-					aria-label="Open chat cards"
-					onClick={() => changeSidebarSettings({ name: 'agentCards', settings: { isOpen: true } })}
-					icon={<LuIdCard />}
-				/>
-			</Box>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="Settings"
-					variant="outline"
-					colorScheme="purple"
-					aria-label="Open settings"
-					size="lg"
-					onClick={() => changeSidebarSettings({ name: 'settings', settings: { isOpen: true } })}
-					icon={<LuSettings />}
-				/>
-			</Box>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="User persons"
-					variant="outline"
-					size="lg"
-					colorScheme="purple"
-					aria-label="Open user persons"
-					onClick={() => changeSidebarSettings({ name: 'userPersons', settings: { isOpen: true } })}
-					icon={<LuSquareUser />}
-				/>
-			</Box>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="Instructions"
-					variant="outline"
-					size="lg"
-					colorScheme="purple"
-					aria-label="Open instructions"
-					onClick={() => changeSidebarSettings({ name: 'instructions', settings: { isOpen: true } })}
-					icon={<LuFileText />}
-				/>
-			</Box>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="Templates"
-					variant="outline"
-					colorScheme="purple"
-					aria-label="Open templates"
-					size="lg"
-					onClick={() => changeSidebarSettings({ name: 'templates', settings: { isOpen: true } })}
-					icon={<LuFileCode2 />}
-				/>
-			</Box>
-			<Box>
-				<IconButtonWithTooltip
-					tooltip="Pipeline"
-					variant="outline"
-					colorScheme="purple"
-					aria-label="Open pipeline"
-					size="lg"
-					onClick={() => changeSidebarSettings({ name: 'pipeline', settings: { isOpen: true } })}
-					icon={<LuCode />}
-				/>
-			</Box>
+			{sidebarButtons.map((button) => (
+				<Box key={button.name}>
+					<IconButtonWithTooltip
+						tooltip={button.tooltip}
+						variant="outline"
+						size="lg"
+						colorScheme="purple"
+						aria-label={button.ariaLabel}
+						onClick={() => changeSidebarSettings({ name: button.name, settings: { isOpen: true } })}
+						icon={<button.icon />}
+					/>
+				</Box>
+			))}
 		</Flex>
 	);
 };
