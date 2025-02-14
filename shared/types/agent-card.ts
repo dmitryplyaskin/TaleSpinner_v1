@@ -74,6 +74,13 @@ export interface InteractionMessage {
   isIntro?: boolean;
   /** Флаг, указывающий, является ли сообщение последним в ветке */
   isLast?: boolean;
+  /** Информация о пользователе */
+  userPersonInfo?: {
+    /** Имя пользователя */
+    name: string;
+    /** Путь к изображению пользователя */
+    imagePath: string;
+  };
 }
 
 /**

@@ -10,9 +10,8 @@ import {
 	DialogTitle,
 } from '@ui/chakra-core-ui/dialog';
 import { Textarea, TextareaProps } from '@chakra-ui/react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
+
+import { RenderMd } from '@ui/render-md';
 
 interface TextareaFullscreenDialogProps {
 	isOpen: boolean;
@@ -55,9 +54,7 @@ export const TextareaFullscreenDialog: React.FC<TextareaFullscreenDialogProps> =
 						</Tabs.Content>
 
 						<Tabs.Content value="preview" pt="4">
-							<Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-								{value}
-							</Markdown>
+							<RenderMd content={value} />
 						</Tabs.Content>
 					</Tabs.Root>
 				</DialogBody>

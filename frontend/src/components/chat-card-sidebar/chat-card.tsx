@@ -7,6 +7,7 @@ import { chatListModel } from '@model/chat-list';
 import { setCurrentAgentCard } from '@model/chat-service';
 import { AgentCard } from '@shared/types/agent-card';
 import { AuthorNoteDialog } from './components/author-note-dialog';
+import { setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/chat-list';
 
 type Props = {
 	data: AgentCard;
@@ -19,7 +20,8 @@ export const CharacterCard: React.FC<Props> = ({ data }) => {
 
 	const handleEditClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		// openEditModal(data);
+		setSelectedAgentCardForEdit(data);
+		setIsEditAgentCardModalOpen(true);
 	};
 
 	const handleDeleteClick = (e: React.MouseEvent) => {

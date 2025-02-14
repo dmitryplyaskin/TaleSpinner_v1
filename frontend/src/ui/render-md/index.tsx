@@ -1,7 +1,7 @@
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { remarkQuotePlugin } from './remark-quote-plugin';
+import remarkBreaks from 'remark-breaks';
 import { quotePlugin } from './quote-plugin';
 import { Text } from '@chakra-ui/react';
 
@@ -12,7 +12,7 @@ type RenderMdProps = {
 export const RenderMd = ({ content }: RenderMdProps) => {
 	return (
 		<Markdown
-			remarkPlugins={[remarkGfm, quotePlugin]}
+			remarkPlugins={[remarkGfm, quotePlugin, remarkBreaks]}
 			rehypePlugins={[rehypeRaw]}
 			components={{
 				em(props) {
