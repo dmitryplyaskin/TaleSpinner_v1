@@ -26,7 +26,7 @@ export const LeftBar = () => {
 					size="lg"
 					colorScheme="purple"
 					aria-label="Open chat cards"
-					onClick={() => changeSidebarSettings({ name: 'chatCards', settings: { isOpen: true } })}
+					onClick={() => changeSidebarSettings({ name: 'agentCards', settings: { isOpen: true } })}
 					icon={<LuIdCard />}
 				/>
 			</Box>

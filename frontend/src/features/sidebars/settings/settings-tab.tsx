@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { useUnit } from 'effector-react';
-import { llmSettingsFields, LLMSettingField } from '../../model/llm-settings';
+import { llmSettingsFields, LLMSettingField } from '../../../model/llm-settings';
 import { Box, SimpleGrid, Text, Icon, Flex, Input } from '@chakra-ui/react';
 import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
-import { Tooltip } from '../../ui/chakra-core-ui/tooltip';
-import { Slider } from '../../ui/chakra-core-ui/slider';
+import { Tooltip } from '../../../ui/chakra-core-ui/tooltip';
+import { Slider } from '../../../ui/chakra-core-ui/slider';
 import { Select } from 'chakra-react-select';
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';

@@ -5,15 +5,15 @@ import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { chatListModel } from '@model/chat-list';
 import { setCurrentAgentCard } from '@model/chat-service';
-import { AgentCard } from '@shared/types/agent-card';
+import { AgentCard as AgentCardType } from '@shared/types/agent-card';
 import { AuthorNoteDialog } from './components/author-note-dialog';
 import { setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/chat-list';
 
 type Props = {
-	data: AgentCard;
+	data: AgentCardType;
 };
 
-export const CharacterCard: React.FC<Props> = ({ data }) => {
+export const AgentCard: React.FC<Props> = ({ data }) => {
 	const handleSelect = () => {
 		setCurrentAgentCard(data);
 	};

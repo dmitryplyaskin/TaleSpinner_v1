@@ -1,15 +1,15 @@
-import { ChatCardSidebar } from '../chat-card-sidebar';
-import { SettingsSidebar } from '../settings-sidebar';
-import { UserPersonSidebar } from '../user-person-sidebar';
-import { PipelineSidebar } from '../pipeline-sidebar';
-import { InstructionsSidebar } from '../instructions-sidebar';
-import { TemplateSidebar } from '../template-sidebar';
+import { AgentCardsSidebar } from './agent-cards';
+import { SettingsSidebar } from './settings';
+import { UserPersonSidebar } from './user-person';
+import { PipelineSidebar } from './pipelines';
+import { InstructionsSidebar } from './instructions';
+import { TemplateSidebar } from './templates';
 
 export const ConnectSidebars = () => {
 	return (
 		<>
 			<SettingsSidebar />
-			<ChatCardSidebar />
+			<AgentCardsSidebar />
 			<UserPersonSidebar />
 			<PipelineSidebar />
 			<InstructionsSidebar />

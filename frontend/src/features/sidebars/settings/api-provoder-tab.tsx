@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../api/openRouter';
+import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../../api/openRouter';
 import { VStack, Text } from '@chakra-ui/react';
 
 import { FormProvider, useForm } from 'react-hook-form';

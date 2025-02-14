@@ -2,7 +2,7 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 import { apiRoutes } from '../api-routes';
 import { asyncHandler } from './utils/async-handler';
 
-export type SidebarName = 'settings' | 'chatCards' | 'userPersons' | 'pipeline' | 'instructions' | 'templates';
+export type SidebarName = 'settings' | 'agentCards' | 'userPersons' | 'pipeline' | 'instructions' | 'templates';
 
 export type SidebarSetting = {
 	isOpen: boolean;
@@ -24,7 +24,7 @@ export const $sidebars = createStore<SidebarSettings>({
 		size: 'lg',
 		contained: false,
 	},
-	chatCards: {
+	agentCards: {
 		isOpen: false,
 		isFullscreen: false,
 		placement: 'start',

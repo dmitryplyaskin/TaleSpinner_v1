@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { Flex, Button, Stack } from '@chakra-ui/react';
 import { LuPlus } from 'react-icons/lu';
@@ -6,18 +6,22 @@ import { LuPlus } from 'react-icons/lu';
 import { useUnit } from 'effector-react';
 import { chatListModel } from '@model/chat-list';
 
-import { CharacterCard } from './chat-card';
+import { AgentCard } from './agent-card';
 import { Drawer } from '@ui/drawer';
 import { EditChatModal } from './edit-chat-modal';
 import { Upload } from './components/upload';
-import { createNewAgentCard } from '../../utils/creation-helper-agent-card';
+import { createNewAgentCard } from '@utils/creation-helper-agent-card';
 
-export const ChatCardSidebar: React.FC = () => {
+export const AgentCardsSidebar: React.FC = () => {
 	const list = useUnit(chatListModel.$items);
+
+	useEffect(() => {
+		chatListModel.getItemsFx();
+	}, []);
 
 	return (
 		<>
-			<Drawer name="chatCards" title="Chat cards">
+			<Drawer name="agentCards" title="Agent cards">
 				<Flex direction="column" gap="4">
 					<Stack direction="row" gap={4}>
 						<Button onClick={() => chatListModel.createItemFx(createNewAgentCard())} colorScheme="blue">
@@ -27,7 +31,7 @@ export const ChatCardSidebar: React.FC = () => {
 					</Stack>
 
 					{list.map((chat) => (
-						<CharacterCard key={chat.id} data={chat} />
+						<AgentCard key={chat.id} data={chat} />
 					))}
 				</Flex>
 			</Drawer>
