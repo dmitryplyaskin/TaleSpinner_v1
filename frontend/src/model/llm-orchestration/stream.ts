@@ -5,7 +5,7 @@ import { streamController } from './stream-controller';
 
 type Stream = {
 	messages: GenerateMessage[];
-	settings: LLMSettingsState;
+	settings?: LLMSettingsState;
 	streamId?: string;
 };
 

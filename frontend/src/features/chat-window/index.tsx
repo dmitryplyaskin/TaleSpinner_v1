@@ -4,28 +4,12 @@ import { RenderChat } from './render-chat';
 
 import { Flex, Box, Button, Container, Textarea } from '@chakra-ui/react';
 
-import {
-	$currentAgentCard,
-	addNewAssistantMessage,
-	addNewUserMessage,
-	updateSwipe,
-	updateSwipeStream,
-} from '@model/chat-service';
+import { $currentAgentCard, addNewAssistantMessage, addNewUserMessage, updateSwipeStream } from '@model/chat-service';
 import { createNewMessage } from '../../utils/creation-helper-agent-card';
 import { buildMessages } from '../../utils/build-messages';
 import { generate, streamController } from '@model/llm-orchestration';
 
-interface ChatWindowProps {
-	llmSettings: {
-		temperature: number;
-		maxTokens: number;
-		topP: number;
-		frequencyPenalty: number;
-		presencePenalty: number;
-	};
-}
-
-export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
+export const ChatWindow: React.FC = () => {
 	const [text, setText] = useState('');
 	const [isStreaming, setIsStreaming] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,7 +45,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ llmSettings }) => {
 			setStreamId(streamId_);
 
 			await generate({
-				llmSettings,
+				llmSettings: undefined,
 				messages,
 				stream: true,
 				streamId: streamId_,

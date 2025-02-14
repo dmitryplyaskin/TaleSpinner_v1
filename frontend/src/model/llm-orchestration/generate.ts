@@ -4,7 +4,7 @@ import { GenerateMessage } from '@shared/types/generate';
 import { streamMessage } from './stream';
 
 type GenerateProps = {
-	llmSettings: LLMSettingsState;
+	llmSettings?: LLMSettingsState;
 	messages: GenerateMessage[];
 	stream: true;
 	streamId: string;

@@ -1,40 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { ChatWindow } from './components/chat-window';
-import { SettingsSidebar } from './components/settings-sidebar';
-import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './components/api';
+import { ChatWindow } from './features/chat-window';
+import { SettingsSidebar } from './features/settings-sidebar';
+import { OpenRouterConfig, getOpenRouterConfig, updateOpenRouterConfig } from './features/api';
 import { chatListModel } from './model/chat-list';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
-import { ChatCardSidebar } from './components/chat-card-sidebar';
-import { UserPersonSidebar } from './components/user-person-sidebar';
+import { ChatCardSidebar } from './features/chat-card-sidebar';
+import { UserPersonSidebar } from './features/user-person-sidebar';
 import { LeftBar } from './left-bar';
 import { Toaster } from '@ui/chakra-core-ui/toaster';
 import './model/llm-orchestration';
-import { PipelineSidebar } from './components/pipeline-sidebar';
+import { PipelineSidebar } from './features/pipeline-sidebar';
 import { $isAgentSelected } from '@model/chat-service';
-import { InstructionsSidebar } from './components/instructions-sidebar';
-import { TemplateSidebar } from './components/template-sidebar';
+import { InstructionsSidebar } from './features/instructions-sidebar';
+import { TemplateSidebar } from './features/template-sidebar';
 import { createNewAgentCard } from './utils/creation-helper-agent-card';
-
-interface LLMSettings {
-	temperature: number;
-	maxTokens: number;
-	topP: number;
-	frequencyPenalty: number;
-	presencePenalty: number;
-}
 
 function App() {
 	const isAgentSelected = useUnit($isAgentSelected);
 
-	const [llmSettings, setLlmSettings] = useState<LLMSettings>({
-		temperature: 0.7,
-		maxTokens: 2000,
-		topP: 1,
-		frequencyPenalty: 0,
-		presencePenalty: 0,
-	});
 	const [apiConfig, setApiConfig] = useState<OpenRouterConfig | null>(null);
 
 	useEffect(() => {
@@ -49,7 +34,7 @@ function App() {
 				<Flex flex="1" direction="column" minW="0">
 					<Box flex="1" overflow="hidden">
 						{isAgentSelected ? (
-							<ChatWindow settings={llmSettings} />
+							<ChatWindow />
 						) : (
 							<Flex h="100%" align="center" justify="center">
 								<VStack gap={4}>
@@ -64,7 +49,6 @@ function App() {
 				</Flex>
 
 				<SettingsSidebar
-					onLLMSettingsChange={setLlmSettings}
 					onAPIConfigChange={async (config) => {
 						await updateOpenRouterConfig(config);
 						setApiConfig(config);
