@@ -4,7 +4,7 @@ import { reducers } from './reducers';
 import { debounce } from 'patronum/debounce';
 import { chatListModel } from '../chat-list';
 import { produce } from 'immer';
-import { renderTemplate } from '@model/llm-orchestration';
+import { renderTemplate } from '@model/llm-orchestration/render-template';
 
 export const $currentAgentCard = createStore<AgentCard | null>(null);
 export const setCurrentAgentCard = createEvent<AgentCard>();

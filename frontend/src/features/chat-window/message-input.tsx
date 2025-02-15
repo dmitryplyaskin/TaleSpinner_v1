@@ -1,22 +1,27 @@
 import React from 'react';
 import { Flex, Textarea, Button, Box, Container } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { $userMessage, setUserMessage, sendUserMessage, $isProcessing } from '@model/llm-orchestration/user-message';
+import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
+import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orchestration';
 
 interface MessageInputProps {}
 
 export const MessageInput: React.FC<MessageInputProps> = ({}) => {
-	const isProcessing = useUnit($isProcessing);
+	const isProcessing = useUnit($isCompletionsProcessing);
 	const message = useUnit($userMessage);
 
 	const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setUserMessage(event.target.value);
 	};
 
+	const handleSendMessage = () => {
+		attachCompletionsFx({});
+	};
+
 	const handleKeyPress = (event: React.KeyboardEvent) => {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			sendUserMessage();
+			handleSendMessage();
 		}
 	};
 
@@ -36,7 +41,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({}) => {
 						borderRadius="lg"
 						resize={'vertical'}
 					/>
-					<Button onClick={() => sendUserMessage()} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
+					<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
 						{isProcessing ? 'Оборвать' : 'Отправить'}
 					</Button>
 				</Flex>{' '}
