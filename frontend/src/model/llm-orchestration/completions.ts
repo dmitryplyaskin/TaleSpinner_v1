@@ -11,6 +11,8 @@ import { streamController } from './stream-controller';
 import { createNewMessage } from '@utils/creation-helper-agent-card';
 import { generate } from './generate';
 import { $userMessage, clearUserMessage } from './user-message';
+import { templatesModel } from '@model/template';
+import { renderTemplate } from './render-template';
 
 type CompletionsFxProps = {
 	userMessage: string;
@@ -46,6 +48,13 @@ export const completionsFx = createEffect(async ({ userMessage }: CompletionsFxP
 	if (!agentCard) return;
 
 	const messages = buildMessages(agentCard);
+
+	const template = templatesModel.$selectedItem.getState();
+	const templateSettings = templatesModel.$settings.getState();
+
+	if (template?.template && templateSettings.enabled) {
+		messages.unshift({ role: 'system', content: renderTemplate(template.template) });
+	}
 
 	const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
 	addNewAssistantMessage(assistantMessage.message);

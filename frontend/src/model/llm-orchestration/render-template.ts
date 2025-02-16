@@ -10,7 +10,7 @@ const templateCache = new Map<string, HandlebarsTemplateDelegate>();
 const compileWithCache = (templateString: string): HandlebarsTemplateDelegate => {
 	if (!templateCache.has(templateString)) {
 		try {
-			const compiled = Handlebars.compile(templateString);
+			const compiled = Handlebars.compile(templateString, { noEscape: true });
 			templateCache.set(templateString, compiled);
 		} catch (error) {
 			console.error('Template compilation error:', error);

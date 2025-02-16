@@ -46,9 +46,6 @@ export const EditChatModal: React.FC = () => {
 		},
 	});
 
-	console.log('WTF', { editingCard });
-	form.watch(console.log);
-
 	const { fields, append, remove, swap } = useFieldArray({
 		control: form.control,
 		name: 'alternate_greetings',
