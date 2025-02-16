@@ -1,4 +1,4 @@
-import { AgentCard, SwipeComponentType } from '@shared/types/agent-card';
+import { AgentCard, InteractionMessage, SwipeComponentType } from '@shared/types/agent-card';
 
 // Получение ID активной ветки
 export const getActiveBranchId = (agentCard: AgentCard): string | null => {
@@ -77,4 +77,22 @@ export const getAllRequiredIds = (
 	const componentId = getTargetComponentId(agentCard, branchId, messageId, swipeId, componentType);
 
 	return { branchId, messageId, swipeId, componentId };
+};
+
+export const getLastMessageState = (
+	agentCard: AgentCard,
+): { messageId: string; swipeId: string; contentId: string; message: InteractionMessage } | null => {
+	const branch = agentCard.interactionBranches.find((b) => b.id === agentCard.activeBranchId);
+	if (!branch || branch.messages.length === 0) return null;
+
+	const lastMessage = branch.messages[branch.messages.length - 1];
+	if (!lastMessage) return null;
+
+	const messageId = lastMessage.id;
+	const lastSwipe = lastMessage.swipes[lastMessage.swipes.length - 1];
+	const swipeId = lastSwipe.id;
+
+	const contentId = lastSwipe.components.find((c) => c.type === 'answer')?.id!;
+
+	return { messageId, swipeId, contentId, message: lastMessage };
 };

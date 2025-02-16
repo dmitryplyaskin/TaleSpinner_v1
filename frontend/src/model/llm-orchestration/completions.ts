@@ -13,8 +13,12 @@ import { generate } from './generate';
 import { $userMessage, clearUserMessage } from './user-message';
 import { templatesModel } from '@model/template';
 import { renderTemplate } from './render-template';
+import { getLastMessageState } from '@utils/get-agent-card-ids';
+
+type CompletionType = 'new-message' | 'new-swipe';
 
 type CompletionsFxProps = {
+	type: CompletionType;
 	userMessage: string;
 };
 
@@ -35,7 +39,7 @@ $currentStreamIdMap
 
 export const $isCompletionsProcessing = createStore(false);
 
-export const completionsFx = createEffect(async ({ userMessage }: CompletionsFxProps) => {
+export const completionsFx = createEffect(async ({ type, userMessage }: CompletionsFxProps) => {
 	const streamId_ = streamController.createStream();
 	addStreamId({ streamId: streamId_, streamName: 'chat-completions' });
 
@@ -47,7 +51,7 @@ export const completionsFx = createEffect(async ({ userMessage }: CompletionsFxP
 	const agentCard = $currentAgentCard.getState();
 	if (!agentCard) return;
 
-	const messages = buildMessages(agentCard);
+	let messages = buildMessages(agentCard);
 
 	const template = templatesModel.$selectedItem.getState();
 	const templateSettings = templatesModel.$settings.getState();
@@ -56,8 +60,13 @@ export const completionsFx = createEffect(async ({ userMessage }: CompletionsFxP
 		messages.unshift({ role: 'system', content: renderTemplate(template.template) });
 	}
 
-	const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
-	addNewAssistantMessage(assistantMessage.message);
+	let assistantMessage = {} as ReturnType<typeof createNewMessage>;
+	if (type === 'new-swipe') {
+		assistantMessage = getLastMessageState(agentCard)!;
+	} else {
+		assistantMessage = createNewMessage({ role: 'assistant', content: '' });
+		addNewAssistantMessage(assistantMessage.message);
+	}
 
 	await generate({
 		llmSettings: undefined,
@@ -78,7 +87,8 @@ export const completionsFx = createEffect(async ({ userMessage }: CompletionsFxP
 export const attachCompletionsFx = attach({
 	source: { agentCard: $currentAgentCard, userMessage: $userMessage },
 	effect: completionsFx,
-	mapParams: (_, source) => ({
+	mapParams: (type: CompletionType, source) => ({
+		type,
 		userMessage: source.userMessage,
 	}),
 });
@@ -87,6 +97,7 @@ $isCompletionsProcessing.on(attachCompletionsFx, () => true).on(attachCompletion
 
 sample({
 	clock: addNewSwipe,
+	fn: () => 'new-swipe' as const,
 	target: [attachCompletionsFx],
 });
 
