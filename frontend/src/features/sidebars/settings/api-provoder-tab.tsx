@@ -1,52 +1,55 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../../api/openRouter';
-import { VStack, Text } from '@chakra-ui/react';
+import { VStack } from '@chakra-ui/react';
 
-import { FormProvider, useForm } from 'react-hook-form';
+import { Select } from 'chakra-react-select';
 
 interface APIProviderTabProps {}
 
 export const APIProviderTab: React.FC<APIProviderTabProps> = () => {
-	const methods = useForm({
-		defaultValues: {
-			provider: ['openrouter'],
-			openRouterModel: 'deepseek/deepseek-chat',
-			apiKey: config?.apiKey || '',
-		},
-	});
+	// useEffect(() => {
+	// 	const fetchModels = async () => {
+	// 		try {
+	// 			setLoading(true);
+	// 			const modelsList = await getOpenRouterModels();
+	// 			setModels(modelsList);
+	// 		} catch (error) {
+	// 			console.error('Error fetching models:', error);
+	// 		} finally {
+	// 			setLoading(false);
+	// 		}
+	// 	};
 
-	const provider = methods.watch('provider');
-
-	const [models, setModels] = useState<OpenRouterModel[]>([]);
-	const [loading, setLoading] = useState(false);
-
-	useEffect(() => {
-		const fetchModels = async () => {
-			try {
-				setLoading(true);
-				const modelsList = await getOpenRouterModels();
-				setModels(modelsList);
-			} catch (error) {
-				console.error('Error fetching models:', error);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		if (config?.apiKey) {
-			fetchModels();
-		}
-	}, [config?.apiKey]);
+	// 	if (config?.apiKey) {
+	// 		fetchModels();
+	// 	}
+	// }, [config?.apiKey]);
 
 	const options = [
-		{ value: 'openrouter', label: 'OpenRouter' },
-		{ value: 'openai', label: 'OpenAI' },
+		{
+			label: 'Other API',
+			options: [
+				{ value: 'openrouter', label: 'OpenRouter' },
+				{ value: 'textgenweb', label: 'Text Generation WebUI' },
+			],
+		},
+		{
+			label: 'Official API Providers',
+			options: [
+				{ value: 'openai', label: 'OpenAI' },
+				{ value: 'googleaistudio', label: 'Google AI Studio' },
+				{ value: 'anthropic', label: 'Anthropic' },
+				{ value: 'mistralai', label: 'Mistral AI' },
+				{ value: 'custom', label: 'Custom API (OpenAI API)' },
+			],
+		},
 	];
 
 	return (
-		<FormProvider {...methods}>
-			<VStack gap={6} align="stretch">
-				{/* <FormAutocomplete name="provider" label="API Provider" options={options} disableFilterOptions />
+		<VStack gap={6} align="stretch">
+			<Select options={options} />
+
+			{/* <FormAutocomplete name="provider" label="API Provider" options={options} disableFilterOptions />
 
 				<Text>В настоящее время поддерживается только OpenRouter</Text>
 
@@ -63,14 +66,13 @@ export const APIProviderTab: React.FC<APIProviderTabProps> = () => {
 					/>
 				)} */}
 
-				{/* {loading && <FormHelperText>Загрузка списка моделей...</FormHelperText>}
+			{/* {loading && <FormHelperText>Загрузка списка моделей...</FormHelperText>}
         {!config?.apiKey && (
           <FormHelperText>
             Введите API ключ для загрузки списка моделей
           </FormHelperText>
         )} */}
-				{/* </FormControl> */}
-			</VStack>
-		</FormProvider>
+			{/* </FormControl> */}
+		</VStack>
 	);
 };

@@ -55,7 +55,7 @@ class OpenRouterService {
       // @ts-ignore
       headers: {
         "HTTP-Referer": "http://localhost:5000",
-        "X-Title": "Chat Application",
+        "X-Title": "TaleSpinner",
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.apiKey}`,
       },
@@ -68,7 +68,7 @@ class OpenRouterService {
       const response = await axios.get("https://openrouter.ai/api/v1/models", {
         headers: {
           "HTTP-Referer": "http://localhost:5000",
-          "X-Title": "Chat Application",
+          "X-Title": "TaleSpinner",
           Authorization: `Bearer ${config.apiKey}`,
         },
       });

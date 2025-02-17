@@ -1,2 +1,1 @@
-export * from "./chats";
-export * from "./chat-list";
+export * from './chat-list';

@@ -39,7 +39,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = () => {
 				<Tabs.Content value="settings" p={0}>
 					<SamplerSettingsTab />
 				</Tabs.Content>
-				<Tabs.Content value="provider">{/* <APIProviderTab /> */}</Tabs.Content>
+				<Tabs.Content value="provider">
+					<APIProviderTab />
+				</Tabs.Content>
 			</Tabs.Root>
 		</Drawer>
 	);
