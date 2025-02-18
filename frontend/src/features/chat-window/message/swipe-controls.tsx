@@ -29,17 +29,26 @@ export const SwipeControls: React.FC<SwipeControlsProps> = ({ data }) => {
 	};
 
 	return (
-		<Flex justify="flex-end" align="center" gap={2} mt={2}>
-			{!isFirstSwipe && (
-				<IconButtonWithTooltip
-					size="xs"
-					variant="ghost"
-					colorPalette="purple"
-					icon={<LuArrowLeft />}
-					tooltip="Go back"
-					onClick={() => handleSwipeChange('left')}
-				/>
-			)}
+		<Flex
+			ml="auto"
+			align="center"
+			gap={2}
+			p={2}
+			backgroundColor="white"
+			borderRadius="lg"
+			borderWidth={1}
+			borderColor="gray.200"
+		>
+			<IconButtonWithTooltip
+				size="xs"
+				variant="ghost"
+				colorPalette="purple"
+				disabled={isFirstSwipe}
+				icon={<LuArrowLeft />}
+				tooltip="Go back"
+				onClick={() => handleSwipeChange('left')}
+			/>
+
 			<Text fontSize="xs" opacity={0.7}>
 				{currentSwipeIndex + 1} / {data.swipes.length}
 			</Text>
