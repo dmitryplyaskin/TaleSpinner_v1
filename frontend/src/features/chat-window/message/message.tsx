@@ -8,7 +8,9 @@ import { useMemo, useState } from 'react';
 import { deleteMessage, updateSwipe } from '@model/chat-service';
 import { InteractionMessage } from '@shared/types/agent-card';
 import { RenderMd } from '@ui/render-md';
-import { SwipeControls } from './swipe-controls';
+import { SwipeControls } from '../swipe-controls';
+import { AssistantIcon } from './assistant-icon';
+import { ReasoningBlock } from './reasoning-block';
 
 type MessageProps = {
 	data: InteractionMessage;
@@ -56,24 +58,13 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	};
 
 	const isUser = data.role === 'user';
+	const isAssistant = data.role === 'assistant';
 
 	return (
 		<Flex justify={isUser ? 'flex-end' : 'flex-start'} gap={2}>
-			{!isUser && <Avatar size="lg" name="AI Assistant" src="/ai-avatar.png" bg="purple.500" />}
-			<VStack align="flex-start" gap={0}>
-				{reasoning.length > 0 &&
-					reasoning.map((reasoning) => (
-						<Box mt={2} w={'100%'} key={reasoning.id}>
-							<Collapsible.Root unmountOnExit>
-								<Collapsible.Trigger paddingY="3">Reasoning</Collapsible.Trigger>
-								<Collapsible.Content>
-									<Box padding="4" borderWidth="1px">
-										<RenderMd content={reasoning.content} />
-									</Box>
-								</Collapsible.Content>
-							</Collapsible.Root>
-						</Box>
-					))}
+			{isAssistant && <AssistantIcon />}
+			<VStack align="flex-start" gap={2} pr={isUser ? 0 : '50px'}>
+				{reasoning.length > 0 && reasoning.map((reasoning) => <ReasoningBlock data={reasoning} key={reasoning.id} />)}
 				<Box
 					position="relative"
 					maxW={isUser ? '70%' : 'full'}
@@ -84,7 +75,6 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					borderWidth={1}
 					borderColor={isUser ? 'purple.400' : 'gray.200'}
 					wordBreak="break-word"
-					mr={isUser ? 0 : '50px'}
 				>
 					<Flex align="center">
 						<VStack align="flex-start" gap={0}>
