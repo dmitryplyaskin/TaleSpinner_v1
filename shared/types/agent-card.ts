@@ -106,14 +106,12 @@ export interface SwipeComponent {
   type: SwipeComponentType;
   /** Содержимое компонента, например текст ответа или анализ */
   content: string;
+  /** Флаг, указывающий, должен ли компонент быть показан пользователю */
+  showToUser?: boolean;
 }
 
 /** Тип, описывающий возможные типы компонентов внутри свайпа */
-export type SwipeComponentType =
-  | "chainOfThought"
-  | "answer"
-  | "analysis"
-  | string;
+export type SwipeComponentType = "reasoning" | "answer" | "any" | string;
 
 /**
  * Представляет активную ветку взаимодействия — ветку, с которой в данный момент происходит диалог.

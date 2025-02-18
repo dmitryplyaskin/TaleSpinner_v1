@@ -3,7 +3,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkBreaks from 'remark-breaks';
 import { quotePlugin } from './quote-plugin';
-import { Text } from '@chakra-ui/react';
+import { Code, Text } from '@chakra-ui/react';
 
 type RenderMdProps = {
 	content: string;
@@ -23,6 +23,10 @@ export const RenderMd = ({ content }: RenderMdProps) => {
 				p: (props) => {
 					const { node, ...rest } = props;
 					return <Text my={2} {...rest} />;
+				},
+				pre: (props) => {
+					const { node, ...rest } = props;
+					return <Code {...rest} />;
 				},
 			}}
 			// components={{ Quote: () =>  QuoteComponent }}

@@ -1,6 +1,6 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
 import { Collapsible } from '@chakra-ui/react';
-import { LuChevronDown, LuChevronUp, LuMoveUp, LuMoveDown, LuTrash2 } from 'react-icons/lu';
+import { LuChevronDown, LuChevronUp, LuMoveUp, LuMoveDown, LuTrash2, LuPlay } from 'react-icons/lu';
 import { FormInput } from '@ui/form-components/form-input';
 import { FormTextarea } from '@ui/form-components/form-textarea';
 import { FormCheckbox } from '@ui/form-components/form-checkbox';
@@ -100,6 +100,17 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 						<HStack>
 							<FormCheckbox name={`pipelines.${index}.showToUserInChat`} label="Show to User in Chat" />
 							<FormCheckbox name={`pipelines.${index}.addToPrompt`} label="Add to Prompt" />
+						</HStack>
+
+						<HStack justifyContent="flex-end">
+							<IconButtonWithTooltip
+								aria-label="Run pipeline"
+								icon={<LuPlay />}
+								tooltip="Run Pipeline"
+								size="sm"
+								variant="solid"
+								colorPalette="green"
+							/>
 						</HStack>
 					</Flex>
 				</Collapsible.Content>
