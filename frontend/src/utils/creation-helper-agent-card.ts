@@ -1,4 +1,11 @@
-import { AgentCard, InteractionBranch, InteractionMessage } from '@shared/types/agent-card';
+import {
+	AgentCard,
+	InteractionBranch,
+	InteractionMessage,
+	Swipe,
+	SwipeComponent,
+	SwipeComponentType,
+} from '@shared/types/agent-card';
 import { v4 as uuidv4 } from 'uuid';
 
 export const createNewAgentCard = (params?: { title?: string; systemPrompt?: string }): AgentCard => {
@@ -89,7 +96,22 @@ export const createNewSwipe = (params: { content: string }) => {
 			},
 		],
 		timestamp: now,
-	};
+	} as Swipe;
 
 	return { swipe, swipeId, contentId };
+};
+
+export const createNewSwipeComponent = (params: { content: string; type: SwipeComponentType }) => {
+	const { content, type } = params;
+
+	const contentId = uuidv4();
+
+	return {
+		content: {
+			id: contentId,
+			type,
+			content: content,
+		} as SwipeComponent,
+		contentId,
+	};
 };

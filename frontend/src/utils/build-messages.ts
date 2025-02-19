@@ -41,7 +41,11 @@ export function buildMessages(agentCard: AgentCard): { role: 'assistant' | 'user
 
 		// Если свайп найден, собираем все его компоненты в одну строку.
 		if (selectedSwipe) {
-			const concatenatedContent = selectedSwipe.components.map((component) => component.content).join('\n');
+			const concatenatedContent = selectedSwipe.components
+				.map((component) =>
+					component.type === 'reasoning' ? `<thinking>\n${component.content}\n</thinking>` : component.content,
+				)
+				.join('\n');
 			if (concatenatedContent) {
 				messagesArray.push({
 					role: message.role,

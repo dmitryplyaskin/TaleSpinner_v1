@@ -7,6 +7,7 @@ import { FormCheckbox } from '@ui/form-components/form-checkbox';
 import { useFormContext } from 'react-hook-form';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { useState } from 'react';
+import { pipelineCompletionsFx } from '@model/llm-orchestration/completions';
 
 type PipelineItemProps = {
 	index: number;
@@ -26,7 +27,7 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 	isLast,
 }) => {
 	const [isOpen, setIsOpen] = useState(true);
-	const { watch } = useFormContext();
+	const { watch, getValues } = useFormContext();
 	const name = watch(`pipelines.${index}.name`);
 
 	return (
@@ -110,6 +111,9 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 								size="sm"
 								variant="solid"
 								colorPalette="green"
+								onClick={() => {
+									pipelineCompletionsFx({ pipeline: getValues(`pipelines.${index}`) });
+								}}
 							/>
 						</HStack>
 					</Flex>
