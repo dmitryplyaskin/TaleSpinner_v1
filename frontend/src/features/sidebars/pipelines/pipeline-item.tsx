@@ -100,7 +100,12 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 								}
 							/>
 						</Flex>
-						<FormTextarea name={`pipelines.${index}.prompt`} label="Prompt" placeholder="Enter pipeline prompt" />
+						<FormTextarea
+							name={`pipelines.${index}.prompt`}
+							label="Prompt"
+							placeholder="Enter pipeline prompt"
+							textareaProps={{ minH: '200px' }}
+						/>
 						<HStack>
 							<FormCheckbox name={`pipelines.${index}.enabled`} label="Enable Pipeline" />
 							<FormCheckbox name={`pipelines.${index}.addToChatHistory`} label="Add to Chat History" />

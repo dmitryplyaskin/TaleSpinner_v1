@@ -17,6 +17,7 @@ class PipelinesSettings extends ConfigService<PipelineSettingsType> {
     return {
       selectedId: null,
       enabled: true,
+      isFullPipelineProcessing: false,
     };
   }
 }

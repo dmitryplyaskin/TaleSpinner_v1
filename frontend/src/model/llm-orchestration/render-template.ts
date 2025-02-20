@@ -6,6 +6,10 @@ import Handlebars from 'handlebars';
 // Кэш для хранения скомпилированных шаблонов
 const templateCache = new Map<string, HandlebarsTemplateDelegate>();
 
+Handlebars.registerHelper('eq', function (a, b) {
+	return a === b;
+});
+
 // Функция компиляции с кэшированием
 const compileWithCache = (templateString: string): HandlebarsTemplateDelegate => {
 	if (!templateCache.has(templateString)) {
@@ -55,7 +59,7 @@ const compileNestedTemplates = (data: any, context: any): any => {
 	}
 };
 
-export const renderTemplate = (content: string): string => {
+export const renderTemplate = (content: string, customContext: Record<string, any> = {}): string => {
 	try {
 		const user = userPersonsModel.$selectedItem.getState();
 		const char = $currentAgentCard.getState()?.metadata;
@@ -75,6 +79,7 @@ export const renderTemplate = (content: string): string => {
 			creator_notes: char?.creator_notes,
 			system_prompt: char?.system_prompt,
 			post_history_instructions: char?.post_history_instructions,
+			...customContext,
 		};
 
 		// Обработка вложенных шаблонов

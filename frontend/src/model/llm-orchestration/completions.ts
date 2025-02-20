@@ -119,9 +119,6 @@ export const pipelineCompletionsFx = createEffect(async ({ pipeline }: PipelineC
 	if (!agentCard) return;
 
 	let messages = buildMessages(agentCard);
-	const msgPrompt = messages
-		.map((message) => `${message.role === 'user' ? '[{{user}}]' : '[{{char}}]'}: ${message.content}`)
-		.join('\n\n');
 
 	const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
 	const newSwipeComponent = createNewSwipeComponent({ content: '', type: 'reasoning' });
@@ -130,21 +127,7 @@ export const pipelineCompletionsFx = createEffect(async ({ pipeline }: PipelineC
 
 	addNewAssistantMessage(assistantMessage.message);
 
-	const prompt = `
-You're a game master who looks up to roleplaying and who plays the role of {{char}}. Your job is to run a chain of thought on behalf of {{char}}.
-You need to think and ponder like {{char}} and then come up with a correct response plan for the next post as part of the roleplay.
-
-This is the character description:
-{{description}}
-
-This is chat history:
-${msgPrompt}
-
-!!!IMPORTANT!!!
-You need to think and ponder like {{char}} and then come up with a correct response plan for the next post as part of the roleplay.
-`;
-
-	const templatedPrompt = renderTemplate(prompt);
+	const templatedPrompt = renderTemplate(pipeline.prompt, { messagesHistory: messages });
 
 	await generate({
 		llmSettings: undefined,
