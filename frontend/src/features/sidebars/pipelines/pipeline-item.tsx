@@ -1,4 +1,4 @@
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Code, Flex, HStack, Mark, Text, VStack } from '@chakra-ui/react';
 import { Collapsible } from '@chakra-ui/react';
 import { LuChevronDown, LuChevronUp, LuMoveUp, LuMoveDown, LuTrash2, LuPlay } from 'react-icons/lu';
 import { FormInput } from '@ui/form-components/form-input';
@@ -91,6 +91,13 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 								label="Pipeline Tag"
 								placeholder="Enter pipeline tag"
 								fieldProps={{ maxWidth: '140px' }}
+								infoTip={
+									<VStack p={2} gap={1} align="flex-start">
+										<Text>The tag allows the result of this Pipeline to be used in subsequent Pipelines. </Text>
+										<Text>For example:</Text>
+										<Code variant="solid">{`Some Prompt: {{tag}}`}</Code>
+									</VStack>
+								}
 							/>
 						</Flex>
 						<FormTextarea name={`pipelines.${index}.prompt`} label="Prompt" placeholder="Enter pipeline prompt" />

@@ -13,6 +13,7 @@ export interface PipelineItemType {
   showToUserInChat?: boolean;
   addToChatHistory?: boolean;
   addToPrompt?: boolean;
+  pipelineProcessingType?: "before" | "after";
 }
 
 export interface PipelineType extends CommonModelItemType {
@@ -23,4 +24,6 @@ export interface PipelineType extends CommonModelItemType {
   updatedAt: string;
 }
 
-export interface PipelineSettingsType extends CommonModelSettingsType {}
+export interface PipelineSettingsType extends CommonModelSettingsType {
+  isFullPipelineProcessing: boolean;
+}

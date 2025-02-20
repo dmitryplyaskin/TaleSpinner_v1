@@ -6,6 +6,7 @@ import { LuExpand } from 'react-icons/lu';
 import { Box } from '@chakra-ui/react';
 import { useState } from 'react';
 import { TextareaFullscreenDialog } from './components/textarea-fullscreen-dialog';
+import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
 
 type FormTextareaProps = {
 	name: string;
@@ -14,6 +15,7 @@ type FormTextareaProps = {
 	textareaProps?: TextareaProps;
 	fieldProps?: FieldProps;
 	containerProps?: UseControllerProps;
+	infoTip?: React.ReactNode;
 };
 
 export const FormTextarea: React.FC<FormTextareaProps> = ({
@@ -23,6 +25,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 	textareaProps,
 	fieldProps,
 	containerProps,
+	infoTip,
 }) => {
 	const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 	const { control } = useFormContext();
@@ -47,6 +50,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 				tooltip="Открыть в полном экране"
 				onClick={() => setIsFullscreenOpen(true)}
 			/>
+			{infoTip && <InfoTip content={infoTip} />}
 		</Box>
 	);
 

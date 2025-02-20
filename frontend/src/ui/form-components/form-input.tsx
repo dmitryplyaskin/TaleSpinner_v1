@@ -1,6 +1,7 @@
-import { Input, InputProps } from '@chakra-ui/react';
+import { Box, Input, InputProps } from '@chakra-ui/react';
 import { Field, FieldProps } from '../chakra-core-ui/field';
 import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
+import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
 
 type FormInputProps = {
 	name: string;
@@ -9,6 +10,7 @@ type FormInputProps = {
 	inputProps?: InputProps;
 	fieldProps?: FieldProps;
 	containerProps?: UseControllerProps;
+	infoTip?: React.ReactNode;
 };
 
 export const FormInput: React.FC<FormInputProps> = ({
@@ -18,6 +20,7 @@ export const FormInput: React.FC<FormInputProps> = ({
 	inputProps,
 	fieldProps,
 	containerProps,
+	infoTip,
 }) => {
 	const { control } = useFormContext();
 	const {
@@ -31,8 +34,15 @@ export const FormInput: React.FC<FormInputProps> = ({
 
 	const errorMessage = <>{errors[name]?.message || ''}</>;
 
+	const labelComponent = (
+		<Box display="flex" alignItems="center" gap="2">
+			{label}
+			{infoTip && <InfoTip content={infoTip} />}
+		</Box>
+	);
+
 	return (
-		<Field {...fieldProps} label={label} invalid={!!errors[name]} errorText={errorMessage}>
+		<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
 			<Input {...inputProps} {...field} placeholder={placeholder} />
 		</Field>
 	);

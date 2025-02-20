@@ -1,4 +1,4 @@
-import { Button, VStack } from '@chakra-ui/react';
+import { Button, Text, VStack } from '@chakra-ui/react';
 import { LuPlus } from 'react-icons/lu';
 import { useFieldArray, FormProvider, useForm } from 'react-hook-form';
 import { PipelineItem } from './pipeline-item';
@@ -45,25 +45,30 @@ export const PipelineForm = () => {
 	return (
 		<FormProvider {...methods}>
 			<VStack gap={2} align="stretch">
-				{fields.map((field, index) => (
-					<PipelineItem
-						key={field.id}
-						index={index}
-						onRemove={() => remove(index)}
-						onMoveUp={() => move(index, index - 1)}
-						onMoveDown={() => move(index, index + 1)}
-						isFirst={index === 0}
-						isLast={index === fields.length - 1}
-					/>
-				))}
+				<Text fontSize="lg" fontWeight="bold">
+					Pipelines:
+				</Text>
+				<VStack gap={2} align="stretch">
+					{fields.map((field, index) => (
+						<PipelineItem
+							key={field.id}
+							index={index}
+							onRemove={() => remove(index)}
+							onMoveUp={() => move(index, index - 1)}
+							onMoveDown={() => move(index, index + 1)}
+							isFirst={index === 0}
+							isLast={index === fields.length - 1}
+						/>
+					))}
+				</VStack>
+				<Button onClick={handleAddPipeline} colorScheme="blue">
+					<LuPlus />
+					Add Pipeline
+				</Button>
+				<Button onClick={methods.handleSubmit(onSubmit)} colorScheme="blue">
+					Save Pipelines
+				</Button>
 			</VStack>
-			<Button onClick={handleAddPipeline} colorScheme="blue">
-				<LuPlus />
-				Add Pipeline
-			</Button>
-			<Button onClick={methods.handleSubmit(onSubmit)} colorScheme="blue">
-				Save
-			</Button>
 		</FormProvider>
 	);
 };

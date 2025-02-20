@@ -7,7 +7,8 @@ import { useUnit } from 'effector-react';
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
 import { Select } from 'chakra-react-select';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { PipelineType } from '@shared/types/pipelines';
+import { PipelineSettingsType, PipelineType } from '@shared/types/pipelines';
+import { Switch } from '@ui/chakra-core-ui/switch';
 
 export const PipelineSidebar: React.FC = () => {
 	const pipelines = useUnit(pipelinesModel.$items);
@@ -23,13 +24,17 @@ export const PipelineSidebar: React.FC = () => {
 		pipelinesModel.getSettingsFx();
 	}, []);
 
+	const handleSettingsChange = (newSettings: Partial<PipelineSettingsType>) => {
+		pipelinesModel.updateSettingsFx({ ...settings, ...newSettings });
+	};
+
 	return (
 		<Drawer name="pipeline" title="Pipeline">
 			<VStack gap={4} align="stretch">
 				<Flex gap={2}>
 					<Select
 						value={settings?.selectedId ? options.find((instr) => instr.value === settings.selectedId) : null}
-						onChange={(selected) => pipelinesModel.updateSettingsFx({ ...settings, selectedId: selected?.value })}
+						onChange={(selected) => handleSettingsChange({ selectedId: selected?.value })}
 						options={options}
 					/>
 					<Box display="flex" gap={2} alignSelf="flex-end">
@@ -59,7 +64,26 @@ export const PipelineSidebar: React.FC = () => {
 						/>
 					</Box>
 				</Flex>
-				{settings.selectedId && <PipelineForm />}
+				<Flex gap={4}>
+					<Switch
+						checked={settings.enabled}
+						onCheckedChange={(e) => handleSettingsChange({ enabled: e.checked })}
+						colorPalette="green"
+						infoTip="Enable pipelines to use them in chat"
+					>
+						Enable pipelines
+					</Switch>
+					<Switch
+						checked={settings.isFullPipelineProcessing}
+						onCheckedChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.checked })}
+						colorPalette="green"
+						infoTip="Completely replaces the way response generation works and is entirely based on pipelines."
+					>
+						Full pipeline processing
+					</Switch>
+				</Flex>
+
+				<Box mt={4}>{settings.selectedId && <PipelineForm />}</Box>
 			</VStack>
 		</Drawer>
 	);
