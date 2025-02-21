@@ -8,6 +8,7 @@ import { useFormContext } from 'react-hook-form';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { useState } from 'react';
 import { pipelineCompletionsFx } from '@model/llm-orchestration/completions';
+import { FormSelect } from '@ui/form-components/form-select';
 
 type PipelineItemProps = {
 	index: number;
@@ -16,6 +17,7 @@ type PipelineItemProps = {
 	onMoveDown: () => void;
 	isFirst: boolean;
 	isLast: boolean;
+	menuPortalTarget: HTMLElement;
 };
 
 export const PipelineItem: React.FC<PipelineItemProps> = ({
@@ -25,14 +27,15 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 	onMoveDown,
 	isFirst,
 	isLast,
+	menuPortalTarget,
 }) => {
 	const [isOpen, setIsOpen] = useState(true);
 	const { watch, getValues } = useFormContext();
 	const name = watch(`pipelines.${index}.name`);
 
 	return (
-		<Box borderWidth="1px" borderRadius="md" p={4}>
-			<Collapsible.Root open={isOpen} onOpenChange={({ open }) => setIsOpen(open)}>
+		<Box borderWidth="1px" borderRadius="md" p={2}>
+			<Collapsible.Root open={isOpen} onOpenChange={({ open }) => setIsOpen(open)} p={2}>
 				<Collapsible.Trigger asChild>
 					<Flex alignItems="center" justifyContent="space-between" cursor="pointer">
 						<Flex alignItems="center" gap={2}>
@@ -113,6 +116,19 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 						<HStack>
 							<FormCheckbox name={`pipelines.${index}.showToUserInChat`} label="Show to User in Chat" />
 							<FormCheckbox name={`pipelines.${index}.addToPrompt`} label="Add to Prompt" />
+						</HStack>
+						<HStack>
+							<FormSelect
+								name={`pipelines.${index}.order`}
+								label="Pipeline order"
+								selectProps={{
+									options: [
+										{ label: 'Before', value: 'before' },
+										{ label: 'After', value: 'after' },
+									],
+									menuPortalTarget,
+								}}
+							/>
 						</HStack>
 
 						<HStack justifyContent="flex-end">

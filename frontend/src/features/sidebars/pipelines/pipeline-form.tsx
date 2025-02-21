@@ -5,11 +5,12 @@ import { PipelineItem } from './pipeline-item';
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
 import { useUnit } from 'effector-react';
 import { PipelineType } from '@shared/types/pipelines';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export const PipelineForm = () => {
 	const selectedPipeline = useUnit(pipelinesModel.$selectedItem);
+	const ref = useRef<HTMLDivElement>(null);
 
 	const methods = useForm<PipelineType>({
 		defaultValues: selectedPipeline || createEmptyPipeline(),
@@ -48,7 +49,7 @@ export const PipelineForm = () => {
 				<Text fontSize="lg" fontWeight="bold">
 					Pipelines:
 				</Text>
-				<VStack gap={2} align="stretch">
+				<VStack gap={2} align="stretch" ref={ref}>
 					{fields.map((field, index) => (
 						<PipelineItem
 							key={field.id}
@@ -58,6 +59,7 @@ export const PipelineForm = () => {
 							onMoveDown={() => move(index, index + 1)}
 							isFirst={index === 0}
 							isLast={index === fields.length - 1}
+							menuPortalTarget={ref.current}
 						/>
 					))}
 				</VStack>
