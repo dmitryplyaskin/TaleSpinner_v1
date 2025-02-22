@@ -43,8 +43,8 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					))}
 				<Box
 					position="relative"
-					maxW={isUser ? '70%' : 'full'}
-					w={'full'}
+					maxW={'full'}
+					w={isUser ? 'auto' : 'full'}
 					p={4}
 					borderRadius="lg"
 					bg={isUser ? 'purple.50' : 'white'}

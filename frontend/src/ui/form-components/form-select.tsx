@@ -13,7 +13,7 @@ type FormSelectProps = {
 export const FormSelect: React.FC<FormSelectProps> = ({ name, label, selectProps, fieldProps, containerProps }) => {
 	const { control } = useFormContext();
 	const {
-		field: { value, onChange, ...field },
+		field: { value, onChange },
 		formState: { errors },
 	} = useController({
 		name,

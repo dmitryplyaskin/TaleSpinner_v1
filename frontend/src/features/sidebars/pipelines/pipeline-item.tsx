@@ -17,7 +17,7 @@ type PipelineItemProps = {
 	onMoveDown: () => void;
 	isFirst: boolean;
 	isLast: boolean;
-	menuPortalTarget: HTMLElement;
+	menuPortalTarget: HTMLElement | null;
 };
 
 export const PipelineItem: React.FC<PipelineItemProps> = ({
