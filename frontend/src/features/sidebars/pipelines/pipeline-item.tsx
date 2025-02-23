@@ -131,30 +131,27 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 						</HStack>
 						<HStack>
 							<FormSelect
-								name={`pipelines.${index}.outputType`}
-								label="Output type"
-								infoTip="Тип вывода результата. Выбор роли под которым будет генерироваться результат. New - создание нового сообщения, Append - добавление к последнему сообщению (при условии наличия, иначе будет создано новое)."
+								name={`pipelines.${index}.processing`}
+								label="Processing"
+								infoTip="Порядок вывода результата. Pre-processing - перед сообщением, Post-processing - после сообщения, Generation - генерация сообщения. (Pre-processing и Post-processing работают при условии наличия, иначе ошибка)."
 								selectProps={{
 									options: [
-										{ label: 'User (new)', value: 'user-new' },
-										{ label: 'User (append)', value: 'user-append' },
-										{ label: 'Assistant (new)', value: 'assis	tant-new' },
-										{ label: 'Assistant (append)', value: 'assistant-append' },
-										{ label: 'System (new)', value: 'system-new' },
-										{ label: 'System (append)', value: 'system-append' },
+										{ label: 'Pre-processing', value: 'pre-processing' },
+										{ label: 'Generation', value: 'generation' },
+										{ label: 'Post-processing', value: 'post-processing' },
 									],
 									menuPortalTarget,
 								}}
 							/>
 							<FormSelect
-								name={`pipelines.${index}.outputOrder`}
-								label="Output order"
-								infoTip="Порядок вывода результата. Before - перед сообщением, After - после сообщения. Middle - как обычное сообщение. (при условии наличия, иначе будет создано новое)."
+								name={`pipelines.${index}.outputType`}
+								label="Output type"
+								infoTip="Тип вывода результата. Выбор роли под которым будет генерироваться результат. User - сообщение пользователя, Assistant - сообщение бота, System - система."
 								selectProps={{
 									options: [
-										{ label: 'Before', value: 'before' },
-										{ label: 'Middle', value: 'middle' },
-										{ label: 'After', value: 'after' },
+										{ label: 'User', value: 'user' },
+										{ label: 'Assistant', value: 'assistant' },
+										{ label: 'System', value: 'system' },
 									],
 									menuPortalTarget,
 								}}
