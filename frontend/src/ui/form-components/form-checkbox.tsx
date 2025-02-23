@@ -1,6 +1,8 @@
 import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
 import { Field, FieldProps } from '../chakra-core-ui/field';
 import { Checkbox, CheckboxProps } from '../chakra-core-ui/checkbox';
+import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+import { Box } from '@chakra-ui/react';
 
 type FormCheckboxProps = {
 	name: string;
@@ -8,6 +10,7 @@ type FormCheckboxProps = {
 	checkboxProps?: Omit<CheckboxProps, 'checked'>;
 	fieldProps?: FieldProps;
 	containerProps?: UseControllerProps;
+	infoTip?: React.ReactNode;
 };
 
 export const FormCheckbox: React.FC<FormCheckboxProps> = ({
@@ -16,6 +19,7 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
 	checkboxProps,
 	fieldProps,
 	containerProps,
+	infoTip,
 }) => {
 	const { control } = useFormContext();
 	const {
@@ -28,11 +32,17 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
 	});
 
 	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const labelComponent = label && (
+		<Box display="flex" alignItems="center" gap="2">
+			{label}
+			{infoTip && <InfoTip content={infoTip} />}
+		</Box>
+	);
 
 	return (
 		<Field {...fieldProps} invalid={!!errors[name]} errorText={errorMessage}>
 			<Checkbox {...checkboxProps} {...field} checked={value} onCheckedChange={({ checked }) => onChange(checked)}>
-				{label}
+				{labelComponent}
 			</Checkbox>
 		</Field>
 	);

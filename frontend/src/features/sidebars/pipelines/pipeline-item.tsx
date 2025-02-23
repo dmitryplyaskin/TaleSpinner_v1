@@ -110,20 +110,50 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 							textareaProps={{ minH: '200px' }}
 						/>
 						<HStack>
-							<FormCheckbox name={`pipelines.${index}.enabled`} label="Enable Pipeline" />
-							<FormCheckbox name={`pipelines.${index}.addToChatHistory`} label="Add to Chat History" />
+							<FormCheckbox name={`pipelines.${index}.enabled`} label="Enable Pipeline" infoTip="Enable the pipeline" />
+							<FormCheckbox
+								name={`pipelines.${index}.addToChatHistory`}
+								label="Add to Chat History"
+								infoTip="Результат будет добавлен в историю чата. Нужно если нужно сохранять результат между сессиями в одном чате."
+							/>
 						</HStack>
 						<HStack>
-							<FormCheckbox name={`pipelines.${index}.showToUserInChat`} label="Show to User in Chat" />
-							<FormCheckbox name={`pipelines.${index}.addToPrompt`} label="Add to Prompt" />
+							<FormCheckbox
+								name={`pipelines.${index}.showToUserInChat`}
+								label="Show to User in Chat"
+								infoTip="Работает при условии добавления в иторию чата. Результат будет отображен в чате."
+							/>
+							<FormCheckbox
+								name={`pipelines.${index}.addToPrompt`}
+								label="Add to Prompt"
+								infoTip="Результут будет добавляться в промпт при обычной генерации ответа (не Full pipeline processing)."
+							/>
 						</HStack>
 						<HStack>
 							<FormSelect
-								name={`pipelines.${index}.order`}
-								label="Pipeline order"
+								name={`pipelines.${index}.outputType`}
+								label="Output type"
+								infoTip="Тип вывода результата. Выбор роли под которым будет генерироваться результат. New - создание нового сообщения, Append - добавление к последнему сообщению (при условии наличия, иначе будет создано новое)."
+								selectProps={{
+									options: [
+										{ label: 'User (new)', value: 'user-new' },
+										{ label: 'User (append)', value: 'user-append' },
+										{ label: 'Assistant (new)', value: 'assis	tant-new' },
+										{ label: 'Assistant (append)', value: 'assistant-append' },
+										{ label: 'System (new)', value: 'system-new' },
+										{ label: 'System (append)', value: 'system-append' },
+									],
+									menuPortalTarget,
+								}}
+							/>
+							<FormSelect
+								name={`pipelines.${index}.outputOrder`}
+								label="Output order"
+								infoTip="Порядок вывода результата. Before - перед сообщением, After - после сообщения. Middle - как обычное сообщение. (при условии наличия, иначе будет создано новое)."
 								selectProps={{
 									options: [
 										{ label: 'Before', value: 'before' },
+										{ label: 'Middle', value: 'middle' },
 										{ label: 'After', value: 'after' },
 									],
 									menuPortalTarget,
