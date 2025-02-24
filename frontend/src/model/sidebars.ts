@@ -59,15 +59,34 @@ export const $sidebars = createStore<SidebarSettings>({
 	},
 });
 
+// Создаем отдельное событие для изменения isOpen
+export const toggleSidebarOpen = createEvent<{ name: SidebarName; isOpen: boolean }>();
+
+// Создаем событие для изменения других настроек (кроме isOpen)
 export const changeSidebarSettings = createEvent<{ name: SidebarName; settings: Partial<SidebarSetting> }>();
 
-$sidebars.on(changeSidebarSettings, (sidebars, { name, settings }) => ({
+// Обрабатываем изменение isOpen отдельно
+$sidebars.on(toggleSidebarOpen, (sidebars, { name, isOpen }) => ({
 	...sidebars,
 	[name]: {
 		...sidebars[name],
-		...settings,
+		isOpen,
 	},
 }));
+
+// Обрабатываем изменение других настроек
+$sidebars.on(changeSidebarSettings, (sidebars, { name, settings }) => {
+	// Исключаем isOpen из настроек, чтобы не перезаписать его случайно
+	const { isOpen, ...otherSettings } = settings;
+
+	return {
+		...sidebars,
+		[name]: {
+			...sidebars[name],
+			...otherSettings,
+		},
+	};
+});
 
 export const saveSettingsFx = createEffect<SidebarSettings, void>((settings) =>
 	asyncHandler(async () => {
@@ -98,8 +117,10 @@ export const getSettingsFx = createEffect<void, SidebarSettings>(() =>
 
 $sidebars.on(getSettingsFx.doneData, (_, payload) => payload);
 
+// Сохраняем настройки только при изменении через changeSidebarSettings
 sample({
-	clock: $sidebars,
+	clock: changeSidebarSettings,
+	source: $sidebars,
 	target: saveSettingsFx,
 });
 

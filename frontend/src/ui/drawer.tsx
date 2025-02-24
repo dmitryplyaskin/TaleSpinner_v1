@@ -1,4 +1,4 @@
-import { $sidebars, changeSidebarSettings, SidebarName } from '@model/sidebars';
+import { $sidebars, changeSidebarSettings, SidebarName, toggleSidebarOpen } from '@model/sidebars';
 import { useStoreMap } from 'effector-react';
 import { DrawerRoot, DrawerContent, DrawerHeader, DrawerBody } from './chakra-core-ui/drawer';
 import { Flex, Heading, IconButton } from '@chakra-ui/react';
@@ -24,7 +24,7 @@ export const Drawer: React.FC<Props> = ({ name, title, children }) => {
 	const { isOpen, isFullscreen, placement, size, contained } = sidebar;
 
 	const handleClose = () => {
-		changeSidebarSettings({ name, settings: { isOpen: false } });
+		toggleSidebarOpen({ name, isOpen: false });
 	};
 
 	if (!isOpen) return null;

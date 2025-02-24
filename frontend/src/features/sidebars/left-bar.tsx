@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import { changeSidebarSettings } from '@model/sidebars';
+import { toggleSidebarOpen } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2 } from 'react-icons/lu';
 import { IconType } from 'react-icons';
@@ -74,7 +74,7 @@ export const LeftBar = () => {
 						size="lg"
 						colorScheme="purple"
 						aria-label={button.ariaLabel}
-						onClick={() => changeSidebarSettings({ name: button.name, settings: { isOpen: true } })}
+						onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
 						icon={<button.icon />}
 					/>
 				</Box>
