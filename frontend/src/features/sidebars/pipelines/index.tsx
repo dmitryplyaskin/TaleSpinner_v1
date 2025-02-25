@@ -1,23 +1,16 @@
 import React, { useEffect } from 'react';
-import { Box, Flex, VStack } from '@chakra-ui/react';
+import { Flex, VStack } from '@chakra-ui/react';
 import { Drawer } from '@ui/drawer';
-import { LuCopy, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { PipelineForm } from './pipeline-form';
 import { useUnit } from 'effector-react';
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
-import { Select } from 'chakra-react-select';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { PipelineSettingsType, PipelineType } from '@shared/types/pipelines';
+import { PipelineSettingsType } from '@shared/types/pipelines';
 import { Switch } from '@ui/chakra-core-ui/switch';
+import { SidebarHeader } from '../common/sidebar-header';
 
 export const PipelineSidebar: React.FC = () => {
 	const pipelines = useUnit(pipelinesModel.$items);
 	const settings = useUnit(pipelinesModel.$settings);
-
-	const options = pipelines.map((instr) => ({
-		label: instr.name,
-		value: instr.id,
-	}));
 
 	useEffect(() => {
 		pipelinesModel.getItemsFx();
@@ -31,39 +24,21 @@ export const PipelineSidebar: React.FC = () => {
 	return (
 		<Drawer name="pipeline" title="Pipeline">
 			<VStack gap={4} align="stretch">
-				<Flex gap={2}>
-					<Select
-						value={settings?.selectedId ? options.find((instr) => instr.value === settings.selectedId) : null}
-						onChange={(selected) => handleSettingsChange({ selectedId: selected?.value })}
-						options={options}
-					/>
-					<Box display="flex" gap={2} alignSelf="flex-end">
-						<IconButtonWithTooltip
-							tooltip="Создать инструкцию"
-							icon={<LuPlus />}
-							aria-label="Create instruction"
-							onClick={() => pipelinesModel.createItemFx(createEmptyPipeline())}
-						/>
-						<IconButtonWithTooltip
-							tooltip="Дублировать инструкцию"
-							icon={<LuCopy />}
-							aria-label="Duplicate instruction"
-							disabled={!settings.selectedId}
-							onClick={() =>
-								pipelinesModel.duplicateItemFx(
-									pipelines.find((instr) => instr.id === settings.selectedId) as PipelineType,
-								)
-							}
-						/>
-						<IconButtonWithTooltip
-							tooltip="Удалить инструкцию"
-							icon={<LuTrash2 />}
-							aria-label="Delete instruction"
-							disabled={!settings.selectedId}
-							onClick={() => pipelinesModel.deleteItemFx(settings.selectedId as string)}
-						/>
-					</Box>
-				</Flex>
+				<SidebarHeader
+					model={pipelinesModel}
+					items={pipelines}
+					settings={settings}
+					name="pipeline"
+					createEmptyItem={createEmptyPipeline}
+					labels={{
+						createTooltip: 'Создать инструкцию',
+						duplicateTooltip: 'Дублировать инструкцию',
+						deleteTooltip: 'Удалить инструкцию',
+						createAriaLabel: 'Create instruction',
+						duplicateAriaLabel: 'Duplicate instruction',
+						deleteAriaLabel: 'Delete instruction',
+					}}
+				/>
 				<Flex gap={4}>
 					<Switch
 						checked={settings.enabled}
@@ -76,14 +51,12 @@ export const PipelineSidebar: React.FC = () => {
 					<Switch
 						checked={settings.isFullPipelineProcessing}
 						onCheckedChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.checked })}
-						colorPalette="green"
 						infoTip="Completely replaces the way response generation works and is entirely based on pipelines."
 					>
 						Full pipeline processing
 					</Switch>
 				</Flex>
-
-				<Box mt={4}>{settings.selectedId && <PipelineForm />}</Box>
+				<PipelineForm />
 			</VStack>
 		</Drawer>
 	);

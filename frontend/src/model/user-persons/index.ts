@@ -6,7 +6,6 @@ export const userPersonsModel = createModel<UserPersonSettingsType, UserPersonTy
 	settings: {
 		route: '/settings/user-persons',
 	},
-
 	items: {
 		route: '/user-persons',
 	},
