@@ -8,8 +8,13 @@ export interface FabricItems<ItemType> {
 	route: string;
 }
 
+export interface FabricPagination {
+	defaultPageSize?: number;
+}
+
 export interface Fabric<SettingsType, ItemType> {
 	settings: FabricSettings<SettingsType>;
 	items: FabricItems<ItemType>;
 	fabricName: string;
+	pagination?: FabricPagination;
 }

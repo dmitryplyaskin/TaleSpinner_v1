@@ -6,9 +6,10 @@ import { UserPersonCard } from './user-person-card';
 import { LuPlus } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Drawer } from '@ui/drawer';
+import { Pagination } from '../common/pagination';
 
 export const UserPersonSidebar: React.FC = () => {
-	const persons = useUnit(userPersonsModel.$items);
+	const persons = useUnit(userPersonsModel.pagination.$paginatedItems);
 
 	useEffect(() => {
 		userPersonsModel.getItemsFx();
@@ -33,6 +34,7 @@ export const UserPersonSidebar: React.FC = () => {
 					<UserPersonCard key={person.id} data={person} />
 				))}
 			</Flex>
+			<Pagination model={userPersonsModel} />
 		</Drawer>
 	);
 };

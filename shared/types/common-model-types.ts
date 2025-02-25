@@ -9,4 +9,5 @@ export type CommonModelItemType = {
 export type CommonModelSettingsType = {
   selectedId: string | null;
   enabled: boolean;
+  pageSize?: number;
 };

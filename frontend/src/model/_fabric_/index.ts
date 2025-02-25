@@ -3,6 +3,7 @@ import { Fabric } from './types';
 import { createSettingsModel } from './setting-model';
 import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
 import { createItemsModel } from './items-model';
+import { createPaginationModel } from './pagination-model';
 
 export const createModel = <SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType>(
 	fabric: Fabric<SettingsType, ItemType>,
@@ -24,6 +25,13 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		if (!settings) return null;
 		return items.find((item) => item.id === settings.selectedId) || null;
 	});
+
+	const pagination = createPaginationModel(
+		$items,
+		fabric.pagination?.defaultPageSize || 10,
+		updateSettingsFx,
+		getSettingsFx,
+	);
 
 	sample({
 		clock: [createItemFx.doneData, duplicateItemFx.doneData],
@@ -53,5 +61,7 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		duplicateItemFx,
 		changeItemDebounced,
 		changeItem,
+
+		pagination,
 	};
 };
