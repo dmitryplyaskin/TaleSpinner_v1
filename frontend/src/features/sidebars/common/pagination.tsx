@@ -17,8 +17,8 @@ type PaginationProps<SettingsType extends CommonModelSettingsType, ItemType exte
 export const Pagination = <SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType>({
 	model,
 }: PaginationProps<SettingsType, ItemType>) => {
-	const { pagination } = model;
-	const paginationSettings = useUnit(pagination.$paginationSettings);
+	const { paginationWithSortFilter, pagination } = model;
+	const paginationSettings = useUnit(paginationWithSortFilter.$paginationSettings);
 
 	const options = [
 		{ label: '10', value: 10 },

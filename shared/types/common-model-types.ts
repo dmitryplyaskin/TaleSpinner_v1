@@ -10,4 +10,5 @@ export type CommonModelSettingsType = {
   selectedId: string | null;
   enabled: boolean;
   pageSize?: number;
+  sortType?: string;
 };

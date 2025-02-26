@@ -52,8 +52,7 @@ export const UserPersonSidebar: React.FC = () => {
 					</Box>
 				)}
 
-				{/* Используем пагинацию с отфильтрованными элементами */}
-				<Pagination model={userPersonsModel} paginationModel={userPersonsModel.paginationWithSortFilter} />
+				<Pagination model={userPersonsModel} />
 			</Flex>
 		</Drawer>
 	);

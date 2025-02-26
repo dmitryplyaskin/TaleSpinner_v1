@@ -44,6 +44,7 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		fabric.sortFilter?.defaultSortOptions || getDefaultSortOptions<ItemType>(),
 		fabric.sortFilter?.defaultFilterOptions || [],
 		updateSettingsFx,
+		getSettingsFx,
 	);
 
 	sample({
