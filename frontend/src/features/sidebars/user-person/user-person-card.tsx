@@ -6,6 +6,7 @@ import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { userPersonsModel } from '@model/user-persons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { UserPersonType } from '@shared/types/user-person';
+import { Avatar } from '@ui/chakra-core-ui/avatar';
 
 interface UserPersonCardProps {
 	data: UserPersonType;
@@ -29,9 +30,16 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 	return (
 		<Box p="4" borderWidth="1px" borderRadius="lg">
 			<Flex justify="space-between" align="center" mb={2}>
-				<Flex gap={2}>
-					<Text fontWeight="bold">{data.name}</Text>
-					{data.prefix && <Text>{data.prefix}</Text>}
+				<Flex gap={2} align="center">
+					<Avatar size="md" name={data.name} src={`http://localhost:5000${data.avatarUrl}`} />
+					<Flex direction="column">
+						<Text fontWeight="bold">{data.name}</Text>
+						{data.prefix && (
+							<Text fontSize="sm" color="gray.600">
+								{data.prefix}
+							</Text>
+						)}
+					</Flex>
 				</Flex>
 				<Flex gap={2}>
 					<IconButtonWithTooltip
