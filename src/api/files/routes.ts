@@ -39,6 +39,12 @@ router.post(
   asyncHandler(controllers.uploadCards)
 );
 
+router.post(
+  "/files/upload-image",
+  upload.single("image"),
+  asyncHandler(controllers.uploadImage)
+);
+
 router.get(
   "/files/metadata/:filename",
   asyncHandler(controllers.getFileMetadata)

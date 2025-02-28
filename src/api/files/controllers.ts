@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import sharp from "sharp";
 import fs from "fs/promises";
-import { CardUploadResponse, ProcessedCardFile } from "./types";
+import { CardUploadResponse, ProcessedCardFile, UploadedFile } from "./types";
 import { AsyncRequestHandler } from "@core/middleware/async-handler";
 
 interface CharacterComment {
@@ -121,7 +121,8 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
     process.cwd(),
     "data",
     "media",
-    "card-images"
+    "images",
+    "agent-cards"
   );
   await fs.mkdir(cardImagesPath, { recursive: true });
 
@@ -191,10 +192,63 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
   };
 };
 
+export const uploadImage: AsyncRequestHandler = async (req) => {
+  if (!req.file) {
+    throw new Error("Изображение не было загружено");
+  }
+
+  const folderName = req.body.folder || "default";
+  const sanitizedFolderName = folderName.replace(/[^a-zA-Z0-9-_]/g, "_");
+
+  const imageFolder = path.join(
+    process.cwd(),
+    "data",
+    "media",
+    "images",
+    sanitizedFolderName
+  );
+
+  // Создаем папку, если она не существует
+  await fs.mkdir(imageFolder, { recursive: true });
+
+  const fileExtension = path.extname(req.file.originalname).toLowerCase();
+  const allowedExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"];
+
+  if (!allowedExtensions.includes(fileExtension)) {
+    throw new Error("Неподдерживаемый формат изображения");
+  }
+
+  const filename = `${uuidv4()}${fileExtension}`;
+  const filePath = path.join(imageFolder, filename);
+
+  // Сохраняем файл
+  await fs.writeFile(filePath, req.file.buffer);
+
+  const uploadedFile: UploadedFile = {
+    originalName: req.file.originalname,
+    filename: filename,
+    size: req.file.size,
+    mimetype: req.file.mimetype,
+  };
+
+  return {
+    data: {
+      file: uploadedFile,
+      path: `/media/images/${sanitizedFolderName}/${filename}`,
+      message: "Изображение успешно загружено",
+    },
+  };
+};
+
 function getContentType(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
   const contentTypes: Record<string, string> = {
     ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
     ".json": "application/json",
   };
   return contentTypes[ext] || "application/octet-stream";

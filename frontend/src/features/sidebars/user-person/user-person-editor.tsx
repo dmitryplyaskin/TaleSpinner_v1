@@ -74,12 +74,13 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 		}
 
 		const formData = new FormData();
-		formData.append('files', file);
+		formData.append('image', file);
+		formData.append('folder', 'user-persons');
 
 		setIsUploading(true);
 
 		try {
-			const response = await fetch(`${BASE_URL}/files/upload`, {
+			const response = await fetch(`${BASE_URL}/files/upload-image`, {
 				method: 'POST',
 				body: formData,
 			});
@@ -89,10 +90,14 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 			}
 
 			const result = await response.json();
-			if (result.data && result.data.files && result.data.files.length > 0) {
+			if (result.data && result.data.file) {
+				userPersonsModel.updateItemFx({
+					...personData,
+					avatarUrl: result.data.path,
+				});
 				setPersonData({
 					...personData,
-					avatarUrl: result.data.files[0].filename,
+					avatarUrl: result.data.path,
 				});
 
 				toaster.success({
@@ -111,51 +116,28 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 		}
 	};
 
-	const handleRemoveAvatar = () => {
-		setPersonData({
-			...personData,
-			avatarUrl: undefined,
-		});
-	};
-
 	return (
 		<Box p="4" borderWidth="1px" borderRadius="lg">
 			<VStack gap={4} align="stretch">
-				<Flex align="center" direction="column" gap={4}>
-					<Box position="relative">
+				<Flex align="center" gap={2}>
+					<Box position="relative" alignSelf="flex-start">
 						<Avatar
-							size="xl"
+							size="2xl"
 							name={personData.name}
-							src={personData.avatarUrl ? `/media/card-images/${personData.avatarUrl}` : undefined}
-						/>
-						<Flex position="absolute" bottom="-2" right="-2" gap={1}>
-							<IconButtonWithTooltip
-								tooltip="Загрузить аватар"
-								icon={<LuUpload />}
-								size="xs"
-								colorScheme="blue"
-								onClick={() => fileInputRef.current?.click()}
-							/>
-							{personData.avatarUrl && (
-								<IconButtonWithTooltip
-									tooltip="Удалить аватар"
-									icon={<LuTrash2 />}
-									size="xs"
-									colorScheme="red"
-									onClick={handleRemoveAvatar}
-								/>
-							)}
-						</Flex>
-					</Box>
-					<Box position="relative">
-						<input
-							type="file"
-							ref={fileInputRef}
-							style={{ display: 'none' }}
-							accept="image/*"
-							onChange={handleAvatarUpload}
+							onClick={() => fileInputRef.current?.click()}
+							cursor="pointer"
+							src={`http://localhost:5000${personData.avatarUrl}`}
 						/>
 					</Box>
+
+					<input
+						type="file"
+						ref={fileInputRef}
+						style={{ display: 'none' }}
+						accept="image/*"
+						onChange={handleAvatarUpload}
+					/>
+
 					<Field label="Имя персоны" flex="1">
 						<Input value={personData.name} onChange={(e) => setPersonData({ ...personData, name: e.target.value })} />
 					</Field>
