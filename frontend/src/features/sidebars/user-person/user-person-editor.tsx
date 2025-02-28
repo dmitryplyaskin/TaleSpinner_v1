@@ -126,7 +126,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 						<Avatar
 							size="xl"
 							name={personData.name}
-							src={personData.avatarUrl ? `/api/files/${personData.avatarUrl}` : undefined}
+							src={personData.avatarUrl ? `/media/card-images/${personData.avatarUrl}` : undefined}
 						/>
 						<Flex position="absolute" bottom="-2" right="-2" gap={1}>
 							<IconButtonWithTooltip

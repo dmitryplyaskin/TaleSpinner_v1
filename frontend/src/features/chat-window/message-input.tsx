@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flex, Textarea, Button, Box, Container } from '@chakra-ui/react';
+import { Flex, Textarea, Button, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
 import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orchestration';
@@ -26,26 +26,35 @@ export const MessageInput: React.FC<MessageInputProps> = ({}) => {
 	};
 
 	return (
-		<Box p={4} bg="white" borderTop="1px" borderColor="gray.200" shadow="md">
-			<Container maxW="6xl">
-				<Flex gap={4}>
-					<Textarea
-						value={message}
-						onChange={handleInputChange}
-						onKeyPress={handleKeyPress}
-						placeholder="Введите сообщение..."
-						autoresize
-						disabled={isProcessing}
-						flex="1"
-						size={'lg'}
-						borderRadius="lg"
-						resize={'vertical'}
-					/>
-					<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
-						{isProcessing ? 'Оборвать' : 'Отправить'}
-					</Button>
-				</Flex>{' '}
-			</Container>
+		<Box
+			p={4}
+			position="absolute"
+			bottom="0"
+			left="50%"
+			transform="translateX(-50%)"
+			bg="rgba(255, 255, 255, 1)"
+			roundedTop={'lg'}
+			w="full"
+			maxW="5xl"
+		>
+			<Flex gap={4}>
+				<Textarea
+					value={message}
+					onChange={handleInputChange}
+					onKeyPress={handleKeyPress}
+					placeholder="Введите сообщение..."
+					autoresize
+					disabled={isProcessing}
+					flex="1"
+					size={'lg'}
+					borderRadius="lg"
+					resize={'vertical'}
+					backgroundColor="white"
+				/>
+				<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
+					{isProcessing ? 'Оборвать' : 'Отправить'}
+				</Button>
+			</Flex>{' '}
 		</Box>
 	);
 };
