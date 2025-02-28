@@ -1,15 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Flex, Input, Textarea, IconButton, VStack } from '@chakra-ui/react';
 import { UserPersonType } from '@shared/types/user-person';
 import { userPersonsModel } from '@model/user-persons';
-import { LuPlus, LuX, LuUpload, LuTrash2 } from 'react-icons/lu';
+import { LuPlus, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 import { Field } from '@ui/chakra-core-ui/field';
 import { Switch } from '@ui/chakra-core-ui/switch';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { toaster } from '@ui/chakra-core-ui/toaster';
-import { BASE_URL } from '../../../const';
+import { AvatarUpload } from '../../../features/common/avatar-upload';
 
 interface UserPersonEditorProps {
 	data: UserPersonType;
@@ -19,8 +16,6 @@ interface UserPersonEditorProps {
 export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClose }) => {
 	const [personData, setPersonData] = useState<UserPersonType>(data);
 	const [contentType, setContentType] = useState(data.type);
-	const [isUploading, setIsUploading] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleSave = () => {
 		userPersonsModel.updateItemFx(personData);
@@ -61,81 +56,26 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 		});
 	};
 
-	const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (!e.target.files || e.target.files.length === 0) return;
+	const handleAvatarChange = (avatarUrl: string) => {
+		const updatedData = {
+			...personData,
+			avatarUrl,
+		};
 
-		const file = e.target.files[0];
-		if (!file.type.startsWith('image/')) {
-			toaster.error({
-				title: 'Ошибка',
-				description: 'Пожалуйста, загрузите изображение',
-			});
-			return;
-		}
-
-		const formData = new FormData();
-		formData.append('image', file);
-		formData.append('folder', 'user-persons');
-
-		setIsUploading(true);
-
-		try {
-			const response = await fetch(`${BASE_URL}/files/upload-image`, {
-				method: 'POST',
-				body: formData,
-			});
-
-			if (!response.ok) {
-				throw new Error('Ошибка загрузки файла');
-			}
-
-			const result = await response.json();
-			if (result.data && result.data.file) {
-				userPersonsModel.updateItemFx({
-					...personData,
-					avatarUrl: result.data.path,
-				});
-				setPersonData({
-					...personData,
-					avatarUrl: result.data.path,
-				});
-
-				toaster.success({
-					title: 'Успешно',
-					description: 'Аватар загружен',
-				});
-			}
-		} catch (error) {
-			toaster.error({
-				title: 'Ошибка',
-				description: 'Не удалось загрузить аватар',
-			});
-			console.error('Ошибка загрузки аватара:', error);
-		} finally {
-			setIsUploading(false);
-		}
+		setPersonData(updatedData);
+		userPersonsModel.updateItemFx(updatedData);
 	};
 
 	return (
 		<Box p="4" borderWidth="1px" borderRadius="lg">
 			<VStack gap={4} align="stretch">
 				<Flex align="center" gap={2}>
-					<Box position="relative" alignSelf="flex-start">
-						<Avatar
-							size="2xl"
-							name={personData.name}
-							onClick={() => fileInputRef.current?.click()}
-							cursor="pointer"
-							src={`http://localhost:5000${personData.avatarUrl}`}
-						/>
-					</Box>
-
-					<input
-						type="file"
-						ref={fileInputRef}
-						style={{ display: 'none' }}
-						accept="image/*"
-						onChange={handleAvatarUpload}
+					<AvatarUpload
+						size="2xl"
+						name={personData.name}
+						src={personData.avatarUrl}
+						onAvatarChange={handleAvatarChange}
+						saveFolder="user-persons"
 					/>
 
 					<Field label="Имя персоны" flex="1">
