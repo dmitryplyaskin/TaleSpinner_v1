@@ -1,4 +1,4 @@
-import { Stack, Button } from '@chakra-ui/react';
+import { Stack, Button, Flex } from '@chakra-ui/react';
 import { Dialog } from '@ui/dialog';
 import { FormProvider, useForm, useFieldArray } from 'react-hook-form';
 import { FormInput, FormTextarea } from '@ui/form-components';
@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { Tabs } from '@chakra-ui/react';
 import { LuPlus, LuChevronUp, LuChevronDown, LuTrash2 } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { AvatarUpload } from '../../common/avatar-upload';
 
 type CharacterCardV2 = {
 	name: string;
@@ -99,7 +100,16 @@ export const EditChatModal: React.FC = () => {
 
 						<Tabs.Content value="basic" pt="4">
 							<Stack gap={4}>
-								<FormInput name="name" label="Имя персонажа" placeholder="Введите имя персонажа" />
+								<Flex gap={4}>
+									<AvatarUpload
+										size="2xl"
+										name={editingCard.name}
+										src={editingCard.avatarUrl}
+										onAvatarChange={() => {}}
+										saveFolder="agent-cards"
+									/>
+									<FormInput name="name" label="Имя персонажа" placeholder="Введите имя персонажа" />
+								</Flex>
 								<FormTextarea
 									name="description"
 									label="Описание"

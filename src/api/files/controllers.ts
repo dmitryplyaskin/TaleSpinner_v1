@@ -147,7 +147,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/media/card-images/${filename}`,
+          path: `/media/images/agent-cards/${filename}`,
           characterData: [JSON.parse(characterData)],
           metadata: {
             ...metadata,
@@ -163,7 +163,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/media/card-images/${filename}`,
+          path: `/media/images/agent-cards/${filename}`,
           metadata: {
             width: 0,
             height: 0,
