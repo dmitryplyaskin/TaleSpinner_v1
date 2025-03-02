@@ -1,0 +1,81 @@
+Add local rules and guidelines for Cursor to follow in this workspace.
+The best guidelines are clear and concise, for example:
+
+1.  Speak to me in Russian.
+2.  Use camelCase for variables and functions in code.
+3.  Use kebab-case for file and folder names.
+4.  Project structure:
+
+    - `./src` (backend): Contains the backend logic, built with Node.js, Express and TypeScript. It's located at the root level in the `/src` directory.
+      - `./src/api`: API-specific implementations.
+      - `./src/routes`: API endpoints definitions.
+      - `./src/services`: Logic for interacting with different services (including OpenAI).
+      - `./src/core`: Core functionality for the backend.
+      - `./src/controllers`: Controllers for handling requests.
+      - `./src/types`: TypeScript type definitions for backend.
+      - `./src/const.ts`: Defines common constants for the backend.
+      - `./src/utils.ts`: Utility functions for the backend.
+    - `./frontend` (frontend): Contains the user interface, built with React, TypeScript and Vite. It's located in the `/frontend` directory.
+      - `./frontend/src/api`: Defines the frontend API interactions.
+      - `./frontend/src/features`: Feature-based components and logic.
+      - `./frontend/src/ui`: UI components library.
+      - `./frontend/src/model`: Contains Effector Stores for state management.
+      - `./frontend/src/shared`: Shared utilities and components.
+      - `./frontend/src/hooks`: React hooks.
+      - `./frontend/src/utils`: Utility functions.
+      - `./frontend/src/types`: Defines TypeScript types.
+      - `./frontend/src/assets`: Static assets like images.
+      - `./frontend/src/const.ts`: Defines common constants for the frontend.
+    - `./shared`: Contains shared code between frontend and backend.
+      - `./shared/types`: Shared TypeScript type definitions.
+    - `./data`: Stores application data as files. Located at the root level in the `/data` directory.
+
+5.  Key dependencies:
+
+    - `React`: Used for building the user interface.
+    - `Vite`: Used as the build tool and development server for the frontend.
+    - `Node.js`: Used for building the backend API.
+    - `TypeScript`: Used for type checking and better development experience (both frontend and backend).
+    - `React Markdown`: Used for rendering Markdown in the frontend.
+    - `Effector`: Used for state management in the frontend. (Do not use useStore, use new method useUnit. If needed more effector features, use Patronum)
+    - `Chakra UI`: Used for styling the frontend components (Last version).
+    - `react-icons/lu`: Used for icons in the frontend.
+    - `OpenAI`: Used for interacting with the OpenAI API on the backend.
+    - `Express`: Used for building the backend API.
+    - `Dayjs`: Used for work with date and time. (Dayjs preferred, Date-fns will be removed in the future)
+    - `uuid`: Used for generating unique IDs.
+    - `axios`: Used for HTTP requests.
+    - `immer`: Used for working with immutable state.
+    - `react-hook-form`: Used for form handling.
+
+6.  Project description:
+    This project is similar to SillyTavern, designed for interacting with chatbots and facilitating RP (Role Playing) games using Large Language Models (LLMs). The backend handles the API and interaction with LLMs, while the frontend provides a user interface for creating and managing chats. The frontend is under active development, and its structure will likely change in the future.
+7.  The data folder is used to store all kinds of application data, like settings, chat lists, and so on.
+8.  Don't modify any files in the `./frontend/node_modules`, `./node_modules`, `./public`, `./data` folders
+9.  Don't use any deprecated API from dependencies.
+10. Build system:
+    - Backend: Uses TypeScript compiler with CommonJS modules
+    - Frontend: Uses Vite with ESM modules
+11. Path aliases are configured in tsconfig.json files:
+    - Backend: `@shared/*`, `@core/*`, `@utils/*`, `@types/*`, `@services/*`
+    - Frontend: `@ui/*`, `@types/*`, `@model/*`, `@shared/*`, `@utils/*`
+12. Follow ESLint rules for code style and formatting.
+13. UI Component Library:
+    - `./frontend/src/ui/chakra-core-ui/`: Contains customized Chakra UI components:
+      - Basic UI elements: `button.tsx`, `input-group.tsx`, `checkbox.tsx`, `radio.tsx`, `avatar.tsx`, etc.
+      - Complex UI components: `dialog.tsx`, `drawer.tsx`, `popover.tsx`, `tooltip.tsx`, `pagination.tsx`, etc.
+      - Special components: `file-upload.tsx`, `color-mode.tsx`, `segmented-control.tsx`, etc.
+    - `./frontend/src/ui/form-components/`: Contains form-specific components integrated with react-hook-form:
+      - Form inputs: `form-input.tsx`, `form-textarea.tsx`, `form-checkbox.tsx`, `form-radio.tsx`, `form-switch.tsx`, `form-select.tsx`
+      - Special form components: `textarea-fullscreen-dialog.tsx` for expandable text areas
+    - `./frontend/src/ui/render-md/`: Markdown rendering components:
+      - `index.tsx`: Main Markdown renderer with custom styling
+      - `quote-plugin.tsx`: Special plugin for rendering quotes in Markdown
+    - Other UI components:
+      - `drawer.tsx`: Generic drawer component
+      - `dialog.tsx`: Generic dialog component
+      - `icon-button-with-tooltip.tsx`: Button with icon and tooltip
+    - Styling guidelines:
+      - Use Chakra UI theme and styling system
+      - Follow responsive design principles
+      - Use color mode (light/dark) aware components
