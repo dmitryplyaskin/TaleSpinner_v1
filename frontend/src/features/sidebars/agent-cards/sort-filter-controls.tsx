@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Input, Stack, RatingGroup } from '@chakra-ui/react';
+import { Box, Input, Stack, RatingGroup, IconButton, HStack, Separator } from '@chakra-ui/react';
 
 import { useUnit } from 'effector-react';
 import { FilterState } from '@model/_fabric_/sort-filter-model';
 import { agentCardsModel } from '@model/agent-cards';
 import { Select } from 'chakra-react-select';
 import { Checkbox } from '@ui/chakra-core-ui/checkbox';
+import { LuX } from 'react-icons/lu';
 
 export const ChatListSortFilterControls: React.FC = () => {
 	// Используем useUnit для доступа к сторам и событиям
@@ -100,39 +101,54 @@ export const ChatListSortFilterControls: React.FC = () => {
 
 	return (
 		<Stack gap={4} mb={4}>
-			<Input
-				placeholder="Поиск по имени..."
-				value={nameFilter}
-				onChange={(e) => handleNameFilterChange(e.target.value)}
-			/>
-
-			<Box>
-				<Select
-					placeholder="Сортировка..."
-					options={selectOptions}
-					value={selectOptions.find((option) => option.value === sortFilterSettings.currentSortType) || null}
-					onChange={(selected) => handleSortChange(selected?.value || null)}
-					isClearable
-					menuPlacement="auto"
+			<HStack gap={2}>
+				<Input
+					placeholder="Поиск по имени..."
+					value={nameFilter}
+					onChange={(e) => handleNameFilterChange(e.target.value)}
 				/>
-			</Box>
 
-			<Checkbox checked={favoriteFilter} onCheckedChange={(e) => handleFavoriteFilterChange(!!e.checked)}>
-				Только избранные
-			</Checkbox>
-
-			<Box>
-				<RatingGroup.Root count={5} value={ratingFilter || 0} onValueChange={(e) => handleRatingFilterChange(e.value)}>
-					<RatingGroup.HiddenInput />
-					<RatingGroup.Control>
-						{Array.from({ length: 5 }).map((_, index) => (
-							<RatingGroup.Item key={index} index={index + 1}>
-								<RatingGroup.ItemIndicator />
-							</RatingGroup.Item>
-						))}
-					</RatingGroup.Control>
-				</RatingGroup.Root>
-			</Box>
+				<Box w="350px">
+					<Select
+						placeholder="Сортировка..."
+						options={selectOptions}
+						value={selectOptions.find((option) => option.value === sortFilterSettings.currentSortType) || null}
+						onChange={(selected) => handleSortChange(selected?.value || null)}
+						isClearable
+						menuPlacement="auto"
+					/>
+				</Box>
+			</HStack>
+			<HStack gap={2}>
+				<Checkbox checked={favoriteFilter} onCheckedChange={(e) => handleFavoriteFilterChange(!!e.checked)}>
+					Только избранные
+				</Checkbox>
+				<Separator orientation="vertical" height="4" />
+				<Box display={'flex'} alignItems={'center'} gap={2}>
+					<RatingGroup.Root
+						count={5}
+						value={ratingFilter || 0}
+						onValueChange={(e) => handleRatingFilterChange(e.value)}
+					>
+						<RatingGroup.HiddenInput />
+						<RatingGroup.Control>
+							{Array.from({ length: 5 }).map((_, index) => (
+								<RatingGroup.Item key={index} index={index + 1}>
+									<RatingGroup.ItemIndicator />
+								</RatingGroup.Item>
+							))}
+						</RatingGroup.Control>
+					</RatingGroup.Root>
+					<IconButton
+						aria-label="Clear rating"
+						onClick={() => handleRatingFilterChange(null)}
+						variant="outline"
+						size={'xs'}
+					>
+						<LuX />
+					</IconButton>
+				</Box>
+			</HStack>
 		</Stack>
 	);
 };
