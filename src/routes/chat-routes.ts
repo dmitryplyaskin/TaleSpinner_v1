@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import chatService from "../services/chat-service";
+import chatService from "../services/agent-cards.service";
 import { Chat } from "../types";
 
 const router = express.Router();

@@ -98,14 +98,14 @@ const filterOptions: FilterOption<AgentCard>[] = [
 	},
 ];
 
-export const chatListModel = createModel<CommonModelSettingsType, AgentCard>({
+export const agentCardsModel = createModel<CommonModelSettingsType, AgentCard>({
 	settings: {
-		route: '/settings/chat-list',
+		route: '/settings/agent-cards',
 	},
 	items: {
-		route: '/chat',
+		route: '/agent-cards',
 	},
-	fabricName: 'chat-list',
+	fabricName: 'agent-cards',
 	sortFilter: {
 		defaultSortOptions: sortOptions,
 		defaultFilterOptions: filterOptions,

@@ -3,11 +3,11 @@ import { Badge, Card, HStack, Stack, Text, Wrap } from '@chakra-ui/react';
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { chatListModel } from '@model/chat-list';
+import { agentCardsModel } from '@model/agent-cards';
 import { setCurrentAgentCard } from '@model/chat-service';
 import { AgentCard as AgentCardType } from '@shared/types/agent-card';
 import { AuthorNoteDialog } from './components/author-note-dialog';
-import { setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/chat-list';
+import { setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/agent-cards';
 
 type Props = {
 	data: AgentCardType;
@@ -26,12 +26,12 @@ export const AgentCard: React.FC<Props> = ({ data }) => {
 
 	const handleDeleteClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		chatListModel.deleteItemFx(data.id);
+		agentCardsModel.deleteItemFx(data.id);
 	};
 
 	const handleDuplicateClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		chatListModel.duplicateItemFx(data);
+		agentCardsModel.duplicateItemFx(data);
 	};
 
 	return (

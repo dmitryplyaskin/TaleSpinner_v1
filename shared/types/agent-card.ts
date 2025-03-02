@@ -1,4 +1,7 @@
-import { CommonModelItemType } from "./common-model-types";
+import {
+  CommonModelItemType,
+  CommonModelSettingsType,
+} from "./common-model-types";
 
 /**
  * Представляет карточку агента/персонажа, которая содержит основную информацию,
@@ -121,4 +124,9 @@ export interface ActiveBranch {
   branch: InteractionBranch;
   /** Сообщения, относящиеся к активной ветке */
   messages: InteractionMessage[];
+}
+
+export interface AgentCardSettingsType extends CommonModelSettingsType {
+  /** Имя модели */
+  selectedId: string | null;
 }

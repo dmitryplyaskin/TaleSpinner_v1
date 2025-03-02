@@ -1,5 +1,5 @@
 import { ChatWindow } from './features/chat-window';
-import { chatListModel } from './model/chat-list';
+import { agentCardsModel } from './model/agent-cards';
 import { useUnit } from 'effector-react';
 import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
@@ -25,7 +25,11 @@ function App() {
 							<Flex h="100%" align="center" justify="center">
 								<VStack gap={4}>
 									<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
-									<Button onClick={() => chatListModel.createItemFx(createNewAgentCard())} colorScheme="blue" size="lg">
+									<Button
+										onClick={() => agentCardsModel.createItemFx(createNewAgentCard())}
+										colorScheme="blue"
+										size="lg"
+									>
 										Создать новый чат
 									</Button>
 								</VStack>

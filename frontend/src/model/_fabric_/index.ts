@@ -32,12 +32,12 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		return items.find((item) => item.id === settings.selectedId) || null;
 	});
 
-	const pagination = createPaginationModel(
-		$items,
-		fabric.pagination?.defaultPageSize || 10,
-		updateSettingsFx,
-		getSettingsFx,
-	);
+	// const pagination = createPaginationModel(
+	// 	$items,
+	// 	fabric.pagination?.defaultPageSize || 10,
+	// 	updateSettingsFx,
+	// 	getSettingsFx,
+	// );
 
 	const sortFilter = createSortFilterModel(
 		$items,
@@ -83,7 +83,7 @@ export const createModel = <SettingsType extends CommonModelSettingsType, ItemTy
 		changeItemDebounced,
 		changeItem,
 
-		pagination,
+		// pagination,
 		paginationWithSortFilter,
 
 		sortFilter,

@@ -3,16 +3,16 @@ import { Box, Input, Stack, RatingGroup } from '@chakra-ui/react';
 
 import { useUnit } from 'effector-react';
 import { FilterState } from '@model/_fabric_/sort-filter-model';
-import { chatListModel } from '@model/chat-list';
+import { agentCardsModel } from '@model/agent-cards';
 import { Select } from 'chakra-react-select';
 import { Checkbox } from '@ui/chakra-core-ui/checkbox';
 
 export const ChatListSortFilterControls: React.FC = () => {
 	// Используем useUnit для доступа к сторам и событиям
-	const sortOptions = useUnit(chatListModel.sortFilter.$sortOptions);
-	const filterOptions = useUnit(chatListModel.sortFilter.$filterOptions);
-	const sortFilterSettings = useUnit(chatListModel.sortFilter.$sortFilterSettings);
-	const { setSort, addFilter, removeFilter } = chatListModel.sortFilter;
+	const sortOptions = useUnit(agentCardsModel.sortFilter.$sortOptions);
+	const filterOptions = useUnit(agentCardsModel.sortFilter.$filterOptions);
+	const sortFilterSettings = useUnit(agentCardsModel.sortFilter.$sortFilterSettings);
+	const { setSort, addFilter, removeFilter } = agentCardsModel.sortFilter;
 
 	// Локальное состояние для полей фильтрации
 	const [nameFilter, setNameFilter] = useState('');

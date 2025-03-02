@@ -162,7 +162,6 @@ export const createSortFilterModel = <
 	const $filteredAndSortedItems = $sortedItems;
 
 	const $sort = $sortFilterSettings.map((x) => x.currentSortType);
-	$sortFilterSettings.watch((x) => console.log(x));
 
 	// Сохранение только типа сортировки, если предоставлен updateSettingsFx
 	if (updateSettingsFx) {

@@ -3,7 +3,7 @@ import { uploadAgentCardFilesFx } from '../files/files';
 import { CardUploadResponse } from '@model/files/types';
 import { toaster } from '@ui/chakra-core-ui/toaster';
 import { createNewAgentCard, createNewMessage, createNewSwipe } from '../../utils/creation-helper-agent-card';
-import { chatListModel } from './create-model';
+import { agentCardsModel } from './create-model';
 
 const createUploadedAgentCard = createEffect<{ data: CardUploadResponse }, void>(async (result) => {
 	if (result.data.failedFiles.length > 0) {
@@ -31,7 +31,7 @@ const createUploadedAgentCard = createEffect<{ data: CardUploadResponse }, void>
 					});
 				}
 
-				chatListModel.createItemFx(emptyChatItem);
+				agentCardsModel.createItemFx(emptyChatItem);
 			}
 
 			toaster.success({

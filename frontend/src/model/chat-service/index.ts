@@ -2,7 +2,7 @@ import { createStore, createEvent, sample } from 'effector';
 import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
 import { reducers } from './reducers';
 import { debounce } from 'patronum/debounce';
-import { chatListModel } from '../chat-list';
+import { agentCardsModel } from '../agent-cards';
 import { produce } from 'immer';
 import { renderTemplate } from '@model/llm-orchestration/render-template';
 
@@ -117,5 +117,5 @@ sample({
 sample({
 	source: $currentAgentCard,
 	clock: debounceSave,
-	target: [chatListModel.updateItemFx],
+	target: [agentCardsModel.updateItemFx],
 });

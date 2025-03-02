@@ -1,5 +1,5 @@
 import fileRoutes from "./files/routes";
-import chatRoutes from "./chat.api";
+import chatRoutes from "./agent-cards.api";
 import instructionsRoutes from "./instructions.api";
 import samplersRoutes from "./samplers.api";
 import templatesRoutes from "./templates.api";

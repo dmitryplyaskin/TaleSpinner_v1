@@ -17,7 +17,7 @@ type PaginationProps<SettingsType extends CommonModelSettingsType, ItemType exte
 export const Pagination = <SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType>({
 	model,
 }: PaginationProps<SettingsType, ItemType>) => {
-	const { paginationWithSortFilter, pagination } = model;
+	const { paginationWithSortFilter } = model;
 	const paginationSettings = useUnit(paginationWithSortFilter.$paginationSettings);
 
 	const options = [
@@ -32,7 +32,7 @@ export const Pagination = <SettingsType extends CommonModelSettingsType, ItemTyp
 				count={paginationSettings.totalItems}
 				pageSize={paginationSettings.pageSize}
 				page={paginationSettings.currentPage}
-				onPageChange={(e) => pagination.setCurrentPage(e.page)}
+				onPageChange={(e) => paginationWithSortFilter.setCurrentPage(e.page)}
 			>
 				<HStack>
 					<PaginationPrevTrigger />
@@ -44,7 +44,7 @@ export const Pagination = <SettingsType extends CommonModelSettingsType, ItemTyp
 				<Select
 					value={options.find((option) => option.value === paginationSettings.pageSize)}
 					options={options}
-					onChange={(e) => pagination.setPageSize(e?.value || 10)}
+					onChange={(e) => paginationWithSortFilter.setPageSize(e?.value || 10)}
 				/>
 			</Box>
 		</Flex>

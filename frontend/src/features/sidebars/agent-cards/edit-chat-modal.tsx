@@ -3,7 +3,7 @@ import { Dialog } from '@ui/dialog';
 import { FormProvider, useForm, useFieldArray } from 'react-hook-form';
 import { FormInput, FormTextarea } from '@ui/form-components';
 import { useUnit } from 'effector-react';
-import { $selectedAgentCardForEdit, $isEditAgentCardModalOpen, setIsEditAgentCardModalOpen } from '@model/chat-list';
+import { $selectedAgentCardForEdit, $isEditAgentCardModalOpen, setIsEditAgentCardModalOpen } from '@model/agent-cards';
 import { useEffect } from 'react';
 import { Tabs } from '@chakra-ui/react';
 import { LuPlus, LuChevronUp, LuChevronDown, LuTrash2 } from 'react-icons/lu';
