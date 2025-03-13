@@ -3,6 +3,7 @@ import { Flex, Textarea, Button, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
 import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orchestration';
+import { SendActionMenu } from './send-action-menu';
 
 interface MessageInputProps {}
 
@@ -37,7 +38,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({}) => {
 			w="full"
 			maxW="5xl"
 		>
-			<Flex gap={4}>
+			<Flex gap={4} flexDirection={'column'}>
 				<Textarea
 					value={message}
 					onChange={handleInputChange}
@@ -51,10 +52,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({}) => {
 					resize={'vertical'}
 					backgroundColor="white"
 				/>
-				<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
-					{isProcessing ? 'Оборвать' : 'Отправить'}
-				</Button>
-			</Flex>{' '}
+				<Flex>
+					<Flex gap={2} ml={'auto'}>
+						<SendActionMenu />
+						<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
+							{isProcessing ? 'Оборвать' : 'Отправить'}
+						</Button>
+					</Flex>
+				</Flex>
+			</Flex>
 		</Box>
 	);
 };

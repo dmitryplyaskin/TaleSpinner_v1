@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { RenderChat } from './render-chat';
 import { Flex, Box, Container } from '@chakra-ui/react';
-import { MessageInput } from './message-input';
+import { MessageInput } from './input';
 
 import BGImages from '../../assets/bg.png';
 
