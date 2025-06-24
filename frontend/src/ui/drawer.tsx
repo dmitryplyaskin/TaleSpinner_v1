@@ -40,7 +40,7 @@ export const Drawer: React.FC<Props> = ({ name, title, children }) => {
 		>
 			<DrawerContent>
 				<DrawerHeader>
-					<Flex justify="space-between" align="center">
+					<Flex justify="space-between" align="center" w="100%">
 						<Heading size="md">{title}</Heading>
 						<Flex gap={2}>
 							<IconButton
