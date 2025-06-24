@@ -1,7 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { toggleSidebarOpen } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2 } from 'react-icons/lu';
+import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2, LuSettings2 } from 'react-icons/lu';
 import { IconType } from 'react-icons';
 import type { SidebarName } from '@model/sidebars';
 
@@ -51,6 +51,13 @@ const sidebarButtons: SidebarButton[] = [
 	},
 ] as const;
 
+const appSettingsButton: SidebarButton = {
+	name: 'appSettings',
+	tooltip: 'Настройки приложения',
+	icon: LuSettings2,
+	ariaLabel: 'Open app settings',
+};
+
 export const LeftBar = () => {
 	return (
 		<Flex
@@ -66,19 +73,32 @@ export const LeftBar = () => {
 			align="center"
 			zIndex={2}
 		>
-			{sidebarButtons.map((button) => (
-				<Box key={button.name}>
-					<IconButtonWithTooltip
-						tooltip={button.tooltip}
-						variant="outline"
-						size="lg"
-						colorScheme="purple"
-						aria-label={button.ariaLabel}
-						onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
-						icon={<button.icon />}
-					/>
-				</Box>
-			))}
+			<Flex direction="column" gap={4} flex={1}>
+				{sidebarButtons.map((button) => (
+					<Box key={button.name}>
+						<IconButtonWithTooltip
+							tooltip={button.tooltip}
+							variant="outline"
+							size="lg"
+							colorScheme="purple"
+							aria-label={button.ariaLabel}
+							onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
+							icon={<button.icon />}
+						/>
+					</Box>
+				))}
+			</Flex>
+			<Box pb={4}>
+				<IconButtonWithTooltip
+					tooltip={appSettingsButton.tooltip}
+					variant="outline"
+					size="lg"
+					colorScheme="gray"
+					aria-label={appSettingsButton.ariaLabel}
+					onClick={() => toggleSidebarOpen({ name: appSettingsButton.name, isOpen: true })}
+					icon={<appSettingsButton.icon />}
+				/>
+			</Box>
 		</Flex>
 	);
 };
