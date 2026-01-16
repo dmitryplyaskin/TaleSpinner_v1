@@ -63,7 +63,12 @@ export const uploadFiles: AsyncRequestHandler = async (req) => {
 };
 
 export const getFile: AsyncRequestHandler = async (req) => {
-  const { filename } = req.params;
+  const filenameParam = req.params.filename;
+  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
+
+  if (!filename) {
+    throw new Error("filename обязателен");
+  }
 
   if (!(await fileService.fileExists(filename))) {
     throw new Error("Файл не найден");
@@ -80,7 +85,12 @@ export const getFile: AsyncRequestHandler = async (req) => {
 };
 
 export const getFileMetadata: AsyncRequestHandler = async (req) => {
-  const { filename } = req.params;
+  const filenameParam = req.params.filename;
+  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
+
+  if (!filename) {
+    throw new Error("filename обязателен");
+  }
 
   if (!(await fileService.fileExists(filename))) {
     throw new Error("Файл не найден");
@@ -95,7 +105,12 @@ export const getFileMetadata: AsyncRequestHandler = async (req) => {
 };
 
 export const deleteFile: AsyncRequestHandler = async (req) => {
-  const { filename } = req.params;
+  const filenameParam = req.params.filename;
+  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
+
+  if (!filename) {
+    throw new Error("filename обязателен");
+  }
 
   if (!(await fileService.fileExists(filename))) {
     throw new Error("Файл не найден");

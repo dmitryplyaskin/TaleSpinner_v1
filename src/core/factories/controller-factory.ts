@@ -12,7 +12,14 @@ export class CrudController<T extends BaseEntity> {
   };
 
   getById: AsyncRequestHandler = async (req) => {
-    const item = await this.service.getById(req.params.id);
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
+
+    if (!id) {
+      throw new Error("id обязателен");
+    }
+
+    const item = await this.service.getById(id);
     return { data: item };
   };
 
@@ -27,8 +34,15 @@ export class CrudController<T extends BaseEntity> {
   };
 
   delete: AsyncRequestHandler = async (req) => {
-    await this.service.delete(req.params.id);
-    return { data: { id: req.params.id } };
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
+
+    if (!id) {
+      throw new Error("id обязателен");
+    }
+
+    await this.service.delete(id);
+    return { data: { id } };
   };
 
   duplicate: AsyncRequestHandler = async (req) => {

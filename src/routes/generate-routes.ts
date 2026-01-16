@@ -12,7 +12,14 @@ interface GenerateRequest {
 
 // Эндпоинт для прерывания стрима
 router.post("/abort/:streamId", (req: Request, res: Response) => {
-  const { streamId } = req.params;
+  const streamIdParam = req.params.streamId;
+  const streamId = Array.isArray(streamIdParam) ? streamIdParam[0] : streamIdParam;
+
+  if (!streamId) {
+    res.status(400).json({ success: false, error: "streamId is required" });
+    return;
+  }
+
   const controller = activeStreams.get(streamId);
 
   if (controller) {
