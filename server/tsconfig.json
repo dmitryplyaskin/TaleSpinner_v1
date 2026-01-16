@@ -3,8 +3,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
-    "outDir": "../dist",
-    "rootDir": ".",
+    "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,14 +13,14 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["./shared/*"],
+      "@shared/*": ["../shared/*"],
       "@core/*": ["./src/core/*"],
       "@utils/*": ["./src/utils/*"],
       "@types/*": ["./src/types/*"],
       "@services/*": ["./src/services/*"]
     },
-    "typeRoots": ["../node_modules/@types", "./types"]
+    "typeRoots": ["./node_modules/@types", "../node_modules/@types", "./types"]
   },
-  "include": ["./**/*"],
-  "exclude": ["../node_modules", "../dist"]
+  "include": ["src/**/*.ts", "../shared/**/*.ts"],
+  "exclude": ["node_modules", "dist", "../dist"]
 } 

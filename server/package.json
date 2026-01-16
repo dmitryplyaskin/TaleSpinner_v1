@@ -1,0 +1,51 @@
+{
+  "name": "rp-llm",
+  "version": "0.0.0",
+  "description": "my pet",
+  "main": "index.js",
+  "author": "Dmitry Plyaskin",
+  "license": "MIT",
+  "dependencies": {
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.11",
+    "openai": "^6.16.0",
+    "sharp": "^0.34.5",
+    "uuid": "^13.0.0"
+  },
+  "scripts": {
+    "start": "node dist/src/index.js",
+    "start:dev": "nodemon",
+    "start:frontend": "cd ../web && yarn dev",
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json -w",
+    "dev": "nodemon"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": ".ts,.js",
+    "ignore": [
+      "src/**/*.spec.ts"
+    ],
+    "exec": "ts-node ./src/index.js"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.0.9",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
+  }
+}
