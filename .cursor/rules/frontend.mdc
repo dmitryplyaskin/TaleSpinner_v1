@@ -97,12 +97,28 @@ The app currently uses `rehype-raw` for Markdown rendering in places.
 Frontend scripts live in `web/package.json`.
 
 - From repo root:
-  - `yarn verify:web` (TypeScript + ESLint)
+
   - `yarn build:web`
-  - `yarn lint:web:fix`
+
 - From `web/`:
-  - `yarn verify`
   - `yarn build`
-  - `yarn lint:fix`
+  - `yarn typecheck`
+
+## Command execution policy (IMPORTANT)
+
+Goal: avoid large auto-generated diffs, context desync, and runaway cost/iterations when tools rewrite files.
+
+- **STRICTLY FORBIDDEN (without explicit user permission)**:
+  - Any **lint / formatter / auto-fix** commands, including (examples):
+    - `eslint ...`, `yarn lint`, `yarn eslint ...`
+    - `prettier ...`, `yarn format`, `prettier --check`, `prettier --write`
+    - `stylelint ...`, `biome ...`, `rome ...`
+    - any command that **rewrites many files automatically** or applies formatting fixes
+- **Allowed verification commands (do not rewrite code)**:
+  - `yarn build:web`
+  - `yarn --cwd web build`
+  - `yarn --cwd web typecheck`
+
+**CRITICAL: LLM must NEVER run lint/formatter commands automatically.** Linting is only for manual execution by the developer.
 
 If TypeScript fails, keep fixing until **0 TS errors**.

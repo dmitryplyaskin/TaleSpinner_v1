@@ -117,19 +117,28 @@ Write production-grade code: strict types, predictable HTTP behavior, clear modu
 
 ## How to verify (mandatory)
 
-After completing **any** backend coding task, run server checks and fix issues until they are clean:
+After completing **any** backend coding task, run type checks and fix issues until they are clean:
 
 - From repo root:
-  - `yarn verify:server`
+  - `yarn typecheck:server`
 - Or directly:
-  - `yarn -C server verify`
+  - `yarn -C server typecheck`
 
-Quick commands (server):
+## Command execution policy (IMPORTANT)
 
-- `yarn -C server typecheck`
-- `yarn -C server lint`
-- `yarn -C server lint:ci` (CI strict)
+Goal: avoid large auto-generated diffs, context desync, and runaway cost/iterations when tools rewrite files.
 
-If you worked on DB migrations:
+- **STRICTLY FORBIDDEN (without explicit user permission)**:
+  - Any **lint / formatter / auto-fix** commands, including (examples):
+    - `eslint ...`, `yarn lint`, `yarn eslint ...`
+    - `prettier ...`, `yarn format`, `prettier --check`, `prettier --write`
+    - `stylelint ...`, `biome ...`, `rome ...`
+    - any command that **rewrites many files automatically** or applies formatting fixes
+- **Allowed verification commands (do not rewrite code)**:
+  - `yarn typecheck:server`
+  - `yarn -C server typecheck`
+  - DB migrations (only when relevant): `yarn -C server db:migrate`
 
-- `yarn -C server db:migrate`
+**CRITICAL: LLM must NEVER run lint/formatter commands automatically.** Linting is only for manual execution by the developer.
+
+If you worked on DB migrations, use: `yarn -C server db:migrate`
