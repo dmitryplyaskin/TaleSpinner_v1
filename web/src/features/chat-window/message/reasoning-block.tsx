@@ -1,10 +1,13 @@
-import { Collapsible, Box, Text, Textarea, Flex } from '@chakra-ui/react';
+import { Box, Collapsible, Flex, Text, Textarea } from '@chakra-ui/react';
 import { type SwipeComponent } from '@shared/types/agent-card';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
 
 import { RenderMd } from '@ui/render-md';
 
+import { deleteMessage, updateSwipe } from '@model/chat-service';
+
+import { autosizeTextarea } from '../input/use-autosize-textarea';
 
 import { ActionBar } from './action-bar';
 
@@ -16,8 +19,49 @@ type ReasoningBlockProps = {
 
 export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId, swipeId }) => {
 	const [isEditing, setIsEditing] = useState(false);
-	const [content, setContent] = useState(data.content);
 	const [isOpen, setIsOpen] = useState(false);
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const initialContentRef = useRef<string>(data.content);
+
+	useEffect(() => {
+		if (!isEditing) initialContentRef.current = data.content;
+	}, [data.content, isEditing]);
+
+	useEffect(() => {
+		if (!isEditing) return;
+
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+
+		autosizeTextarea(textarea, { minRows: 1 });
+		textarea.focus();
+		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+	}, [isEditing]);
+
+	const handleOpenEdit = () => {
+		initialContentRef.current = data.content;
+		setIsEditing(true);
+	};
+
+	const handleCancelEdit = () => {
+		setIsEditing(false);
+	};
+
+	const handleConfirmEdit = () => {
+		const nextContent = textareaRef.current?.value ?? initialContentRef.current;
+
+		updateSwipe({
+			messageId,
+			swipeId,
+			componentId: data.id,
+			content: nextContent,
+		});
+		setIsEditing(false);
+	};
+
+	const handleDelete = () => {
+		deleteMessage(messageId);
+	};
 
 	return (
 		<Box
@@ -31,11 +75,11 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 			borderColor="gray.200"
 		>
 			<ActionBar
-				data={data}
-				messageId={messageId}
-				swipeId={swipeId}
 				isEditing={isEditing}
-				setIsEditing={setIsEditing}
+				onOpenEdit={handleOpenEdit}
+				onCancelEdit={handleCancelEdit}
+				onConfirmEdit={handleConfirmEdit}
+				onDelete={handleDelete}
 			/>
 			<Collapsible.Root unmountOnExit onOpenChange={(d) => setIsOpen(d.open)} open={isOpen}>
 				<Collapsible.Trigger>
@@ -49,7 +93,16 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 				<Collapsible.Content>
 					<Box padding="4" borderWidth="1px" mt={2}>
 						{isEditing ? (
-							<Textarea w={'100%'} autoresize value={content} onChange={(e) => setContent(e.target.value)} />
+							<Textarea
+								ref={textareaRef}
+								w="full"
+								rows={1}
+								resize="none"
+								overflow="hidden"
+								defaultValue={initialContentRef.current}
+								spellCheck={false}
+								onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
+							/>
 						) : (
 							<RenderMd content={data.content} />
 						)}

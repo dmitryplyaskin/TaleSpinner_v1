@@ -1,6 +1,6 @@
 import { visit } from 'unist-util-visit';
 
-import type { Text, RootContent , Root } from 'mdast';
+import type { Root, RootContent, Text } from 'mdast';
 import type { Plugin } from 'unified';
 
 const QUOTE_REGEX = /("|“|”|«|»)([^"“”«»]+)("|“|”|«|»)/g;
@@ -11,7 +11,7 @@ function processTextNode(text: string): RootContent[] {
 	let match;
 
 	while ((match = QUOTE_REGEX.exec(text)) !== null) {
-		const [fullMatch, openQuote, content, closeQuote] = match;
+		const [fullMatch, _openQuote, content, _closeQuote] = match;
 
 		// Add text before match
 		if (match.index > lastIndex) {
@@ -21,10 +21,11 @@ function processTextNode(text: string): RootContent[] {
 			});
 		}
 
-		// Add HTML element for quoted text
+		// Use <q> but do not include quote characters inside,
+		// otherwise the browser will render quotes twice.
 		nodes.push({
 			type: 'html',
-			value: `<q>${openQuote}${content}${closeQuote}</q>`,
+			value: `<q>${content}</q>`,
 		});
 
 		lastIndex = match.index + fullMatch.length;

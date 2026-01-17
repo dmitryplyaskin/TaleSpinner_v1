@@ -28,7 +28,7 @@ export const RenderMd = ({ content }: RenderMdProps) => {
 const QuoteComponent: NonNullable<Components['q']> = (props) => {
 	const { node: _node, ...rest } = props;
 	// Chakra <Text> типизирован как <p>, поэтому для <q> используем нативный элемент
-	return <q style={{ color: 'var(--chakra-colors-orange-500)' }} {...rest} />;
+	return <q style={{ color: 'var(--chakra-colors-orange-500)', quotes: '"«" "»" "“" "”"' }} {...rest} />;
 };
 
 const components: Components = {
@@ -37,6 +37,22 @@ const components: Components = {
 		return <i style={{ color: 'red' }} {...rest} />;
 	},
 	q: QuoteComponent,
+	img(props) {
+		const { node: _node, style, ...rest } = props;
+		return (
+			<img
+				{...rest}
+				style={{
+					display: 'block',
+					width: '100%',
+					maxWidth: '100%',
+					height: 'auto',
+					borderRadius: 'var(--chakra-radii-lg)',
+					...style,
+				}}
+			/>
+		);
+	},
 	p(props) {
 		const { node: _node, ...rest } = props;
 		return <Text my={2} {...rest} />;

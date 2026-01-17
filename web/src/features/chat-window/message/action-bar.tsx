@@ -1,17 +1,14 @@
-import { Flex, Box } from '@chakra-ui/react';
-import { type SwipeComponent } from '@shared/types/agent-card';
-import { useState } from 'react';
+import { Box, Flex } from '@chakra-ui/react';
 import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
-import { deleteMessage, updateSwipe } from '@model/chat-service';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type ActionBarProps = {
-	data: SwipeComponent;
-	messageId: string;
-	swipeId: string;
 	isEditing: boolean;
-	setIsEditing: (isEditing: boolean) => void;
+	onOpenEdit: () => void;
+	onCancelEdit: () => void;
+	onConfirmEdit: () => void;
+	onDelete: () => void;
 	coordinates?: {
 		top: number;
 		right: number;
@@ -19,39 +16,13 @@ type ActionBarProps = {
 };
 
 export const ActionBar = ({
-	data,
-	messageId,
-	swipeId,
 	isEditing,
-	setIsEditing,
+	onOpenEdit,
+	onCancelEdit,
+	onConfirmEdit,
+	onDelete,
 	coordinates = { top: 3, right: 3 },
 }: ActionBarProps) => {
-	const [content, setContent] = useState(data.content);
-
-	const handleOpenEdit = () => {
-		setContent(data.content);
-		setIsEditing(true);
-	};
-
-	const handleDelete = () => {
-		deleteMessage(messageId);
-	};
-
-	const handleConfirmEdit = () => {
-		updateSwipe({
-			messageId,
-			swipeId,
-			componentId: data.id,
-			content,
-		});
-		setIsEditing(false);
-	};
-
-	const handleCancelEdit = () => {
-		setContent(data.content);
-		setIsEditing(false);
-	};
-
 	return (
 		<Box position="absolute" top={coordinates.top} right={coordinates.right} gap={2} alignSelf="flex-start">
 			{isEditing ? (
@@ -63,7 +34,7 @@ export const ActionBar = ({
 						icon={<LuX />}
 						tooltip="Cancel edit"
 						aria-label="Cancel edit"
-						onClick={handleCancelEdit}
+						onClick={onCancelEdit}
 					/>
 					<IconButtonWithTooltip
 						size="xs"
@@ -72,7 +43,7 @@ export const ActionBar = ({
 						icon={<LuCheck />}
 						tooltip="Confirm edit"
 						aria-label="Confirm edit"
-						onClick={handleConfirmEdit}
+						onClick={onConfirmEdit}
 					/>
 				</Flex>
 			) : (
@@ -84,7 +55,7 @@ export const ActionBar = ({
 						icon={<LuPen />}
 						tooltip="Edit message"
 						aria-label="Edit message"
-						onClick={handleOpenEdit}
+						onClick={onOpenEdit}
 					/>
 					<IconButtonWithTooltip
 						size="xs"
@@ -93,7 +64,7 @@ export const ActionBar = ({
 						icon={<LuTrash />}
 						tooltip="Delete message"
 						aria-label="Delete message"
-						onClick={handleDelete}
+						onClick={onDelete}
 					/>
 				</Flex>
 			)}

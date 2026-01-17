@@ -1,31 +1,51 @@
-import { Flex, Box, Container } from '@chakra-ui/react';
-import React, { useRef } from 'react';
+import { Box, Container, Flex } from '@chakra-ui/react';
+import { useUnit } from 'effector-react';
+import React, { useEffect, useRef } from 'react';
 
 import BGImages from '../../assets/bg.png';
+
+import { $currentAgentCard } from '@model/chat-service';
 
 import { MessageInput } from './input';
 import { RenderChat } from './render-chat';
 
-
 export const ChatWindow: React.FC = () => {
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const currentAgentCard = useUnit($currentAgentCard);
+	const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		if (!currentAgentCard) return;
+
+		const scrollToBottom = () => {
+			messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+		};
+
+		// Two frames to let layout settle (messages + images).
+		requestAnimationFrame(() => {
+			scrollToBottom();
+			requestAnimationFrame(scrollToBottom);
+		});
+	}, [currentAgentCard?.id]);
 
 	return (
 		<Flex
 			direction="column"
 			h="full"
+			minH={0}
 			backgroundImage={`url(${BGImages})`}
 			backgroundSize="cover"
 			backgroundPosition="center"
 		>
-			<Box flex="1" overflowY="auto" pb={'300px'}>
+			<Box flex="1" minH={0} overflowY="auto">
 				<Container maxW="6xl" p={4}>
 					<RenderChat />
-					<div ref={messagesEndRef} />
+					<Box ref={messagesEndRef} />
 				</Container>
 			</Box>
 
-			<MessageInput />
+			<Container maxW="6xl" p={0}>
+				<MessageInput />
+			</Container>
 		</Flex>
 	);
 };
