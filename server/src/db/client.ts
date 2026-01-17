@@ -1,7 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
+
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+
 import * as schema from "./schema";
 
 export type Db = BetterSQLite3Database<typeof schema>;

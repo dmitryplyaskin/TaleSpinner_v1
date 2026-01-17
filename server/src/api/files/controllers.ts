@@ -1,11 +1,15 @@
-import fileService from "@services/file-service";
-import { v4 as uuidv4 } from "uuid";
-import path from "path";
-import sharp from "sharp";
 import fs from "fs/promises";
-import { CardUploadResponse, ProcessedCardFile, UploadedFile } from "./types";
-import { AsyncRequestHandler } from "@core/middleware/async-handler";
+import path from "path";
+
+import sharp from "sharp";
+import { v4 as uuidv4 } from "uuid";
+
+
+import { type AsyncRequestHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
+import fileService from "@services/file-service";
+
+import { type CardUploadResponse, type ProcessedCardFile, type UploadedFile } from "./types";
 
 interface CharacterComment {
   keyword: string;

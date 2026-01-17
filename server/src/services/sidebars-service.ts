@@ -1,5 +1,6 @@
 import { ConfigService } from "@core/services/config-service";
-import { SidebarSettings } from "../types";
+
+import { type SidebarSettings } from "../types";
 
 interface SidebarState {
   settings: SidebarSettings;

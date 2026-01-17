@@ -1,5 +1,7 @@
 import path from "path";
+
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+
 import { initDb } from "./client";
 
 async function main(): Promise<void> {

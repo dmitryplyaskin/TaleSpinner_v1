@@ -1,4 +1,4 @@
-import { BaseEntity } from "@core/types/common";
+import { type BaseEntity } from "@core/types/common";
 
 export interface Chat extends BaseEntity {
   id: string;

@@ -1,9 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { type Request } from "express";
 import { z } from "zod";
-import sidebarsService from "../services/sidebars-service";
-import { SidebarState } from "../types";
+
 import { asyncHandler } from "@core/middleware/async-handler";
 import { validate } from "@core/middleware/validate";
+
+import sidebarsService from "../services/sidebars-service";
+import { type SidebarState } from "../types";
 
 const router = express.Router();
 
@@ -35,7 +37,9 @@ router.post(
   "/sidebars",
   validate({ body: sidebarsSchema }),
   asyncHandler(async (req: Request) => {
-    const settings = await sidebarsService.saveSettings(req.body as SidebarState);
+    const settings = await sidebarsService.saveSettings(
+      req.body as SidebarState
+    );
     return { data: settings };
   })
 );

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import path from "path";
+
 import { defineConfig } from "drizzle-kit";
 
 const dbPath =

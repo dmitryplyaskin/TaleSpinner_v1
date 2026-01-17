@@ -1,9 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { type Request } from "express";
 import { z } from "zod";
-import { chatService } from "../services/agent-cards.service";
-import { Chat } from "../types";
+
 import { asyncHandler } from "@core/middleware/async-handler";
 import { validate } from "@core/middleware/validate";
+
+import { chatService } from "../services/agent-cards.service";
+import { type Chat } from "../types";
 
 const router = express.Router();
 

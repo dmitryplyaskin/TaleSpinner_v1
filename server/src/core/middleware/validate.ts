@@ -1,5 +1,6 @@
-import { RequestHandler } from "express";
-import { ZodTypeAny, z } from "zod";
+import { type RequestHandler } from "express";
+import { type ZodTypeAny, type z } from "zod";
+
 import { HttpError } from "@core/middleware/error-handler";
 
 export type ValidateSchemas = {

@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from "express";
-import { Logger } from "@core/types/common";
-import { ApiErrorBody } from "@core/http/response";
+import { type Request, type Response } from "express";
+
+import { type ApiErrorBody } from "@core/http/response";
+import { type Logger } from "@core/types/common";
 
 export class HttpError extends Error {
   constructor(
@@ -27,7 +28,7 @@ const toErrorBody = (
 });
 
 export const errorHandler = (logger?: Logger) => {
-  return (error: Error, req: Request, res: Response, next: NextFunction) => {
+  return (error: Error, req: Request, res: Response) => {
     if (error instanceof HttpError) {
       logger?.error(error.message, {
         statusCode: error.statusCode,

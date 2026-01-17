@@ -1,7 +1,9 @@
-import { ConfigService } from "@core/services/config-service";
-import { Chat } from "../types";
+import { type AgentCardSettingsType } from "@shared/types/agent-card";
+
 import { BaseService } from "@core/services/base-service";
-import { AgentCardSettingsType } from "@shared/types/agent-card";
+import { ConfigService } from "@core/services/config-service";
+
+import { type Chat } from "../types";
 
 class ChatService extends BaseService<Chat> {
   constructor() {

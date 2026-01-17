@@ -1,11 +1,13 @@
-import { Router, RequestHandler } from "express";
+import { Router, type RequestHandler } from "express";
+
 import { asyncHandler } from "@core/middleware/async-handler";
+import { type BaseEntity, type BaseConfig } from "@core/types/common";
+
 import {
-  ConfigController,
-  CrudController,
-  GeneralController,
+  type ConfigController,
+  type CrudController,
+  type GeneralController,
 } from "./controller-factory";
-import { BaseEntity, BaseConfig } from "@core/types/common";
 
 // Тип для допустимых HTTP-методов
 type HTTPMethod =

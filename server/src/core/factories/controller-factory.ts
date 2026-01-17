@@ -1,8 +1,8 @@
-import { AsyncRequestHandler } from "@core/middleware/async-handler";
+import { type AsyncRequestHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
-import { BaseService } from "@core/services/base-service";
-import { ConfigService } from "@core/services/config-service";
-import { BaseEntity, BaseConfig } from "@core/types/common";
+import { type BaseService } from "@core/services/base-service";
+import { type ConfigService } from "@core/services/config-service";
+import { type BaseEntity, type BaseConfig } from "@core/types/common";
 
 export class CrudController<T extends BaseEntity> {
   constructor(private service: BaseService<T>) {}

@@ -1,6 +1,7 @@
+import { type PipelineType, type PipelineSettingsType } from "@shared/types/pipelines";
+
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
-import { PipelineType, PipelineSettingsType } from "@shared/types/pipelines";
 
 class Pipelines extends BaseService<PipelineType> {
   constructor() {

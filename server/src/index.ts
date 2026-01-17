@@ -1,17 +1,17 @@
-import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import express from "express";
 import morgan from "morgan";
 
-import configRoutes from "./routes/config-routes";
-import modelsRoutes from "./routes/models-routes";
-import settingsRoutes from "./routes/settings-routes";
-import appSettingsRoutes from "./routes/app-settings-routes";
-import generateRoutes from "./routes/generate-routes";
-import sidebarsRoutes from "./routes/sidebars-routes";
 import { routes } from "./api/_routes_";
 import staticRouter from "./api/static.api";
 import { errorHandler } from "./core/middleware/error-handler";
+import appSettingsRoutes from "./routes/app-settings-routes";
+import configRoutes from "./routes/config-routes";
+import generateRoutes from "./routes/generate-routes";
+import modelsRoutes from "./routes/models-routes";
+import settingsRoutes from "./routes/settings-routes";
+import sidebarsRoutes from "./routes/sidebars-routes";
 
 dotenv.config();
 

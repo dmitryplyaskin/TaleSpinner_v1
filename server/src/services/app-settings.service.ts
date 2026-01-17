@@ -1,5 +1,6 @@
+import { type AppSettings } from "@shared/types/app-settings";
+
 import { ConfigService } from "@core/services/config-service";
-import { AppSettings } from "@shared/types/app-settings";
 
 class AppSettingsService extends ConfigService<AppSettings> {
   constructor() {

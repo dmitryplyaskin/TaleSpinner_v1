@@ -1,9 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { type Request, type Response } from "express";
 import { z } from "zod";
-import openRouterService from "../services/open-router-service";
-import { HttpError } from "@core/middleware/error-handler";
+
 import { asyncHandler } from "@core/middleware/async-handler";
+import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
+
+import openRouterService from "../services/open-router-service";
 
 const router = express.Router();
 const activeStreams = new Map<string, AbortController>();
@@ -76,7 +78,7 @@ router.post("/generate", async (req: Request, res: Response) => {
       abortController
     );
 
-    let botResponse = "";
+    // let botResponse = "";
     try {
       for await (const chunk of messageStream) {
         if (abortController.signal.aborted) {
@@ -89,7 +91,7 @@ router.post("/generate", async (req: Request, res: Response) => {
           return;
         }
 
-        botResponse += chunk.content;
+        // botResponse += chunk.content;
         res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
       }
 

@@ -1,7 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
+
+import {
+  type BaseConfig,
+  type Logger,
+  type ServiceOptions,
+} from "@core/types/common";
+
 import { createDataPath } from "../../utils";
-import { BaseConfig, Logger, ServiceOptions } from "@core/types/common";
 
 export abstract class ConfigService<T extends BaseConfig> {
   protected readonly configPath: string;
@@ -29,7 +35,7 @@ export abstract class ConfigService<T extends BaseConfig> {
     try {
       const content = await fs.readFile(this.configPath, "utf8");
       return JSON.parse(content);
-    } catch (error) {
+    } catch {
       const defaultConfig = this.getDefaultConfig();
       await this.saveConfig(defaultConfig);
       return defaultConfig;

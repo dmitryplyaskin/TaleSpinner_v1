@@ -1,9 +1,11 @@
+import path from "path";
+
 import express from "express";
 import multer from "multer";
 
-import * as controllers from "./controllers";
-import path from "path";
 import { asyncHandler } from "@core/middleware/async-handler";
+
+import * as controllers from "./controllers";
 
 const router = express.Router();
 

@@ -1,6 +1,6 @@
+import { type Settings } from "@types";
+
 import { ConfigService } from "@core/services/config-service";
-// @ts-ignore
-import { Settings } from "@types";
 
 class SettingsService extends ConfigService<Settings> {
   constructor() {

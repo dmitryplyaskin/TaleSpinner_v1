@@ -1,9 +1,11 @@
-import express, { Request, Response } from "express";
+import express, { type Request } from "express";
 import { z } from "zod";
-import settingsService from "../services/settings-service";
-import { Settings } from "../types";
+
 import { asyncHandler } from "@core/middleware/async-handler";
 import { validate } from "@core/middleware/validate";
+
+import settingsService from "../services/settings-service";
+import { type Settings } from "../types";
 
 const router = express.Router();
 

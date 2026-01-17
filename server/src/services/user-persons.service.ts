@@ -1,9 +1,10 @@
+import {
+  type UserPersonType as UserPersonType,
+  type UserPersonSettingsType as UserPersonSettingsType,
+} from "@shared/types/user-person";
+
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
-import {
-  UserPersonType as UserPersonType,
-  UserPersonSettingsType as UserPersonSettingsType,
-} from "@shared/types/user-person";
 
 class UserPersons extends BaseService<UserPersonType> {
   constructor() {

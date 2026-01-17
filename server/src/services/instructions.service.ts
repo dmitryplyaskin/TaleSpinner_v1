@@ -1,8 +1,9 @@
-import { BaseService } from "@core/services/base-service";
 import {
-  InstructionType,
-  InstructionSettingsType,
+  type InstructionType,
+  type InstructionSettingsType,
 } from "@shared/types/instructions";
+
+import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
 
 class Instructions extends BaseService<InstructionType> {

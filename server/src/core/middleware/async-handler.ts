@@ -1,5 +1,6 @@
-import { Request, Response, NextFunction, RequestHandler } from "express";
-import { ApiResult } from "@core/http/response";
+import { type Request, type Response, type NextFunction, type RequestHandler } from "express";
+
+import { type ApiResult } from "@core/http/response";
 
 export type AsyncRequestHandler<T = any> = (
   req: Request,

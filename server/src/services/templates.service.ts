@@ -1,6 +1,7 @@
+import { type TemplateSettingsType, type TemplateType } from "@shared/types/templates";
+
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
-import { TemplateSettingsType, TemplateType } from "@shared/types/templates";
 
 class Templates extends BaseService<TemplateType> {
   constructor() {

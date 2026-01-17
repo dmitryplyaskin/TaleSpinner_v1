@@ -1,9 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
-import { createDataPath } from "../../utils";
-import { BaseEntity, Logger, ServiceOptions } from "@core/types/common";
-import { HttpError } from "@core/middleware/error-handler";
+
 import { v4 as uuidv4 } from "uuid";
+
+import { HttpError } from "@core/middleware/error-handler";
+import { type BaseEntity, type Logger, type ServiceOptions } from "@core/types/common";
+
+import { createDataPath } from "../../utils";
+
 
 export class BaseService<T extends BaseEntity> {
   protected readonly dir: string;

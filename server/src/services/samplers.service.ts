@@ -1,6 +1,7 @@
+import { type SamplersItemType, type SamplersSettingsType } from "@shared/types/samplers";
+
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
-import { SamplersItemType, SamplersSettingsType } from "@shared/types/samplers";
 
 class Samplers extends BaseService<SamplersItemType> {
   constructor() {

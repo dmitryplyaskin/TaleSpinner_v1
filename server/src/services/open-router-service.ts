@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import fs from "fs";
 import path from "path";
-import OpenAI from "openai";
+
 import axios from "axios";
-import { ChatCompletionMessageParam } from "openai/resources";
+import OpenAI from "openai";
+import { type ChatCompletionMessageParam } from "openai/resources";
 
 interface OpenRouterConfig {
   apiKey: string;

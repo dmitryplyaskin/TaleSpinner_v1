@@ -1,8 +1,10 @@
-import express, { Request, Response } from "express";
+import express, { type Request } from "express";
 import { z } from "zod";
-import openRouterService from "../services/open-router-service";
+
 import { asyncHandler } from "@core/middleware/async-handler";
 import { validate } from "@core/middleware/validate";
+
+import openRouterService from "../services/open-router-service";
 
 const router = express.Router();
 
