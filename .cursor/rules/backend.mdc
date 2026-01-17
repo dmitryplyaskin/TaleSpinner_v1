@@ -3,85 +3,133 @@ description: Backend, Server, Node.js, Express, SQLite, API design, services lay
 alwaysApply: false
 ---
 
-# Role
+## Role
 
 You are a Senior Backend Developer for this project (Node.js + Express + TypeScript).
 Write production-grade code: strict types, predictable HTTP behavior, clear module boundaries, and no “god files”.
 
-# Project constraints (non-negotiable)
+## Current backend stack (this repo)
+
+- **Location**: `server/` (Node.js + TypeScript)
+- **HTTP**: **Express v5**
+- **Validation**: **zod** (+ `validate` middleware)
+- **LLM provider**: **OpenRouter** via **OpenAI SDK** (`openai`)
+- **Files/media**: `multer` uploads + static `/media` from `data/media`
+- **Persistence (current reality)**:
+  - primary: **JSON files under `data/`** (legacy / transitional)
+  - WIP: **SQLite + Drizzle** (`better-sqlite3` + `drizzle-orm`, migrations in `server/drizzle/`)
+  - target: **fully move away from JSON to DB** (do not expand JSON persistence in new code)
+- **Package manager**: **Yarn Classic (1.x)** (do not suggest npm/pnpm)
+
+## Non-negotiable constraints
 
 - **Package manager:** use **Yarn only**. Never suggest npm/pnpm.
-- **Runtime:** Node.js, TypeScript. Build output goes to `dist/` via `tsc`.
-- **Framework:** **Express**. Keep controllers/routes thin; business logic lives in services.
-- **Database:** `better-sqlite3` (sync driver). Treat DB access as an infrastructure concern (via `src/plugins/database.ts` / services).
-- **i18n:** localization is mandatory. Keep locales in:
-  - `server/src/locales/en.ts`
-  - `server/src/locales/ru.ts`
+- **Runtime:** Node.js, TypeScript. Build output goes to `server/dist/` via `tsc`.
+- **Framework:** **Express**. Keep HTTP layer thin; orchestration lives outside routers.
 - **Comments:** if you write comments in code, they must be **in English**.
+- **No heavy infra**: don’t introduce new frameworks/ORMs/loggers unless explicitly requested (Drizzle is already present).
 
-# Repository structure (follow existing layout)
+## Repository structure (follow existing layout)
 
-- `src/server.ts` — process entry (listen, bootstrap).
-- `src/app.ts` — Express app wiring (middleware, routes registration).
-- `src/routes/` — HTTP routing layer only (request parsing, calling services, mapping errors to HTTP).
-- `src/services/` — business logic, orchestration, domain rules.
-- `src/plugins/` — infrastructure adapters (DB, scanners, watchers, etc.).
-- `src/errors/` — error types and HTTP mapping helpers.
-- `src/utils/` — pure helpers (no business logic).
-- `src/i18n/` + `src/locales/` — language detection and dictionaries.
+- `server/src/index.ts` — Express app bootstrap: middleware, routes, final `errorHandler`, listen.
+- `server/src/routes/*` — **legacy** “handwritten” routes (still used).
+- `server/src/api/*` — **preferred** modular API (routers created via factories/controllers).
+- `server/src/core/*` — framework glue:
+  - `core/middleware/*` — `asyncHandler`, `errorHandler`, `validate`
+  - `core/http/response.ts` — `ApiResult` contract (`data` / `error`, `raw`, `headers`, `status`)
+  - `core/factories/*` — `RouteFactory` + controllers factory (`CrudController`, `ConfigController`, `GeneralController`)
+  - `core/services/*` — file-based “repositories” (`BaseService`, `ConfigService`)
+  - `core/types/*` — shared backend types (`BaseEntity`, `Logger`, etc.)
+- `server/src/services/*` — domain services (agent cards, templates, settings, OpenRouter, files, etc.)
+- `server/src/db/*` + `server/drizzle/*` — SQLite+Drizzle scaffolding (migrations are applied via script, runtime usage may be WIP)
+- `shared/types/*` — shared contracts between frontend and backend
 
-# Module boundaries (strict)
+## Architectural rules (strict enough to keep sane)
 
-- Routes may import services, errors, and shared utils/types.
-- Services may import plugins (infra) and utils; services must not import route modules.
-- Plugins must not depend on routes; they may be used by services.
-- Avoid circular dependencies. If you see one emerging, introduce a shared module in `utils/` or `services/types.ts`.
+- **HTTP layer** (`routes/*`, `api/*`, `core/factories/*`) may import:
+  - domain services (`server/src/services/*`)
+  - core helpers (`server/src/core/*`)
+  - shared types (`shared/types/*`)
+- **Domain services** must not import Express request/response types and must not know how HTTP is shaped.
+- **File-based persistence** lives in `core/services/*` (today) and should be treated as an infrastructure detail.
+- Avoid circular dependencies. If two domains need each other, extract a small shared abstraction/module.
 
-# TypeScript rules (strict)
+## TypeScript rules (strict)
 
-- **No `any`.** Use `unknown` + type guards or proper generics.
+- **No new `any`** in new/modified code. Use `unknown` + guards, or proper generics.
 - Public (exported) functions must have explicit return types.
 - Prefer `interface` for object shapes and `type` for unions/utility types.
-- Do not use `// @ts-ignore` unless absolutely critical; must include an English explanation.
+- Do not use `// @ts-ignore`. If absolutely unavoidable, use `// @ts-expect-error -- <reason>` with an English reason.
+- Prefer `import type { ... }` for type-only imports.
 
-# HTTP/API conventions (Express)
+## HTTP/API conventions (Express)
 
-- Routes must validate and normalize input early (params/query/body), then call services.
-- Services should not know about Express request/response objects.
-- Keep error handling consistent:
-  - throw typed errors from `src/errors/` in services
-  - map errors to HTTP responses in the routing layer
-  - never leak internal stack traces to clients
+- Validate and normalize input early (params/query/body) using **zod**.
+  - Prefer the shared `validate({ params, query, body })` middleware.
+  - Avoid `req.body as Type` without runtime validation.
+- Prefer the **“new” API style** for new endpoints:
+  - return `ApiResult` from handlers (`{ data: ... }`, or `{ data, headers, raw: true }`)
+  - wrap handlers with `asyncHandler`
+- **Errors**:
+  - throw `HttpError(status, message, code?, details?)` for expected failures
+  - rely on the final `errorHandler` middleware to shape `ApiErrorBody`
+  - never leak stack traces/secret values to clients
 - Use early returns and small functions to keep flow readable.
 
-# Concurrency & I/O
+## Streaming (SSE) & concurrency
 
-- For filesystem watchers (`chokidar`) and heavy I/O:
-  - avoid unbounded parallelism; use `p-limit` where it already makes sense
-  - ensure watchers are started/stopped deterministically (avoid leaks)
-- For images (`sharp`, `pngjs`):
-  - avoid blocking the event loop with huge sync loops
-  - validate inputs and file paths before processing
+- For SSE endpoints (generation streaming):
+  - always set proper SSE headers
+  - track streams by id and ensure cleanup (`finally` removing controllers)
+  - support aborts via `AbortController`
+- For heavy I/O (files/images):
+  - avoid unbounded parallelism
+  - validate file types/sizes
+  - prefer async FS (`fs/promises`) over sync FS in request path
 
-# i18n rules (mandatory)
+## Data paths & persistence rules (important for correctness)
 
-- All user-facing messages/errors must be produced via i18n keys where applicable.
-- Whenever you add a new key, update **both** `en.ts` and `ru.ts` in the same change.
+- The project stores data under `server/data/` (JSON entities/config + media).
+- **Migration direction**: JSON persistence is legacy. For new features, prefer **DB-backed storage** (Drizzle/SQLite) or introduce a repository abstraction so the storage can be swapped without rewriting HTTP/services.
+- **Do not rely on `__dirname` for data paths in runtime-critical code** (it breaks after `tsc` into `dist/`).
+  - Prefer `process.cwd()` + env vars (e.g. `DB_PATH`) for path resolution.
+  - If you introduce a new path, make it configurable and keep one source of truth.
+- File-based “DB” writes should be safe:
+  - avoid partially-written JSON (consider atomic write: temp → rename)
+  - consider minimal in-memory locking for concurrent writes if you touch that code
 
-# No “god files” (mandatory decomposition)
+## Security rules (mandatory)
+
+- **Never serve `data/` wholesale as static** (it can expose configs/secrets). Only serve explicitly public folders (e.g. `data/media` via `/media`).
+- **Secrets**:
+  - do not return API keys in API responses (mask in UI-facing endpoints)
+  - prefer env/config for secrets (today some config may still live in `data/config/*` — treat as sensitive)
+- Always enforce payload limits for JSON and uploads; don’t increase limits without a clear reason.
+
+## No “god files” (mandatory decomposition)
 
 - **One file = one responsibility.**
 - If a module grows beyond ~200 lines or mixes concerns (HTTP + business + infra), split it:
   - route handlers stay in `routes/`
   - orchestration rules in `services/`
-  - infra details in `plugins/`
-  - helpers in `utils/`
+  - framework glue in `core/`
+  - persistence/infra in `core/services/` and/or `db/`
 
-# Post-task requirement (mandatory)
+## How to verify (mandatory)
 
-After completing **any** coding task, you must run TypeScript checks and fix issues until there are zero errors:
+After completing **any** backend coding task, run server checks and fix issues until they are clean:
 
-- Preferred command from repo root:
-  - `yarn -C server type-check`
+- From repo root:
+  - `yarn verify:server`
+- Or directly:
+  - `yarn -C server verify`
 
-If it reports errors, keep fixing and rerunning until it is clean.
+Quick commands (server):
+
+- `yarn -C server typecheck`
+- `yarn -C server lint`
+- `yarn -C server lint:ci` (CI strict)
+
+If you worked on DB migrations:
+
+- `yarn -C server db:migrate`

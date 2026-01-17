@@ -29,6 +29,11 @@
     "start:frontend": "cd ../web && yarn dev",
     "build": "tsc -p tsconfig.json",
     "build:watch": "tsc -p tsconfig.json -w",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --config eslint.config.mjs",
+    "lint:fix": "eslint . --config eslint.config.mjs --fix",
+    "lint:ci": "eslint . --config eslint.config.mjs --max-warnings=0",
+    "verify": "yarn typecheck && yarn lint",
     "db:generate": "drizzle-kit generate",
     "db:generate:init": "drizzle-kit generate --name init",
     "db:migrate": "ts-node -r tsconfig-paths/register ./src/db/migrate.ts",
@@ -46,6 +51,7 @@
     "exec": "ts-node ./src/index.js"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -53,9 +59,14 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.9",
     "drizzle-kit": "^0.31.8",
+    "eslint": "^9.39.2",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "globals": "^17.0.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.0"
   }
 }
