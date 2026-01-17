@@ -9,15 +9,19 @@
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.2",
+    "better-sqlite3": "^12.6.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
     "openai": "^6.16.0",
     "sharp": "^0.34.5",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.5",
+    "zod-express-middleware": "^1.4.0"
   },
   "scripts": {
     "start": "node dist/src/index.js",
@@ -25,6 +29,10 @@
     "start:frontend": "cd ../web && yarn dev",
     "build": "tsc -p tsconfig.json",
     "build:watch": "tsc -p tsconfig.json -w",
+    "db:generate": "drizzle-kit generate",
+    "db:generate:init": "drizzle-kit generate --name init",
+    "db:migrate": "ts-node -r tsconfig-paths/register ./src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
     "dev": "nodemon"
   },
   "nodemonConfig": {
@@ -38,11 +46,13 @@
     "exec": "ts-node ./src/index.js"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.9",
+    "drizzle-kit": "^0.31.8",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",

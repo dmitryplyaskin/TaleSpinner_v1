@@ -42,4 +42,18 @@ lerna-debug.log*
 # Папка data
 /data
 
+# SQLite (локальные файлы БД)
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 .windsurfrules
