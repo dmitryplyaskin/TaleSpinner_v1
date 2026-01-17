@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
 import { Box, Flex, Heading } from '@chakra-ui/react';
-import { Drawer } from '@ui/drawer';
+import { type AppSettings } from '@shared/types/app-settings';
 import { useUnit } from 'effector-react';
-import { $appSettings, fetchAppSettingsFx, updateAppSettings } from '@model/app-settings';
-import { FormCheckbox, FormSelect } from '@ui/form-components';
-import { AppSettings } from '@shared/types/app-settings';
+import React, { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
+
+import { $appSettings, fetchAppSettingsFx, updateAppSettings } from '@model/app-settings';
+import { Drawer } from '@ui/drawer';
+import { FormCheckbox, FormSelect } from '@ui/form-components';
+
 
 const languageOptions = [
 	{ value: 'ru', label: 'Русский' },

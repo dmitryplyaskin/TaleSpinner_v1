@@ -1,12 +1,16 @@
-import { Textarea, TextareaProps } from '@chakra-ui/react';
-import { Field, FieldProps } from '../chakra-core-ui/field';
-import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
-import { IconButtonWithTooltip } from '../icon-button-with-tooltip';
-import { LuExpand } from 'react-icons/lu';
-import { Box } from '@chakra-ui/react';
+import { Textarea, type TextareaProps , Box } from '@chakra-ui/react';
 import { useState } from 'react';
-import { TextareaFullscreenDialog } from './components/textarea-fullscreen-dialog';
+import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
+import { LuExpand } from 'react-icons/lu';
+
 import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+
+import { Field, type FieldProps } from '../chakra-core-ui/field';
+import { IconButtonWithTooltip } from '../icon-button-with-tooltip';
+
+
+import { TextareaFullscreenDialog } from './components/textarea-fullscreen-dialog';
+
 
 type FormTextareaProps = {
 	name: string;
@@ -38,7 +42,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = errors[name]?.message || '';
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = (
 		<Box display="flex" alignItems="center" gap="2">
 			{label}

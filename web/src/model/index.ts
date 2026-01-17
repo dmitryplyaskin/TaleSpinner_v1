@@ -3,7 +3,7 @@ export * from './instructions';
 export * from './user-persons';
 export * from './pipelines';
 export * from './template';
-export * from './sidebars';
+export { $sidebars, changeSidebarSettings, toggleSidebarOpen } from './sidebars';
 export * from './llm-settings';
 export * from './provider';
 export * from './llm-orchestration';

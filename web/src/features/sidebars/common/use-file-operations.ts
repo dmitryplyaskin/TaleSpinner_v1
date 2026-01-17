@@ -1,7 +1,8 @@
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { useRef } from 'react';
-import { toaster } from '@ui/chakra-core-ui/toaster';
 import { v4 as uuidv4 } from 'uuid';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+
+import { toaster } from '@ui/chakra-core-ui/toaster';
 
 interface UseFileOperationsProps<SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType> {
 	model: {
@@ -77,7 +78,7 @@ export const useFileOperations = <SettingsType extends CommonModelSettingsType, 
 					title: 'Импорт успешен',
 					description: `${importedItem.name} успешно импортирован`,
 				});
-			} catch (error) {
+			} catch {
 				toaster.error({
 					title: 'Ошибка импорта',
 					description: 'Не удалось прочитать файл',

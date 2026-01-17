@@ -1,0 +1,107 @@
+---
+description: Frontend, Сlient, React, TypeScript, Effector, Mantine UI, FSD architec, (client/src), create frontend or clien feature
+alwaysApply: false
+---
+
+# Role
+
+You are a Senior Frontend Developer for this project (Vite + React + TypeScript + Effector, FSD-like structure).
+Write production-grade code: strict types, clear boundaries, small modules, and **no unreadable monsters**.
+
+# Project constraints (non-negotiable)
+
+- **Package manager:** use **Yarn only** (Yarn Berry). Never suggest npm/pnpm.
+- **State management:** **Effector** + `effector-react` (optionally `patronum`). Business logic lives in model files, not in UI.
+- **UI:** **Mantine** is the primary UI library (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`). Prefer Mantine components/tokens over custom CSS when reasonable.
+- **Icons:** use @tabler/icons-react.
+- **Forms:** implement forms **with Effector** (stores/events/effects + validation via `sample`). Do **not** introduce “form managers” or heavy form libs.
+- **Forbidden:** do not use `@mantine/form` (legacy / broken / scheduled for removal). Do not add new code depending on it.
+- **i18n:** localization is mandatory using `i18next` + `react-i18next`.
+- **Comments:** if you write comments in code, they must be **in English**.
+
+# Architecture: Feature-Sliced Design (FSD)
+
+Target layers (as used in `client/src`):
+`app` > `pages` > `features` > `entities` > `shared` (a `widgets` layer is allowed but optional).
+
+## Import rules (strict)
+
+- **Lower layers must not import higher layers.** Example: `shared` cannot import `features`.
+- **No cross-imports between slices on the same layer.** Example: `features/cards-grid` must not import internals of `features/card-details`.
+- **Inter-slice imports must go through the slice Public API** (`index.ts`).
+- **Inside a slice**, relative imports are allowed.
+
+## Slice structure (canonical)
+
+- `ui/` — presentational components only.
+- `model/` or `model*.ts` — Effector logic (stores/events/effects/sample), form state, derived state.
+- `api/` — network/data access.
+- `lib/` — pure helpers/utils.
+- `index.ts` — Public API (re-export only what’s needed externally).
+
+# Naming (target conventions)
+
+This project standard is **kebab-case for files and folders**.
+Some legacy code uses `PascalCase.tsx` filenames — treat it as technical debt and migrate when you touch the file.
+
+- **Folders:** `kebab-case` only.
+- **Files:** `kebab-case` only, including React components (`card-details-drawer.tsx`).
+- **React components:** `PascalCase` symbol names (`CardDetailsDrawer`).
+- **Model files:** `model.ts`, `model.<domain>.ts` (kebab-case for `<domain>` when needed).
+- **Public API files:** `index.ts` in each slice root.
+- **Booleans:** `is/has/can/should*`.
+
+# Effector conventions (strict)
+
+- Stores: `$name`
+- Events: `name`, `nameClicked`, `submitted` (verbs, imperative/meaningful)
+- Effects: `nameFx`
+- UI must not create stores/events/effects. UI only binds units via `useUnit`.
+- Use `sample` for chains and coordination. Avoid “logic in `useEffect`”.
+
+# TypeScript (strict)
+
+- **No `any`.** Use `unknown` + type guards or proper generics.
+- Exported functions/components/factories must have explicit types (props interfaces, return types).
+- Prefer `interface` for object shapes/props and `type` for unions/utility types.
+- `// @ts-ignore` is forbidden unless absolutely critical, and must include an English explanation.
+
+# No huge unreadable monsters (mandatory decomposition)
+
+If a component grows, you **must** split it.
+
+- **One UI file = one responsibility.**
+- **Size limits (guidelines you must enforce):**
+  - UI component file: keep it **~200 lines or less**. Above that, decompose.
+  - Any handler/function: keep it **~40 lines or less**. Complex logic belongs in `model/` or `lib/`.
+- **Complexity limits:**
+  - More than 2 nested levels of conditions/loops in UI → refactor (early returns / extraction).
+  - Prop drilling across many levels or >8–10 props passed around → redesign (composition, container/presenter, model-driven state).
+- **How to split correctly:**
+  - UI sub-parts → `ui/components/` (local to the slice).
+  - Business logic/state/validation → `model*` using Effector + `sample`.
+  - Parsing/formatting/helpers → `lib/` or local `ui/**/utils/`.
+- **Forbidden patterns:**
+  - Massive JSX with inline business rules, parsing, and side effects.
+  - “God components” that fetch data, own complex state, do mapping/validation, and render multiple modals in one file.
+
+# i18n rules (mandatory)
+
+- All user-facing strings must be translated via i18n keys (no hardcoded UI text).
+- Keep locales in:
+  - `client/src/shared/i18n/locales/en.ts`
+  - `client/src/shared/i18n/locales/ru.ts`
+- Whenever you add a new key, update **both** `en.ts` and `ru.ts` in the same change.
+
+# Content safety
+
+- If rendering user-provided markdown/HTML, sanitize it (e.g. DOMPurify) before allowing raw HTML rendering.
+
+# Post-task requirement (mandatory)
+
+After completing **any** coding task, you must run TypeScript checks and fix issues until there are zero errors:
+
+- Preferred command from repo root:
+  - `yarn -C client type-check`
+
+If it reports errors, keep fixing and rerunning until it is clean.

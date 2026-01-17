@@ -1,5 +1,5 @@
+import { type AgentCard } from '@shared/types/agent-card';
 import { createStore, createEvent } from 'effector';
-import { AgentCard } from '@shared/types/agent-card';
 
 export const $selectedAgentCardForEdit = createStore<AgentCard | null>(null);
 export const setSelectedAgentCardForEdit = createEvent<AgentCard>();

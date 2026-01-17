@@ -1,9 +1,10 @@
 import { Flex, Box } from '@chakra-ui/react';
-import { SwipeComponent } from '@shared/types/agent-card';
-import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { type SwipeComponent } from '@shared/types/agent-card';
 import { useState } from 'react';
+import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
+
 import { deleteMessage, updateSwipe } from '@model/chat-service';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type ActionBarProps = {
 	data: SwipeComponent;

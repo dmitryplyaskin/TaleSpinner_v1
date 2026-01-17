@@ -1,9 +1,11 @@
-import React, { useRef } from 'react';
-import { RenderChat } from './render-chat';
 import { Flex, Box, Container } from '@chakra-ui/react';
-import { MessageInput } from './input';
+import React, { useRef } from 'react';
 
 import BGImages from '../../assets/bg.png';
+
+import { MessageInput } from './input';
+import { RenderChat } from './render-chat';
+
 
 export const ChatWindow: React.FC = () => {
 	const messagesEndRef = useRef<HTMLDivElement>(null);

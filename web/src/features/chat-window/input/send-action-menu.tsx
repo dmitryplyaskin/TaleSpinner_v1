@@ -1,6 +1,7 @@
+import { LuEllipsisVertical } from 'react-icons/lu';
+
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@ui/chakra-core-ui/menu';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuEllipsisVertical } from 'react-icons/lu';
 
 export const SendActionMenu = () => {
 	return (

@@ -1,6 +1,5 @@
 "use client"
 
-import type { ButtonProps, RecipeProps } from "@chakra-ui/react"
 import {
   Button,
   FileUpload as ChakraFileUpload,
@@ -13,6 +12,8 @@ import {
 } from "@chakra-ui/react"
 import * as React from "react"
 import { LuFile, LuUpload, LuX } from "react-icons/lu"
+
+import type { ButtonProps, RecipeProps } from "@chakra-ui/react"
 
 export interface FileUploadRootProps extends ChakraFileUpload.RootProps {
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>

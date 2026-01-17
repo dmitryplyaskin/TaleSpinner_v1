@@ -1,4 +1,5 @@
-import { Button, Tabs } from '@chakra-ui/react';
+import { Button, Tabs , Textarea, type TextareaProps } from '@chakra-ui/react';
+
 import {
 	DialogActionTrigger,
 	DialogBody,
@@ -9,8 +10,6 @@ import {
 	DialogRoot,
 	DialogTitle,
 } from '@ui/chakra-core-ui/dialog';
-import { Textarea, TextareaProps } from '@chakra-ui/react';
-
 import { RenderMd } from '@ui/render-md';
 
 interface TextareaFullscreenDialogProps {

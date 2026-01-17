@@ -1,13 +1,15 @@
 import { Badge, Card, HStack, Stack, Text, Wrap } from '@chakra-ui/react';
-
-import { Avatar } from '@ui/chakra-core-ui/avatar';
+import { type AgentCard as AgentCardType } from '@shared/types/agent-card';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { agentCardsModel } from '@model/agent-cards';
+
+import { agentCardsModel , setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/agent-cards';
 import { setCurrentAgentCard } from '@model/chat-service';
-import { AgentCard as AgentCardType } from '@shared/types/agent-card';
+import { Avatar } from '@ui/chakra-core-ui/avatar';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+
 import { AuthorNoteDialog } from './components/author-note-dialog';
-import { setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/agent-cards';
+
 
 type Props = {
 	data: AgentCardType;

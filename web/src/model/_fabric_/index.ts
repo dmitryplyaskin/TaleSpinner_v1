@@ -1,10 +1,11 @@
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { combine, sample } from 'effector';
-import { Fabric } from './types';
-import { createSettingsModel } from './setting-model';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+
 import { createItemsModel } from './items-model';
 import { createPaginationModel } from './pagination-model';
-import { createSortFilterModel, SortOption, FilterOption } from './sort-filter-model';
+import { createSettingsModel } from './setting-model';
+import { createSortFilterModel, type SortOption, type FilterOption } from './sort-filter-model';
+import { type Fabric } from './types';
 
 export interface FabricSortFilter<ItemType> {
 	defaultSortOptions?: SortOption<ItemType>[];

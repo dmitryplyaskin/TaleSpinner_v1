@@ -1,12 +1,15 @@
-import React, { useEffect } from 'react';
 import { Flex, VStack } from '@chakra-ui/react';
-import { Drawer } from '@ui/drawer';
-import { PipelineForm } from './pipeline-form';
+import { type PipelineSettingsType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
+import React, { useEffect } from 'react';
+
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
-import { PipelineSettingsType } from '@shared/types/pipelines';
 import { Switch } from '@ui/chakra-core-ui/switch';
+import { Drawer } from '@ui/drawer';
+
 import { SidebarHeader } from '../common/sidebar-header';
+
+import { PipelineForm } from './pipeline-form';
 
 export const PipelineSidebar: React.FC = () => {
 	const pipelines = useUnit(pipelinesModel.$items);

@@ -7,69 +7,77 @@ import importPlugin from 'eslint-plugin-import';
 
 export default tseslint.config(
 	{ ignores: ['dist'] },
+	js.configs.recommended,
+	...tseslint.configs.recommended,
 	{
-		extends: [
-			js.configs.recommended,
-			...tseslint.configs.recommended,
-			'plugin:import/recommended',
-			'plugin:import/typescript',
-		],
 		files: ['**/*.{ts,tsx}'],
 		languageOptions: {
-			ecmaVersion: 2020,
+			ecmaVersion: 2022,
 			globals: globals.browser,
-			sourceType: 'module', // Добавлено для работы с import/order
+			sourceType: 'module',
 		},
 		plugins: {
 			'react-hooks': reactHooks,
 			'react-refresh': reactRefresh,
-			import: importPlugin, // Добавлено для сортировки импортов
+			import: importPlugin,
 		},
 		settings: {
 			'import/resolver': {
-				typescript: {}, // this loads <rootdir>/tsconfig.json to eslint
+				typescript: {},
 			},
 		},
 		rules: {
 			...reactHooks.configs.recommended.rules,
-			'react-refresh/only-export-components': [
-				'warn',
-				{ allowConstantExport: true },
-			],
+
+			// The plugin includes some very opinionated React Compiler rules.
+			// Keep the classic rules, disable the noisy ones for now.
+			'react-hooks/set-state-in-effect': 'off',
+			'react-hooks/refs': 'off',
+			'react-hooks/incompatible-library': 'off',
+
+			// HMR safety
+			'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
+			// Imports hygiene
+			'import/no-duplicates': 'error',
+			'import/newline-after-import': 'error',
 			'import/order': [
 				'error',
 				{
-					groups: [
-						'builtin',
-						'external',
-						'internal',
-						'parent',
-						'sibling',
-						'index',
-						'object',
-						'type',
-					],
+					groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
 					'newlines-between': 'always',
-					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
-					},
+					alphabetize: { order: 'asc', caseInsensitive: true },
 				},
 			],
-			'no-unused-vars': 'warn',
-			'no-console': 'warn',
+
+			// Practical correctness
 			eqeqeq: ['error', 'always'],
-			quotes: ['error', 'single'],
-			semi: ['error', 'always'],
-			indent: ['error', 2],
-			'max-len': ['error', { code: 100 }], // Ограничение длины строки
-			'object-curly-spacing': ['error', 'always'],
-			'array-bracket-spacing': ['error', 'never'],
-			'comma-dangle': ['error', 'always-multiline'],
-			'no-multiple-empty-lines': ['error', { max: 1 }],
-			'no-trailing-spaces': 'error',
-			'@typescript-eslint/no-explicit-any': 'off', // Разрешить использование any
-			'@typescript-eslint/no-unused-vars': 'warn', // Предупреждение о неиспользуемых переменных TypeScript
+			'no-debugger': 'error',
+			'no-console': ['warn', { allow: ['warn', 'error'] }],
+
+			// TS defaults tweaks
+			'no-unused-vars': 'off',
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					ignoreRestSiblings: true,
+				},
+			],
+			'@typescript-eslint/no-empty-object-type': [
+				'error',
+				{
+					allowInterfaces: 'with-single-extends',
+					allowObjectTypes: 'never',
+					allowWithName: '^Props$',
+				},
+			],
+			'@typescript-eslint/no-explicit-any': 'off',
+			'@typescript-eslint/consistent-type-imports': [
+				'warn',
+				{ prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+			],
 		},
 	},
 );

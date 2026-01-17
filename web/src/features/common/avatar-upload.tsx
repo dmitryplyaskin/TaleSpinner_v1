@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { Avatar, AvatarProps } from '@ui/chakra-core-ui/avatar';
 
+import { Avatar, type AvatarProps } from '@ui/chakra-core-ui/avatar';
 import { toaster } from '@ui/chakra-core-ui/toaster';
+
 import { BASE_URL } from '../../const';
 
 export interface AvatarUploadProps extends Omit<AvatarProps, 'src'> {
@@ -36,7 +37,6 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 	src,
 	onAvatarChange,
 	saveFolder,
-	showControls = true,
 	baseUrl = 'http://localhost:5000',
 	...avatarProps
 }) => {

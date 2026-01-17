@@ -1,8 +1,9 @@
-import { createModel } from '@model/_fabric_';
-import { UserPersonType, UserPersonSettingsType } from '@shared/types/user-person';
+import { type UserPersonType, type UserPersonSettingsType } from '@shared/types/user-person';
 import { v4 as uuidv4 } from 'uuid';
-import { SortOption, FilterOption } from '@model/_fabric_/sort-filter-model';
+
+import { createModel } from '@model/_fabric_';
 import { createStringSortFunction, createStringFilterFunction } from '@model/_fabric_/sort-filter-helpers';
+import { type SortOption, type FilterOption } from '@model/_fabric_/sort-filter-model';
 
 // Определяем опции сортировки
 const sortOptions: SortOption<UserPersonType>[] = [

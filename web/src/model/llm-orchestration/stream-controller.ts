@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+
 import { BASE_URL } from '../../const';
 
 export class StreamController {
@@ -29,7 +30,7 @@ export class StreamController {
 	}
 
 	abortAllStreams(): void {
-		this.streams.forEach((controller, streamId) => {
+		this.streams.forEach((_controller, streamId) => {
 			this.abortStream(streamId);
 		});
 		this.streams.clear();

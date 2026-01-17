@@ -1,5 +1,5 @@
-import { createStore, createEvent, sample, combine, Store, Effect } from 'effector';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
+import { createStore, createEvent, sample, combine, type Store, type Effect } from 'effector';
 
 export interface PaginationSettings {
 	currentPage: number;

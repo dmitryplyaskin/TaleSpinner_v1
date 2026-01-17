@@ -1,8 +1,10 @@
-import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
-import { Field, FieldProps } from '../chakra-core-ui/field';
-import { Checkbox, CheckboxProps } from '../chakra-core-ui/checkbox';
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
 import { Box } from '@chakra-ui/react';
+import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
+
+import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+
+import { Checkbox, type CheckboxProps } from '../chakra-core-ui/checkbox';
+import { Field, type FieldProps } from '../chakra-core-ui/field';
 
 type FormCheckboxProps = {
 	name: string;

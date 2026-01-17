@@ -1,12 +1,12 @@
 import { VStack } from '@chakra-ui/react';
-import { Message } from './message';
-import { $currentChat } from '@model/chat-service';
 import { useList } from 'effector-react';
 
-type Props = {};
+import { $currentChat } from '@model/chat-service';
 
-export const RenderChat: React.FC<Props> = () => {
-	const messages = useList($currentChat, (message, index) => <Message key={index} data={message} />);
+import { Message } from './message';
+
+export const RenderChat = () => {
+	const messages = useList($currentChat, (message) => <Message key={message.id} data={message} />);
 
 	if (!messages) return null;
 

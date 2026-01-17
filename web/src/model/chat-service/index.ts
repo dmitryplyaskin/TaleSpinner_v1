@@ -1,10 +1,13 @@
+import { type AgentCard, type InteractionMessage } from '@shared/types/agent-card';
 import { createStore, createEvent, sample } from 'effector';
-import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
-import { reducers } from './reducers';
-import { debounce } from 'patronum/debounce';
-import { agentCardsModel } from '../agent-cards';
 import { produce } from 'immer';
+import { debounce } from 'patronum/debounce';
+
 import { renderTemplate } from '@model/llm-orchestration/render-template';
+
+import { agentCardsModel } from '../agent-cards';
+
+import { reducers } from './reducers';
 
 export const $currentAgentCard = createStore<AgentCard | null>(null);
 export const setCurrentAgentCard = createEvent<AgentCard>();
@@ -117,5 +120,6 @@ sample({
 sample({
 	source: $currentAgentCard,
 	clock: debounceSave,
-	target: [agentCardsModel.updateItemFx],
+	filter: (agentCard): agentCard is AgentCard => agentCard !== null,
+	target: agentCardsModel.updateItemFx,
 });

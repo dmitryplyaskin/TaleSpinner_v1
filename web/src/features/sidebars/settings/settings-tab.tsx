@@ -1,15 +1,20 @@
-import React, { useEffect } from 'react';
-import { useUnit } from 'effector-react';
-import { llmSettingsFields, LLMSettingField } from '../../../model/llm-settings';
 import { Box, SimpleGrid, Text, Icon, Flex, Input } from '@chakra-ui/react';
-import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
-import { Tooltip } from '../../../ui/chakra-core-ui/tooltip';
-import { Slider } from '../../../ui/chakra-core-ui/slider';
+import { type SamplerItemSettingsType, type SamplersItemType } from '@shared/types/samplers';
 import { Select } from 'chakra-react-select';
+import { useUnit } from 'effector-react';
+import React, { useEffect } from 'react';
+import { FormProvider, useController, useForm, type UseFormReturn } from 'react-hook-form';
+import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
+
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { SamplerItemSettingsType, SamplersItemType } from '@shared/types/samplers';
-import { FormProvider, useController, useForm, UseFormReturn } from 'react-hook-form';
+
+import { llmSettingsFields, type LLMSettingField } from '../../../model/llm-settings';
+import { Slider } from '../../../ui/chakra-core-ui/slider';
+import { Tooltip } from '../../../ui/chakra-core-ui/tooltip';
+
+
+
 
 export interface LLMSettings {
 	temperature: number;
@@ -143,8 +148,8 @@ const Item: React.FC<ItemProps> = ({ field, methods }) => {
 				variant="outline"
 				colorPalette="purple"
 				value={[formField.field.value]}
-				onChange={(value) => {
-					formField.field.onChange(Number(value.target.value));
+				onValueChange={(details) => {
+					formField.field.onChange(details.value[0] ?? 0);
 				}}
 			/>
 			<Input
@@ -157,7 +162,7 @@ const Item: React.FC<ItemProps> = ({ field, methods }) => {
 				onChange={(e) => {
 					formField.field.onChange(Number(e.target.value));
 				}}
-				onBlur={(e) => {
+				onBlur={() => {
 					formField.field.onBlur();
 				}}
 			/>

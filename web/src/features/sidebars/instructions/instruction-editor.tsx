@@ -1,12 +1,12 @@
 import { Flex, Button } from '@chakra-ui/react';
-import { FormProvider, useForm } from 'react-hook-form';
-import { FormTextarea } from '@ui/form-components/form-textarea';
-import { InstructionType } from '@shared/types/instructions';
-import { instructionsModel } from '@model/instructions';
-import { FormInput } from '@ui/form-components';
+import { type InstructionType } from '@shared/types/instructions';
 import { useUnit } from 'effector-react';
-import { createEmptyInstruction } from '@model/instructions';
 import { useEffect } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+
+import { createEmptyInstruction , instructionsModel } from '@model/instructions';
+import { FormInput } from '@ui/form-components';
+import { FormTextarea } from '@ui/form-components/form-textarea';
 
 export const InstructionEditor: React.FC = () => {
 	const selectedInstruction = useUnit(instructionsModel.$selectedItem);

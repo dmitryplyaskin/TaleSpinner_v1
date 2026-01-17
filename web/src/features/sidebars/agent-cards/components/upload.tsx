@@ -1,10 +1,8 @@
-import { FileUploadTrigger } from '@ui/chakra-core-ui/file-upload';
-
-import { FileUploadFileAcceptDetails, FileUploadRootProvider, useFileUpload } from '@chakra-ui/react';
-import { uploadAgentCardFilesFx } from '@model/files';
-import { FileUploadRoot } from '@ui/chakra-core-ui/file-upload';
-
+import { type FileUploadFileAcceptDetails, FileUploadRootProvider, useFileUpload } from '@chakra-ui/react';
 import { LuUpload } from 'react-icons/lu';
+
+import { uploadAgentCardFilesFx } from '@model/files';
+import { FileUploadRoot, FileUploadTrigger } from '@ui/chakra-core-ui/file-upload';
 import { toaster } from '@ui/chakra-core-ui/toaster';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
@@ -19,7 +17,7 @@ export const Upload = () => {
 
 		try {
 			uploadAgentCardFilesFx(Array.from(details.files));
-		} catch (error) {
+		} catch {
 			toaster.error({ title: 'Не удалось загрузить файлы' });
 		}
 

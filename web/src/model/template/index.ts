@@ -1,6 +1,7 @@
-import { createModel } from '@model/_fabric_';
-import { TemplateType, TemplateSettingsType } from '@shared/types/templates';
+import { type TemplateType, type TemplateSettingsType } from '@shared/types/templates';
 import { v4 as uuidv4 } from 'uuid';
+
+import { createModel } from '@model/_fabric_';
 
 export const templatesModel = createModel<TemplateSettingsType, TemplateType>({
 	settings: {

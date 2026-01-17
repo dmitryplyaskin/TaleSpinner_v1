@@ -1,8 +1,10 @@
 import { Box, Flex } from '@chakra-ui/react';
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { Select } from 'chakra-react-select';
 import { LuPlus, LuCopy, LuTrash2, LuUpload, LuDownload } from 'react-icons/lu';
+
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+
 import { useFileOperations } from './use-file-operations';
 
 interface SidebarHeaderProps<SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType> {

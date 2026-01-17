@@ -1,10 +1,10 @@
 import {
-	AgentCard,
-	InteractionBranch,
-	InteractionMessage,
-	Swipe,
-	SwipeComponent,
-	SwipeComponentType,
+	type AgentCard,
+	type InteractionBranch,
+	type InteractionMessage,
+	type Swipe,
+	type SwipeComponent,
+	type SwipeComponentType,
 } from '@shared/types/agent-card';
 import { v4 as uuidv4 } from 'uuid';
 

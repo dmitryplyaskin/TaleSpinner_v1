@@ -1,4 +1,11 @@
+import { type PipelineItemType } from '@shared/types/pipelines';
 import { attach, createEffect, createEvent, createStore, sample } from 'effector';
+
+import { templatesModel } from '@model/template';
+import { createNewMessage, createNewSwipeComponent } from '@utils/creation-helper-agent-card';
+import { getLastMessageState } from '@utils/get-agent-card-ids';
+
+import { buildMessages } from '../../utils/build-messages';
 import {
 	$currentAgentCard,
 	addNewAssistantMessage,
@@ -6,15 +13,12 @@ import {
 	addNewUserMessage,
 	updateSwipeStream,
 } from '../chat-service';
-import { buildMessages } from '../../utils/build-messages';
-import { streamController } from './stream-controller';
-import { createNewMessage, createNewSwipeComponent } from '@utils/creation-helper-agent-card';
+
 import { generate } from './generate';
-import { $userMessage, clearUserMessage } from './user-message';
-import { templatesModel } from '@model/template';
 import { renderTemplate } from './render-template';
-import { getLastMessageState } from '@utils/get-agent-card-ids';
-import { PipelineItemType } from '@shared/types/pipelines';
+import { streamController } from './stream-controller';
+import { $userMessage, clearUserMessage } from './user-message';
+
 
 type CompletionType = 'new-message' | 'new-swipe' | 'current-message';
 
@@ -52,7 +56,7 @@ export const completionsFx = createEffect(async ({ type, userMessage }: Completi
 	const agentCard = $currentAgentCard.getState();
 	if (!agentCard) return;
 
-	let messages = buildMessages(agentCard);
+	const messages = buildMessages(agentCard);
 
 	const template = templatesModel.$selectedItem.getState();
 	const templateSettings = templatesModel.$settings.getState();
@@ -118,7 +122,7 @@ export const pipelineCompletionsFx = createEffect(async ({ pipeline }: PipelineC
 	const agentCard = $currentAgentCard.getState();
 	if (!agentCard) return;
 
-	let messages = buildMessages(agentCard);
+	const messages = buildMessages(agentCard);
 
 	const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
 	const newSwipeComponent = createNewSwipeComponent({ content: '', type: 'reasoning' });

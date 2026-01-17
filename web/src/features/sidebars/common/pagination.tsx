@@ -1,14 +1,15 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import { createModel } from '@model/_fabric_';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
+import { Select } from 'chakra-react-select';
+import { useUnit } from 'effector-react';
+
+import { type createModel } from '@model/_fabric_';
 import {
 	PaginationRoot,
 	PaginationPrevTrigger,
 	PaginationItems,
 	PaginationNextTrigger,
 } from '@ui/chakra-core-ui/pagination';
-import { Select } from 'chakra-react-select';
-import { useUnit } from 'effector-react';
 
 type PaginationProps<SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType> = {
 	model: ReturnType<typeof createModel<SettingsType, ItemType>>;

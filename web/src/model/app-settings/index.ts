@@ -1,7 +1,8 @@
+import { type AppSettings } from '@shared/types/app-settings';
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { debounce } from 'patronum/debounce';
+
 import { BASE_URL } from '../../const';
-import { AppSettings } from '@shared/types/app-settings';
 
 // Events
 export const updateAppSettings = createEvent<Partial<AppSettings>>();

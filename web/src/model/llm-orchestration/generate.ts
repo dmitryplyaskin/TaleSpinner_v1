@@ -1,6 +1,7 @@
-import { LLMSettingsState } from '@model/llm-settings';
+import { type GenerateMessage } from '@shared/types/generate';
 
-import { GenerateMessage } from '@shared/types/generate';
+import { type LLMSettingsState } from '@model/llm-settings';
+
 import { streamMessage } from './stream';
 
 type GenerateProps = {
@@ -15,7 +16,7 @@ export const generate = async (params: GenerateProps) => {
 	try {
 		const { messages, llmSettings, stream, streamId, streamCb } = params;
 
-		// @ts-expect-error
+		// @ts-expect-error -- non-streaming mode is not implemented yet
 		if (stream === false) {
 			// TODO: add non-streaming generation
 			return;

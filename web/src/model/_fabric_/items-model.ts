@@ -1,10 +1,16 @@
+import { type CommonModelItemType } from '@shared/types/common-model-types';
 import { createEffect, createEvent, createStore } from 'effector';
-import { FabricItems } from './types';
-import { CommonModelItemType } from '@shared/types/common-model-types';
-import { asyncHandler } from '@model/utils/async-handler';
-import { v4 as uuidv4 } from 'uuid';
-import { BASE_URL } from '../../const';
 import { debounce } from 'patronum/debounce';
+import { v4 as uuidv4 } from 'uuid';
+
+import { asyncHandler } from '@model/utils/async-handler';
+
+import { BASE_URL } from '../../const';
+
+import { type FabricItems } from './types';
+
+
+
 
 export const createItemsModel = <ItemType extends CommonModelItemType>(
 	itemsParams: FabricItems<ItemType>,

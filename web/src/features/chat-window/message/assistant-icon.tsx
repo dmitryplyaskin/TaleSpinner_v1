@@ -1,7 +1,9 @@
-import { Avatar } from '@ui/chakra-core-ui/avatar';
-import { useUnit } from 'effector-react';
-import { $currentAgentCard } from '@model/chat-service';
 import { Box } from '@chakra-ui/react';
+import { useUnit } from 'effector-react';
+
+import { $currentAgentCard } from '@model/chat-service';
+import { Avatar } from '@ui/chakra-core-ui/avatar';
+
 
 export const AssistantIcon = () => {
 	const currentAgentCard = useUnit($currentAgentCard);

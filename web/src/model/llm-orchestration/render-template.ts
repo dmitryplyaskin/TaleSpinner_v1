@@ -1,7 +1,8 @@
+import Handlebars from 'handlebars';
+
 import { $currentAgentCard } from '@model/chat-service';
 import { instructionsModel } from '@model/instructions';
 import { userPersonsModel } from '@model/user-persons';
-import Handlebars from 'handlebars';
 
 // Кэш для хранения скомпилированных шаблонов
 const templateCache = new Map<string, HandlebarsTemplateDelegate>();
@@ -18,7 +19,8 @@ const compileWithCache = (templateString: string): HandlebarsTemplateDelegate =>
 			templateCache.set(templateString, compiled);
 		} catch (error) {
 			console.error('Template compilation error:', error);
-			throw new Error(`Template compilation failed: ${error.message}`);
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Template compilation failed: ${message}`);
 		}
 	}
 	return templateCache.get(templateString)!;
@@ -30,7 +32,8 @@ const safeRender = (template: HandlebarsTemplateDelegate, context: any): string 
 		return template(context);
 	} catch (error) {
 		console.error('Template rendering error:', error);
-		return `[Rendering Error: ${error.message}]`;
+		const message = error instanceof Error ? error.message : String(error);
+		return `[Rendering Error: ${message}]`;
 	}
 };
 
@@ -55,7 +58,8 @@ const compileNestedTemplates = (data: any, context: any): any => {
 		return data;
 	} catch (error) {
 		console.error('Nested template processing error:', error);
-		return `[Nested Processing Error: ${error.message}]`;
+		const message = error instanceof Error ? error.message : String(error);
+		return `[Nested Processing Error: ${message}]`;
 	}
 };
 
@@ -89,15 +93,10 @@ export const renderTemplate = (content: string, customContext: Record<string, an
 		const template = compileWithCache(content);
 		const result = safeRender(template, processedContext);
 
-		console.debug('Template rendered successfully:', {
-			original: content,
-			result,
-			context: processedContext,
-		});
-
 		return result;
 	} catch (error) {
 		console.error('Global template error:', error);
-		return `[Global Error: ${error.message}]`;
+		const message = error instanceof Error ? error.message : String(error);
+		return `[Global Error: ${message}]`;
 	}
 };

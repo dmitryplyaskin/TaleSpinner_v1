@@ -112,7 +112,7 @@ export async function* streamMessage({ settings, messages }: Stream): AsyncGener
 					}
 				}
 			} catch (error) {
-				if (error.name === 'AbortError') {
+				if (error instanceof Error && error.name === 'AbortError') {
 					yield { content: '', error: 'Request timed out' };
 				} else {
 					yield { content: '', error: 'Stream processing error' };
@@ -122,9 +122,10 @@ export async function* streamMessage({ settings, messages }: Stream): AsyncGener
 		}
 	} catch (error) {
 		console.error('Error streaming message:', error);
+		const message = error instanceof Error ? error.message : String(error);
 		yield {
 			content: '',
-			error: error.message || 'Failed to connect to server',
+			error: message || 'Failed to connect to server',
 		};
 	}
 }

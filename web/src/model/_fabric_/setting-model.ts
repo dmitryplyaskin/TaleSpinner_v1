@@ -1,8 +1,11 @@
+import { type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { attach, createEffect, createStore } from 'effector';
-import { FabricSettings } from './types';
+
 import { asyncHandler } from '@model/utils/async-handler';
-import { CommonModelSettingsType } from '@shared/types/common-model-types';
+
 import { BASE_URL } from '../../const';
+
+import { type FabricSettings } from './types';
 
 export const createSettingsModel = <SettingsType extends CommonModelSettingsType>(
 	fabricParams: FabricSettings<SettingsType>,
@@ -32,7 +35,7 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 		}, `Error updating ${fabricName} settings`),
 	);
 
-	// @ts-ignore
+	// @ts-expect-error -- attach typing here is tricky; we merge partial params into current settings
 	const attachUpdateSettingsFx = attach<Partial<SettingsType>, SettingsType>({
 		effect: updateSettingsFx,
 		source: $settings,

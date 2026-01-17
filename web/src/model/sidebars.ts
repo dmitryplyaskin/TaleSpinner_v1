@@ -1,5 +1,7 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
+
 import { apiRoutes } from '../api-routes';
+
 import { asyncHandler } from './utils/async-handler';
 
 export type SidebarName =
@@ -91,7 +93,7 @@ $sidebars.on(toggleSidebarOpen, (sidebars, { name, isOpen }) => ({
 // Обрабатываем изменение других настроек
 $sidebars.on(changeSidebarSettings, (sidebars, { name, settings }) => {
 	// Исключаем isOpen из настроек, чтобы не перезаписать его случайно
-	const { isOpen, ...otherSettings } = settings;
+	const { isOpen: _isOpen, ...otherSettings } = settings;
 
 	return {
 		...sidebars,

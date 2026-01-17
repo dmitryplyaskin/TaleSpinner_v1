@@ -1,8 +1,11 @@
 import { createEffect, sample } from 'effector';
-import { uploadAgentCardFilesFx } from '../files/files';
-import { CardUploadResponse } from '@model/files/types';
+
+import { type CardUploadResponse } from '@model/files/types';
 import { toaster } from '@ui/chakra-core-ui/toaster';
+
 import { createNewAgentCard, createNewMessage, createNewSwipe } from '../../utils/creation-helper-agent-card';
+import { uploadAgentCardFilesFx } from '../files/files';
+
 import { agentCardsModel } from './create-model';
 
 const createUploadedAgentCard = createEffect<{ data: CardUploadResponse }, void>(async (result) => {

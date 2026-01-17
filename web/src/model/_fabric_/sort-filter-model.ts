@@ -1,5 +1,5 @@
-import { createEvent, createStore, sample, combine, Store, Effect } from 'effector';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
+import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
+import { createEvent, createStore, sample, combine, type Store, type Effect } from 'effector';
 
 // Типы для сортировки
 export interface SortOption<ItemType> {
@@ -27,7 +27,7 @@ export interface SortFilterSettings {
 	activeFilters: FilterState[];
 }
 
-export interface SortFilterModel<ItemType extends CommonModelItemType, SettingsType extends CommonModelSettingsType> {
+export interface SortFilterModel<ItemType extends CommonModelItemType> {
 	// Сторы
 	$sortOptions: Store<SortOption<ItemType>[]>;
 	$filterOptions: Store<FilterOption<ItemType>[]>;
@@ -56,7 +56,7 @@ export const createSortFilterModel = <
 	defaultFilterOptions: FilterOption<ItemType>[] = [],
 	updateSettingsFx?: Effect<Partial<SettingsType>, any>,
 	getSettingsFx?: Effect<void, { data: SettingsType }>,
-): SortFilterModel<ItemType, SettingsType> => {
+): SortFilterModel<ItemType> => {
 	// События
 	const setSort = createEvent<string | null>();
 	const addFilter = createEvent<FilterState>();

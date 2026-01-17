@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
 import { Box, Button, Flex, Input, Textarea, IconButton, VStack } from '@chakra-ui/react';
-import { UserPersonType } from '@shared/types/user-person';
-import { userPersonsModel } from '@model/user-persons';
+import { type UserPersonType } from '@shared/types/user-person';
+import React, { useState } from 'react';
 import { LuPlus, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
+
+import { userPersonsModel } from '@model/user-persons';
 import { Field } from '@ui/chakra-core-ui/field';
 import { Switch } from '@ui/chakra-core-ui/switch';
+
 import { AvatarUpload } from '../../../features/common/avatar-upload';
 
 interface UserPersonEditorProps {

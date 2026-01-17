@@ -1,13 +1,15 @@
+import { type AgentCard } from '@shared/types/agent-card';
+import { type CommonModelSettingsType } from '@shared/types/common-model-types';
+
 import { createModel } from '@model/_fabric_';
-import { AgentCard } from '@shared/types/agent-card';
-import { SortOption, FilterOption } from '@model/_fabric_/sort-filter-model';
 import {
 	createStringSortFunction,
 	createStringFilterFunction,
 	createBooleanFilterFunction,
 	createDateSortFunction,
 } from '@model/_fabric_/sort-filter-helpers';
-import { CommonModelSettingsType } from '@shared/types/common-model-types';
+import { type SortOption, type FilterOption } from '@model/_fabric_/sort-filter-model';
+
 
 // Определяем опции сортировки
 const sortOptions: SortOption<AgentCard>[] = [

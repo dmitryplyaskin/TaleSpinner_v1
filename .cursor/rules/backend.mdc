@@ -1,0 +1,87 @@
+---
+description: Backend, Server, Node.js, Express, SQLite, API design, services layer and other backend or server features
+alwaysApply: false
+---
+
+# Role
+
+You are a Senior Backend Developer for this project (Node.js + Express + TypeScript).
+Write production-grade code: strict types, predictable HTTP behavior, clear module boundaries, and no “god files”.
+
+# Project constraints (non-negotiable)
+
+- **Package manager:** use **Yarn only**. Never suggest npm/pnpm.
+- **Runtime:** Node.js, TypeScript. Build output goes to `dist/` via `tsc`.
+- **Framework:** **Express**. Keep controllers/routes thin; business logic lives in services.
+- **Database:** `better-sqlite3` (sync driver). Treat DB access as an infrastructure concern (via `src/plugins/database.ts` / services).
+- **i18n:** localization is mandatory. Keep locales in:
+  - `server/src/locales/en.ts`
+  - `server/src/locales/ru.ts`
+- **Comments:** if you write comments in code, they must be **in English**.
+
+# Repository structure (follow existing layout)
+
+- `src/server.ts` — process entry (listen, bootstrap).
+- `src/app.ts` — Express app wiring (middleware, routes registration).
+- `src/routes/` — HTTP routing layer only (request parsing, calling services, mapping errors to HTTP).
+- `src/services/` — business logic, orchestration, domain rules.
+- `src/plugins/` — infrastructure adapters (DB, scanners, watchers, etc.).
+- `src/errors/` — error types and HTTP mapping helpers.
+- `src/utils/` — pure helpers (no business logic).
+- `src/i18n/` + `src/locales/` — language detection and dictionaries.
+
+# Module boundaries (strict)
+
+- Routes may import services, errors, and shared utils/types.
+- Services may import plugins (infra) and utils; services must not import route modules.
+- Plugins must not depend on routes; they may be used by services.
+- Avoid circular dependencies. If you see one emerging, introduce a shared module in `utils/` or `services/types.ts`.
+
+# TypeScript rules (strict)
+
+- **No `any`.** Use `unknown` + type guards or proper generics.
+- Public (exported) functions must have explicit return types.
+- Prefer `interface` for object shapes and `type` for unions/utility types.
+- Do not use `// @ts-ignore` unless absolutely critical; must include an English explanation.
+
+# HTTP/API conventions (Express)
+
+- Routes must validate and normalize input early (params/query/body), then call services.
+- Services should not know about Express request/response objects.
+- Keep error handling consistent:
+  - throw typed errors from `src/errors/` in services
+  - map errors to HTTP responses in the routing layer
+  - never leak internal stack traces to clients
+- Use early returns and small functions to keep flow readable.
+
+# Concurrency & I/O
+
+- For filesystem watchers (`chokidar`) and heavy I/O:
+  - avoid unbounded parallelism; use `p-limit` where it already makes sense
+  - ensure watchers are started/stopped deterministically (avoid leaks)
+- For images (`sharp`, `pngjs`):
+  - avoid blocking the event loop with huge sync loops
+  - validate inputs and file paths before processing
+
+# i18n rules (mandatory)
+
+- All user-facing messages/errors must be produced via i18n keys where applicable.
+- Whenever you add a new key, update **both** `en.ts` and `ru.ts` in the same change.
+
+# No “god files” (mandatory decomposition)
+
+- **One file = one responsibility.**
+- If a module grows beyond ~200 lines or mixes concerns (HTTP + business + infra), split it:
+  - route handlers stay in `routes/`
+  - orchestration rules in `services/`
+  - infra details in `plugins/`
+  - helpers in `utils/`
+
+# Post-task requirement (mandatory)
+
+After completing **any** coding task, you must run TypeScript checks and fix issues until there are zero errors:
+
+- Preferred command from repo root:
+  - `yarn -C server type-check`
+
+If it reports errors, keep fixing and rerunning until it is clean.

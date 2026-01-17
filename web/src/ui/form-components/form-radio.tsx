@@ -1,8 +1,10 @@
-import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
-import { Field, FieldProps } from '../chakra-core-ui/field';
-import { Radio, RadioGroup, RadioProps } from '../chakra-core-ui/radio';
 import { Box } from '@chakra-ui/react';
+import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
+
 import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+
+import { Field, type FieldProps } from '../chakra-core-ui/field';
+import { Radio, RadioGroup, type RadioProps } from '../chakra-core-ui/radio';
 
 type FormRadioProps = {
 	name: string;
@@ -25,7 +27,7 @@ export const FormRadio: React.FC<FormRadioProps> = ({
 }) => {
 	const { control } = useFormContext();
 	const {
-		field: { value, onChange, ...field },
+		field: { value, onChange },
 		formState: { errors },
 	} = useController({
 		name,

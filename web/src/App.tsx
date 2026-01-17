@@ -1,14 +1,15 @@
-import { ChatWindow } from './features/chat-window';
-import { agentCardsModel } from './model/agent-cards';
+import { Box, Button, Flex, Text, VStack } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { Box, Flex, Button, Text, VStack } from '@chakra-ui/react';
 
-import { Toaster } from '@ui/chakra-core-ui/toaster';
-import './model/llm-orchestration';
 import { $isAgentSelected } from '@model/chat-service';
-import { createNewAgentCard } from './utils/creation-helper-agent-card';
-import { LeftBar } from './features/sidebars/left-bar';
+import { Toaster } from '@ui/chakra-core-ui/toaster';
+
+import { ChatWindow } from './features/chat-window';
 import { ConnectSidebars } from './features/sidebars/connect-sidebars';
+import { LeftBar } from './features/sidebars/left-bar';
+import { agentCardsModel } from './model/agent-cards';
+import './model/llm-orchestration';
+import { createNewAgentCard } from './utils/creation-helper-agent-card';
 
 function App() {
 	const isAgentSelected = useUnit($isAgentSelected);

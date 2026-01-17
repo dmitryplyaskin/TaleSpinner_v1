@@ -1,14 +1,16 @@
-import { Box, Code, Flex, HStack, Mark, Text, VStack } from '@chakra-ui/react';
-import { Collapsible } from '@chakra-ui/react';
-import { LuChevronDown, LuChevronUp, LuMoveUp, LuMoveDown, LuTrash2, LuPlay } from 'react-icons/lu';
-import { FormInput } from '@ui/form-components/form-input';
-import { FormTextarea } from '@ui/form-components/form-textarea';
-import { FormCheckbox } from '@ui/form-components/form-checkbox';
-import { useFormContext } from 'react-hook-form';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { Box, Code, Flex, HStack, Text, VStack , Collapsible } from '@chakra-ui/react';
 import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
+import { LuChevronDown, LuChevronUp, LuMoveUp, LuMoveDown, LuTrash2, LuPlay } from 'react-icons/lu';
+
 import { pipelineCompletionsFx } from '@model/llm-orchestration/completions';
+import { FormCheckbox } from '@ui/form-components/form-checkbox';
+import { FormInput } from '@ui/form-components/form-input';
 import { FormSelect } from '@ui/form-components/form-select';
+import { FormTextarea } from '@ui/form-components/form-textarea';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+
 
 type PipelineItemProps = {
 	index: number;

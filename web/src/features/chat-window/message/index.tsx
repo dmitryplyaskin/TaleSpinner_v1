@@ -1,13 +1,14 @@
 import { Box, Flex, Text, Textarea, VStack } from '@chakra-ui/react';
+import { type InteractionMessage } from '@shared/types/agent-card';
+import { useMemo, useState } from 'react';
 
 import { Avatar } from '@ui/chakra-core-ui/avatar';
-import { useMemo, useState } from 'react';
-import { InteractionMessage } from '@shared/types/agent-card';
 import { RenderMd } from '@ui/render-md';
-import { SwipeControls } from './swipe-controls';
+
+import { ActionBar } from './action-bar';
 import { AssistantIcon } from './assistant-icon';
 import { ReasoningBlock } from './reasoning-block';
-import { ActionBar } from './action-bar';
+import { SwipeControls } from './swipe-controls';
 
 type MessageProps = {
 	data: InteractionMessage;

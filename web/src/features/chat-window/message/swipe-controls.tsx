@@ -1,8 +1,9 @@
 import { Flex, Text } from '@chakra-ui/react';
+import { type InteractionMessage } from '@shared/types/agent-card';
 import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { InteractionMessage } from '@shared/types/agent-card';
+
 import { addNewSwipe, changeSwipe } from '@model/chat-service';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type SwipeControlsProps = {
 	data: InteractionMessage;

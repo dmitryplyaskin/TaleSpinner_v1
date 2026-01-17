@@ -1,13 +1,14 @@
-import { Stack, Button, Flex } from '@chakra-ui/react';
-import { Dialog } from '@ui/dialog';
-import { FormProvider, useForm, useFieldArray } from 'react-hook-form';
-import { FormInput, FormTextarea } from '@ui/form-components';
+import { Stack, Button, Flex , Tabs } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { $selectedAgentCardForEdit, $isEditAgentCardModalOpen, setIsEditAgentCardModalOpen } from '@model/agent-cards';
 import { useEffect } from 'react';
-import { Tabs } from '@chakra-ui/react';
+import { FormProvider, useForm, useFieldArray } from 'react-hook-form';
 import { LuPlus, LuChevronUp, LuChevronDown, LuTrash2 } from 'react-icons/lu';
+
+import { $selectedAgentCardForEdit, $isEditAgentCardModalOpen, setIsEditAgentCardModalOpen } from '@model/agent-cards';
+import { Dialog } from '@ui/dialog';
+import { FormInput, FormTextarea } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
 import { AvatarUpload } from '../../common/avatar-upload';
 
 type CharacterCardV2 = {
@@ -72,7 +73,7 @@ export const EditChatModal: React.FC = () => {
 		}
 	}, [editingCard, form]);
 
-	const handleSubmit = form.handleSubmit(async (data) => {
+	const handleSubmit = form.handleSubmit(async (_data) => {
 		// Здесь будет логика сохранения
 		setIsEditAgentCardModalOpen(false);
 	});

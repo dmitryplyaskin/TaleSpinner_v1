@@ -1,6 +1,7 @@
-import { createModel } from '@model/_fabric_';
-import { SamplerItemSettingsType, SamplersItemType, SamplersSettingsType } from '@shared/types/samplers';
+import { type SamplerItemSettingsType, type SamplersItemType, type SamplersSettingsType } from '@shared/types/samplers';
 import { v4 as uuidv4 } from 'uuid';
+
+import { createModel } from '@model/_fabric_';
 
 export const samplersModel = createModel<SamplersSettingsType, SamplersItemType>({
 	settings: {

@@ -1,8 +1,11 @@
 import { Collapsible, Box, Text, Textarea, Flex } from '@chakra-ui/react';
-import { SwipeComponent } from '@shared/types/agent-card';
-import { RenderMd } from '@ui/render-md';
-import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
+import { type SwipeComponent } from '@shared/types/agent-card';
 import { useState } from 'react';
+import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
+
+import { RenderMd } from '@ui/render-md';
+
+
 import { ActionBar } from './action-bar';
 
 type ReasoningBlockProps = {

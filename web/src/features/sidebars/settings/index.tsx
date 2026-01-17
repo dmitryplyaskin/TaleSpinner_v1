@@ -1,20 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { SamplerSettingsTab } from './settings-tab';
-import { APIProviderTab } from './api-provoder-tab';
-
 import { Tabs } from '@chakra-ui/react';
+import { useEffect, useState } from 'react';
 
-import { Drawer } from '@ui/drawer';
 import { samplersModel } from '@model/samplers';
+import { Drawer } from '@ui/drawer';
 
-interface SettingsSidebarProps {
-	// onAPIConfigChange: (config: OpenRouterConfig) => void;
-	// apiConfig: OpenRouterConfig | null;
-}
+import { APIProviderTab } from './api-provoder-tab';
+import { SamplerSettingsTab } from './settings-tab';
 
 type TabType = 'settings' | 'provider';
 
-export const SettingsSidebar: React.FC<SettingsSidebarProps> = () => {
+export const SettingsSidebar = () => {
 	const [activeTab, setActiveTab] = useState<TabType>('settings');
 
 	useEffect(() => {

@@ -1,7 +1,9 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
+
 import { apiRoutes } from '../../api-routes';
 import { asyncHandler } from '../utils/async-handler';
-import { UploadedFile, UploadResponse, CardUploadResponse, ProcessedCardFile } from './types';
+
+import { type UploadedFile, type UploadResponse, type CardUploadResponse, type ProcessedCardFile } from './types';
 
 export const $uploadedFiles = createStore<UploadedFile[]>([]);
 export const $processedCardFiles = createStore<ProcessedCardFile[]>([]);

@@ -1,12 +1,12 @@
 import { Flex, Button } from '@chakra-ui/react';
-import { FormProvider, useForm } from 'react-hook-form';
-import { FormTextarea } from '@ui/form-components/form-textarea';
-import { TemplateType } from '@shared/types/templates';
-import { templatesModel } from '@model/template';
-import { FormInput } from '@ui/form-components';
+import { type TemplateType } from '@shared/types/templates';
 import { useUnit } from 'effector-react';
-import { createEmptyTemplate } from '@model/template';
 import { useEffect } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+
+import { createEmptyTemplate , templatesModel } from '@model/template';
+import { FormInput } from '@ui/form-components';
+import { FormTextarea } from '@ui/form-components/form-textarea';
 
 export const TemplateEditor: React.FC = () => {
 	const selectedTemplate = useUnit(templatesModel.$selectedItem);

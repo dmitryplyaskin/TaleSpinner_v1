@@ -1,8 +1,10 @@
-import { Select, Props } from 'chakra-react-select';
-import { useController, UseControllerProps, useFormContext } from 'react-hook-form';
-import { Field, FieldProps } from '../chakra-core-ui/field';
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
 import { Box } from '@chakra-ui/react';
+import { Select, type Props } from 'chakra-react-select';
+import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
+
+import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+
+import { Field, type FieldProps } from '../chakra-core-ui/field';
 
 type FormSelectProps = {
 	name: string;

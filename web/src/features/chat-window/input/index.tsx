@@ -1,25 +1,26 @@
-import React from 'react';
 import { Flex, Textarea, Button, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
+
 import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orchestration';
+import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
+
 import { SendActionMenu } from './send-action-menu';
 
-interface MessageInputProps {}
+import type { ChangeEvent, KeyboardEvent } from 'react';
 
-export const MessageInput: React.FC<MessageInputProps> = ({}) => {
+export const MessageInput = () => {
 	const isProcessing = useUnit($isCompletionsProcessing);
 	const message = useUnit($userMessage);
 
-	const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+	const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setUserMessage(event.target.value);
 	};
 
 	const handleSendMessage = () => {
-		attachCompletionsFx({});
+		attachCompletionsFx('new-message');
 	};
 
-	const handleKeyPress = (event: React.KeyboardEvent) => {
+	const handleKeyPress = (event: KeyboardEvent) => {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			handleSendMessage();

@@ -1,5 +1,6 @@
-import { IconButton, IconButtonProps } from '@chakra-ui/react';
-import { Tooltip, TooltipProps } from './chakra-core-ui/tooltip';
+import { IconButton, type IconButtonProps } from '@chakra-ui/react';
+
+import { Tooltip, type TooltipProps } from './chakra-core-ui/tooltip';
 
 export const IconButtonWithTooltip: React.FC<
 	IconButtonProps & {

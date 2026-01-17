@@ -1,4 +1,4 @@
-import { AgentCard, InteractionBranch, Swipe } from '@shared/types/agent-card';
+import { type AgentCard, type InteractionBranch, type Swipe } from '@shared/types/agent-card';
 
 /**
  * Возвращает массив сообщений в виде объектов { role, content } на основе данных из AgentCard.

@@ -1,8 +1,9 @@
 "use client"
 
-import type { GroupProps, SlotRecipeProps } from "@chakra-ui/react"
 import { Avatar as ChakraAvatar, Group } from "@chakra-ui/react"
 import * as React from "react"
+
+import type { GroupProps, SlotRecipeProps } from "@chakra-ui/react"
 
 type ImageProps = React.ImgHTMLAttributes<HTMLImageElement>
 
@@ -42,8 +43,8 @@ const AvatarFallback = React.forwardRef<HTMLDivElement, AvatarFallbackProps>(
     return (
       <ChakraAvatar.Fallback ref={ref} {...rest}>
         {children}
-        {name != null && children == null && <>{getInitials(name)}</>}
-        {name == null && children == null && (
+        {name !== null && name !== undefined && (children === null || children === undefined) && <>{getInitials(name)}</>}
+        {(name === null || name === undefined) && (children === null || children === undefined) && (
           <ChakraAvatar.Icon asChild={!!icon}>{icon}</ChakraAvatar.Icon>
         )}
       </ChakraAvatar.Fallback>
@@ -53,7 +54,7 @@ const AvatarFallback = React.forwardRef<HTMLDivElement, AvatarFallbackProps>(
 
 function getInitials(name: string) {
   const names = name.trim().split(" ")
-  const firstName = names[0] != null ? names[0] : ""
+  const firstName = names[0] ?? ""
   const lastName = names.length > 1 ? names[names.length - 1] : ""
   return firstName && lastName
     ? `${firstName.charAt(0)}${lastName.charAt(0)}`

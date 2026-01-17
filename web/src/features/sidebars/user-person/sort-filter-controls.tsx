@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
 import { Box, Flex, Input } from '@chakra-ui/react';
+import { type CommonModelItemType } from '@shared/types/common-model-types';
 import { Select } from 'chakra-react-select';
 import { useUnit } from 'effector-react';
-import { FilterState } from '@model/_fabric_/sort-filter-model';
-import { CommonModelItemType, CommonModelSettingsType } from '@shared/types/common-model-types';
-import { SortFilterModel } from '@model/_fabric_/sort-filter-model';
+import { useState, useEffect } from 'react';
 
-interface SortFilterControlsProps<ItemType extends CommonModelItemType, SettingsType extends CommonModelSettingsType> {
+import { type FilterState , type SortFilterModel } from '@model/_fabric_/sort-filter-model';
+
+
+
+interface SortFilterControlsProps<ItemType extends CommonModelItemType> {
 	model: {
-		sortFilter: SortFilterModel<ItemType, SettingsType>;
+		sortFilter: SortFilterModel<ItemType>;
 	};
 	nameFilterPlaceholder?: string;
 }
 
-export function SortFilterControls<ItemType extends CommonModelItemType, SettingsType extends CommonModelSettingsType>({
+export function SortFilterControls<ItemType extends CommonModelItemType>({
 	model,
-}: SortFilterControlsProps<ItemType, SettingsType>) {
+}: SortFilterControlsProps<ItemType>) {
 	// Используем useUnit для доступа к сторам
 	const sortOptions = useUnit(model.sortFilter.$sortOptions);
 	const sortFilterSettings = useUnit(model.sortFilter.$sortFilterSettings);

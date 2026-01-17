@@ -1,6 +1,5 @@
 "use client"
 
-import type { ButtonProps, TextProps } from "@chakra-ui/react"
 import {
   Button,
   Pagination as ChakraPagination,
@@ -15,7 +14,10 @@ import {
   HiChevronRight,
   HiMiniEllipsisHorizontal,
 } from "react-icons/hi2"
+
 import { LinkButton } from "./link-button"
+
+import type { ButtonProps, TextProps } from "@chakra-ui/react"
 
 interface ButtonVariantMap {
   current: ButtonProps["variant"]
@@ -117,7 +119,7 @@ export const PaginationPrevTrigger = React.forwardRef<
   if (getHref) {
     return (
       <LinkButton
-        href={previousPage != null ? getHref(previousPage) : undefined}
+        href={previousPage !== null && previousPage !== undefined ? getHref(previousPage) : undefined}
         variant={variantMap.default}
         size={size}
       >
@@ -145,7 +147,7 @@ export const PaginationNextTrigger = React.forwardRef<
   if (getHref) {
     return (
       <LinkButton
-        href={nextPage != null ? getHref(nextPage) : undefined}
+        href={nextPage !== null && nextPage !== undefined ? getHref(nextPage) : undefined}
         variant={variantMap.default}
         size={size}
       >

@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
 import { Box, Flex, Text } from '@chakra-ui/react';
+import { type UserPersonType } from '@shared/types/user-person';
+import React, { useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
+
+import { userPersonsModel } from '@model/user-persons';
+import { Avatar } from '@ui/chakra-core-ui/avatar';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { UserPersonEditor } from './user-person-editor';
-import { LuPencil, LuTrash2 } from 'react-icons/lu';
-import { userPersonsModel } from '@model/user-persons';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { UserPersonType } from '@shared/types/user-person';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
 
 interface UserPersonCardProps {
 	data: UserPersonType;

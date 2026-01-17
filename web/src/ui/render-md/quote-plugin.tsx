@@ -1,7 +1,7 @@
 import { visit } from 'unist-util-visit';
+
+import type { Text, RootContent , Root } from 'mdast';
 import type { Plugin } from 'unified';
-import type { Text, Parent, RootContent } from 'mdast';
-import type { Root } from 'mdast';
 
 const QUOTE_REGEX = /("|“|”|«|»)([^"“”«»]+)("|“|”|«|»)/g;
 
@@ -43,7 +43,8 @@ function processTextNode(text: string): RootContent[] {
 
 export const quotePlugin: Plugin<[], Root> = () => {
 	return (tree) => {
-		visit(tree, 'text', (node: Text, index: number, parent: Parent) => {
+		visit(tree, 'text', (node: Text, index, parent) => {
+			if (typeof index !== 'number' || !parent) return;
 			const processedNodes = processTextNode(node.value);
 
 			if (processedNodes.length > 0) {

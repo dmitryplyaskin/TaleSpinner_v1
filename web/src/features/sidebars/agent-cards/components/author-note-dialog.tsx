@@ -1,4 +1,10 @@
 import { Button, Tabs } from '@chakra-ui/react';
+import { LuInfo } from 'react-icons/lu';
+import Markdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+
+import { Avatar } from '@ui/chakra-core-ui/avatar';
 import {
 	DialogActionTrigger,
 	DialogBody,
@@ -11,11 +17,6 @@ import {
 	DialogTrigger,
 } from '@ui/chakra-core-ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuInfo } from 'react-icons/lu';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 
 export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: string; avatar?: string }) => {
 	if (!note) return null;

@@ -1,6 +1,9 @@
-import { GenerateMessage, StreamResponse } from '@shared/types/generate';
+import { type GenerateMessage, type StreamResponse } from '@shared/types/generate';
+
+import { type LLMSettingsState } from '@model/llm-settings';
+
 import { BASE_URL } from '../../const';
-import { LLMSettingsState } from '@model/llm-settings';
+
 import { streamController } from './stream-controller';
 
 type Stream = {

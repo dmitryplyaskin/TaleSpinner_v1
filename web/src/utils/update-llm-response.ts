@@ -1,5 +1,5 @@
+import { type AgentCard } from '@shared/types/agent-card';
 import { produce } from 'immer';
-import { AgentCard } from '@shared/types/agent-card';
 
 interface UpdateParams {
 	branchId: string;

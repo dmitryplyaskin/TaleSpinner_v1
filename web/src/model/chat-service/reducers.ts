@@ -1,6 +1,7 @@
-import { AgentCard, InteractionMessage } from '@shared/types/agent-card';
-import * as creationHelper from '@utils/creation-helper-agent-card';
+import { type AgentCard, type InteractionMessage } from '@shared/types/agent-card';
 import { produce } from 'immer';
+
+import * as creationHelper from '@utils/creation-helper-agent-card';
 
 const addNewUserMessage = (agentCard: AgentCard | null, message: InteractionMessage) =>
 	produce(agentCard, (draft) => {

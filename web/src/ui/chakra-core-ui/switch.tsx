@@ -1,5 +1,6 @@
-import { Switch as ChakraSwitch, Text } from '@chakra-ui/react';
+import { Switch as ChakraSwitch } from '@chakra-ui/react';
 import * as React from 'react';
+
 import { InfoTip } from './toggle-tip';
 
 export interface SwitchProps extends ChakraSwitch.RootProps {
@@ -24,7 +25,7 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(function S
 				</ChakraSwitch.Thumb>
 				{trackLabel && <ChakraSwitch.Indicator fallback={trackLabel.off}>{trackLabel.on}</ChakraSwitch.Indicator>}
 			</ChakraSwitch.Control>
-			{children != null && (
+			{children !== null && children !== undefined && (
 				<ChakraSwitch.Label display="flex" alignItems="center" gap={2}>
 					{children}
 					{infoTip && <InfoTip content={infoTip} size="lg" />}

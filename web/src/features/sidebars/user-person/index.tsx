@@ -1,13 +1,16 @@
-import React, { useEffect } from 'react';
 import { Flex, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
-import { UserPersonCard } from './user-person-card';
+import React, { useEffect } from 'react';
 import { LuPlus } from 'react-icons/lu';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
 import { Drawer } from '@ui/drawer';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
 import { Pagination } from '../common/pagination';
+
 import { SortFilterControls } from './sort-filter-controls';
+import { UserPersonCard } from './user-person-card';
 
 export const UserPersonSidebar: React.FC = () => {
 	// Используем отфильтрованные и отсортированные элементы с пагинацией

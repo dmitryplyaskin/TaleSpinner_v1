@@ -1,6 +1,7 @@
-import { createModel } from '@model/_fabric_';
-import { InstructionType, InstructionSettingsType } from '@shared/types/instructions';
+import { type InstructionType, type InstructionSettingsType } from '@shared/types/instructions';
 import { v4 as uuidv4 } from 'uuid';
+
+import { createModel } from '@model/_fabric_';
 
 export const instructionsModel = createModel<InstructionSettingsType, InstructionType>({
 	settings: {

@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+# Project overview: SillyInnkeeper
+
+**SillyInnkeeper** is a desktop/web application for convenient work with **SillyTavern character cards** (PNG files with embedded metadata).
+The core goal is to handle **large libraries (hundreds/thousands of cards)** with fast scanning, indexing, search, filtering, sorting, and a good viewing/editing experience.
+
+## What we build in this repo
+
+- **Card library management**: scan folders, index PNG cards, track changes automatically, detect/manage duplicates.
+- **Fast exploration UX**: grid with thumbnails, powerful filters (name/creator/tags/date/content/tokens/spec version), and detailed card view (tabs, raw JSON).
+- **SillyTavern integration**: “Play” action and automatic import via the companion extension `ST-Extension-SillyInnkeeper`.
+- **Export/import compatibility**: export PNG with correct metadata; support Character Card **V1/V2/V3**.
+- **Performance first**: the app must remain responsive with thousands of files.
+- **Localization**: RU/EN support is mandatory across UI and user-facing messages.
+
+## Non-goals / notes
+
+SillyInnkeeper is a community tool and is **not officially affiliated** with SillyTavern.

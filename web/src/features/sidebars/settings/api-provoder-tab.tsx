@@ -1,12 +1,7 @@
-import React from 'react';
-import { OpenRouterConfig, OpenRouterModel, getOpenRouterModels } from '../../../api/openRouter';
 import { VStack } from '@chakra-ui/react';
-
 import { Select } from 'chakra-react-select';
 
-interface APIProviderTabProps {}
-
-export const APIProviderTab: React.FC<APIProviderTabProps> = () => {
+export const APIProviderTab = () => {
 	// useEffect(() => {
 	// 	const fetchModels = async () => {
 	// 		try {

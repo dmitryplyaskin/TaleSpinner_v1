@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
 import { Box, Input, Stack, RatingGroup, IconButton, HStack, Separator } from '@chakra-ui/react';
-
-import { useUnit } from 'effector-react';
-import { FilterState } from '@model/_fabric_/sort-filter-model';
-import { agentCardsModel } from '@model/agent-cards';
 import { Select } from 'chakra-react-select';
-import { Checkbox } from '@ui/chakra-core-ui/checkbox';
+import { useUnit } from 'effector-react';
+import React, { useState, useEffect } from 'react';
 import { LuX } from 'react-icons/lu';
+
+import { type FilterState } from '@model/_fabric_/sort-filter-model';
+import { agentCardsModel } from '@model/agent-cards';
+import { Checkbox } from '@ui/chakra-core-ui/checkbox';
 
 export const ChatListSortFilterControls: React.FC = () => {
 	// Используем useUnit для доступа к сторам и событиям
 	const sortOptions = useUnit(agentCardsModel.sortFilter.$sortOptions);
-	const filterOptions = useUnit(agentCardsModel.sortFilter.$filterOptions);
 	const sortFilterSettings = useUnit(agentCardsModel.sortFilter.$sortFilterSettings);
 	const { setSort, addFilter, removeFilter } = agentCardsModel.sortFilter;
 

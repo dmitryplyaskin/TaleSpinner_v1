@@ -1,9 +1,12 @@
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
-import { TemplateEditor } from './template-editor';
+
 import { createEmptyTemplate, templatesModel } from '@model/template';
 import { Drawer } from '@ui/drawer';
+
 import { SidebarHeader } from '../common/sidebar-header';
+
+import { TemplateEditor } from './template-editor';
 
 export const TemplateSidebar = () => {
 	const templates = useUnit(templatesModel.$items);

@@ -1,8 +1,11 @@
 import { Box, Flex } from '@chakra-ui/react';
+import { type IconType } from 'react-icons';
+import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2, LuSettings2 } from 'react-icons/lu';
+
 import { toggleSidebarOpen } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2, LuSettings2 } from 'react-icons/lu';
-import { IconType } from 'react-icons';
+
+
 import type { SidebarName } from '@model/sidebars';
 
 type SidebarButton = {

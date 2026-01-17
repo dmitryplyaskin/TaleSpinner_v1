@@ -1,5 +1,7 @@
-import { AgentCard } from '@shared/types/agent-card';
+import { type AgentCard } from '@shared/types/agent-card';
+
 import { asyncHandler } from '@model/utils/async-handler';
+
 import { BASE_URL } from '../../const';
 
 export const saveCurrentAgentCard = (data: AgentCard | null) =>

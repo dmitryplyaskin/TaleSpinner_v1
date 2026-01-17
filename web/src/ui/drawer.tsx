@@ -1,9 +1,14 @@
-import { $sidebars, changeSidebarSettings, SidebarName, toggleSidebarOpen } from '@model/sidebars';
-import { useStoreMap } from 'effector-react';
-import { DrawerRoot, DrawerContent, DrawerHeader, DrawerBody } from './chakra-core-ui/drawer';
 import { Flex, Heading, IconButton } from '@chakra-ui/react';
-import { CloseButton } from './chakra-core-ui/close-button';
+import { useStoreMap } from 'effector-react';
 import { LuArrowRightToLine, LuArrowLeftToLine, LuFullscreen } from 'react-icons/lu';
+
+import { $sidebars, changeSidebarSettings, type SidebarName, toggleSidebarOpen } from '@model/sidebars';
+
+import { CloseButton } from './chakra-core-ui/close-button';
+import { DrawerRoot, DrawerContent, DrawerHeader, DrawerBody } from './chakra-core-ui/drawer';
+
+
+
 
 type Props = {
 	name: SidebarName;

@@ -13,7 +13,7 @@ export interface FabricPagination {
 }
 
 // Импортируем типы для сортировки и фильтрации
-import { SortOption, FilterOption } from './sort-filter-model';
+import { type SortOption, type FilterOption } from './sort-filter-model';
 
 export interface FabricSortFilter<ItemType> {
 	defaultSortOptions?: SortOption<ItemType>[];

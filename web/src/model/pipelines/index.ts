@@ -1,6 +1,7 @@
-import { createModel } from '@model/_fabric_';
-import { PipelineSettingsType, PipelineType } from '@shared/types/pipelines';
+import { type PipelineSettingsType, type PipelineType } from '@shared/types/pipelines';
 import { v4 as uuidv4 } from 'uuid';
+
+import { createModel } from '@model/_fabric_';
 
 export const pipelinesModel = createModel<PipelineSettingsType, PipelineType>({
 	settings: {

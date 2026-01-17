@@ -1,6 +1,7 @@
 import { Button, Stack } from '@chakra-ui/react';
+import { type ReactNode } from 'react';
+
 import * as DialogPrimitive from './chakra-core-ui/dialog';
-import { ReactNode } from 'react';
 
 export interface DialogProps {
 	isOpen: boolean;

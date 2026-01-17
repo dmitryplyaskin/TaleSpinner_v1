@@ -1,12 +1,14 @@
 import { Button, Text, VStack } from '@chakra-ui/react';
-import { LuPlus } from 'react-icons/lu';
-import { useFieldArray, FormProvider, useForm } from 'react-hook-form';
-import { PipelineItem } from './pipeline-item';
-import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
+import { type PipelineType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
-import { PipelineType } from '@shared/types/pipelines';
 import { useEffect, useRef } from 'react';
+import { useFieldArray, FormProvider, useForm } from 'react-hook-form';
+import { LuPlus } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
+
+import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
+
+import { PipelineItem } from './pipeline-item';
 
 export const PipelineForm = () => {
 	const selectedPipeline = useUnit(pipelinesModel.$selectedItem);
