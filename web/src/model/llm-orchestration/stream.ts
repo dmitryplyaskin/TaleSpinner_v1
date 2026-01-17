@@ -76,7 +76,9 @@ export async function* streamMessage({ settings, messages, streamId }: Stream): 
 							yield { content: '', error: parsed.error };
 							return;
 						}
-						yield parsed as StreamResponse;
+						if (parsed && typeof parsed === 'object' && 'content' in parsed && typeof parsed.content === 'string') {
+							yield parsed as StreamResponse;
+						}
 					} catch (e) {
 						console.error('Error parsing SSE data:', e);
 						continue;

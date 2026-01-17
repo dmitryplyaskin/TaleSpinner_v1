@@ -9,6 +9,17 @@ export type ValidateSchemas = {
   query?: ZodTypeAny;
 };
 
+function replaceObject(target: Record<string, unknown>, value: unknown): void {
+  // Express v5 may expose req.query as a getter-only property, so we must not reassign it.
+  // Mutate the existing object instead.
+  for (const key of Object.keys(target)) {
+    delete target[key];
+  }
+  if (value && typeof value === "object") {
+    Object.assign(target, value as Record<string, unknown>);
+  }
+}
+
 export const validate = (schemas: ValidateSchemas): RequestHandler => {
   return (req, _res, next) => {
     const issues: Array<{
@@ -30,7 +41,10 @@ export const validate = (schemas: ValidateSchemas): RequestHandler => {
       if (!parsed.success) {
         issues.push({ source: "query", issues: parsed.error.issues });
       } else {
-        req.query = parsed.data as any;
+        replaceObject(
+          req.query as unknown as Record<string, unknown>,
+          parsed.data
+        );
       }
     }
 
@@ -55,4 +69,3 @@ export const validate = (schemas: ValidateSchemas): RequestHandler => {
     next();
   };
 };
-

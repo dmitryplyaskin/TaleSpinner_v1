@@ -6,12 +6,13 @@ import morgan from "morgan";
 import { routes } from "./api/_routes_";
 import staticRouter from "./api/static.api";
 import { errorHandler } from "./core/middleware/error-handler";
+import { initDb } from "./db/client";
 import appSettingsRoutes from "./routes/app-settings-routes";
-import configRoutes from "./routes/config-routes";
 import generateRoutes from "./routes/generate-routes";
 import modelsRoutes from "./routes/models-routes";
 import settingsRoutes from "./routes/settings-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
+import { bootstrapLlm } from "./services/llm/llm-bootstrap";
 
 dotenv.config();
 
@@ -25,12 +26,10 @@ app.use(express.json({ limit: "10mb" }));
 
 // Serve static files
 app.use(express.static("public"));
-app.use(express.static("data"));
 
 // API Routes
 app.use(staticRouter);
 app.use("/api", routes);
-app.use("/api", configRoutes);
 app.use("/api", modelsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/app-settings", appSettingsRoutes);
@@ -40,7 +39,16 @@ app.use("/api", sidebarsRoutes);
 // Errors (must be last)
 app.use(errorHandler(console));
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+async function main(): Promise<void> {
+  await initDb();
+  await bootstrapLlm();
+
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+main().catch((error) => {
+  console.error("Server bootstrap failed:", error);
+  process.exitCode = 1;
 });

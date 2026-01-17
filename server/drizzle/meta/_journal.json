@@ -8,6 +8,20 @@
       "when": 1768608178268,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768620177741,
+      "tag": "0001_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1768621940036,
+      "tag": "0002_llm_provider_state",
+      "breakpoints": true
     }
   ]
 }

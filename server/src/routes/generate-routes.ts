@@ -1,19 +1,22 @@
 import express, { type Request, type Response } from "express";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
 
-import openRouterService from "../services/open-router-service";
+import { streamGlobalChat } from "../services/llm/llm-service";
+
+import type { GenerateMessage } from "@shared/types/generate";
 
 const router = express.Router();
 const activeStreams = new Map<string, AbortController>();
 
 interface GenerateRequest {
-  messages: Array<{ role: string; content: string }>;
+  messages: GenerateMessage[];
   settings: Record<string, unknown>;
-  streamId: string;
+  streamId?: string;
 }
 
 // Эндпоинт для прерывания стрима
@@ -41,10 +44,10 @@ router.post(
 router.post("/generate", async (req: Request, res: Response) => {
   try {
     const generateSchema = z.object({
-      streamId: z.string().min(1),
+      streamId: z.string().min(1).optional(),
       messages: z.array(
         z.object({
-          role: z.string().min(1),
+          role: z.enum(["system", "user", "assistant"]),
           content: z.string(),
         })
       ),
@@ -63,7 +66,8 @@ router.post("/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    const { messages, settings, streamId } = parsed.data as GenerateRequest;
+    const { messages, settings } = parsed.data as GenerateRequest;
+    const streamId = parsed.data.streamId ?? uuidv4();
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -72,11 +76,14 @@ router.post("/generate", async (req: Request, res: Response) => {
     const abortController = new AbortController();
     activeStreams.set(streamId, abortController);
 
-    const messageStream = openRouterService.streamResponse(
+    const messageStream = streamGlobalChat({
       messages,
       settings,
-      abortController
-    );
+      abortController,
+    });
+
+    // Send stream meta first (useful when client didn't provide streamId)
+    res.write(`data: ${JSON.stringify({ streamId })}\n\n`);
 
     // let botResponse = "";
     try {
