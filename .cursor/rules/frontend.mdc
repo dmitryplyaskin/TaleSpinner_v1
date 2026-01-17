@@ -1,107 +1,108 @@
 ---
-description: Frontend, Сlient, React, TypeScript, Effector, Mantine UI, FSD architec, (client/src), create frontend or clien feature
+description: Frontend (web/): Vite + React + TypeScript + Effector + Chakra UI, code quality & architecture rules
 alwaysApply: false
 ---
 
-# Role
+## Role
 
-You are a Senior Frontend Developer for this project (Vite + React + TypeScript + Effector, FSD-like structure).
+You are a Senior Frontend Developer for this repository.
 Write production-grade code: strict types, clear boundaries, small modules, and **no unreadable monsters**.
 
-# Project constraints (non-negotiable)
+## Current frontend stack (this repo)
 
-- **Package manager:** use **Yarn only** (Yarn Berry). Never suggest npm/pnpm.
-- **State management:** **Effector** + `effector-react` (optionally `patronum`). Business logic lives in model files, not in UI.
-- **UI:** **Mantine** is the primary UI library (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`). Prefer Mantine components/tokens over custom CSS when reasonable.
-- **Icons:** use @tabler/icons-react.
-- **Forms:** implement forms **with Effector** (stores/events/effects + validation via `sample`). Do **not** introduce “form managers” or heavy form libs.
-- **Forbidden:** do not use `@mantine/form` (legacy / broken / scheduled for removal). Do not add new code depending on it.
-- **i18n:** localization is mandatory using `i18next` + `react-i18next`.
-- **Comments:** if you write comments in code, they must be **in English**.
+- **App location**: `web/` (Vite + React + TypeScript)
+- **State management**: **Effector** + `effector-react` (+ `patronum` when useful)
+- **UI**: **Chakra UI v3** (`@chakra-ui/react`) + local wrappers in `web/src/ui/chakra-core-ui/*`
+- **Icons**: `react-icons/lu`
+- **Markdown**: `react-markdown` (currently with `rehype-raw` in places)
+- **Package manager**: **Yarn Classic (1.x)** (do not suggest npm/pnpm)
 
-# Architecture: Feature-Sliced Design (FSD)
+## Non-negotiable constraints
 
-Target layers (as used in `client/src`):
-`app` > `pages` > `features` > `entities` > `shared` (a `widgets` layer is allowed but optional).
+- **Yarn only**. Use repository scripts; prefer `yarn --cwd web <script>` from repo root.
+- **Effector is the source of truth** for state and async flows. UI binds state via `useUnit`.
+- **Chakra UI is primary**. Prefer Chakra primitives/tokens over custom CSS when reasonable.
+- **Do not introduce new heavy infra** (new router, new global state lib, new form framework) unless explicitly requested.
+- **Comments must be in English**.
 
-## Import rules (strict)
+## Project structure (as-is)
 
-- **Lower layers must not import higher layers.** Example: `shared` cannot import `features`.
-- **No cross-imports between slices on the same layer.** Example: `features/cards-grid` must not import internals of `features/card-details`.
-- **Inter-slice imports must go through the slice Public API** (`index.ts`).
-- **Inside a slice**, relative imports are allowed.
+This codebase is “FSD-like”, but the current frontend is organized as:
 
-## Slice structure (canonical)
+- `web/src/features/*` — UI features (chat window, sidebars, etc.)
+- `web/src/model/*` — Effector stores/events/effects and domain logic
+- `web/src/ui/*` — shared UI components/wrappers (Chakra-based)
+- `web/src/utils/*` — helpers
+- `web/src/api/*` — API helpers (note: some legacy API code still lives elsewhere)
+- `shared/types/*` — shared contracts with backend
 
-- `ui/` — presentational components only.
-- `model/` or `model*.ts` — Effector logic (stores/events/effects/sample), form state, derived state.
-- `api/` — network/data access.
-- `lib/` — pure helpers/utils.
-- `index.ts` — Public API (re-export only what’s needed externally).
+### Import rules (pragmatic)
 
-# Naming (target conventions)
+- **Prefer path aliases** (`@model/*`, `@ui/*`, `@utils/*`, `@shared/*`) over long relatives.
+- **Avoid circular dependencies** between `model/*` domains. If two domains need each other, introduce a small shared abstraction.
+- **Keep boundaries**:
+  - `model/*` must not import from `features/*` (no UI in models).
+  - `ui/*` must not import from `features/*` or concrete domain models (keep UI generic).
+- **Avoid side-effect imports**. If you need initialization, prefer an explicit `init` module called from `main.tsx`/`App.tsx`.
 
-This project standard is **kebab-case for files and folders**.
-Some legacy code uses `PascalCase.tsx` filenames — treat it as technical debt and migrate when you touch the file.
+## Naming conventions
 
-- **Folders:** `kebab-case` only.
-- **Files:** `kebab-case` only, including React components (`card-details-drawer.tsx`).
-- **React components:** `PascalCase` symbol names (`CardDetailsDrawer`).
-- **Model files:** `model.ts`, `model.<domain>.ts` (kebab-case for `<domain>` when needed).
-- **Public API files:** `index.ts` in each slice root.
-- **Booleans:** `is/has/can/should*`.
+The repo is in transition; keep new code consistent:
 
-# Effector conventions (strict)
+- **Folders**: `kebab-case`
+- **Files**: prefer `kebab-case` for new files; do not mass-rename legacy paths unless needed
+- **React components**: `PascalCase` component names
+- **Booleans**: `is/has/can/should*`
+- **Effector**:
+  - Stores: `$name`
+  - Events: `verbNoun` (imperative, meaningful)
+  - Effects: `nameFx`
 
-- Stores: `$name`
-- Events: `name`, `nameClicked`, `submitted` (verbs, imperative/meaningful)
-- Effects: `nameFx`
-- UI must not create stores/events/effects. UI only binds units via `useUnit`.
-- Use `sample` for chains and coordination. Avoid “logic in `useEffect`”.
+## TypeScript rules (strict)
 
-# TypeScript (strict)
+- **No `any`** in new/modified code. Use `unknown` + type guards, or proper generics.
+- **Do not use `// @ts-ignore`**. If absolutely unavoidable, use `// @ts-expect-error -- <reason>` with an English reason.
+- Prefer `import type { ... }` when importing types only.
 
-- **No `any`.** Use `unknown` + type guards or proper generics.
-- Exported functions/components/factories must have explicit types (props interfaces, return types).
-- Prefer `interface` for object shapes/props and `type` for unions/utility types.
-- `// @ts-ignore` is forbidden unless absolutely critical, and must include an English explanation.
+## UI rules
 
-# No huge unreadable monsters (mandatory decomposition)
+- Keep components **small and focused**:
+  - UI component file: aim for **≤ 200 lines**
+  - Any handler: aim for **≤ 40 lines**
+- UI should be mostly declarative; heavy logic goes to `model/*` or `utils/*`.
+- Avoid `key={index}` for lists; use stable IDs.
 
-If a component grows, you **must** split it.
+## Forms (current reality)
 
-- **One UI file = one responsibility.**
-- **Size limits (guidelines you must enforce):**
-  - UI component file: keep it **~200 lines or less**. Above that, decompose.
-  - Any handler/function: keep it **~40 lines or less**. Complex logic belongs in `model/` or `lib/`.
-- **Complexity limits:**
-  - More than 2 nested levels of conditions/loops in UI → refactor (early returns / extraction).
-  - Prop drilling across many levels or >8–10 props passed around → redesign (composition, container/presenter, model-driven state).
-- **How to split correctly:**
-  - UI sub-parts → `ui/components/` (local to the slice).
-  - Business logic/state/validation → `model*` using Effector + `sample`.
-  - Parsing/formatting/helpers → `lib/` or local `ui/**/utils/`.
-- **Forbidden patterns:**
-  - Massive JSX with inline business rules, parsing, and side effects.
-  - “God components” that fetch data, own complex state, do mapping/validation, and render multiple modals in one file.
+This repo currently uses `react-hook-form` in multiple places. Do not replace it wholesale.
 
-# i18n rules (mandatory)
+- For new complex “business” flows, prefer **Effector-driven state** where it improves predictability.
+- If you extend an existing `react-hook-form` form, stay consistent with that form.
 
-- All user-facing strings must be translated via i18n keys (no hardcoded UI text).
-- Keep locales in:
-  - `client/src/shared/i18n/locales/en.ts`
-  - `client/src/shared/i18n/locales/ru.ts`
-- Whenever you add a new key, update **both** `en.ts` and `ru.ts` in the same change.
+## Networking & data
 
-# Content safety
+- Prefer a **single API client approach** (shared fetch wrapper, consistent error handling, typed responses).
+- Avoid mixing multiple competing API layers in new code.
 
-- If rendering user-provided markdown/HTML, sanitize it (e.g. DOMPurify) before allowing raw HTML rendering.
+## Content safety (Markdown/HTML)
 
-# Post-task requirement (mandatory)
+The app currently uses `rehype-raw` for Markdown rendering in places.
 
-After completing **any** coding task, you must run TypeScript checks and fix issues until there are zero errors:
+- Treat Markdown/HTML as **untrusted** unless it is strictly system-authored.
+- If user-provided content can reach Markdown renderer, **sanitize** before allowing raw HTML.
+- Prefer disabling raw HTML rendering unless explicitly needed.
 
-- Preferred command from repo root:
-  - `yarn -C client type-check`
+## Code quality tooling (how to verify)
 
-If it reports errors, keep fixing and rerunning until it is clean.
+Frontend scripts live in `web/package.json`.
+
+- From repo root:
+  - `yarn verify:web` (TypeScript + ESLint)
+  - `yarn build:web`
+  - `yarn lint:web:fix`
+- From `web/`:
+  - `yarn verify`
+  - `yarn build`
+  - `yarn lint:fix`
+
+If TypeScript fails, keep fixing until **0 TS errors**.

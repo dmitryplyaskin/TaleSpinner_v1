@@ -1,7 +1,7 @@
 {
-  "name": "tale-spinner",
+  "name": "TaleSpinner",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "install:server": "yarn --cwd server install",
     "install:web": "yarn --cwd web install",
