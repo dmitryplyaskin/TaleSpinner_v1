@@ -1,27 +1,43 @@
 import express, { Request, Response } from "express";
+import { z } from "zod";
 import sidebarsService from "../services/sidebars-service";
 import { SidebarState } from "../types";
+import { asyncHandler } from "@core/middleware/async-handler";
+import { validate } from "@core/middleware/validate";
 
 const router = express.Router();
 
-router.get("/sidebars", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await sidebarsService.getSettings();
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
+const sidebarSettingsSchema = z.object({
+  isOpen: z.boolean(),
+  isFullscreen: z.boolean(),
+  placement: z.string(),
+  size: z.string(),
+  contained: z.boolean(),
 });
 
-router.post("/sidebars", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await sidebarsService.saveSettings(
-      req.body as SidebarState
-    );
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
+const sidebarsSchema = z.object({
+  settings: sidebarSettingsSchema,
+  chatCards: sidebarSettingsSchema,
+  userPersons: sidebarSettingsSchema,
+  pipeline: sidebarSettingsSchema,
+  instructions: sidebarSettingsSchema,
+}) satisfies z.ZodType<SidebarState>;
+
+router.get(
+  "/sidebars",
+  asyncHandler(async () => {
+    const settings = await sidebarsService.getSettings();
+    return { data: settings };
+  })
+);
+
+router.post(
+  "/sidebars",
+  validate({ body: sidebarsSchema }),
+  asyncHandler(async (req: Request) => {
+    const settings = await sidebarsService.saveSettings(req.body as SidebarState);
+    return { data: settings };
+  })
+);
 
 export default router;

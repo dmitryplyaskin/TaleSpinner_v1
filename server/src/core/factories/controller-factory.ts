@@ -1,4 +1,5 @@
 import { AsyncRequestHandler } from "@core/middleware/async-handler";
+import { HttpError } from "@core/middleware/error-handler";
 import { BaseService } from "@core/services/base-service";
 import { ConfigService } from "@core/services/config-service";
 import { BaseEntity, BaseConfig } from "@core/types/common";
@@ -16,7 +17,7 @@ export class CrudController<T extends BaseEntity> {
     const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
     if (!id) {
-      throw new Error("id обязателен");
+      throw new HttpError(400, "id обязателен", "VALIDATION_ERROR");
     }
 
     const item = await this.service.getById(id);
@@ -38,7 +39,7 @@ export class CrudController<T extends BaseEntity> {
     const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
     if (!id) {
-      throw new Error("id обязателен");
+      throw new HttpError(400, "id обязателен", "VALIDATION_ERROR");
     }
 
     await this.service.delete(id);
@@ -46,7 +47,14 @@ export class CrudController<T extends BaseEntity> {
   };
 
   duplicate: AsyncRequestHandler = async (req) => {
-    const item = await this.service.duplicate(req.body);
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
+
+    if (!id) {
+      throw new HttpError(400, "id обязателен", "VALIDATION_ERROR");
+    }
+
+    const item = await this.service.duplicateById(id);
     return { data: item };
   };
 }

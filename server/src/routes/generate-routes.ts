@@ -1,5 +1,9 @@
 import express, { Request, Response } from "express";
+import { z } from "zod";
 import openRouterService from "../services/open-router-service";
+import { HttpError } from "@core/middleware/error-handler";
+import { asyncHandler } from "@core/middleware/async-handler";
+import { validate } from "@core/middleware/validate";
 
 const router = express.Router();
 const activeStreams = new Map<string, AbortController>();
@@ -11,29 +15,53 @@ interface GenerateRequest {
 }
 
 // Эндпоинт для прерывания стрима
-router.post("/abort/:streamId", (req: Request, res: Response) => {
-  const streamIdParam = req.params.streamId;
-  const streamId = Array.isArray(streamIdParam) ? streamIdParam[0] : streamIdParam;
+const abortParamsSchema = z.object({
+  streamId: z.string().min(1),
+});
 
-  if (!streamId) {
-    res.status(400).json({ success: false, error: "streamId is required" });
-    return;
-  }
+router.post(
+  "/abort/:streamId",
+  validate({ params: abortParamsSchema }),
+  asyncHandler((req: Request) => {
+    const streamId = req.params.streamId as unknown as string;
+    const controller = activeStreams.get(streamId);
 
-  const controller = activeStreams.get(streamId);
+    if (!controller) {
+      throw new HttpError(404, "Stream not found", "STREAM_NOT_FOUND");
+    }
 
-  if (controller) {
     controller.abort();
     activeStreams.delete(streamId);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ success: false, error: "Stream not found" });
-  }
-});
+    return { data: { success: true } };
+  })
+);
 
 router.post("/generate", async (req: Request, res: Response) => {
   try {
-    const { messages, settings, streamId } = req.body as GenerateRequest;
+    const generateSchema = z.object({
+      streamId: z.string().min(1),
+      messages: z.array(
+        z.object({
+          role: z.string().min(1),
+          content: z.string(),
+        })
+      ),
+      settings: z.record(z.string(), z.unknown()).optional().default({}),
+    });
+
+    const parsed = generateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          message: "Validation error",
+          code: "VALIDATION_ERROR",
+          details: parsed.error.issues,
+        },
+      });
+      return;
+    }
+
+    const { messages, settings, streamId } = parsed.data as GenerateRequest;
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");

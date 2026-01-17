@@ -1,25 +1,35 @@
 import express, { Request, Response } from "express";
+import { z } from "zod";
 import settingsService from "../services/settings-service";
 import { Settings } from "../types";
+import { asyncHandler } from "@core/middleware/async-handler";
+import { validate } from "@core/middleware/validate";
 
 const router = express.Router();
 
-router.get("/", async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await settingsService.getConfig();
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
+const settingsSchema = z.object({
+  temperature: z.number(),
+  maxTokens: z.number().int(),
+  topP: z.number(),
+  frequencyPenalty: z.number(),
+  presencePenalty: z.number(),
+}) satisfies z.ZodType<Settings>;
 
-router.post("/", async (req: Request, res: Response): Promise<void> => {
-  try {
+router.get(
+  "/",
+  asyncHandler(async () => {
+    const settings = await settingsService.getConfig();
+    return { data: settings };
+  })
+);
+
+router.post(
+  "/",
+  validate({ body: settingsSchema }),
+  asyncHandler(async (req: Request) => {
     const settings = await settingsService.saveConfig(req.body as Settings);
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
+    return { data: settings };
+  })
+);
 
 export default router;

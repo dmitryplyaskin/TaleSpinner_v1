@@ -1,24 +1,32 @@
 import express, { Request, Response } from "express";
+import { z } from "zod";
 import openRouterService from "../services/open-router-service";
+import { asyncHandler } from "@core/middleware/async-handler";
+import { validate } from "@core/middleware/validate";
 
 const router = express.Router();
 
-router.get("/config/openrouter", (_req: Request, res: Response) => {
-  try {
-    const config = openRouterService.getConfig();
-    res.json(config);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
+const openRouterConfigSchema = z.object({
+  apiKey: z.string().min(1),
+  model: z.string().min(1).optional(),
 });
 
-router.post("/config/openrouter", (req: Request, res: Response) => {
-  try {
+router.get(
+  "/config/openrouter",
+  asyncHandler((_req: Request) => {
+    const config = openRouterService.getConfig();
+    // Не светим ключ в UI/логах по умолчанию
+    return { data: { ...config, apiKey: config.apiKey ? "***" : "" } };
+  })
+);
+
+router.post(
+  "/config/openrouter",
+  validate({ body: openRouterConfigSchema }),
+  asyncHandler((req: Request) => {
     openRouterService.updateConfig(req.body);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
+    return { data: { success: true } };
+  })
+);
 
 export default router;

@@ -36,9 +36,10 @@ export abstract class ConfigService<T extends BaseConfig> {
     }
   }
 
-  async saveConfig(config: T): Promise<void> {
+  async saveConfig(config: T): Promise<T> {
     try {
       await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
+      return config;
     } catch (error) {
       this.logger?.error("Failed to save config", { error });
       throw error;

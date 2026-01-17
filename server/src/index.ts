@@ -11,6 +11,7 @@ import generateRoutes from "./routes/generate-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
 import { routes } from "./api/_routes_";
 import staticRouter from "./api/static.api";
+import { errorHandler } from "./core/middleware/error-handler";
 
 dotenv.config();
 
@@ -35,6 +36,9 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/app-settings", appSettingsRoutes);
 app.use("/api", generateRoutes);
 app.use("/api", sidebarsRoutes);
+
+// Errors (must be last)
+app.use(errorHandler(console));
 
 // Start server
 app.listen(port, () => {

@@ -5,6 +5,7 @@ import sharp from "sharp";
 import fs from "fs/promises";
 import { CardUploadResponse, ProcessedCardFile, UploadedFile } from "./types";
 import { AsyncRequestHandler } from "@core/middleware/async-handler";
+import { HttpError } from "@core/middleware/error-handler";
 
 interface CharacterComment {
   keyword: string;
@@ -37,7 +38,7 @@ function findCharacterData(metadata: sharp.Metadata): string | null {
 
 export const uploadFiles: AsyncRequestHandler = async (req) => {
   if (!req.files || !Array.isArray(req.files)) {
-    throw new Error("Файлы не были загружены");
+    throw new HttpError(400, "Файлы не были загружены", "VALIDATION_ERROR");
   }
 
   const uploadedFiles = await Promise.all(
@@ -67,11 +68,11 @@ export const getFile: AsyncRequestHandler = async (req) => {
   const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
 
   if (!filename) {
-    throw new Error("filename обязателен");
+    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
   }
 
   if (!(await fileService.fileExists(filename))) {
-    throw new Error("Файл не найден");
+    throw new HttpError(404, "Файл не найден", "NOT_FOUND");
   }
 
   const file = await fileService.getFile(filename);
@@ -89,15 +90,19 @@ export const getFileMetadata: AsyncRequestHandler = async (req) => {
   const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
 
   if (!filename) {
-    throw new Error("filename обязателен");
+    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
   }
 
   if (!(await fileService.fileExists(filename))) {
-    throw new Error("Файл не найден");
+    throw new HttpError(404, "Файл не найден", "NOT_FOUND");
   }
 
   if (!filename.toLowerCase().endsWith(".png")) {
-    throw new Error("Метаданные доступны только для PNG файлов");
+    throw new HttpError(
+      415,
+      "Метаданные доступны только для PNG файлов",
+      "UNSUPPORTED_MEDIA_TYPE"
+    );
   }
 
   const metadata = await fileService.getPngMetadata(filename);
@@ -109,11 +114,11 @@ export const deleteFile: AsyncRequestHandler = async (req) => {
   const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
 
   if (!filename) {
-    throw new Error("filename обязателен");
+    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
   }
 
   if (!(await fileService.fileExists(filename))) {
-    throw new Error("Файл не найден");
+    throw new HttpError(404, "Файл не найден", "NOT_FOUND");
   }
 
   await fileService.deleteFile(filename);
@@ -126,7 +131,7 @@ export const deleteFile: AsyncRequestHandler = async (req) => {
 
 export const uploadCards: AsyncRequestHandler = async (req) => {
   if (!req.files || !Array.isArray(req.files)) {
-    throw new Error("Файлы не были загружены");
+    throw new HttpError(400, "Файлы не были загружены", "VALIDATION_ERROR");
   }
 
   const processedFiles: ProcessedCardFile[] = [];
@@ -154,7 +159,11 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         // Проверяем наличие данных character-карточки
         const characterData = findCharacterData(metadata);
         if (!characterData) {
-          throw new Error("PNG файл не содержит данных character-карточки");
+          throw new HttpError(
+            422,
+            "PNG файл не содержит данных character-карточки",
+            "UNPROCESSABLE_ENTITY"
+          );
         }
 
         await fs.writeFile(filePath, file.buffer);
@@ -209,7 +218,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
 
 export const uploadImage: AsyncRequestHandler = async (req) => {
   if (!req.file) {
-    throw new Error("Изображение не было загружено");
+    throw new HttpError(400, "Изображение не было загружено", "VALIDATION_ERROR");
   }
 
   const folderName = req.body.folder || "default";
@@ -230,7 +239,7 @@ export const uploadImage: AsyncRequestHandler = async (req) => {
   const allowedExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"];
 
   if (!allowedExtensions.includes(fileExtension)) {
-    throw new Error("Неподдерживаемый формат изображения");
+    throw new HttpError(415, "Неподдерживаемый формат изображения", "UNSUPPORTED_MEDIA_TYPE");
   }
 
   const filename = `${uuidv4()}${fileExtension}`;

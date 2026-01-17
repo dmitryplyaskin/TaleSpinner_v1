@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { createDataPath } from "../../utils";
 import { BaseEntity, Logger, ServiceOptions } from "@core/types/common";
+import { HttpError } from "@core/middleware/error-handler";
 import { v4 as uuidv4 } from "uuid";
 
 export class BaseService<T extends BaseEntity> {
@@ -40,6 +41,10 @@ export class BaseService<T extends BaseEntity> {
       const content = await fs.readFile(filePath, "utf8");
       return JSON.parse(content);
     } catch (error) {
+      const e = error as NodeJS.ErrnoException;
+      if (e?.code === "ENOENT") {
+        throw new HttpError(404, "Not found", "NOT_FOUND", { id });
+      }
       this.logger?.error("Failed to read entity", { id, error });
       throw error;
     }
@@ -60,6 +65,10 @@ export class BaseService<T extends BaseEntity> {
       const filePath = this.getFilePath(id);
       await fs.unlink(filePath);
     } catch (error) {
+      const e = error as NodeJS.ErrnoException;
+      if (e?.code === "ENOENT") {
+        throw new HttpError(404, "Not found", "NOT_FOUND", { id });
+      }
       this.logger?.error("Failed to delete entity", { id, error });
       throw error;
     }
@@ -119,13 +128,31 @@ export class BaseService<T extends BaseEntity> {
     return id;
   }
 
+  /**
+   * Дублирование по id (используется в /:id/duplicate).
+   * Создаёт новую сущность с новым id и актуальными createdAt/updatedAt.
+   */
+  async duplicateById(id: string): Promise<T> {
+    const original = await this.readEntity(id);
+    const now = new Date().toISOString();
+
+    const duplicated: T = {
+      ...original,
+      id: this.createUUID(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.writeEntity(duplicated.id, duplicated);
+    return duplicated;
+  }
+
+  /**
+   * Оставлено для обратной совместимости (старые вызовы).
+   * Рекомендуется использовать duplicateById().
+   */
   async duplicate(data: T): Promise<T> {
-    try {
-      await this.writeEntity(data.id, data);
-      return data;
-    } catch (error) {
-      this.logger?.error("Failed to duplicate entity", { id: data.id, error });
-      throw error;
-    }
+    await this.writeEntity(data.id, data);
+    return data;
   }
 }
