@@ -1,11 +1,35 @@
 import React, { useRef } from 'react';
 
-import { Avatar, type AvatarProps } from '@ui/chakra-core-ui/avatar';
-import { toaster } from '@ui/chakra-core-ui/toaster';
+import { Avatar, type AvatarProps } from '@mantine/core';
+
+import { toaster } from '@ui/toaster';
 
 import { BASE_URL } from '../../const';
 
-export interface AvatarUploadProps extends Omit<AvatarProps, 'src'> {
+type LegacySize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
+function mapSize(size: LegacySize | number | undefined): number {
+	if (typeof size === 'number') return size;
+	switch (size) {
+		case 'xs':
+			return 24;
+		case 'sm':
+			return 32;
+		case 'md':
+			return 40;
+		case 'lg':
+			return 48;
+		case 'xl':
+			return 64;
+		case '2xl':
+			return 80;
+		default:
+			return 64;
+	}
+}
+
+export interface AvatarUploadProps extends Omit<AvatarProps, 'src' | 'size'> {
+	size?: LegacySize | number;
 	/**
 	 * URL аватара
 	 */
@@ -38,6 +62,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 	onAvatarChange,
 	saveFolder,
 	baseUrl = 'http://localhost:5000',
+	size,
 	...avatarProps
 }) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +125,13 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
 	return (
 		<>
-			<Avatar {...avatarProps} src={fullSrc} onClick={handleAvatarClick} cursor="pointer" />
+			<Avatar
+				{...avatarProps}
+				size={mapSize(size)}
+				src={fullSrc}
+				onClick={handleAvatarClick}
+				style={{ cursor: 'pointer', ...(avatarProps.style ?? {}) }}
+			/>
 
 			<input
 				type="file"

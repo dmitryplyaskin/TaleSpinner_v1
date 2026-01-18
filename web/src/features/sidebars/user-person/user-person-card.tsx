@@ -1,10 +1,9 @@
-import { Box, Flex, Text } from '@chakra-ui/react';
+import { Avatar, Group, Paper, Stack, Text } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React, { useState } from 'react';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
 
 import { userPersonsModel } from '@model/user-persons';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { UserPersonEditor } from './user-person-editor';
@@ -29,20 +28,22 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 	}
 
 	return (
-		<Box p="4" borderWidth="1px" borderRadius="lg">
-			<Flex justify="space-between" align="center" mb={2}>
-				<Flex gap={2} align="center">
-					<Avatar size="md" name={data.name} src={`http://localhost:5000${data.avatarUrl}`} />
-					<Flex direction="column">
-						<Text fontWeight="bold">{data.name}</Text>
+		<Paper withBorder radius="md" p="md">
+			<Group justify="space-between" align="center" mb="xs" wrap="nowrap">
+				<Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+					<Avatar size="md" name={data.name} src={data.avatarUrl ? `http://localhost:5000${data.avatarUrl}` : undefined} />
+					<Stack gap={2} style={{ minWidth: 0 }}>
+						<Text fw={700} truncate>
+							{data.name}
+						</Text>
 						{data.prefix && (
-							<Text fontSize="sm" color="gray.600">
+							<Text size="sm" c="dimmed" truncate>
 								{data.prefix}
 							</Text>
 						)}
-					</Flex>
-				</Flex>
-				<Flex gap={2}>
+					</Stack>
+				</Group>
+				<Group gap="xs" wrap="nowrap">
 					<IconButtonWithTooltip
 						tooltip="Редактировать"
 						variant="ghost"
@@ -61,9 +62,9 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 						onClick={handleDelete}
 						icon={<LuTrash2 />}
 					/>
-				</Flex>
-			</Flex>
-			<Text color="gray.600">{data.type === 'default' ? data.contentTypeDefault : 'Расширенная персона'}</Text>
-		</Box>
+				</Group>
+			</Group>
+			<Text c="dimmed">{data.type === 'default' ? data.contentTypeDefault : 'Расширенная персона'}</Text>
+		</Paper>
 	);
 };

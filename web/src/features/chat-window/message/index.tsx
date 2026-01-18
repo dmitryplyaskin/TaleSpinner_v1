@@ -1,10 +1,9 @@
-import { Box, Flex, Grid, GridItem, Text, Textarea, VStack } from '@chakra-ui/react';
+import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
 import { type InteractionMessage } from '@shared/types/agent-card';
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { $currentAgentCard, deleteMessage, updateSwipe } from '@model/chat-service';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { RenderMd } from '@ui/render-md';
 
 import { autosizeTextarea } from '../input/use-autosize-textarea';
@@ -90,13 +89,21 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 	};
 
 	return (
-		<Grid w="full" templateColumns={`${avatarColW} 1fr ${avatarColW}`} columnGap={2} alignItems="start">
-			<GridItem w={avatarColW} display="flex" justifyContent="flex-start">
-				{isAssistant ? <AssistantIcon boxSize="16" size="xl" /> : <Box w={avatarColW} />}
-			</GridItem>
+		<Box
+			style={{
+				width: '100%',
+				display: 'grid',
+				gridTemplateColumns: `${avatarColW} 1fr ${avatarColW}`,
+				columnGap: 8,
+				alignItems: 'start',
+			}}
+		>
+			<Box style={{ width: avatarColW, display: 'flex', justifyContent: 'flex-start' }}>
+				{isAssistant ? <AssistantIcon size={64} /> : <Box style={{ width: avatarColW }} />}
+			</Box>
 
-			<GridItem minW={0}>
-				<VStack align="stretch" gap={2} w="full">
+			<Box style={{ minWidth: 0 }}>
+				<Stack gap="xs" style={{ width: '100%' }}>
 					{reasoning.length > 0 &&
 						reasoning.map((reasoning) => (
 							<ReasoningBlock
@@ -108,24 +115,26 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 						))}
 
 					<Box
-						position="relative"
-						w="full"
-						p={4}
-						borderRadius="lg"
-						bg={isUser ? 'purple.50' : 'white'}
-						borderWidth={1}
-						borderColor={isUser ? 'purple.400' : 'gray.200'}
-						wordBreak="break-word"
+						style={{
+							position: 'relative',
+							width: '100%',
+							padding: 16,
+							borderRadius: 12,
+							wordBreak: 'break-word',
+							backgroundColor: isUser ? 'var(--mantine-color-violet-0)' : 'white',
+							border: '1px solid',
+							borderColor: isUser ? 'var(--mantine-color-violet-5)' : 'var(--mantine-color-gray-3)',
+						}}
 					>
 						<Flex align="center">
-							<VStack align="flex-start" gap={0}>
-								<Text fontSize="sm" fontWeight="semibold" color={isUser ? 'purple.600' : 'gray.800'}>
+							<Stack gap={0}>
+								<Text size="sm" fw={600} c={isUser ? 'violet' : 'dark'}>
 									{isUser ? 'You' : assistantName}
 								</Text>
-								<Text fontSize="xs" opacity={0.7}>
+								<Text size="xs" c="dimmed">
 									{new Date(data.timestamp).toLocaleTimeString()}
 								</Text>
-							</VStack>
+							</Stack>
 						</Flex>
 
 						{answer && selectedSwipe?.id ? (
@@ -138,16 +147,14 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 							/>
 						) : null}
 
-						<Box mt={2} w="full" position="relative">
+						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>
 							{isEditing ? (
 								<Textarea
 									ref={textareaRef}
-									w="full"
-									rows={1}
-									resize="none"
-									overflow="hidden"
 									defaultValue={initialContentRef.current}
 									spellCheck={false}
+									autosize
+									minRows={1}
 									onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
 								/>
 							) : (
@@ -157,16 +164,16 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 					</Box>
 
 					<SwipeControls data={data} />
-				</VStack>
-			</GridItem>
+				</Stack>
+			</Box>
 
-			<GridItem w={avatarColW} display="flex" justifyContent="flex-end">
+			<Box style={{ width: avatarColW, display: 'flex', justifyContent: 'flex-end' }}>
 				{isUser ? (
-					<Avatar size="xl" boxSize="16" name="User" src="/user-avatar.png" bg="purple.500" />
+					<Avatar size={64} name="User" src="/user-avatar.png" color="violet" radius="xl" />
 				) : (
-					<Box w={avatarColW} />
+					<Box style={{ width: avatarColW }} />
 				)}
-			</GridItem>
-		</Grid>
+			</Box>
+		</Box>
 	);
 };

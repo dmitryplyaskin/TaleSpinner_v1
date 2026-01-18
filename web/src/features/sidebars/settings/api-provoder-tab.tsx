@@ -1,11 +1,11 @@
-import { VStack } from '@chakra-ui/react';
+import { Stack } from '@mantine/core';
 
 import { ProviderPicker } from '../../llm-provider/provider-picker';
 
 export const APIProviderTab = () => {
 	return (
-		<VStack gap={6} align="stretch">
+		<Stack gap="md">
 			<ProviderPicker scope="global" scopeId="global" />
-		</VStack>
+		</Stack>
 	);
 };

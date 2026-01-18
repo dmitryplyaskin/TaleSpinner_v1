@@ -1,4 +1,4 @@
-import { toaster } from '@ui/chakra-core-ui/toaster';
+import { toaster } from '@ui/toaster';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 

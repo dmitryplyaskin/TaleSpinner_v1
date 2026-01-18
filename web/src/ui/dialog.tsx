@@ -1,7 +1,5 @@
-import { Button, VStack } from '@chakra-ui/react';
-import { type ReactNode } from 'react';
-
-import * as DialogPrimitive from './chakra-core-ui/dialog';
+import { Button, Group, Modal, Stack } from '@mantine/core';
+import type { ReactNode } from 'react';
 
 export interface DialogProps {
 	open: boolean;
@@ -15,7 +13,7 @@ export interface DialogProps {
 	closeOnEscape?: boolean;
 }
 
-export const Dialog: React.FC<DialogProps> = ({
+export const Dialog = ({
 	open,
 	onOpenChange,
 	title,
@@ -25,45 +23,41 @@ export const Dialog: React.FC<DialogProps> = ({
 	showCloseButton = true,
 	closeOnInteractOutside,
 	closeOnEscape,
-}) => {
+}: DialogProps) => {
 	if (!open) return null;
 
+	const fullScreen = size === 'cover';
+	const modalSize = fullScreen ? '100%' : size;
+
 	return (
-		<DialogPrimitive.DialogRoot
-			open={open}
-			onOpenChange={({ open }) => onOpenChange(open)}
-			size={size}
-			closeOnInteractOutside={closeOnInteractOutside}
-			closeOnEscape={closeOnEscape}
-			scrollBehavior="inside"
-			persistentElements={[() => document.querySelector('.chakra-popover__positioner')]}
+		<Modal
+			opened={open}
+			onClose={() => onOpenChange(false)}
+			title={title}
+			size={modalSize}
+			fullScreen={fullScreen}
+			withCloseButton={showCloseButton}
+			closeOnClickOutside={closeOnInteractOutside ?? true}
+			closeOnEscape={closeOnEscape ?? true}
+			zIndex={3200}
+			withinPortal
 		>
-			<DialogPrimitive.DialogBackdrop />
-			<DialogPrimitive.DialogContent maxHeight={'none'}>
-				<DialogPrimitive.DialogHeader>
-					<DialogPrimitive.DialogTitle>{title}</DialogPrimitive.DialogTitle>
-					{showCloseButton && <DialogPrimitive.DialogCloseTrigger onClick={() => onOpenChange(false)} />}
-				</DialogPrimitive.DialogHeader>
+			<Stack gap="md">{children}</Stack>
 
-				<DialogPrimitive.DialogBody>
-					<VStack gap={4} align="stretch">
-						{children}
-					</VStack>
-				</DialogPrimitive.DialogBody>
-
-				<DialogPrimitive.DialogFooter>
-					{footer || (
-						<>
-							<Button variant="ghost" mr={3} onClick={() => onOpenChange(false)}>
-								Отмена
-							</Button>
-							<Button colorPalette="blue" type="submit" form="dialog-form">
-								Сохранить
-							</Button>
-						</>
-					)}
-				</DialogPrimitive.DialogFooter>
-			</DialogPrimitive.DialogContent>
-		</DialogPrimitive.DialogRoot>
+			{footer ? (
+				<Group justify="flex-end" mt="md">
+					{footer}
+				</Group>
+			) : (
+				<Group justify="flex-end" mt="md">
+					<Button variant="subtle" onClick={() => onOpenChange(false)}>
+						Отмена
+					</Button>
+					<Button type="submit" form="dialog-form">
+						Сохранить
+					</Button>
+				</Group>
+			)}
+		</Modal>
 	);
 };

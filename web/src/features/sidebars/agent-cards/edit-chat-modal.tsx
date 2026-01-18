@@ -1,4 +1,4 @@
-import { Stack, Button, Flex , Tabs } from '@chakra-ui/react';
+import { Button, Group, Stack, Tabs } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
 import { FormProvider, useForm, useFieldArray } from 'react-hook-form';
@@ -93,17 +93,16 @@ export const EditChatModal: React.FC = () => {
 		>
 			<FormProvider {...form}>
 				<form id="dialog-form" onSubmit={handleSubmit}>
-					<Tabs.Root defaultValue="basic" variant="plain" size="sm">
-						<Tabs.List bg="bg.muted" rounded="l3" p="1">
-							<Tabs.Trigger value="basic">Основная информация</Tabs.Trigger>
-							<Tabs.Trigger value="additional">Дополнительные поля</Tabs.Trigger>
-							<Tabs.Trigger value="greetings">Приветствия</Tabs.Trigger>
-							<Tabs.Indicator rounded="l2" />
+					<Tabs defaultValue="basic" variant="outline">
+						<Tabs.List mb="md">
+							<Tabs.Tab value="basic">Основная информация</Tabs.Tab>
+							<Tabs.Tab value="additional">Дополнительные поля</Tabs.Tab>
+							<Tabs.Tab value="greetings">Приветствия</Tabs.Tab>
 						</Tabs.List>
 
-						<Tabs.Content value="basic" pt="4">
-							<Stack gap={4}>
-								<Flex gap={4}>
+						<Tabs.Panel value="basic">
+							<Stack gap="md">
+								<Group gap="md" align="flex-start" wrap="nowrap">
 									<AvatarUpload
 										size="2xl"
 										name={editingCard.name}
@@ -112,7 +111,7 @@ export const EditChatModal: React.FC = () => {
 										saveFolder="agent-cards"
 									/>
 									<FormInput name="name" label="Имя персонажа" placeholder="Введите имя персонажа" />
-								</Flex>
+								</Group>
 								<FormTextarea
 									name="description"
 									label="Описание"
@@ -120,10 +119,10 @@ export const EditChatModal: React.FC = () => {
 								/>
 								<FormTextarea name="first_mes" label="Первое сообщение" placeholder="Первое сообщение от персонажа" />
 							</Stack>
-						</Tabs.Content>
+						</Tabs.Panel>
 
-						<Tabs.Content value="additional" pt="4">
-							<Stack gap={4}>
+						<Tabs.Panel value="additional">
+							<Stack gap="md">
 								<FormTextarea
 									name="personality"
 									label="Личность"
@@ -157,27 +156,26 @@ export const EditChatModal: React.FC = () => {
 								<FormInput name="creator" label="Создатель" placeholder="Ваше имя или псевдоним" />
 								<FormInput name="character_version" label="Версия" placeholder="Версия карточки персонажа" />
 							</Stack>
-						</Tabs.Content>
+						</Tabs.Panel>
 
-						<Tabs.Content value="greetings" pt="4">
-							<Stack gap={4}>
-								<Stack direction="row" justify="flex-end">
-									<Button onClick={() => append({ value: '', label: '' })} size="sm">
-										<LuPlus style={{ marginRight: '8px' }} />
+						<Tabs.Panel value="greetings">
+							<Stack gap="md">
+								<Group justify="flex-end">
+									<Button onClick={() => append({ value: '', label: '' })} size="sm" leftSection={<LuPlus />}>
 										Добавить приветствие
 									</Button>
-								</Stack>
+								</Group>
 								{fields.map((field, index) => (
-									<Stack key={field.id} direction="row" align="flex-start">
+									<Group key={field.id} align="flex-start" wrap="nowrap">
 										<FormTextarea
 											name={`alternate_greetings.${index}`}
 											label={`Приветствие ${index + 1}`}
 											placeholder="Введите альтернативное приветствие"
 											textareaProps={{
-												minH: '300px',
+												styles: { input: { minHeight: 300 } },
 											}}
 										/>
-										<Stack mt={10}>
+										<Stack mt="xl" gap="xs">
 											<IconButtonWithTooltip
 												tooltip="Переместить вверх"
 												icon={<LuChevronUp />}
@@ -202,11 +200,11 @@ export const EditChatModal: React.FC = () => {
 												onClick={() => remove(index)}
 											/>
 										</Stack>
-									</Stack>
+									</Group>
 								))}
 							</Stack>
-						</Tabs.Content>
-					</Tabs.Root>
+						</Tabs.Panel>
+					</Tabs>
 				</form>
 			</FormProvider>
 		</Dialog>

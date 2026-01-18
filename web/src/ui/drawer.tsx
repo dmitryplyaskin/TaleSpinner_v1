@@ -1,25 +1,20 @@
-import { Flex, Heading, IconButton } from '@chakra-ui/react';
+import { ActionIcon, Drawer as MantineDrawer, Group, Title } from '@mantine/core';
 import { useStoreMap } from 'effector-react';
+import type { ReactNode } from 'react';
 import { LuArrowRightToLine, LuArrowLeftToLine, LuFullscreen } from 'react-icons/lu';
 
 import { $sidebars, changeSidebarSettings, type SidebarName, toggleSidebarOpen } from '@model/sidebars';
 
-import { CloseButton } from './chakra-core-ui/close-button';
-import { DrawerRoot, DrawerContent, DrawerHeader, DrawerBody } from './chakra-core-ui/drawer';
-
-
-
-
 type Props = {
 	name: SidebarName;
 	title: string;
-	children: React.ReactNode;
+	children: ReactNode;
 	defaultSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 	defaultPlacement?: 'start' | 'end' | 'top' | 'bottom';
 	contained?: boolean;
 };
 
-export const Drawer: React.FC<Props> = ({ name, title, children }) => {
+export const Drawer = ({ name, title, children }: Props) => {
 	const sidebar = useStoreMap({
 		store: $sidebars,
 		keys: [name],
@@ -34,42 +29,47 @@ export const Drawer: React.FC<Props> = ({ name, title, children }) => {
 
 	if (!isOpen) return null;
 
+	const position: 'left' | 'right' = placement === 'end' ? 'right' : 'left';
+	const fullScreen = isFullscreen || size === 'full';
+
 	return (
-		<DrawerRoot
-			open={isOpen}
-			placement={placement || 'start'}
-			size={isFullscreen ? 'full' : size || 'lg'}
-			contained={contained}
-			onOpenChange={handleClose}
-			persistentElements={[() => document.querySelector('.chakra-popover__positioner')]}
+		<MantineDrawer
+			opened={isOpen}
+			onClose={handleClose}
+			position={position}
+			size={fullScreen ? '100%' : size ?? 'lg'}
+			withOverlay={!contained}
+			withinPortal={!contained}
+			zIndex={3000}
 		>
-			<DrawerContent>
-				<DrawerHeader>
-					<Flex justify="space-between" align="center" w="100%">
-						<Heading size="md">{title}</Heading>
-						<Flex gap={2}>
-							<IconButton
-								onClick={() => changeSidebarSettings({ name, settings: { isFullscreen: !isFullscreen } })}
-								variant={isFullscreen ? 'solid' : 'ghost'}
-							>
-								<LuFullscreen />
-							</IconButton>
-							<IconButton
-								onClick={() =>
-									changeSidebarSettings({ name, settings: { placement: placement === 'start' ? 'end' : 'start' } })
-								}
-								variant="ghost"
-							>
-								{placement === 'start' ? <LuArrowRightToLine /> : <LuArrowLeftToLine />}
-							</IconButton>
+			<Group justify="space-between" align="center" mb="md" wrap="nowrap">
+				<Title order={4} style={{ lineHeight: 1.2 }}>
+					{title}
+				</Title>
+				<Group gap="xs" wrap="nowrap">
+					<ActionIcon
+						aria-label="Toggle fullscreen"
+						variant={isFullscreen ? 'filled' : 'subtle'}
+						onClick={() => changeSidebarSettings({ name, settings: { isFullscreen: !isFullscreen } })}
+					>
+						<LuFullscreen />
+					</ActionIcon>
+					<ActionIcon
+						aria-label="Toggle placement"
+						variant="subtle"
+						onClick={() =>
+							changeSidebarSettings({ name, settings: { placement: placement === 'start' ? 'end' : 'start' } })
+						}
+					>
+						{placement === 'start' ? <LuArrowRightToLine /> : <LuArrowLeftToLine />}
+					</ActionIcon>
+					<ActionIcon aria-label="Close sidebar" variant="subtle" onClick={handleClose}>
+						×
+					</ActionIcon>
+				</Group>
+			</Group>
 
-							<CloseButton onClick={handleClose} />
-						</Flex>
-					</Flex>
-				</DrawerHeader>
-
-				<DrawerBody>{children}</DrawerBody>
-			</DrawerContent>
-		</DrawerRoot>
+			{children}
+		</MantineDrawer>
 	);
 };

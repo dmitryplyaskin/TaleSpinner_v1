@@ -1,16 +1,12 @@
-import { Box } from '@chakra-ui/react';
+import { Checkbox, Group, type CheckboxProps } from '@mantine/core';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
-
-import { Checkbox, type CheckboxProps } from '../chakra-core-ui/checkbox';
-import { Field, type FieldProps } from '../chakra-core-ui/field';
+import { InfoTip } from '@ui/info-tip';
 
 type FormCheckboxProps = {
 	name: string;
 	label: string;
-	checkboxProps?: Omit<CheckboxProps, 'checked'>;
-	fieldProps?: FieldProps;
+	checkboxProps?: Omit<CheckboxProps, 'checked' | 'onChange' | 'label' | 'error'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -19,7 +15,6 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
 	name,
 	label,
 	checkboxProps,
-	fieldProps,
 	containerProps,
 	infoTip,
 }) => {
@@ -33,19 +28,22 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = label && (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
 	return (
-		<Field {...fieldProps} invalid={!!errors[name]} errorText={errorMessage}>
-			<Checkbox {...checkboxProps} {...field} checked={value} onCheckedChange={({ checked }) => onChange(checked)}>
-				{labelComponent}
-			</Checkbox>
-		</Field>
+		<Checkbox
+			{...checkboxProps}
+			{...field}
+			checked={Boolean(value)}
+			label={labelComponent}
+			error={errorMessage || undefined}
+			onChange={(e) => onChange(e.currentTarget.checked)}
+		/>
 	);
 };

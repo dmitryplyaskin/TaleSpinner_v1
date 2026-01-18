@@ -1,4 +1,4 @@
-import { Box, Container, Flex } from '@chakra-ui/react';
+import { Box, Container, Flex } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useRef } from 'react';
 
@@ -30,20 +30,22 @@ export const ChatWindow: React.FC = () => {
 	return (
 		<Flex
 			direction="column"
-			h="full"
-			minH={0}
-			backgroundImage={`url(${BGImages})`}
-			backgroundSize="cover"
-			backgroundPosition="center"
+			style={{
+				height: '100%',
+				minHeight: 0,
+				backgroundImage: `url(${BGImages})`,
+				backgroundSize: 'cover',
+				backgroundPosition: 'center',
+			}}
 		>
-			<Box flex="1" minH={0} overflowY="auto">
-				<Container maxW="6xl" p={4}>
+			<Box style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+				<Container size="xl" py="md">
 					<RenderChat />
 					<Box ref={messagesEndRef} />
 				</Container>
 			</Box>
 
-			<Container maxW="6xl" p={0}>
+			<Container size="xl" py={0}>
 				<MessageInput />
 			</Container>
 		</Flex>

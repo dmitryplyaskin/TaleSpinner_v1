@@ -1,17 +1,13 @@
-import { Box } from '@chakra-ui/react';
+import { Group, Radio, type RadioGroupProps } from '@mantine/core';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
-
-import { Field, type FieldProps } from '../chakra-core-ui/field';
-import { Radio, RadioGroup, type RadioProps } from '../chakra-core-ui/radio';
+import { InfoTip } from '@ui/info-tip';
 
 type FormRadioProps = {
 	name: string;
 	label: string;
 	options: Array<{ value: string; label: string }>;
-	radioProps?: Omit<RadioProps, 'value'>;
-	fieldProps?: FieldProps;
+	radioProps?: Omit<RadioGroupProps, 'value' | 'onChange' | 'label' | 'error' | 'children'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -21,7 +17,6 @@ export const FormRadio: React.FC<FormRadioProps> = ({
 	label,
 	options,
 	radioProps,
-	fieldProps,
 	containerProps,
 	infoTip,
 }) => {
@@ -35,23 +30,27 @@ export const FormRadio: React.FC<FormRadioProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
 	return (
-		<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
-			<RadioGroup value={value} onChange={onChange}>
+		<Radio.Group
+			{...radioProps}
+			label={labelComponent}
+			value={value ?? ''}
+			error={errorMessage || undefined}
+			onChange={onChange}
+		>
+			<Group mt={6} gap="md">
 				{options.map((option) => (
-					<Radio key={option.value} value={option.value} {...radioProps}>
-						{option.label}
-					</Radio>
+					<Radio key={option.value} value={option.value} label={option.label} />
 				))}
-			</RadioGroup>
-		</Field>
+			</Group>
+		</Radio.Group>
 	);
 };

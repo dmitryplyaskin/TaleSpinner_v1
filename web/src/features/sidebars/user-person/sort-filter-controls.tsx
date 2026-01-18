@@ -1,6 +1,5 @@
-import { Box, Flex, Input } from '@chakra-ui/react';
+import { Box, Flex, Select, TextInput } from '@mantine/core';
 import { type CommonModelItemType } from '@shared/types/common-model-types';
-import { Select } from 'chakra-react-select';
 import { useUnit } from 'effector-react';
 import { useState, useEffect } from 'react';
 
@@ -61,21 +60,21 @@ export function SortFilterControls<ItemType extends CommonModelItemType>({
 	}));
 
 	return (
-		<Flex gap={4} mb={4}>
-			<Input
+		<Flex gap="md" mb="md">
+			<TextInput
 				placeholder={'Поиск по имени...'}
 				value={nameFilter}
 				onChange={(e) => handleNameFilterChange(e.target.value)}
 			/>
 
-			<Box w="350px">
+			<Box w={350}>
 				<Select
 					placeholder="Сортировка..."
-					options={selectOptions}
-					value={selectOptions.find((option) => option.value === sortFilterSettings.currentSortType) || null}
-					onChange={(selected) => handleSortChange(selected?.value || null)}
-					isClearable
-					menuPlacement="auto"
+					data={selectOptions}
+					value={sortFilterSettings.currentSortType ?? null}
+					onChange={(selected) => handleSortChange(selected)}
+					clearable
+					comboboxProps={{ withinPortal: false }}
 				/>
 			</Box>
 		</Flex>

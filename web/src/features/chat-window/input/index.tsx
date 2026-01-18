@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useRef } from 'react';
 
@@ -6,7 +6,6 @@ import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orches
 import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
 import { SendActionMenu } from './send-action-menu';
-import { useAutosizeTextarea } from './use-autosize-textarea';
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
 
@@ -14,13 +13,6 @@ export const MessageInput = () => {
 	const isProcessing = useUnit($isCompletionsProcessing);
 	const message = useUnit($userMessage);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-	useAutosizeTextarea({
-		value: message,
-		textareaRef,
-		minRows: 1,
-		maxRows: 6,
-	});
 
 	const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setUserMessage(event.target.value);
@@ -38,8 +30,8 @@ export const MessageInput = () => {
 	};
 
 	return (
-		<Box w="full" bg="white" borderTopWidth="1px" borderTopColor="gray.200" p={4}>
-			<Flex gap={3} flexDirection="column" w="full" maxW="full">
+		<Box w="100%" bg="white" p="md" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
+			<Flex direction="column" gap="md" w="100%">
 				<Textarea
 					ref={textareaRef}
 					value={message}
@@ -47,17 +39,21 @@ export const MessageInput = () => {
 					onKeyDown={handleKeyDown}
 					placeholder="Введите сообщение..."
 					disabled={isProcessing}
-					rows={1}
-					size="lg"
-					borderRadius="lg"
-					resize="none"
-					overflow="hidden"
-					backgroundColor="white"
+					autosize
+					minRows={1}
+					maxRows={6}
+					radius="md"
+					size="md"
+					styles={{
+						input: {
+							overflow: 'hidden',
+						},
+					}}
 				/>
 				<Flex justify="flex-end">
-					<Flex gap={2}>
+					<Flex gap="xs">
 						<SendActionMenu />
-							<Button onClick={handleSendMessage} colorPalette={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
+						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'blue'} style={{ whiteSpace: 'nowrap' }}>
 							{isProcessing ? 'Оборвать' : 'Отправить'}
 						</Button>
 					</Flex>

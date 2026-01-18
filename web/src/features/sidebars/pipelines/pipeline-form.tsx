@@ -1,4 +1,4 @@
-import { Button, Text, VStack } from '@chakra-ui/react';
+import { Button, Stack, Text } from '@mantine/core';
 import { type PipelineType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
 import { useEffect, useRef } from 'react';
@@ -47,11 +47,11 @@ export const PipelineForm = () => {
 
 	return (
 		<FormProvider {...methods}>
-			<VStack gap={2} align="stretch">
-				<Text fontSize="lg" fontWeight="bold">
+			<Stack gap="sm">
+				<Text size="lg" fw={700}>
 					Pipelines:
 				</Text>
-				<VStack gap={2} align="stretch" ref={ref}>
+				<Stack gap="sm" ref={ref}>
 					{fields.map((field, index) => (
 						<PipelineItem
 							key={field.id}
@@ -64,15 +64,14 @@ export const PipelineForm = () => {
 							menuPortalTarget={ref.current}
 						/>
 					))}
-				</VStack>
-				<Button onClick={handleAddPipeline} colorPalette="blue">
-					<LuPlus />
+				</Stack>
+				<Button onClick={handleAddPipeline} leftSection={<LuPlus />}>
 					Add Pipeline
 				</Button>
-				<Button onClick={methods.handleSubmit(onSubmit)} colorPalette="blue">
+				<Button onClick={methods.handleSubmit(onSubmit)}>
 					Save Pipelines
 				</Button>
-			</VStack>
+			</Stack>
 		</FormProvider>
 	);
 };

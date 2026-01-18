@@ -1,23 +1,20 @@
-import { Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
 
 import { $currentAgentCard } from '@model/chat-service';
-import { Avatar, type AvatarProps } from '@ui/chakra-core-ui/avatar';
+import { Avatar } from '@mantine/core';
 
 type AssistantIconProps = {
-	size?: AvatarProps['size'];
-	boxSize?: AvatarProps['boxSize'];
+	size?: number;
 };
 
-export const AssistantIcon = ({ size = 'xl', boxSize = '16' }: AssistantIconProps) => {
+export const AssistantIcon = ({ size = 64 }: AssistantIconProps) => {
 	const currentAgentCard = useUnit($currentAgentCard);
 
 	const name = currentAgentCard?.name;
 	const src = currentAgentCard?.avatarPath;
+	const fullSrc = src ? `http://localhost:5000${src}` : undefined;
 
 	return (
-		<Box>
-			<Avatar size={size} boxSize={boxSize} name={name} src={`http://localhost:5000${src}`} bg="purple.500" />
-		</Box>
+		<Avatar size={size} name={name ?? 'AI Assistant'} src={fullSrc} color="violet" radius="xl" />
 	);
 };

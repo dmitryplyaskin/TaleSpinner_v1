@@ -1,4 +1,4 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@mantine/core';
 import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -24,9 +24,16 @@ export const ActionBar = ({
 	coordinates = { top: 3, right: 3 },
 }: ActionBarProps) => {
 	return (
-		<Box position="absolute" top={coordinates.top} right={coordinates.right} gap={2} alignSelf="flex-start">
+		<Box
+			style={{
+				position: 'absolute',
+				top: coordinates.top,
+				right: coordinates.right,
+				alignSelf: 'flex-start',
+			}}
+		>
 			{isEditing ? (
-				<Flex gap={1}>
+				<Flex gap={4}>
 					<IconButtonWithTooltip
 						size="xs"
 						variant="solid"
@@ -47,7 +54,7 @@ export const ActionBar = ({
 					/>
 				</Flex>
 			) : (
-				<Flex gap={1}>
+				<Flex gap={4}>
 					<IconButtonWithTooltip
 						size="xs"
 						variant="ghost"

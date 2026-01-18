@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
+import { Box, Button, Group, Stack } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { LuPlus } from 'react-icons/lu';
@@ -20,13 +20,13 @@ export const AgentCardsSidebar: React.FC = () => {
 	return (
 		<>
 			<Drawer name="agentCards" title="Agent cards">
-				<Flex direction="column" gap="4">
-					<HStack gap={4}>
-						<Button onClick={() => agentCardsModel.createItemFx(createNewAgentCard())} colorPalette="blue">
-							<LuPlus /> Создать карточку
+				<Stack gap="md">
+					<Group gap="md">
+						<Button onClick={() => agentCardsModel.createItemFx(createNewAgentCard())} leftSection={<LuPlus />}>
+							Создать карточку
 						</Button>
 						<Upload />
-					</HStack>
+					</Group>
 					<Box>
 						<ChatListSortFilterControls />
 					</Box>
@@ -35,7 +35,7 @@ export const AgentCardsSidebar: React.FC = () => {
 						<AgentCard key={chat.id} data={chat} />
 					))}
 					<Pagination model={agentCardsModel} />
-				</Flex>
+				</Stack>
 			</Drawer>
 			<EditChatModal />
 		</>

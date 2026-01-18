@@ -1,4 +1,4 @@
-import { Flex, Button } from '@chakra-ui/react';
+import { Button, Group, Stack } from '@mantine/core';
 import { type TemplateType } from '@shared/types/templates';
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
@@ -31,7 +31,7 @@ export const TemplateEditor: React.FC = () => {
 
 	return (
 		<FormProvider {...methods}>
-			<Flex direction="column" gap={4} mt={4}>
+			<Stack gap="md" mt="md">
 				<FormInput name="name" label="Название" placeholder="Введите название шаблона" />
 
 				<FormTextarea
@@ -39,13 +39,13 @@ export const TemplateEditor: React.FC = () => {
 					label="Шаблон"
 					placeholder="Введите текст шаблона"
 					textareaProps={{
-						minHeight: '300px',
+						styles: { input: { minHeight: 300 } },
 					}}
 				/>
-				<Flex alignSelf="flex-end">
+				<Group justify="flex-end">
 					<Button onClick={handleSubmit(onSubmit)}>Сохранить</Button>
-				</Flex>
-			</Flex>
+				</Group>
+			</Stack>
 		</FormProvider>
 	);
 };

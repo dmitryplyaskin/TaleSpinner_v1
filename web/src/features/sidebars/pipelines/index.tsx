@@ -1,10 +1,9 @@
-import { Flex, VStack } from '@chakra-ui/react';
+import { Flex, Stack, Switch } from '@mantine/core';
 import { type PipelineSettingsType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
 import React from 'react';
 
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
-import { Switch } from '@ui/chakra-core-ui/switch';
 import { Drawer } from '@ui/drawer';
 
 import { SidebarHeader } from '../common/sidebar-header';
@@ -21,7 +20,7 @@ export const PipelineSidebar: React.FC = () => {
 
 	return (
 		<Drawer name="pipeline" title="Pipeline">
-			<VStack gap={4} align="stretch">
+			<Stack gap="md">
 				<SidebarHeader
 					model={pipelinesModel}
 					items={pipelines}
@@ -37,25 +36,23 @@ export const PipelineSidebar: React.FC = () => {
 						deleteAriaLabel: 'Delete instruction',
 					}}
 				/>
-				<Flex gap={4}>
+				<Flex gap="md" wrap="wrap">
 					<Switch
 						checked={settings.enabled}
-						onCheckedChange={(e) => handleSettingsChange({ enabled: e.checked })}
-						colorPalette="green"
-						infoTip="Enable pipelines to use them in chat"
-					>
-						Enable pipelines
-					</Switch>
+						onChange={(e) => handleSettingsChange({ enabled: e.currentTarget.checked })}
+						color="green"
+						label="Enable pipelines"
+						description="Enable pipelines to use them in chat"
+					/>
 					<Switch
 						checked={settings.isFullPipelineProcessing}
-						onCheckedChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.checked })}
-						infoTip="Completely replaces the way response generation works and is entirely based on pipelines."
-					>
-						Full pipeline processing
-					</Switch>
+						onChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.currentTarget.checked })}
+						label="Full pipeline processing"
+						description="Completely replaces response generation and is entirely based on pipelines."
+					/>
 				</Flex>
 				<PipelineForm />
-			</VStack>
+			</Stack>
 		</Drawer>
 	);
 };

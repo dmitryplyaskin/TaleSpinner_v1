@@ -1,4 +1,4 @@
-import { Flex, Box } from '@chakra-ui/react';
+import { Box, Flex, Stack } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { LuPlus } from 'react-icons/lu';
@@ -18,7 +18,7 @@ export const UserPersonSidebar: React.FC = () => {
 
 	return (
 		<Drawer name="userPersons" title="Список персон">
-			<Flex direction="column" gap="4">
+			<Stack gap="md">
 				<Flex justify="flex-end">
 					<IconButtonWithTooltip
 						tooltip="Добавить персону"
@@ -39,19 +39,19 @@ export const UserPersonSidebar: React.FC = () => {
 				</Box>
 
 				{persons.length > 0 ? (
-					<Flex direction="column" gap="4">
+					<Stack gap="md">
 						{persons.map((person) => (
 							<UserPersonCard key={person.id} data={person} />
 						))}
-					</Flex>
+					</Stack>
 				) : (
-					<Box textAlign="center" py={4} color="gray.500">
+					<Box style={{ textAlign: 'center', padding: 16, color: 'var(--mantine-color-dimmed)' }}>
 						Персоны не найдены
 					</Box>
 				)}
 
 				<Pagination model={userPersonsModel} />
-			</Flex>
+			</Stack>
 		</Drawer>
 	);
 };

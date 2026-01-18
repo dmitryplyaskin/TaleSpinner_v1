@@ -1,12 +1,10 @@
-import { Box, Button, Flex, Input, Textarea, IconButton, VStack } from '@chakra-ui/react';
+import { ActionIcon, Button, Group, Paper, Stack, Switch, TextInput, Textarea, Text } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React, { useState } from 'react';
 import { LuPlus, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { userPersonsModel } from '@model/user-persons';
-import { Field } from '@ui/chakra-core-ui/field';
-import { Switch } from '@ui/chakra-core-ui/switch';
 
 import { AvatarUpload } from '../../../features/common/avatar-upload';
 
@@ -69,9 +67,9 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 	};
 
 	return (
-		<Box p="4" borderWidth="1px" borderRadius="lg">
-			<VStack gap={4} align="stretch">
-				<Flex align="center" gap={2}>
+		<Paper withBorder radius="md" p="md">
+			<Stack gap="md">
+				<Group align="center" wrap="nowrap">
 					<AvatarUpload
 						size="2xl"
 						name={personData.name}
@@ -80,107 +78,113 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 						saveFolder="user-persons"
 					/>
 
-					<Field label="Имя персоны" flex="1">
-						<Input value={personData.name} onChange={(e) => setPersonData({ ...personData, name: e.target.value })} />
-					</Field>
-				</Flex>
-
-				<Field label="Префикс">
-					<Input
-						value={personData.prefix || ''}
-						onChange={(e) => setPersonData({ ...personData, prefix: e.target.value })}
+					<TextInput
+						label="Имя персоны"
+						value={personData.name}
+						onChange={(e) => setPersonData({ ...personData, name: e.currentTarget.value })}
+						style={{ flex: 1 }}
 					/>
-				</Field>
+				</Group>
+
+				<TextInput
+					label="Префикс"
+					value={personData.prefix || ''}
+					onChange={(e) => setPersonData({ ...personData, prefix: e.currentTarget.value })}
+				/>
 
 				<Switch
 					checked={contentType === 'extended'}
-					onCheckedChange={(e) => handleContentTypeChange(e.checked ? 'extended' : 'default')}
-				>
-					Расширенная версия персоны
-				</Switch>
+					onChange={(e) => handleContentTypeChange(e.currentTarget.checked ? 'extended' : 'default')}
+					label="Расширенная версия персоны"
+				/>
 
 				{contentType === 'default' ? (
-					<Field label="Описание">
-						<Textarea
-							value={personData.contentTypeDefault || ''}
-							autoresize
-							minH={'200px'}
-							onChange={(e) =>
-								setPersonData({
-									...personData,
-									contentTypeDefault: e.target.value,
-								})
-							}
-						/>
-					</Field>
+					<Textarea
+						label="Описание"
+						value={personData.contentTypeDefault || ''}
+						autosize
+						minRows={6}
+						onChange={(e) =>
+							setPersonData({
+								...personData,
+								contentTypeDefault: e.currentTarget.value,
+							})
+						}
+					/>
 				) : (
-					<Box>
-						<Flex justify="space-between" align="center" mb={2}>
-							<Field label="Дополнительные поля" />
-							<IconButton aria-label="Add field" size="sm" onClick={handleAddField}>
+					<Stack gap="sm">
+						<Group justify="space-between" align="center">
+							<Text fw={500}>Дополнительные поля</Text>
+							<ActionIcon aria-label="Add field" size="sm" variant="outline" onClick={handleAddField}>
 								<LuPlus />
-							</IconButton>
-						</Flex>
+							</ActionIcon>
+						</Group>
 						{personData.contentTypeExtended && (
-							<VStack gap={2}>
+							<Stack gap="sm">
 								{personData.contentTypeExtended?.map((field) => (
-									<Flex key={field.id} gap={2} w="full" direction={'column'}>
-										<Input
+									<Stack key={field.id} gap="xs">
+										<TextInput
 											placeholder="Название поля"
 											value={field.name || ''}
 											onChange={(e) =>
 												setPersonData({
 													...personData,
 													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, name: e.target.value } : f,
+														f.id === field.id ? { ...f, name: e.currentTarget.value } : f,
 													),
 												})
 											}
 										/>
-										<Input
+										<TextInput
 											placeholder="Тег"
 											value={field.tagName || ''}
 											onChange={(e) =>
 												setPersonData({
 													...personData,
 													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, tagName: e.target.value } : f,
+														f.id === field.id ? { ...f, tagName: e.currentTarget.value } : f,
 													),
 												})
 											}
 										/>
 										<Textarea
-											autoresize
+											autosize
 											placeholder="Значение"
 											value={field.value}
 											onChange={(e) =>
 												setPersonData({
 													...personData,
 													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, value: e.target.value } : f,
+														f.id === field.id ? { ...f, value: e.currentTarget.value } : f,
 													),
 												})
 											}
 										/>
-										<IconButton aria-label="Remove field" size="sm" onClick={() => handleRemoveField(field.id)}>
+										<ActionIcon
+											aria-label="Remove field"
+											size="sm"
+											variant="outline"
+											color="red"
+											onClick={() => handleRemoveField(field.id)}
+										>
 											<LuX />
-										</IconButton>
-									</Flex>
+										</ActionIcon>
+									</Stack>
 								))}
-							</VStack>
+							</Stack>
 						)}
-					</Box>
+					</Stack>
 				)}
 
-				<Flex justify="flex-end" gap={2}>
-					<Button variant="ghost" onClick={onClose}>
+				<Group justify="flex-end" gap="sm">
+					<Button variant="subtle" onClick={onClose}>
 						Отмена
 					</Button>
-					<Button colorPalette="blue" onClick={handleSave}>
+					<Button onClick={handleSave}>
 						Сохранить
 					</Button>
-				</Flex>
-			</VStack>
-		</Box>
+				</Group>
+			</Stack>
+		</Paper>
 	);
 };

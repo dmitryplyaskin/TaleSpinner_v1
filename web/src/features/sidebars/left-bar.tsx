@@ -1,4 +1,4 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Stack } from '@mantine/core';
 import { type IconType } from 'react-icons';
 import { LuCode, LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2, LuSettings2 } from 'react-icons/lu';
 
@@ -63,20 +63,23 @@ const appSettingsButton: SidebarButton = {
 
 export const LeftBar = () => {
 	return (
-		<Flex
-			direction="column"
-			w="70px"
-			position="fixed"
-			left={0}
-			top={0}
-			h="100vh"
-			bg="white"
-			pt={4}
-			gap={4}
-			align="center"
-			zIndex={2}
+		<Box
+			style={{
+				width: 70,
+				position: 'fixed',
+				left: 0,
+				top: 0,
+				height: '100vh',
+				background: 'white',
+				paddingTop: 16,
+				zIndex: 2,
+				display: 'flex',
+				flexDirection: 'column',
+				alignItems: 'center',
+				gap: 16,
+			}}
 		>
-			<Flex direction="column" gap={4} flex={1}>
+			<Stack gap="md" style={{ flex: 1 }}>
 				{sidebarButtons.map((button) => (
 					<Box key={button.name}>
 						<IconButtonWithTooltip
@@ -90,8 +93,8 @@ export const LeftBar = () => {
 						/>
 					</Box>
 				))}
-			</Flex>
-			<Box pb={4}>
+			</Stack>
+			<Box pb={16}>
 				<IconButtonWithTooltip
 					tooltip={appSettingsButton.tooltip}
 					variant="outline"
@@ -102,6 +105,6 @@ export const LeftBar = () => {
 					icon={<appSettingsButton.icon />}
 				/>
 			</Box>
-		</Flex>
+		</Box>
 	);
 };

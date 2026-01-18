@@ -1,6 +1,5 @@
-import { Box, SimpleGrid, Text, Icon, Flex, Input } from '@chakra-ui/react';
+import { ActionIcon, Flex, NumberInput, Paper, Select, SimpleGrid, Slider, Text, Tooltip } from '@mantine/core';
 import { type SamplerItemSettingsType, type SamplersItemType } from '@shared/types/samplers';
-import { Select } from 'chakra-react-select';
 import { useUnit } from 'effector-react';
 import React, { useEffect } from 'react';
 import { FormProvider, useController, useForm, type UseFormReturn } from 'react-hook-form';
@@ -10,8 +9,6 @@ import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { llmSettingsFields, type LLMSettingField } from '../../../model/llm-settings';
-import { Slider } from '../../../ui/chakra-core-ui/slider';
-import { Tooltip } from '../../../ui/chakra-core-ui/tooltip';
 
 
 
@@ -61,15 +58,17 @@ export const SamplerSettingsTab: React.FC = () => {
 	}));
 
 	return (
-		<Flex flexDirection="column" gap={4}>
-			<Flex gap={4}>
+		<Flex direction="column" gap="md">
+			<Flex gap="md" align="flex-end">
 				<Select
-					value={settings?.selectedId ? options.find((instr) => instr.value === settings.selectedId) : null}
-					onChange={(selected) => samplersModel.updateSettingsFx({ ...settings, selectedId: selected?.value })}
-					options={options}
+					data={options}
+					value={settings?.selectedId ?? null}
+					onChange={(selectedId) => samplersModel.updateSettingsFx({ ...settings, selectedId: selectedId ?? null })}
 					placeholder="Выберите алгоритм"
+					comboboxProps={{ withinPortal: false }}
+					style={{ flex: 1 }}
 				/>
-				<Box display="flex" gap={2} alignSelf="flex-end">
+				<Flex gap="xs">
 					<IconButtonWithTooltip
 						tooltip="Сохранить шаблон"
 						icon={<LuSave />}
@@ -99,11 +98,11 @@ export const SamplerSettingsTab: React.FC = () => {
 						disabled={!settings.selectedId}
 						onClick={() => samplersModel.deleteItemFx(settings.selectedId as string)}
 					/>
-				</Box>
+				</Flex>
 			</Flex>
 
 			<FormProvider {...methods}>
-				<SimpleGrid columns={3} gap={4}>
+				<SimpleGrid cols={3} spacing="md">
 					{llmSettingsFields.map((field) => (
 						<Item key={field.key} field={field} methods={methods} />
 					))}
@@ -125,47 +124,42 @@ const Item: React.FC<ItemProps> = ({ field, methods }) => {
 	});
 
 	return (
-		<Box key={field.key} gridColumn={`span ${field.width}`} p={3} borderWidth="1px" borderRadius="lg" shadow="sm">
-			<Flex alignItems="flex-start" justifyContent="space-between" mb={2}>
-				<Box flex="1">
-					<Flex alignItems="center" gap={2}>
-						<Text fontSize="sm" fontWeight="medium" color="gray.700">
-							{field.label}
-						</Text>
-						<Tooltip content={field.tooltip} positioning={{ placement: 'bottom' }} showArrow>
-							<Icon w={4} h={4} color="gray.400" cursor="help">
-								<LuInfo />
-							</Icon>
-						</Tooltip>
-					</Flex>
-				</Box>
+		<Paper key={field.key} withBorder radius="md" p="md" style={{ gridColumn: `span ${field.width}` }}>
+			<Flex align="flex-start" justify="space-between" mb="xs">
+				<Flex align="center" gap="xs" style={{ flex: 1, minWidth: 0 }}>
+					<Text size="sm" fw={500}>
+						{field.label}
+					</Text>
+					<Tooltip label={field.tooltip} position="bottom" withArrow>
+						<ActionIcon variant="subtle" aria-label="Info">
+							<LuInfo />
+						</ActionIcon>
+					</Tooltip>
+				</Flex>
 			</Flex>
+
 			<Slider
 				min={field.min}
 				max={field.max}
 				step={field.step}
-				size="md"
-				variant="outline"
-				colorPalette="purple"
-				value={[formField.field.value]}
-				onValueChange={(details) => {
-					formField.field.onChange(details.value[0] ?? 0);
+				value={Number(formField.field.value ?? 0)}
+				onChange={(value) => {
+					formField.field.onChange(value);
 				}}
 			/>
-			<Input
-				type="number"
-				size="sm"
+			<NumberInput
+				mt="xs"
 				min={field.min}
 				max={field.max}
 				step={field.step}
-				value={formField.field.value}
-				onChange={(e) => {
-					formField.field.onChange(Number(e.target.value));
+				value={Number(formField.field.value ?? 0)}
+				onChange={(value) => {
+					formField.field.onChange(typeof value === 'number' ? value : 0);
 				}}
 				onBlur={() => {
 					formField.field.onBlur();
 				}}
 			/>
-		</Box>
+		</Paper>
 	);
 };

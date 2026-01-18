@@ -1,16 +1,12 @@
-import { Box } from '@chakra-ui/react';
+import { Group, Switch, type SwitchProps } from '@mantine/core';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
-
-import { Field, type FieldProps } from '../chakra-core-ui/field';
-import { Switch, type SwitchProps } from '../chakra-core-ui/switch';
+import { InfoTip } from '@ui/info-tip';
 
 type FormSwitchProps = {
 	name: string;
 	label: string;
-	switchProps?: Omit<SwitchProps, 'checked'>;
-	fieldProps?: FieldProps;
+	switchProps?: Omit<SwitchProps, 'checked' | 'onChange' | 'label' | 'error'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -19,7 +15,6 @@ export const FormSwitch: React.FC<FormSwitchProps> = ({
 	name,
 	label,
 	switchProps,
-	fieldProps,
 	containerProps,
 	infoTip,
 }) => {
@@ -33,19 +28,22 @@ export const FormSwitch: React.FC<FormSwitchProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
 	return (
-		<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
-			<Switch {...switchProps} {...field} checked={value} onCheckedChange={({ checked }) => onChange(checked)}>
-				{label}
-			</Switch>
-		</Field>
+		<Switch
+			{...switchProps}
+			{...field}
+			checked={Boolean(value)}
+			label={labelComponent}
+			error={errorMessage || undefined}
+			onChange={(e) => onChange(e.currentTarget.checked)}
+		/>
 	);
 };

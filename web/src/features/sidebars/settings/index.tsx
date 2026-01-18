@@ -1,4 +1,4 @@
-import { Tabs } from '@chakra-ui/react';
+import { Tabs } from '@mantine/core';
 import { useState } from 'react';
 
 import { Drawer } from '@ui/drawer';
@@ -13,25 +13,19 @@ export const SettingsSidebar = () => {
 
 	return (
 		<Drawer name="settings" title="Settings">
-			<Tabs.Root
-				colorPalette={'purple'}
-				size={'md'}
-				variant={'enclosed'}
-				value={activeTab}
-				onValueChange={(e) => setActiveTab(e.value as TabType)}
-			>
-				<Tabs.List mb={6}>
-					<Tabs.Trigger value="settings">Настройки LLM</Tabs.Trigger>
-					<Tabs.Trigger value="provider">API Provider</Tabs.Trigger>
+			<Tabs value={activeTab} onChange={(v) => setActiveTab((v as TabType) ?? 'settings')} variant="outline">
+				<Tabs.List mb="md">
+					<Tabs.Tab value="settings">Настройки LLM</Tabs.Tab>
+					<Tabs.Tab value="provider">API Provider</Tabs.Tab>
 				</Tabs.List>
 
-				<Tabs.Content value="settings" p={0}>
+				<Tabs.Panel value="settings">
 					<SamplerSettingsTab />
-				</Tabs.Content>
-				<Tabs.Content value="provider">
+				</Tabs.Panel>
+				<Tabs.Panel value="provider">
 					<APIProviderTab />
-				</Tabs.Content>
-			</Tabs.Root>
+				</Tabs.Panel>
+			</Tabs>
 		</Drawer>
 	);
 };

@@ -1,4 +1,4 @@
-import { Flex, Text } from '@chakra-ui/react';
+import { Group, Paper, Text } from '@mantine/core';
 import { type InteractionMessage } from '@shared/types/agent-card';
 import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
 
@@ -30,39 +30,41 @@ export const SwipeControls: React.FC<SwipeControlsProps> = ({ data }) => {
 	};
 
 	return (
-		<Flex
-			ml="auto"
-			align="center"
-			gap={2}
-			p={2}
-			backgroundColor="white"
-			borderRadius="lg"
-			borderWidth={1}
-			borderColor="gray.200"
+		<Paper
+			withBorder
+			radius="md"
+			p={6}
+			style={{
+				marginLeft: 'auto',
+				borderColor: 'var(--mantine-color-gray-3)',
+				backgroundColor: 'white',
+			}}
 		>
-			<IconButtonWithTooltip
-				size="xs"
-				variant="ghost"
-				colorPalette="purple"
-				disabled={isFirstSwipe}
-				icon={<LuArrowLeft />}
-				tooltip="Go back"
-				onClick={() => handleSwipeChange('left')}
-			/>
-
-			<Text fontSize="xs" opacity={0.7}>
-				{currentSwipeIndex + 1} / {data.swipes.length}
-			</Text>
-			{(!isLastSwipe || !data.isIntro) && (
+			<Group gap="xs" align="center">
 				<IconButtonWithTooltip
 					size="xs"
 					variant="ghost"
 					colorPalette="purple"
-					icon={<LuArrowRight />}
-					tooltip="Go forward"
-					onClick={() => handleSwipeChange('right')}
+					disabled={isFirstSwipe}
+					icon={<LuArrowLeft />}
+					tooltip="Go back"
+					onClick={() => handleSwipeChange('left')}
 				/>
-			)}
-		</Flex>
+
+				<Text size="xs" c="dimmed">
+					{currentSwipeIndex + 1} / {data.swipes.length}
+				</Text>
+				{(!isLastSwipe || !data.isIntro) && (
+					<IconButtonWithTooltip
+						size="xs"
+						variant="ghost"
+						colorPalette="purple"
+						icon={<LuArrowRight />}
+						tooltip="Go forward"
+						onClick={() => handleSwipeChange('right')}
+					/>
+				)}
+			</Group>
+		</Paper>
 	);
 };

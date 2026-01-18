@@ -1,6 +1,5 @@
-import { Box, Flex } from '@chakra-ui/react';
+import { Group, Select } from '@mantine/core';
 import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
-import { Select } from 'chakra-react-select';
 import { LuPlus, LuCopy, LuTrash2, LuUpload, LuDownload } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -53,14 +52,16 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 	return (
 		<>
 			<input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={handleFileChange} />
-			<Flex gap={2}>
+			<Group gap="sm" align="flex-end" wrap="nowrap">
 				<Select
-					value={settings?.selectedId ? options.find((option) => option.value === settings.selectedId) : null}
-					onChange={(selected) => model.updateSettingsFx({ ...settings, selectedId: selected?.value })}
-					options={options}
+					data={options}
+					value={settings?.selectedId ?? null}
+					onChange={(selectedId) => model.updateSettingsFx({ ...settings, selectedId: selectedId ?? null } as Partial<SettingsType>)}
+					comboboxProps={{ withinPortal: false }}
+					style={{ flex: 1 }}
 				/>
 
-				<Box display="flex" gap={2} alignSelf="flex-end">
+				<Group gap="xs" wrap="nowrap">
 					<IconButtonWithTooltip
 						tooltip={labels.createTooltip}
 						icon={<LuPlus />}
@@ -81,12 +82,7 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 						disabled={!settings.selectedId}
 						onClick={() => model.deleteItemFx(settings.selectedId as string)}
 					/>
-					<IconButtonWithTooltip
-						tooltip="Импортировать"
-						icon={<LuUpload />}
-						aria-label="Import"
-						onClick={handleImport}
-					/>
+					<IconButtonWithTooltip tooltip="Импортировать" icon={<LuUpload />} aria-label="Import" onClick={handleImport} />
 					<IconButtonWithTooltip
 						tooltip="Экспортировать"
 						icon={<LuDownload />}
@@ -94,8 +90,8 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 						disabled={!settings.selectedId}
 						onClick={handleExport}
 					/>
-				</Box>
-			</Flex>
+				</Group>
+			</Group>
 		</>
 	);
 };

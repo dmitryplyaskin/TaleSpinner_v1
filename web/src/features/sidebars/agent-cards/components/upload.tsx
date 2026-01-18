@@ -1,43 +1,52 @@
-import { type FileUploadFileAcceptDetails, FileUploadRootProvider, useFileUpload } from '@chakra-ui/react';
+import { useRef } from 'react';
 import { LuUpload } from 'react-icons/lu';
 
 import { uploadAgentCardFilesFx } from '@model/files';
-import { FileUploadRoot, FileUploadTrigger } from '@ui/chakra-core-ui/file-upload';
-import { toaster } from '@ui/chakra-core-ui/toaster';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { toaster } from '@ui/toaster';
 
 export const Upload = () => {
-	const fileUpload = useFileUpload({
-		maxFiles: 10,
-		maxFileSize: 10000,
-	});
+	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-	const handleFileChange = async (details: FileUploadFileAcceptDetails) => {
-		if (!details.files?.length) return;
+	const handleFileChange = async (files: FileList | null) => {
+		if (!files?.length) return;
 
 		try {
-			uploadAgentCardFilesFx(Array.from(details.files));
+			const arr = Array.from(files);
+			if (arr.length > 10) {
+				toaster.error({ title: 'Слишком много файлов (максимум 10)' });
+				return;
+			}
+			const tooLarge = arr.find((f) => f.size > 10_000);
+			if (tooLarge) {
+				toaster.error({ title: 'Файл слишком большой (максимум 10KB)' });
+				return;
+			}
+
+			uploadAgentCardFilesFx(arr);
 		} catch {
 			toaster.error({ title: 'Не удалось загрузить файлы' });
 		}
-
-		fileUpload.clearFiles();
+		if (fileInputRef.current) fileInputRef.current.value = '';
 	};
 
 	return (
-		<FileUploadRootProvider value={fileUpload}>
-			<FileUploadRoot
-				maxFiles={10}
-				onFileAccept={handleFileChange}
-				accept={{
-					'image/png': ['.png'],
-					'application/json': ['.json'],
-				}}
-			>
-				<FileUploadTrigger>
-					<IconButtonWithTooltip icon={<LuUpload />} tooltip="Импорт" aria-label="Импорт" variant="ghost" />
-				</FileUploadTrigger>
-			</FileUploadRoot>
-		</FileUploadRootProvider>
+		<>
+			<input
+				ref={fileInputRef}
+				type="file"
+				style={{ display: 'none' }}
+				multiple
+				accept=".png,.json,application/json,image/png"
+				onChange={(e) => handleFileChange(e.currentTarget.files)}
+			/>
+			<IconButtonWithTooltip
+				icon={<LuUpload />}
+				tooltip="Импорт"
+				aria-label="Импорт"
+				variant="ghost"
+				onClick={() => fileInputRef.current?.click()}
+			/>
+		</>
 	);
 };

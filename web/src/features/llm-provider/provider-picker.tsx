@@ -1,10 +1,8 @@
-import { Button, HStack, Input, Stack, Text, VStack } from "@chakra-ui/react";
-import { Select } from "chakra-react-select";
+import { Button, Group, Input, Select, Stack, Text, TextInput } from "@mantine/core";
 import { useUnit } from "effector-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { llmProviderModel } from "@model/provider";
-import { Field } from "@ui/chakra-core-ui/field";
 
 import { TokenManager } from "./token-manager";
 
@@ -94,87 +92,87 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
   };
 
   return (
-    <VStack gap={4} align="stretch">
-      <Field label="API provider">
+    <Stack gap="lg">
+      <Input.Wrapper label="API provider">
         <Select
-          options={providerOptions}
-          value={providerOptions.find((o) => o.value === activeProviderId) ?? null}
-          onChange={(opt) => {
-            const providerId = (opt?.value ?? "openrouter") as LlmProviderId;
+          data={providerOptions}
+          value={activeProviderId}
+          onChange={(value) => {
+            const providerId = (value ?? "openrouter") as LlmProviderId;
             selectProvider({ scope, scopeId, providerId });
           }}
           placeholder="Select provider..."
+          searchable
         />
-      </Field>
+      </Input.Wrapper>
 
-      <Stack gap={2}>
-        <HStack justify="space-between">
-          <Text fontWeight="semibold">Tokens</Text>
-          <Button size="sm" variant="outline" onClick={() => openTokenManager(true)}>
+      <Stack gap="xs">
+        <Group justify="space-between">
+          <Text fw={600}>Tokens</Text>
+          <Button size="xs" variant="outline" onClick={() => openTokenManager(true)}>
             Manage tokens
           </Button>
-        </HStack>
+        </Group>
+
         <Select
-          options={tokenOptions}
-          value={tokenOptions.find((o) => o.value === activeTokenId) ?? null}
-          onChange={(opt) => {
-            selectToken({ scope, scopeId, tokenId: (opt?.value ?? null) as string | null });
-          }}
+          data={tokenOptions}
+          value={activeTokenId}
+          onChange={(value) => selectToken({ scope, scopeId, tokenId: value ?? null })}
           placeholder={tokens.length ? "Select token..." : "No tokens"}
-          isClearable
+          clearable
+          searchable
         />
         <TokenManager providerId={activeProviderId} scope={scope} scopeId={scopeId} />
       </Stack>
 
-      <Stack gap={3} mt={2}>
-        <Text fontWeight="semibold">Provider config</Text>
+      <Stack gap="sm">
+        <Text fw={600}>Provider config</Text>
 
         {activeProviderId === "custom_openai" && (
-          <Field label="Base URL">
-            <Input
-              value={String(configDraft.baseUrl ?? "")}
-              onChange={(e) => setConfigDraft((s) => ({ ...s, baseUrl: e.target.value }))}
-              placeholder="http://localhost:1234/v1"
-            />
-          </Field>
+          <TextInput
+            label="Base URL"
+            value={String(configDraft.baseUrl ?? "")}
+            onChange={(e) => setConfigDraft((s) => ({ ...s, baseUrl: e.currentTarget.value }))}
+            placeholder="http://localhost:1234/v1"
+          />
         )}
 
-        <Field label="Default model (optional)">
-          <Input
-            value={String(configDraft.defaultModel ?? "")}
-            onChange={(e) => setConfigDraft((s) => ({ ...s, defaultModel: e.target.value }))}
-            placeholder="gpt-4o-mini"
-          />
-        </Field>
-
-        <HStack justify="flex-end">
-          <Button size="sm" variant="outline" onClick={saveConfig}>
-            Save config
-          </Button>
-        </HStack>
-      </Stack>
-
-      <Stack gap={2} mt={2}>
-        <HStack justify="space-between">
-          <Text fontWeight="semibold">Model</Text>
-          <Button size="sm" variant="outline" onClick={loadModels} disabled={!canLoadModels}>
-            Load models
-          </Button>
-        </HStack>
-
-        <Select
-          options={modelOptions}
-          value={modelOptions.find((o) => o.value === activeModel) ?? null}
-          onChange={(opt) => selectModel({ scope, scopeId, model: (opt?.value ?? null) as string | null })}
-          placeholder={canLoadModels ? "Select model..." : "Select token first"}
-          isClearable
+        <TextInput
+          label="Default model (optional)"
+          value={String(configDraft.defaultModel ?? "")}
+          onChange={(e) => setConfigDraft((s) => ({ ...s, defaultModel: e.currentTarget.value }))}
+          placeholder="gpt-4o-mini"
         />
 
-        <Text fontSize="sm" opacity={0.75}>
+        <Group justify="flex-end">
+          <Button size="xs" variant="outline" onClick={saveConfig}>
+            Save config
+          </Button>
+        </Group>
+      </Stack>
+
+      <Stack gap="xs">
+        <Group justify="space-between">
+          <Text fw={600}>Model</Text>
+          <Button size="xs" variant="outline" onClick={loadModels} disabled={!canLoadModels}>
+            Load models
+          </Button>
+        </Group>
+
+        <Select
+          data={modelOptions}
+          value={activeModel}
+          onChange={(value) => selectModel({ scope, scopeId, model: value ?? null })}
+          placeholder={canLoadModels ? "Select model..." : "Select token first"}
+          clearable
+          searchable
+        />
+
+        <Text size="sm" c="dimmed">
           Если модель не выбрана, будет использоваться `defaultModel` провайдера (если задан) или дефолт провайдера.
         </Text>
       </Stack>
-    </VStack>
+    </Stack>
   );
 };
 

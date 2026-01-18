@@ -1,19 +1,21 @@
 import { LuEllipsisVertical } from 'react-icons/lu';
 
-import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@ui/chakra-core-ui/menu';
+import { Menu } from '@mantine/core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 export const SendActionMenu = () => {
 	return (
-		<MenuRoot>
-			<MenuTrigger asChild>
-				<IconButtonWithTooltip tooltip="menu" icon={<LuEllipsisVertical />} />
-			</MenuTrigger>
-			<MenuContent>
-				<MenuItem value="send-as-user">Send as User</MenuItem>
-				<MenuItem value="send-as-assistant">Send as Assistant</MenuItem>
-				<MenuItem value="send-as-system">Send as System</MenuItem>
-			</MenuContent>
-		</MenuRoot>
+		<Menu withinPortal zIndex={4000} position="top-end">
+			<Menu.Target>
+				<span>
+					<IconButtonWithTooltip tooltip="menu" icon={<LuEllipsisVertical />} aria-label="send actions" />
+				</span>
+			</Menu.Target>
+			<Menu.Dropdown>
+				<Menu.Item>Send as User</Menu.Item>
+				<Menu.Item>Send as Assistant</Menu.Item>
+				<Menu.Item>Send as System</Menu.Item>
+			</Menu.Dropdown>
+		</Menu>
 	);
 };

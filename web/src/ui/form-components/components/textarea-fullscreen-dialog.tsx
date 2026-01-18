@@ -1,15 +1,6 @@
-import { Button, Tabs, Textarea, type TextareaProps } from '@chakra-ui/react';
+import { Button, Tabs, Textarea, type TextareaProps } from '@mantine/core';
 
-import {
-	DialogActionTrigger,
-	DialogBody,
-	DialogCloseTrigger,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogRoot,
-	DialogTitle,
-} from '@ui/chakra-core-ui/dialog';
+import { Dialog } from '@ui/dialog';
 import { RenderMd } from '@ui/render-md';
 
 interface TextareaFullscreenDialogProps {
@@ -28,43 +19,37 @@ export const TextareaFullscreenDialog: React.FC<TextareaFullscreenDialogProps> =
 	textareaProps,
 }) => {
 	return (
-		<DialogRoot open={open} onOpenChange={(details) => onOpenChange(details.open)} size="full">
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Редактирование</DialogTitle>
-				</DialogHeader>
+		<Dialog
+			open={open}
+			onOpenChange={onOpenChange}
+			title="Редактирование"
+			size="cover"
+			footer={
+				<Button variant="subtle" onClick={() => onOpenChange(false)}>
+					Закрыть
+				</Button>
+			}
+		>
+			<Tabs defaultValue="edit" variant="outline">
+				<Tabs.List>
+					<Tabs.Tab value="edit">Редактировать</Tabs.Tab>
+					<Tabs.Tab value="preview">Предпросмотр</Tabs.Tab>
+				</Tabs.List>
 
-				<DialogBody>
-					<Tabs.Root defaultValue="edit" variant="plain" size="sm" h="calc(100vh - 210px)">
-						<Tabs.List bg="bg.muted" rounded="l3" p="1">
-							<Tabs.Trigger value="edit">Редактировать</Tabs.Trigger>
-							<Tabs.Trigger value="preview">Предпросмотр</Tabs.Trigger>
-							<Tabs.Indicator rounded="l2" />
-						</Tabs.List>
+				<Tabs.Panel value="edit" pt="md">
+					<Textarea
+						value={value}
+						onChange={(e) => onChange(e.currentTarget.value)}
+						minRows={10}
+						autosize
+						{...textareaProps}
+					/>
+				</Tabs.Panel>
 
-						<Tabs.Content value="edit" pt="4" h="100%">
-							<Textarea
-								value={value}
-								onChange={(e) => onChange(e.target.value)}
-								h="100%"
-								minH="calc(100vh - 300px)"
-								{...textareaProps}
-							/>
-						</Tabs.Content>
-
-						<Tabs.Content value="preview" pt="4">
-							<RenderMd content={value} />
-						</Tabs.Content>
-					</Tabs.Root>
-				</DialogBody>
-
-				<DialogFooter>
-					<DialogActionTrigger asChild>
-						<Button>Закрыть</Button>
-					</DialogActionTrigger>
-				</DialogFooter>
-				<DialogCloseTrigger />
-			</DialogContent>
-		</DialogRoot>
+				<Tabs.Panel value="preview" pt="md">
+					<RenderMd content={value} />
+				</Tabs.Panel>
+			</Tabs>
+		</Dialog>
 	);
 };

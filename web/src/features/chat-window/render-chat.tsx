@@ -1,4 +1,4 @@
-import { VStack } from '@chakra-ui/react';
+import { Stack } from '@mantine/core';
 import { useList } from 'effector-react';
 
 import { $currentChat } from '@model/chat-service';
@@ -11,8 +11,8 @@ export const RenderChat = () => {
 	if (!messages) return null;
 
 	return (
-		<VStack gap={4} align="stretch">
+		<Stack gap="md">
 			{messages}
-		</VStack>
+		</Stack>
 	);
 };

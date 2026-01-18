@@ -1,4 +1,4 @@
-import { Box, Flex, Heading } from '@chakra-ui/react';
+import { Box, Stack, Title } from '@mantine/core';
 import { type AppSettings } from '@shared/types/app-settings';
 import { useUnit } from 'effector-react';
 import React, { useEffect } from 'react';
@@ -40,13 +40,13 @@ export const AppSettingsSidebar: React.FC = () => {
 	return (
 		<Drawer name="appSettings" title="Настройки приложения">
 			<FormProvider {...methods}>
-				<Flex direction="column" gap={6}>
+				<Stack gap="lg">
 					<Box>
-						<Heading size="md" mb={4}>
+						<Title order={4} mb="md">
 							Основные настройки
-						</Heading>
+						</Title>
 
-						<Flex direction="column" gap={4}>
+						<Stack gap="md">
 							{/* Language selector */}
 							<FormSelect
 								name="language"
@@ -68,9 +68,9 @@ export const AppSettingsSidebar: React.FC = () => {
 								label="Автовыбор персоны"
 								infoTip="Автоматически выбирать актуальную персону в текущем чате"
 							/>
-						</Flex>
+						</Stack>
 					</Box>
-				</Flex>
+				</Stack>
 			</FormProvider>
 		</Drawer>
 	);

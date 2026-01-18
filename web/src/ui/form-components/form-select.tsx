@@ -1,16 +1,27 @@
-import { Box } from '@chakra-ui/react';
-import { Select, type Props } from 'chakra-react-select';
+import { Group, Input, Select, type InputWrapperProps, type SelectProps } from '@mantine/core';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+import { InfoTip } from '@ui/info-tip';
 
-import { Field, type FieldProps } from '../chakra-core-ui/field';
+type SelectOption = { value: string; label: string };
+
+type FormSelectInnerProps = Omit<SelectProps, 'data' | 'value' | 'onChange' | 'label' | 'error'> & {
+	/**
+	 * Legacy-совместимость с прежним API селекта (options + portal-настройки).
+	 * Эти поля мы используем как источник данных, а не прокидываем напрямую в Mantine Select.
+	 */
+	options?: SelectOption[];
+	/** Legacy no-op: оставлено, чтобы не ломать текущие вызовы. */
+	menuPortalTarget?: HTMLElement | null;
+	/** Legacy no-op: оставлено, чтобы не ломать текущие вызовы. */
+	menuPlacement?: string;
+};
 
 type FormSelectProps = {
 	name: string;
 	label: string;
-	selectProps?: Props<any, any, any>;
-	fieldProps?: FieldProps;
+	selectProps?: FormSelectInnerProps;
+	fieldProps?: Omit<InputWrapperProps, 'children'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -33,22 +44,25 @@ export const FormSelect: React.FC<FormSelectProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
+	const { options = [], menuPortalTarget: _menuPortalTarget, menuPlacement: _menuPlacement, ...mantineSelectProps } =
+		selectProps ?? {};
+
 	return (
-		<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
+		<Input.Wrapper {...fieldProps} label={labelComponent} error={errorMessage || undefined}>
 			<Select
-				value={selectProps?.options?.find((option) => option.value === value)}
-				onChange={(selected) => onChange(selected?.value)}
-				// classNamePrefix="crs"
-				{...selectProps}
+				{...mantineSelectProps}
+				data={options}
+				value={value ?? null}
+				onChange={(nextValue) => onChange(nextValue ?? '')}
 			/>
-		</Field>
+		</Input.Wrapper>
 	);
 };

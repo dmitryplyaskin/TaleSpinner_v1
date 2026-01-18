@@ -1,4 +1,4 @@
-import { Box, Collapsible, Flex, Text, Textarea } from '@chakra-ui/react';
+import { Box, Collapse, Group, Paper, Text, Textarea, UnstyledButton } from '@mantine/core';
 import { type SwipeComponent } from '@shared/types/agent-card';
 import { useEffect, useRef, useState } from 'react';
 import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
@@ -64,16 +64,7 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 	};
 
 	return (
-		<Box
-			position="relative"
-			maxW="full"
-			w={'100%'}
-			backgroundColor="white"
-			borderRadius="lg"
-			p={4}
-			borderWidth={1}
-			borderColor="gray.200"
-		>
+		<Paper withBorder radius="md" p="md" style={{ position: 'relative', width: '100%', borderColor: 'var(--mantine-color-gray-3)' }}>
 			<ActionBar
 				isEditing={isEditing}
 				onOpenEdit={handleOpenEdit}
@@ -81,34 +72,34 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 				onConfirmEdit={handleConfirmEdit}
 				onDelete={handleDelete}
 			/>
-			<Collapsible.Root unmountOnExit onOpenChange={(d) => setIsOpen(d.open)} open={isOpen}>
-				<Collapsible.Trigger>
-					<Flex align="center" gap={2}>
-						<Text fontSize="sm" fontWeight="semibold" color="gray.800">
-							Reasoning
-						</Text>
-						{isOpen ? <LuChevronUp /> : <LuChevronDown />}
-					</Flex>
-				</Collapsible.Trigger>
-				<Collapsible.Content>
-					<Box padding="4" borderWidth="1px" mt={2}>
-						{isEditing ? (
-							<Textarea
-								ref={textareaRef}
-								w="full"
-								rows={1}
-								resize="none"
-								overflow="hidden"
-								defaultValue={initialContentRef.current}
-								spellCheck={false}
-								onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
-							/>
-						) : (
-							<RenderMd content={data.content} />
-						)}
-					</Box>
-				</Collapsible.Content>
-			</Collapsible.Root>
-		</Box>
+			<UnstyledButton
+				onClick={() => setIsOpen((v) => !v)}
+				style={{ width: '100%', display: 'block' }}
+				aria-expanded={isOpen}
+			>
+				<Group gap="xs" align="center">
+					<Text size="sm" fw={600}>
+						Reasoning
+					</Text>
+					{isOpen ? <LuChevronUp /> : <LuChevronDown />}
+				</Group>
+			</UnstyledButton>
+			<Collapse in={isOpen}>
+				<Box mt="xs" p="sm" style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8 }}>
+					{isEditing ? (
+						<Textarea
+							ref={textareaRef}
+							defaultValue={initialContentRef.current}
+							spellCheck={false}
+							autosize
+							minRows={1}
+							onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
+						/>
+					) : (
+						<RenderMd content={data.content} />
+					)}
+				</Box>
+			</Collapse>
+		</Paper>
 	);
 };

@@ -1,65 +1,56 @@
-import { Button, Tabs } from '@chakra-ui/react';
+import { Avatar, Button, Group, Modal, Tabs } from '@mantine/core';
+import { useState } from 'react';
 import { LuInfo } from 'react-icons/lu';
 
-import { Avatar } from '@ui/chakra-core-ui/avatar';
-import {
-	DialogActionTrigger,
-	DialogBody,
-	DialogCloseTrigger,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogRoot,
-	DialogTitle,
-	DialogTrigger,
-} from '@ui/chakra-core-ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { RenderMd } from '@ui/render-md';
 
 export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: string; avatar?: string }) => {
 	if (!note) return null;
 
+	const [opened, setOpened] = useState(false);
+
 	return (
-		<DialogRoot size={'lg'} scrollBehavior="inside">
-			<DialogTrigger asChild>
-				<IconButtonWithTooltip
-					aria-label="Показать заметку автора"
-					variant="ghost"
-					size="sm"
-					tooltip="Показать заметку автора"
-					icon={<LuInfo />}
-				/>
-			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle display="flex" gap="2" alignItems="center">
-						{avatar && <Avatar size="lg" src={`http://localhost:5000${avatar}`} name={name} alignSelf="flex-start" />}
-						{name}
-					</DialogTitle>
-				</DialogHeader>
+		<>
+			<IconButtonWithTooltip
+				aria-label="Показать заметку автора"
+				variant="ghost"
+				size="sm"
+				tooltip="Показать заметку автора"
+				icon={<LuInfo />}
+				onClick={() => setOpened(true)}
+			/>
 
-				<DialogBody>
-					<Tabs.Root defaultValue="markdown" variant="plain" size="sm">
-						<Tabs.List bg="bg.muted" rounded="l3" p="1">
-							<Tabs.Trigger value="markdown">Markdown</Tabs.Trigger>
+			<Modal
+				opened={opened}
+				onClose={() => setOpened(false)}
+				title={
+					<Group gap="sm" wrap="nowrap">
+						{avatar && <Avatar size="md" src={`http://localhost:5000${avatar}`} name={name} />}
+						<span>{name}</span>
+					</Group>
+				}
+				size="lg"
+				zIndex={3200}
+				withinPortal
+			>
+				<Tabs defaultValue="markdown" variant="outline">
+					<Tabs.List mb="md">
+						<Tabs.Tab value="markdown">Markdown</Tabs.Tab>
+						<Tabs.Tab value="raw">Raw</Tabs.Tab>
+					</Tabs.List>
+					<Tabs.Panel value="markdown">
+						<RenderMd content={note} />
+					</Tabs.Panel>
+					<Tabs.Panel value="raw">{note}</Tabs.Panel>
+				</Tabs>
 
-							<Tabs.Trigger value="raw">Raw</Tabs.Trigger>
-							<Tabs.Indicator rounded="l2" />
-						</Tabs.List>
-						<Tabs.Content value="markdown">
-							<RenderMd content={note} />
-						</Tabs.Content>
-
-						<Tabs.Content value="raw">{note}</Tabs.Content>
-					</Tabs.Root>
-				</DialogBody>
-				<DialogFooter>
-					<DialogActionTrigger asChild>
-						<Button variant="outline">Close</Button>
-					</DialogActionTrigger>
-				</DialogFooter>
-				<DialogCloseTrigger />
-			</DialogContent>
-		</DialogRoot>
+				<Group justify="flex-end" mt="md">
+					<Button variant="outline" onClick={() => setOpened(false)}>
+						Close
+					</Button>
+				</Group>
+			</Modal>
+		</>
 	);
 };

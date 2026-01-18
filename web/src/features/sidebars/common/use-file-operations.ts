@@ -2,7 +2,7 @@ import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/
 import { useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { toaster } from '@ui/chakra-core-ui/toaster';
+import { toaster } from '@ui/toaster';
 
 interface UseFileOperationsProps<SettingsType extends CommonModelSettingsType, ItemType extends CommonModelItemType> {
 	model: {

@@ -1,7 +1,7 @@
 import { createEffect, sample } from 'effector';
 
 import { type CardUploadResponse } from '@model/files/types';
-import { toaster } from '@ui/chakra-core-ui/toaster';
+import { toaster } from '@ui/toaster';
 
 import { createNewAgentCard, createNewMessage, createNewSwipe } from '../../utils/creation-helper-agent-card';
 import { uploadAgentCardFilesFx } from '../files/files';

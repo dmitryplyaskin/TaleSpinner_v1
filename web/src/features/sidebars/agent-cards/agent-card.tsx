@@ -1,10 +1,10 @@
-import { Badge, Card, HStack, Stack, Text, Wrap } from '@chakra-ui/react';
+import { Avatar, Badge, Box, Card, Group, Stack, Text } from '@mantine/core';
 import { type AgentCard as AgentCardType } from '@shared/types/agent-card';
+import type { MouseEvent } from 'react';
 import { LuPencil, LuTrash2, LuCopy } from 'react-icons/lu';
 
 import { agentCardsModel , setSelectedAgentCardForEdit, setIsEditAgentCardModalOpen } from '@model/agent-cards';
 import { setCurrentAgentCard } from '@model/chat-service';
-import { Avatar } from '@ui/chakra-core-ui/avatar';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 
@@ -20,52 +20,52 @@ export const AgentCard: React.FC<Props> = ({ data }) => {
 		setCurrentAgentCard(data);
 	};
 
-	const handleEditClick = (e: React.MouseEvent) => {
+	const handleEditClick = (e: MouseEvent) => {
 		e.stopPropagation();
 		setSelectedAgentCardForEdit(data);
 		setIsEditAgentCardModalOpen(true);
 	};
 
-	const handleDeleteClick = (e: React.MouseEvent) => {
+	const handleDeleteClick = (e: MouseEvent) => {
 		e.stopPropagation();
 		agentCardsModel.deleteItemFx(data.id);
 	};
 
-	const handleDuplicateClick = (e: React.MouseEvent) => {
+	const handleDuplicateClick = (e: MouseEvent) => {
 		e.stopPropagation();
 		agentCardsModel.duplicateItemFx(data);
 	};
 
 	return (
-		<Card.Root
-			w="100%"
-			onClick={handleSelect}
-			_hover={{ cursor: 'pointer', borderColor: 'purple.600' }}
-			position="relative"
-		>
-			<Card.Body p={4}>
-				<HStack gap="2">
-					<Avatar size="lg" src={`http://localhost:5000${data.avatarPath}`} name={data.title} alignSelf="flex-start" />
-					<Stack gap="2">
-						<Text fontWeight="semibold" textStyle="md">
-							{data.name}
-						</Text>
+		<Card withBorder padding="md" onClick={handleSelect} style={{ cursor: 'pointer', position: 'relative' }}>
+			<Group gap="sm" wrap="nowrap" align="flex-start">
+				<Avatar
+					size="lg"
+					src={data.avatarPath ? `http://localhost:5000${data.avatarPath}` : undefined}
+					name={data.title}
+				/>
+				<Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+					<Text fw={600} truncate>
+						{data.name}
+					</Text>
 
-						<Text color="fg.muted" textStyle="xs" lineClamp={2}>
-							{data.metadata?.creator_notes}
-						</Text>
+					<Text c="dimmed" size="xs" lineClamp={2}>
+						{data.metadata?.creator_notes}
+					</Text>
 
-						{data.metadata?.tags && (
-							<Wrap gap="1">
-								{data.metadata.tags.map((item: string) => (
-									<Badge variant="outline" key={item}>
-										{item}
-									</Badge>
-								))}
-							</Wrap>
-						)}
-					</Stack>
-					<HStack position="absolute" top="2" right="2" gap="1">
+					{data.metadata?.tags && (
+						<Group gap={4} wrap="wrap">
+							{data.metadata.tags.map((item: string) => (
+								<Badge variant="outline" key={item}>
+									{item}
+								</Badge>
+							))}
+						</Group>
+					)}
+				</Stack>
+
+				<Box style={{ position: 'absolute', top: 8, right: 8 }}>
+					<Group gap={4} wrap="nowrap">
 						<AuthorNoteDialog note={data.metadata?.creator_notes} name={data.name} avatar={data.avatarPath} />
 						<IconButtonWithTooltip
 							aria-label="Дублировать чат"
@@ -91,9 +91,9 @@ export const AgentCard: React.FC<Props> = ({ data }) => {
 							onClick={handleDeleteClick}
 							icon={<LuTrash2 />}
 						/>
-					</HStack>
-				</HStack>
-			</Card.Body>
-		</Card.Root>
+					</Group>
+				</Box>
+			</Group>
+		</Card>
 	);
 };

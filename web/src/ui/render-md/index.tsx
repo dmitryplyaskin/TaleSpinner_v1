@@ -1,4 +1,4 @@
-import { Box, Code, Link, Text } from '@chakra-ui/react';
+import { Anchor, Box, Code, Text, type BoxProps } from '@mantine/core';
 import Markdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -8,7 +8,6 @@ import remarkGfm from 'remark-gfm';
 import { quotePlugin } from './quote-plugin';
 import { sanitizeSchema } from './sanitize-schema';
 
-import type { BoxProps } from '@chakra-ui/react';
 import type { Components } from 'react-markdown';
 
 type RenderMdVariant = 'default' | 'compact';
@@ -55,12 +54,11 @@ export const RenderMd = ({ content, variant = 'default', containerProps }: Rende
 
 const QuoteComponent: NonNullable<Components['q']> = (props) => {
 	const { node: _node, className, ...rest } = props;
-	// Chakra <Text> типизирован как <p>, поэтому для <q> используем нативный элемент
 	// Disable UA quote rendering: we keep original quote characters in text.
 	return (
 		<q
 			className={joinClassNames('ts-md__quote', className)}
-			style={{ color: 'var(--chakra-colors-orange-500)', quotes: 'none' }}
+			style={{ color: 'var(--mantine-color-orange-6)', quotes: 'none' }}
 			{...rest}
 		/>
 	);
@@ -77,7 +75,7 @@ function getComponents(variant: RenderMdVariant): Components {
 			const { node: _node, href, target, rel, ...rest } = props;
 			const nextRel = target === '_blank' ? mergeRel(rel, ['noopener', 'noreferrer']) : rel;
 
-			return <Link href={href} target={target} rel={nextRel} {...rest} />;
+			return <Anchor href={href} target={target} rel={nextRel} {...rest} />;
 		},
 		img(props) {
 			const { node: _node, style, ...rest } = props;
@@ -85,7 +83,7 @@ function getComponents(variant: RenderMdVariant): Components {
 				<img
 					{...rest}
 					style={{
-						borderRadius: 'var(--chakra-radii-lg)',
+						borderRadius: 'var(--mantine-radius-md)',
 						...style,
 						display: 'block',
 						maxWidth: '100%',
@@ -97,11 +95,11 @@ function getComponents(variant: RenderMdVariant): Components {
 		},
 		p(props) {
 			const { node: _node, ...rest } = props;
-			return <Text my={variant === 'compact' ? 1 : 2} {...rest} />;
+			return <Text my={variant === 'compact' ? 4 : 8} {...rest} />;
 		},
 		pre(props) {
 			const { node: _node, ...rest } = props;
-			return <Code {...rest} />;
+			return <Code block {...rest} />;
 		},
 	};
 }

@@ -1,16 +1,14 @@
-import { Box, Input, type InputProps } from '@chakra-ui/react';
+import { Group, Input, TextInput, type InputWrapperProps, type TextInputProps } from '@mantine/core';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
-
-import { Field, type FieldProps } from '../chakra-core-ui/field';
+import { InfoTip } from '@ui/info-tip';
 
 type FormInputProps = {
 	name: string;
 	label: string;
 	placeholder?: string;
-	inputProps?: InputProps;
-	fieldProps?: FieldProps;
+	inputProps?: Omit<TextInputProps, 'value' | 'defaultValue'>;
+	fieldProps?: Omit<InputWrapperProps, 'children'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -34,18 +32,18 @@ export const FormInput: React.FC<FormInputProps> = ({
 		...containerProps,
 	});
 
-	const errorMessage = <>{errors[name]?.message || ''}</>;
+	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 
 	const labelComponent = (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
 	return (
-		<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
-			<Input {...inputProps} {...field} placeholder={placeholder} />
-		</Field>
+		<Input.Wrapper {...fieldProps} label={labelComponent} error={errorMessage || undefined}>
+			<TextInput {...inputProps} {...field} value={field.value ?? ''} placeholder={placeholder} />
+		</Input.Wrapper>
 	);
 };

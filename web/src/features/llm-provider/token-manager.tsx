@@ -1,4 +1,4 @@
-import { Button, Flex, Input, Stack, Text } from "@chakra-ui/react";
+import { Button, Divider, Flex, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
 import { useUnit } from "effector-react";
 import { useMemo, useState } from "react";
 
@@ -105,7 +105,7 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
       size="lg"
       footer={
         <Flex justify="flex-end" gap={2}>
-          <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+          <Button variant="subtle" onClick={() => handleOpenChange(false)}>
             Закрыть
           </Button>
         </Flex>
@@ -114,36 +114,35 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
       closeOnEscape
       closeOnInteractOutside
     >
-      <Stack gap={3}>
-        <Text fontWeight="semibold">Добавить токен</Text>
-        <Stack direction={{ base: "column", md: "row" }} gap={2}>
-          <Input placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-          <Input
-            placeholder="Token"
-            type="password"
-            value={newToken}
-            onChange={(e) => setNewToken(e.target.value)}
-          />
-          <Button onClick={submitCreate} disabled={!newName.trim() || !newToken.trim()}>
-            Добавить
-          </Button>
+      <Stack gap="sm">
+        <Text fw={600}>Добавить токен</Text>
+        <Stack gap="xs">
+          <TextInput placeholder="Name" value={newName} onChange={(e) => setNewName(e.currentTarget.value)} />
+          <PasswordInput placeholder="Token" value={newToken} onChange={(e) => setNewToken(e.currentTarget.value)} />
+          <Flex justify="flex-end">
+            <Button onClick={submitCreate} disabled={!newName.trim() || !newToken.trim()}>
+              Добавить
+            </Button>
+          </Flex>
         </Stack>
 
-        <Text fontWeight="semibold" mt={3}>
+        <Divider />
+
+        <Text fw={600}>
           Токены для `{providerId}`
         </Text>
 
         {tokens.length === 0 ? (
-          <Text opacity={0.7}>Нет токенов. Добавьте первый токен выше.</Text>
+          <Text c="dimmed">Нет токенов. Добавьте первый токен выше.</Text>
         ) : (
-          <Stack gap={2}>
+          <Stack gap="xs">
             {tokens.map((t) => (
               <Flex key={t.id} gap={2} align="center" justify="space-between">
-                <Stack gap={0}>
-                  <Text fontWeight="medium">
+                <Stack gap={0} style={{ minWidth: 0 }}>
+                  <Text fw={500}>
                     {t.name} {t.id === activeTokenId ? "(active)" : ""}
                   </Text>
-                  <Text fontSize="sm" opacity={0.75}>
+                  <Text size="sm" c="dimmed">
                     {t.tokenHint}
                   </Text>
                 </Stack>
@@ -151,7 +150,7 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
                   <Button size="sm" variant="outline" onClick={() => startEdit(t.id)}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="outline" colorPalette="red" onClick={() => submitDelete(t.id)}>
+                  <Button size="sm" variant="outline" color="red" onClick={() => submitDelete(t.id)}>
                     Delete
                   </Button>
                 </Flex>
@@ -161,20 +160,19 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
         )}
 
         {editing && (
-          <Stack gap={2} mt={4} p={3} borderWidth="1px" borderRadius="md">
-            <Text fontWeight="semibold">Редактировать токен</Text>
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" />
-            <Input
+          <Stack gap="xs" mt="md" p="md" style={{ border: "1px solid var(--mantine-color-gray-3)", borderRadius: 8 }}>
+            <Text fw={600}>Редактировать токен</Text>
+            <TextInput value={editName} onChange={(e) => setEditName(e.currentTarget.value)} placeholder="Name" />
+            <PasswordInput
               value={editToken}
-              onChange={(e) => setEditToken(e.target.value)}
+              onChange={(e) => setEditToken(e.currentTarget.value)}
               placeholder={`New token (leave empty to keep ${editing.tokenHint})`}
-              type="password"
             />
             <Flex justify="flex-end" gap={2}>
-          <Button variant="ghost" onClick={() => setEditingId(null)}>
+              <Button variant="subtle" onClick={() => setEditingId(null)}>
                 Отмена
               </Button>
-          <Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
+              <Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
                 Сохранить
               </Button>
             </Flex>

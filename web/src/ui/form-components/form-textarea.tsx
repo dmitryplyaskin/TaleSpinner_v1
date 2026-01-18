@@ -1,11 +1,10 @@
-import { Textarea, type TextareaProps, Box } from '@chakra-ui/react';
+import { Group, Input, Textarea, type InputWrapperProps, type TextareaProps } from '@mantine/core';
 import { useState } from 'react';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 import { LuExpand } from 'react-icons/lu';
 
-import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
+import { InfoTip } from '@ui/info-tip';
 
-import { Field, type FieldProps } from '../chakra-core-ui/field';
 import { IconButtonWithTooltip } from '../icon-button-with-tooltip';
 
 import { TextareaFullscreenDialog } from './components/textarea-fullscreen-dialog';
@@ -15,7 +14,7 @@ type FormTextareaProps = {
 	label: string;
 	placeholder?: string;
 	textareaProps?: TextareaProps;
-	fieldProps?: FieldProps;
+	fieldProps?: Omit<InputWrapperProps, 'children'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
 };
@@ -42,25 +41,25 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 
 	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
 	const labelComponent = (
-		<Box display="flex" alignItems="center" gap="2">
+		<Group gap={6} wrap="nowrap">
 			{label}
 			<IconButtonWithTooltip
 				aria-label="Открыть в полном экране"
 				icon={<LuExpand />}
-				size="xs"
+				size="sm"
 				variant="outline"
 				tooltip="Открыть в полном экране"
 				onClick={() => setIsFullscreenOpen(true)}
 			/>
 			{infoTip && <InfoTip content={infoTip} />}
-		</Box>
+		</Group>
 	);
 
 	return (
 		<>
-			<Field {...fieldProps} label={labelComponent} invalid={!!errors[name]} errorText={errorMessage}>
-				<Textarea {...textareaProps} {...field} placeholder={placeholder} />
-			</Field>
+			<Input.Wrapper {...fieldProps} label={labelComponent} error={errorMessage || undefined}>
+				<Textarea {...textareaProps} {...field} value={field.value ?? ''} placeholder={placeholder} />
+			</Input.Wrapper>
 
 			<TextareaFullscreenDialog
 				open={isFullscreenOpen}

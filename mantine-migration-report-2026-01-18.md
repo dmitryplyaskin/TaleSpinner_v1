@@ -7,17 +7,99 @@
 
 ### Контекст и текущая архитектура UI
 
-- **Точка входа**: `web/src/main.tsx` — сейчас оборачивает приложение в `Provider` из `web/src/ui/chakra-core-ui/provider.tsx`.
-- **Chakra Provider**: `web/src/ui/chakra-core-ui/provider.tsx` использует `ChakraProvider value={defaultSystem}`.
-- **Color mode**: `web/src/ui/chakra-core-ui/color-mode.tsx` использует `next-themes` (`ThemeProvider attribute="class"`).
-- **Toasts**: `web/src/ui/chakra-core-ui/toaster.tsx` реализует `createToaster` и кастомный рендер.
-- **Оверлеи** (тот самый “головняк” со слоями): в проекте уже есть ручные костыли на Chakra v3:
-  - `web/src/ui/dialog.tsx` и `web/src/ui/drawer.tsx` используют `persistentElements` (например, `.chakra-popover__positioner`) чтобы выпадающие элементы не “ломались” поверх диалога/дровера.
+- **Точка входа**: `web/src/main.tsx` — оборачивает приложение в `Provider` из `web/src/ui/provider.tsx` (Mantine).
+- **Provider**: `web/src/ui/provider.tsx` использует `MantineProvider` + `ModalsProvider` + `Notifications`.
+- **Color scheme**: Mantine color scheme manager (localStorage), `defaultColorScheme="auto"`.
+- **Toasts**: `web/src/ui/toaster.ts` поверх `@mantine/notifications`.
 
 Фактический “вес” Chakra сейчас:
 
-- **Импортов Chakra**: ~68 файлов в `web/src` импортят `@chakra-ui/react` (включая `ui/chakra-core-ui/*` и фичи).
-- **Оверлейная зона риска** (Dialog/Drawer/Popover/Menu/Select/Tooltip/Portal): встречается примерно в 28 файлах.
+- **Импортов Chakra**: 0.
+- **Зависимостей Chakra**: удалены из `web/package.json`.
+
+---
+
+### Фактически выполнено (уже мигрировано)
+
+Состояние на 2026-01-18 (после первых правок):
+
+- Поднят Mantine слой и инфраструктура приложения:
+
+  - `web/src/ui/provider.tsx` — чистый Mantine provider (без Chakra).
+  - `web/src/main.tsx` — импорт `@mantine/core/styles.css` + `@mantine/notifications/styles.css`.
+
+- Переписаны **сайдбары** и их общие части на Mantine (без прямых импортов `@chakra-ui/react` внутри `web/src/features/sidebars/**`):
+
+  - Контейнер оверлея:
+    - `web/src/ui/drawer.tsx` — теперь Mantine `Drawer` (сохранён Effector-API: `isOpen/isFullscreen/placement/size/contained`, настроен `zIndex`).
+    - `web/src/ui/dialog.tsx` — теперь Mantine `Modal` (сохранён API проекта: `open/onOpenChange/title/size/...`).
+  - Общие компоненты сайдбаров:
+    - `web/src/features/sidebars/common/sidebar-header.tsx` — Mantine `Select` + кнопки действий.
+    - `web/src/features/sidebars/common/pagination.tsx` — Mantine `Pagination` + `Select` для page size.
+    - `web/src/ui/icon-button-with-tooltip.tsx` — Mantine `ActionIcon` + `Tooltip` (с совместимостью под текущие пропсы `variant/colorPalette`).
+  - Settings sidebar:
+    - `web/src/features/sidebars/settings/index.tsx` — Mantine `Tabs`.
+    - `web/src/features/sidebars/settings/api-provoder-tab.tsx` — Mantine layout.
+    - `web/src/features/sidebars/settings/settings-tab.tsx` — Mantine `Select/Slider/NumberInput/Tooltip`.
+  - Остальные сайдбары:
+    - `web/src/features/sidebars/left-bar.tsx` — Mantine layout.
+    - `web/src/features/sidebars/agent-cards/index.tsx`
+    - `web/src/features/sidebars/agent-cards/sort-filter-controls.tsx`
+    - `web/src/features/sidebars/agent-cards/agent-card.tsx`
+    - `web/src/features/sidebars/agent-cards/edit-chat-modal.tsx`
+    - `web/src/features/sidebars/agent-cards/components/upload.tsx` — убран Chakra file-upload, заменено на `<input type="file" />`.
+    - `web/src/features/sidebars/agent-cards/components/author-note-dialog.tsx` — Mantine `Modal + Tabs`.
+    - `web/src/features/sidebars/user-person/index.tsx`
+    - `web/src/features/sidebars/user-person/sort-filter-controls.tsx`
+    - `web/src/features/sidebars/user-person/user-person-card.tsx`
+    - `web/src/features/sidebars/user-person/user-person-editor.tsx`
+    - `web/src/features/sidebars/templates/template-editor.tsx`
+    - `web/src/features/sidebars/instructions/instruction-editor.tsx`
+    - `web/src/features/sidebars/pipelines/index.tsx`
+    - `web/src/features/sidebars/pipelines/pipeline-form.tsx`
+    - `web/src/features/sidebars/pipelines/pipeline-item.tsx`
+    - `web/src/features/sidebars/app-settings/index.tsx`
+
+- Переписаны **RHF form-components** на Mantine (критичный “мультипликатор” для всех форм):
+
+  - `web/src/ui/form-components/form-input.tsx` — Mantine `TextInput` + `Input.Wrapper`
+  - `web/src/ui/form-components/form-textarea.tsx` — Mantine `Textarea` + fullscreen-редактор
+  - `web/src/ui/form-components/form-select.tsx` — Mantine `Select` (убран `chakra-react-select` из этого враппера)
+  - `web/src/ui/form-components/form-checkbox.tsx` — Mantine `Checkbox`
+  - `web/src/ui/form-components/form-switch.tsx` — Mantine `Switch`
+  - `web/src/ui/form-components/form-radio.tsx` — Mantine `Radio.Group`
+  - `web/src/ui/form-components/components/textarea-fullscreen-dialog.tsx` — Mantine `Tabs` + `@ui/dialog` (Mantine Modal)
+  - `web/src/ui/info-tip.tsx` — Mantine Popover-аналог для `InfoTip` (подсказки в лейблах форм без Chakra)
+
+- Уведомления (toasts) переведены на Mantine Notifications:
+
+  - `web/src/ui/toaster.ts` — `toaster.success/error/create` поверх `@mantine/notifications`
+  - `web/src/ui/provider.tsx` — монтирует `<Notifications />` один раз на уровне приложения
+  - `web/src/App.tsx` — убран рендер `<Toaster />`
+
+- Каркас приложения:
+
+  - `web/src/App.tsx` — переписан с Chakra layout-примитивов (`Flex/Box/VStack/Text/Button`) на Mantine (`Flex/Box/Stack/Text/Button`)
+
+- Чат-окно (`web/src/features/chat-window/*`) переведено на Mantine (без импортов `@chakra-ui/react` и `@ui/chakra-core-ui/*` внутри этой фичи):
+
+  - `web/src/features/chat-window/index.tsx` — контейнер окна + фон + скролл
+  - `web/src/features/chat-window/render-chat.tsx` — список сообщений (`Stack`)
+  - `web/src/features/chat-window/input/index.tsx` — `Textarea` autosize + `Button`
+  - `web/src/features/chat-window/input/send-action-menu.tsx` — Mantine `Menu` вместо Chakra Menu
+  - `web/src/features/chat-window/message/index.tsx` — карточка сообщения + режим редактирования + аватары на Mantine
+  - `web/src/features/chat-window/message/action-bar.tsx` — кнопки действий (edit/delete/confirm/cancel)
+  - `web/src/features/chat-window/message/reasoning-block.tsx` — Mantine `Collapse` вместо Chakra `Collapsible`
+  - `web/src/features/chat-window/message/swipe-controls.tsx` — Mantine `Paper/Group`
+  - `web/src/features/chat-window/message/assistant-icon.tsx` — Mantine `Avatar`
+
+- Верификация:
+
+  - `yarn --cwd web typecheck` — проходит (0 TS ошибок).
+
+- Итог:
+  - `@chakra-ui/react` и `chakra-react-select` удалены из `web/package.json`.
+  - `web/src/ui/chakra-core-ui/*` удалено из репозитория (больше не используется).
 
 ---
 
@@ -221,17 +303,17 @@ Color scheme (dark/light): 2 рабочих варианта
 
 ### Предлагаемый порядок миграции (по директориям)
 
-1) Инфраструктура:
+1. Инфраструктура:
    - Provider + theme + notifications + (опционально) modals
    - правка `web/src/main.tsx`
-2) “Остров” настроек (много форм/селектов):
+2. “Остров” настроек (много форм/селектов):
    - `web/src/features/sidebars/settings/*`
    - `web/src/ui/form-components/*`
-3) Остальные сайдбары:
+3. Остальные сайдбары:
    - `web/src/features/sidebars/*`
-4) Чат-окно:
+4. Чат-окно:
    - `web/src/features/chat-window/*`
-5) Финальная чистка:
+5. Финальная чистка:
    - вынос/удаление `ui/chakra-core-ui/*`
    - удаление Chakra из зависимостей (если не осталось использования)
 
@@ -274,4 +356,3 @@ Color scheme (dark/light): 2 рабочих варианта
 - Самая дорогая часть — переписывание `ui/form-components/*` и всего, что завязано на overlay-компоненты.
 
 Инкрементальная миграция “островами” обычно даёт лучший результат по риску/скорости, чем big-bang.
-

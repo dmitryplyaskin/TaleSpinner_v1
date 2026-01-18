@@ -1,9 +1,8 @@
-import { Box, Button, Flex, Text, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 
 import { $isAgentSelected } from '@model/chat-service';
 import { $appInitError, $appInitPending, $isAppReady, appStarted } from '@model/app-init';
-import { Toaster } from '@ui/chakra-core-ui/toaster';
 
 import { ChatWindow } from './features/chat-window';
 import { ConnectSidebars } from './features/sidebars/connect-sidebars';
@@ -24,59 +23,57 @@ function App() {
 	if (!isAppReady) {
 		return (
 			<>
-				<Flex h="100vh" align="center" justify="center" bg="gray.50" p={6}>
-					<VStack gap={3} maxW="lg">
-						<Text fontSize="lg" fontWeight="semibold">
+				<Flex h="100vh" align="center" justify="center" bg="var(--mantine-color-gray-0)" p="xl">
+					<Stack gap="sm" maw={520} align="center">
+						<Text size="lg" fw={600}>
 							Загрузка приложения…
 						</Text>
 						{appInitError ? (
 							<>
-								<Text color="red.600" textAlign="center">
+								<Text c="red" ta="center">
 									{appInitError}
 								</Text>
-								<Button onClick={() => retryInit()} colorPalette="blue" loading={isAppInitPending}>
+								<Button onClick={() => retryInit()} color="blue" loading={isAppInitPending}>
 									Повторить
 								</Button>
 							</>
 						) : (
-							<Text color="gray.500" textAlign="center">
+							<Text c="dimmed" ta="center">
 								Пожалуйста, подождите.
 							</Text>
 						)}
-					</VStack>
+					</Stack>
 				</Flex>
-				<Toaster />
 			</>
 		);
 	}
 
 	return (
 		<>
-			<Flex h="100vh" overflow="hidden" bg="gray.50">
+			<Flex h="100vh" style={{ overflow: 'hidden' }} bg="var(--mantine-color-gray-0)">
 				<LeftBar />
-				<Flex flex="1" direction="column" minW="0">
-					<Box flex="1" overflow="hidden">
+				<Flex flex={1} direction="column" miw={0}>
+					<Box flex={1} style={{ overflow: 'hidden' }}>
 						{isAgentSelected ? (
 							<ChatWindow />
 						) : (
 							<Flex h="100%" align="center" justify="center">
-								<VStack gap={4}>
-									<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
+								<Stack gap="md" align="center">
+									<Text c="dimmed">Выберите существующий чат или создайте новый</Text>
 									<Button
 										onClick={() => agentCardsModel.createItemFx(createNewAgentCard())}
-										colorPalette="blue"
+										color="blue"
 										size="lg"
 									>
 										Создать новый чат
 									</Button>
-								</VStack>
+								</Stack>
 							</Flex>
 						)}
 					</Box>
 				</Flex>
 			</Flex>
 
-			<Toaster />
 			<ConnectSidebars />
 		</>
 	);
