@@ -30,23 +30,56 @@ export const ChatWindow: React.FC = () => {
 	return (
 		<Flex
 			direction="column"
+			align="stretch"
 			style={{
 				height: '100%',
 				minHeight: 0,
+				width: '100%',
 				backgroundImage: `url(${BGImages})`,
 				backgroundSize: 'cover',
 				backgroundPosition: 'center',
 			}}
 		>
-			<Box style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-				<Container size="xl" py="md">
+			<Container
+				size="xl"
+				py={0}
+				style={{
+					flex: 1,
+					minHeight: 0,
+					width: '100%',
+					display: 'flex',
+					flexDirection: 'column',
+				}}
+			>
+				<Box
+					style={{
+						flex: 1,
+						minHeight: 0,
+						overflowY: 'auto',
+						paddingTop: 16,
+						paddingBottom: 0,
+						backgroundColor: 'rgba(0,0,0,0.08)',
+						backdropFilter: 'blur(4px)',
+						borderRadius: 12,
+						paddingInline: 12,
+					}}
+				>
 					<RenderChat />
-					<Box ref={messagesEndRef} />
-				</Container>
-			</Box>
+					<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
 
-			<Container size="xl" py={0}>
-				<MessageInput />
+					<Box
+						style={{
+							position: 'sticky',
+							bottom: 0,
+							paddingTop: 12,
+							paddingBottom: 12,
+							background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 45%, rgba(0,0,0,0.18) 100%)',
+							backdropFilter: 'blur(8px)',
+						}}
+					>
+						<MessageInput />
+					</Box>
+				</Box>
 			</Container>
 		</Flex>
 	);

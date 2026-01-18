@@ -54,12 +54,13 @@ export const FormSelect: React.FC<FormSelectProps> = ({
 
 	const { options = [], menuPortalTarget: _menuPortalTarget, menuPlacement: _menuPlacement, ...mantineSelectProps } =
 		selectProps ?? {};
+	const safeOptions = options.filter((o): o is SelectOption => typeof o?.value === 'string' && o.value.length > 0);
 
 	return (
 		<Input.Wrapper {...fieldProps} label={labelComponent} error={errorMessage || undefined}>
 			<Select
 				{...mantineSelectProps}
-				data={options}
+				data={safeOptions}
 				value={value ?? null}
 				onChange={(nextValue) => onChange(nextValue ?? '')}
 			/>

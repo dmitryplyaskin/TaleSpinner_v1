@@ -44,7 +44,7 @@ export const SwipeControls: React.FC<SwipeControlsProps> = ({ data }) => {
 				<IconButtonWithTooltip
 					size="xs"
 					variant="ghost"
-					colorPalette="purple"
+					colorPalette="violet"
 					disabled={isFirstSwipe}
 					icon={<LuArrowLeft />}
 					tooltip="Go back"
@@ -58,7 +58,7 @@ export const SwipeControls: React.FC<SwipeControlsProps> = ({ data }) => {
 					<IconButtonWithTooltip
 						size="xs"
 						variant="ghost"
-						colorPalette="purple"
+						colorPalette="violet"
 						icon={<LuArrowRight />}
 						tooltip="Go forward"
 						onClick={() => handleSwipeChange('right')}

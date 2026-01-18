@@ -64,7 +64,12 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 	};
 
 	return (
-		<Paper withBorder radius="md" p="md" style={{ position: 'relative', width: '100%', borderColor: 'var(--mantine-color-gray-3)' }}>
+		<Paper
+			withBorder
+			radius="md"
+			p="md"
+			style={{ position: 'relative', width: '100%', borderColor: 'var(--mantine-color-gray-3)' }}
+		>
 			<ActionBar
 				isEditing={isEditing}
 				onOpenEdit={handleOpenEdit}
@@ -93,6 +98,11 @@ export const ReasoningBlock: React.FC<ReasoningBlockProps> = ({ data, messageId,
 							spellCheck={false}
 							autosize
 							minRows={1}
+							style={{ width: '100%' }}
+							styles={{
+								root: { width: '100%' },
+								input: { width: '100%', display: 'block' },
+							}}
 							onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
 						/>
 					) : (

@@ -1,5 +1,5 @@
 import { ActionIcon, Tooltip, type ActionIconProps, type ElementProps, type TooltipProps } from '@mantine/core';
-import type { ReactElement, ReactNode } from 'react';
+import { cloneElement, type ReactElement, type ReactNode } from 'react';
 
 type ChakraCompatVariant = 'ghost' | 'outline' | 'solid' | 'subtle';
 
@@ -7,7 +7,8 @@ type Props = Omit<ActionIconProps, 'children'> &
 	ElementProps<'button', keyof ActionIconProps> & {
 	tooltip: ReactNode;
 	tooltipSettings?: Omit<TooltipProps, 'children' | 'label'>;
-	icon: ReactElement;
+	icon: ReactElement<{ size?: number }>;
+	iconSize?: number;
 	/** Chakra compatibility */
 	colorPalette?: string;
 	/** Chakra compatibility */
@@ -29,8 +30,21 @@ function mapVariant(variant?: ChakraCompatVariant): ActionIconProps['variant'] {
 	}
 }
 
+function mapColor(color?: string): string | undefined {
+	if (!color) return undefined;
+
+	// Chakra compatibility: map common names to Mantine palette.
+	switch (color) {
+		case 'purple':
+			return 'violet';
+		default:
+			return color;
+	}
+}
+
 export const IconButtonWithTooltip = ({
 	icon,
+	iconSize = 16,
 	tooltip,
 	tooltipSettings,
 	colorPalette,
@@ -38,16 +52,17 @@ export const IconButtonWithTooltip = ({
 	...buttonProps
 }: Props) => {
 	const ariaLabel = buttonProps['aria-label'] || 'icon-button';
+	const normalizedIcon = cloneElement(icon, { size: icon.props.size ?? iconSize });
 
 	return (
 		<Tooltip label={tooltip} openDelay={100} {...tooltipSettings}>
 			<ActionIcon
 				{...buttonProps}
 				aria-label={ariaLabel}
-				color={colorPalette ?? (buttonProps.color as string | undefined)}
+				color={mapColor(colorPalette ?? (buttonProps.color as string | undefined))}
 				variant={mapVariant(variant)}
 			>
-				{icon}
+				{normalizedIcon}
 			</ActionIcon>
 		</Tooltip>
 	);

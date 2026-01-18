@@ -9,6 +9,7 @@ type ActionBarProps = {
 	onCancelEdit: () => void;
 	onConfirmEdit: () => void;
 	onDelete: () => void;
+	placement?: 'absolute' | 'inline';
 	coordinates?: {
 		top: number;
 		right: number;
@@ -21,15 +22,17 @@ export const ActionBar = ({
 	onCancelEdit,
 	onConfirmEdit,
 	onDelete,
+	placement = 'absolute',
 	coordinates = { top: 3, right: 3 },
 }: ActionBarProps) => {
 	return (
 		<Box
 			style={{
-				position: 'absolute',
-				top: coordinates.top,
-				right: coordinates.right,
-				alignSelf: 'flex-start',
+				position: placement === 'absolute' ? 'absolute' : 'static',
+				top: placement === 'absolute' ? coordinates.top : undefined,
+				right: placement === 'absolute' ? coordinates.right : undefined,
+				alignSelf: placement === 'absolute' ? 'flex-start' : undefined,
+				zIndex: placement === 'absolute' ? 2 : undefined,
 			}}
 		>
 			{isEditing ? (
@@ -58,7 +61,7 @@ export const ActionBar = ({
 					<IconButtonWithTooltip
 						size="xs"
 						variant="ghost"
-						colorPalette="purple"
+						colorPalette="violet"
 						icon={<LuPen />}
 						tooltip="Edit message"
 						aria-label="Edit message"

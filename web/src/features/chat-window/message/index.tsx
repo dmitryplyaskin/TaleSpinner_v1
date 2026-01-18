@@ -118,7 +118,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 						style={{
 							position: 'relative',
 							width: '100%',
-							padding: 16,
+							padding: 20,
 							borderRadius: 12,
 							wordBreak: 'break-word',
 							backgroundColor: isUser ? 'var(--mantine-color-violet-0)' : 'white',
@@ -126,7 +126,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 							borderColor: isUser ? 'var(--mantine-color-violet-5)' : 'var(--mantine-color-gray-3)',
 						}}
 					>
-						<Flex align="center">
+						<Flex align="center" justify="space-between" gap="sm">
 							<Stack gap={0}>
 								<Text size="sm" fw={600} c={isUser ? 'violet' : 'dark'}>
 									{isUser ? 'You' : assistantName}
@@ -135,17 +135,18 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 									{new Date(data.timestamp).toLocaleTimeString()}
 								</Text>
 							</Stack>
-						</Flex>
 
-						{answer && selectedSwipe?.id ? (
-							<ActionBar
-								isEditing={isEditing}
-								onOpenEdit={handleOpenEdit}
-								onCancelEdit={handleCancelEdit}
-								onConfirmEdit={handleConfirmEdit}
-								onDelete={handleDelete}
-							/>
-						) : null}
+							{answer && selectedSwipe?.id ? (
+								<ActionBar
+									placement="inline"
+									isEditing={isEditing}
+									onOpenEdit={handleOpenEdit}
+									onCancelEdit={handleCancelEdit}
+									onConfirmEdit={handleConfirmEdit}
+									onDelete={handleDelete}
+								/>
+							) : null}
+						</Flex>
 
 						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>
 							{isEditing ? (
@@ -155,6 +156,11 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 									spellCheck={false}
 									autosize
 									minRows={1}
+									style={{ width: '100%' }}
+									styles={{
+										root: { width: '100%' },
+										input: { width: '100%', display: 'block' },
+									}}
 									onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
 								/>
 							) : (

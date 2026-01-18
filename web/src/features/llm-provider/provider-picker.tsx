@@ -8,6 +8,8 @@ import { TokenManager } from "./token-manager";
 
 import type { LlmProviderConfig, LlmProviderId, LlmScope } from "@shared/types/llm";
 
+type SelectOption = { value: string; label: string };
+
 type Props = {
   scope: LlmScope;
   scopeId: string;
@@ -54,16 +56,58 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
     mounted({ scope, scopeId });
   }, [mounted, scope, scopeId]);
 
-  const enabledProviders = useMemo(() => providers.filter((p) => p.enabled), [providers]);
+  const enabledProviders = useMemo(
+    () =>
+      providers.filter((p) => {
+        const maybe = p as unknown as { id?: unknown; enabled?: unknown };
+        return typeof maybe?.id === "string" && Boolean(maybe?.enabled);
+      }),
+    [providers]
+  );
 
-  const providerOptions = enabledProviders.map((p) => ({ value: p.id, label: p.name }));
+  const providerOptions: SelectOption[] = useMemo(
+    () =>
+      enabledProviders
+        .map((p) => {
+          const maybe = p as unknown as { id?: unknown; name?: unknown };
+          const value = typeof maybe?.id === "string" ? maybe.id : "";
+          const label = typeof maybe?.name === "string" ? maybe.name : value;
+          return value ? ({ value, label } satisfies SelectOption) : null;
+        })
+        .filter((v): v is SelectOption => Boolean(v)),
+    [enabledProviders]
+  );
 
   const tokens = tokensByProvider[activeProviderId] ?? [];
-  const tokenOptions = tokens.map((t) => ({ value: t.id, label: `${t.name} (${t.tokenHint})` }));
+  const tokenOptions: SelectOption[] = useMemo(
+    () =>
+      tokens
+        .map((t) => {
+          const maybe = t as unknown as { id?: unknown; name?: unknown; tokenHint?: unknown };
+          const value = typeof maybe?.id === "string" ? maybe.id : "";
+          const name = typeof maybe?.name === "string" ? maybe.name : "Token";
+          const hint = typeof maybe?.tokenHint === "string" ? maybe.tokenHint : "";
+          const label = hint ? `${name} (${hint})` : name;
+          return value ? ({ value, label } satisfies SelectOption) : null;
+        })
+        .filter((v): v is SelectOption => Boolean(v)),
+    [tokens]
+  );
 
   const modelsKey = `${activeProviderId}:${activeTokenId ?? "none"}`;
   const models = modelsByKey[modelsKey] ?? [];
-  const modelOptions = models.map((m) => ({ value: m.id, label: m.name }));
+  const modelOptions: SelectOption[] = useMemo(
+    () =>
+      models
+        .map((m) => {
+          const maybe = m as unknown as { id?: unknown; name?: unknown };
+          const value = typeof maybe?.id === "string" ? maybe.id : "";
+          const label = typeof maybe?.name === "string" ? maybe.name : value;
+          return value ? ({ value, label } satisfies SelectOption) : null;
+        })
+        .filter((v): v is SelectOption => Boolean(v)),
+    [models]
+  );
 
   const providerConfig = useMemo<LlmProviderConfig>(
     () => configByProvider[activeProviderId] ?? {},

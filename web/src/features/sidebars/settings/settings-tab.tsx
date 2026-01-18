@@ -52,10 +52,12 @@ export const SamplerSettingsTab: React.FC = () => {
 		};
 	}, [methods.watch]);
 
-	const options = items.map((item) => ({
-		label: item.name,
-		value: item.id,
-	}));
+	const options = items
+		.map((item) => ({
+			label: String((item as unknown as { name?: unknown })?.name ?? ''),
+			value: typeof (item as unknown as { id?: unknown })?.id === 'string' ? (item as unknown as { id: string }).id : '',
+		}))
+		.filter((o) => Boolean(o.value));
 
 	return (
 		<Flex direction="column" gap="md">

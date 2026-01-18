@@ -44,6 +44,7 @@ export const MessageInput = () => {
 					maxRows={6}
 					radius="md"
 					size="md"
+					w="100%"
 					styles={{
 						input: {
 							overflow: 'hidden',
