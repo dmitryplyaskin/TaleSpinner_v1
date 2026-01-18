@@ -57,7 +57,7 @@ export const MessageInput = () => {
 				<Flex justify="flex-end">
 					<Flex gap={2}>
 						<SendActionMenu />
-						<Button onClick={handleSendMessage} colorScheme={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
+							<Button onClick={handleSendMessage} colorPalette={isProcessing ? 'red' : 'blue'} whiteSpace="nowrap">
 							{isProcessing ? 'Оборвать' : 'Отправить'}
 						</Button>
 					</Flex>

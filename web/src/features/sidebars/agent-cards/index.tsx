@@ -1,4 +1,4 @@
-import { Flex, Button, Stack, Box } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { LuPlus } from 'react-icons/lu';
@@ -21,12 +21,12 @@ export const AgentCardsSidebar: React.FC = () => {
 		<>
 			<Drawer name="agentCards" title="Agent cards">
 				<Flex direction="column" gap="4">
-					<Stack direction="row" gap={4}>
-						<Button onClick={() => agentCardsModel.createItemFx(createNewAgentCard())} colorScheme="blue">
+					<HStack gap={4}>
+						<Button onClick={() => agentCardsModel.createItemFx(createNewAgentCard())} colorPalette="blue">
 							<LuPlus /> Создать карточку
 						</Button>
 						<Upload />
-					</Stack>
+					</HStack>
 					<Box>
 						<ChatListSortFilterControls />
 					</Box>

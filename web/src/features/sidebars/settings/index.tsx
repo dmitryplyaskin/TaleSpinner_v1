@@ -1,7 +1,6 @@
 import { Tabs } from '@chakra-ui/react';
 import { useState } from 'react';
 
-import { samplersModel } from '@model/samplers';
 import { Drawer } from '@ui/drawer';
 
 import { APIProviderTab } from './api-provoder-tab';

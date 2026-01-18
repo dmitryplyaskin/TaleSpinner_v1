@@ -77,7 +77,7 @@ export const PipelineItem: React.FC<PipelineItemProps> = ({
 								tooltip="Remove Pipeline"
 								size="sm"
 								variant="ghost"
-								colorScheme="red"
+								colorPalette="red"
 								onClick={(e) => {
 									e.stopPropagation();
 									onRemove();

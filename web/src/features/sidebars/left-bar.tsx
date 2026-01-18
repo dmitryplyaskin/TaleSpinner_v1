@@ -83,7 +83,7 @@ export const LeftBar = () => {
 							tooltip={button.tooltip}
 							variant="outline"
 							size="lg"
-							colorScheme="purple"
+							colorPalette="purple"
 							aria-label={button.ariaLabel}
 							onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
 							icon={<button.icon />}
@@ -96,7 +96,7 @@ export const LeftBar = () => {
 					tooltip={appSettingsButton.tooltip}
 					variant="outline"
 					size="lg"
-					colorScheme="gray"
+					colorPalette="gray"
 					aria-label={appSettingsButton.ariaLabel}
 					onClick={() => toggleSidebarOpen({ name: appSettingsButton.name, isOpen: true })}
 					icon={<appSettingsButton.icon />}

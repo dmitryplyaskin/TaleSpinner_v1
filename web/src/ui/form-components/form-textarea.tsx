@@ -1,4 +1,4 @@
-import { Textarea, type TextareaProps , Box } from '@chakra-ui/react';
+import { Textarea, type TextareaProps, Box } from '@chakra-ui/react';
 import { useState } from 'react';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 import { LuExpand } from 'react-icons/lu';
@@ -8,9 +8,7 @@ import { InfoTip } from '@ui/chakra-core-ui/toggle-tip';
 import { Field, type FieldProps } from '../chakra-core-ui/field';
 import { IconButtonWithTooltip } from '../icon-button-with-tooltip';
 
-
 import { TextareaFullscreenDialog } from './components/textarea-fullscreen-dialog';
-
 
 type FormTextareaProps = {
 	name: string;
@@ -65,8 +63,8 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 			</Field>
 
 			<TextareaFullscreenDialog
-				isOpen={isFullscreenOpen}
-				onModalChange={setIsFullscreenOpen}
+				open={isFullscreenOpen}
+				onOpenChange={setIsFullscreenOpen}
 				value={field.value}
 				onChange={field.onChange}
 				textareaProps={textareaProps}

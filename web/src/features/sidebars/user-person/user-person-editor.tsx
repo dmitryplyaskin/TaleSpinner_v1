@@ -176,7 +176,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 					<Button variant="ghost" onClick={onClose}>
 						Отмена
 					</Button>
-					<Button colorScheme="blue" onClick={handleSave}>
+					<Button colorPalette="blue" onClick={handleSave}>
 						Сохранить
 					</Button>
 				</Flex>

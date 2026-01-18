@@ -82,8 +82,10 @@ export const EditChatModal: React.FC = () => {
 
 	return (
 		<Dialog
-			isOpen={isOpen}
-			onClose={() => setIsEditAgentCardModalOpen(false)}
+			open={isOpen}
+			onOpenChange={(open) => {
+				if (!open) setIsEditAgentCardModalOpen(false);
+			}}
 			title="Редактировать карточку персонажа"
 			size="cover"
 			closeOnEscape={false}

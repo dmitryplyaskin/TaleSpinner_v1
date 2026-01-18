@@ -65,11 +65,11 @@ export const PipelineForm = () => {
 						/>
 					))}
 				</VStack>
-				<Button onClick={handleAddPipeline} colorScheme="blue">
+				<Button onClick={handleAddPipeline} colorPalette="blue">
 					<LuPlus />
 					Add Pipeline
 				</Button>
-				<Button onClick={methods.handleSubmit(onSubmit)} colorScheme="blue">
+				<Button onClick={methods.handleSubmit(onSubmit)} colorPalette="blue">
 					Save Pipelines
 				</Button>
 			</VStack>

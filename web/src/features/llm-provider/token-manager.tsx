@@ -50,8 +50,9 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
   const [editName, setEditName] = useState("");
   const [editToken, setEditToken] = useState("");
 
-  const onClose = () => {
-    setOpen(false);
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (open) return;
     setEditingId(null);
     setNewName("");
     setNewToken("");
@@ -98,13 +99,13 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
 
   return (
     <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
+      open={isOpen}
+      onOpenChange={handleOpenChange}
       title="Token manager"
       size="lg"
       footer={
         <Flex justify="flex-end" gap={2}>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={() => handleOpenChange(false)}>
             Закрыть
           </Button>
         </Flex>
@@ -170,10 +171,10 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
               type="password"
             />
             <Flex justify="flex-end" gap={2}>
-              <Button variant="ghost" onClick={() => setEditingId(null)}>
+          <Button variant="ghost" onClick={() => setEditingId(null)}>
                 Отмена
               </Button>
-              <Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
+          <Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
                 Сохранить
               </Button>
             </Flex>

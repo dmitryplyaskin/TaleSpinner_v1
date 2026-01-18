@@ -1,4 +1,4 @@
-import { Button, Tabs , Textarea, type TextareaProps } from '@chakra-ui/react';
+import { Button, Tabs, Textarea, type TextareaProps } from '@chakra-ui/react';
 
 import {
 	DialogActionTrigger,
@@ -13,22 +13,22 @@ import {
 import { RenderMd } from '@ui/render-md';
 
 interface TextareaFullscreenDialogProps {
-	isOpen: boolean;
-	onModalChange: (open: boolean) => void;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	value: string;
 	onChange: (value: string) => void;
 	textareaProps?: TextareaProps;
 }
 
 export const TextareaFullscreenDialog: React.FC<TextareaFullscreenDialogProps> = ({
-	isOpen,
-	onModalChange,
+	open,
+	onOpenChange,
 	value,
 	onChange,
 	textareaProps,
 }) => {
 	return (
-		<DialogRoot open={isOpen} onOpenChange={(x) => onModalChange(x.open)} size="full">
+		<DialogRoot open={open} onOpenChange={(details) => onOpenChange(details.open)} size="full">
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Редактирование</DialogTitle>

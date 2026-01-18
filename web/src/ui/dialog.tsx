@@ -1,11 +1,11 @@
-import { Button, Stack } from '@chakra-ui/react';
+import { Button, VStack } from '@chakra-ui/react';
 import { type ReactNode } from 'react';
 
 import * as DialogPrimitive from './chakra-core-ui/dialog';
 
 export interface DialogProps {
-	isOpen: boolean;
-	onClose: () => void;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	title: string;
 	children: ReactNode;
 	size?: 'sm' | 'md' | 'lg' | 'xl' | 'cover';
@@ -16,8 +16,8 @@ export interface DialogProps {
 }
 
 export const Dialog: React.FC<DialogProps> = ({
-	isOpen,
-	onClose,
+	open,
+	onOpenChange,
 	title,
 	children,
 	size = 'md',
@@ -26,12 +26,12 @@ export const Dialog: React.FC<DialogProps> = ({
 	closeOnInteractOutside,
 	closeOnEscape,
 }) => {
-	if (!isOpen) return null;
+	if (!open) return null;
 
 	return (
 		<DialogPrimitive.DialogRoot
-			open={isOpen}
-			onOpenChange={onClose}
+			open={open}
+			onOpenChange={({ open }) => onOpenChange(open)}
 			size={size}
 			closeOnInteractOutside={closeOnInteractOutside}
 			closeOnEscape={closeOnEscape}
@@ -42,20 +42,22 @@ export const Dialog: React.FC<DialogProps> = ({
 			<DialogPrimitive.DialogContent maxHeight={'none'}>
 				<DialogPrimitive.DialogHeader>
 					<DialogPrimitive.DialogTitle>{title}</DialogPrimitive.DialogTitle>
-					{showCloseButton && <DialogPrimitive.DialogCloseTrigger onClick={onClose} />}
+					{showCloseButton && <DialogPrimitive.DialogCloseTrigger onClick={() => onOpenChange(false)} />}
 				</DialogPrimitive.DialogHeader>
 
 				<DialogPrimitive.DialogBody>
-					<Stack gap={4}>{children}</Stack>
+					<VStack gap={4} align="stretch">
+						{children}
+					</VStack>
 				</DialogPrimitive.DialogBody>
 
 				<DialogPrimitive.DialogFooter>
 					{footer || (
 						<>
-							<Button variant="ghost" mr={3} onClick={onClose}>
+							<Button variant="ghost" mr={3} onClick={() => onOpenChange(false)}>
 								Отмена
 							</Button>
-							<Button colorScheme="blue" type="submit" form="dialog-form">
+							<Button colorPalette="blue" type="submit" form="dialog-form">
 								Сохранить
 							</Button>
 						</>

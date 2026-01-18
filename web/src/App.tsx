@@ -34,7 +34,7 @@ function App() {
 								<Text color="red.600" textAlign="center">
 									{appInitError}
 								</Text>
-								<Button onClick={() => retryInit()} colorScheme="blue" loading={isAppInitPending}>
+								<Button onClick={() => retryInit()} colorPalette="blue" loading={isAppInitPending}>
 									Повторить
 								</Button>
 							</>
@@ -64,7 +64,7 @@ function App() {
 									<Text color="gray.500">Выберите существующий чат или создайте новый</Text>
 									<Button
 										onClick={() => agentCardsModel.createItemFx(createNewAgentCard())}
-										colorScheme="blue"
+										colorPalette="blue"
 										size="lg"
 									>
 										Создать новый чат
