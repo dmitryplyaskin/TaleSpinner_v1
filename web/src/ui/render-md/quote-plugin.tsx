@@ -5,13 +5,22 @@ import type { Plugin } from 'unified';
 
 const QUOTE_REGEX = /("|“|”|«|»)([^"“”«»]+)("|“|”|«|»)/g;
 
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 function processTextNode(text: string): RootContent[] {
 	const nodes: RootContent[] = [];
 	let lastIndex = 0;
 	let match;
 
 	while ((match = QUOTE_REGEX.exec(text)) !== null) {
-		const [fullMatch, _openQuote, content, _closeQuote] = match;
+		const [fullMatch, openQuote, content, closeQuote] = match;
 
 		// Add text before match
 		if (match.index > lastIndex) {
@@ -21,11 +30,10 @@ function processTextNode(text: string): RootContent[] {
 			});
 		}
 
-		// Use <q> but do not include quote characters inside,
-		// otherwise the browser will render quotes twice.
+		// Wrap quoted text (including original quote characters) for styling.
 		nodes.push({
 			type: 'html',
-			value: `<q>${content}</q>`,
+			value: `<q>${escapeHtml(openQuote)}${escapeHtml(content)}${escapeHtml(closeQuote)}</q>`,
 		});
 
 		lastIndex = match.index + fullMatch.length;

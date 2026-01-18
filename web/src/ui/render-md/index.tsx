@@ -28,7 +28,8 @@ export const RenderMd = ({ content }: RenderMdProps) => {
 const QuoteComponent: NonNullable<Components['q']> = (props) => {
 	const { node: _node, ...rest } = props;
 	// Chakra <Text> типизирован как <p>, поэтому для <q> используем нативный элемент
-	return <q style={{ color: 'var(--chakra-colors-orange-500)', quotes: '"«" "»" "“" "”"' }} {...rest} />;
+	// Disable UA quote rendering: we keep original quote characters in text.
+	return <q style={{ color: 'var(--chakra-colors-orange-500)', quotes: 'none' }} {...rest} />;
 };
 
 const components: Components = {
