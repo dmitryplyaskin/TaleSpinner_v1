@@ -1,8 +1,5 @@
 import { Button, Tabs } from '@chakra-ui/react';
 import { LuInfo } from 'react-icons/lu';
-import Markdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
 
 import { Avatar } from '@ui/chakra-core-ui/avatar';
 import {
@@ -17,6 +14,7 @@ import {
 	DialogTrigger,
 } from '@ui/chakra-core-ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { RenderMd } from '@ui/render-md';
 
 export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: string; avatar?: string }) => {
 	if (!note) return null;
@@ -49,9 +47,7 @@ export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: 
 							<Tabs.Indicator rounded="l2" />
 						</Tabs.List>
 						<Tabs.Content value="markdown">
-							<Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-								{note}
-							</Markdown>
+							<RenderMd content={note} />
 						</Tabs.Content>
 
 						<Tabs.Content value="raw">{note}</Tabs.Content>
