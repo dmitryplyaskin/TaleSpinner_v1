@@ -1,7 +1,7 @@
 import { createStore, createEvent, createEffect, sample } from "effector";
 import { debounce } from "patronum/debounce";
 
-import { BASE_URL } from "../const";
+import { apiJson } from "../api/api-json";
 
 export interface LLMSettingField {
   key: string;
@@ -97,26 +97,15 @@ export const resetLLMSettings = createEvent();
 
 // Effects
 export const fetchSettingsFx = createEffect(async () => {
-  const response = await fetch(`${BASE_URL}/settings`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch settings");
-  }
-  return response.json();
+  return apiJson<LLMSettingsState>("/settings");
 });
 
 export const saveSettingsFx = createEffect(
   async (settings: LLMSettingsState) => {
-    const response = await fetch(`${BASE_URL}/settings`, {
+    return apiJson<LLMSettingsState>("/settings", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(settings),
     });
-    if (!response.ok) {
-      throw new Error("Failed to save settings");
-    }
-    return response.json();
   }
 );
 
@@ -137,9 +126,6 @@ $llmSettings
   }))
   .on(fetchSettingsFx.doneData, (_, payload) => payload)
   .reset(resetLLMSettings);
-
-// Initialize settings on app start
-fetchSettingsFx();
 
 sample({
   source: $llmSettings,

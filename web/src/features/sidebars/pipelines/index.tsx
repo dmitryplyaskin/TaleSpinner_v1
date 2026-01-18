@@ -1,7 +1,7 @@
 import { Flex, VStack } from '@chakra-ui/react';
 import { type PipelineSettingsType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
-import React, { useEffect } from 'react';
+import React from 'react';
 
 import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
 import { Switch } from '@ui/chakra-core-ui/switch';
@@ -14,11 +14,6 @@ import { PipelineForm } from './pipeline-form';
 export const PipelineSidebar: React.FC = () => {
 	const pipelines = useUnit(pipelinesModel.$items);
 	const settings = useUnit(pipelinesModel.$settings);
-
-	useEffect(() => {
-		pipelinesModel.getItemsFx();
-		pipelinesModel.getSettingsFx();
-	}, []);
 
 	const handleSettingsChange = (newSettings: Partial<PipelineSettingsType>) => {
 		pipelinesModel.updateSettingsFx({ ...settings, ...newSettings });

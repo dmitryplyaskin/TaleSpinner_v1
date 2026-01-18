@@ -12,18 +12,12 @@ const router = express.Router();
 const sidebarSettingsSchema = z.object({
   isOpen: z.boolean(),
   isFullscreen: z.boolean(),
-  placement: z.string(),
-  size: z.string(),
-  contained: z.boolean(),
+  placement: z.enum(["start", "end"]),
+  size: z.enum(["xs", "sm", "md", "lg", "xl", "full"]),
+  contained: z.boolean().optional().default(false),
 });
 
-const sidebarsSchema = z.object({
-  settings: sidebarSettingsSchema,
-  chatCards: sidebarSettingsSchema,
-  userPersons: sidebarSettingsSchema,
-  pipeline: sidebarSettingsSchema,
-  instructions: sidebarSettingsSchema,
-}) satisfies z.ZodType<SidebarState>;
+const sidebarsSchema = z.record(z.string(), sidebarSettingsSchema) satisfies z.ZodType<SidebarState>;
 
 router.get(
   "/sidebars",

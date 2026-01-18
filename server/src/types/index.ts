@@ -33,15 +33,9 @@ export interface Settings {
 export interface SidebarSettings {
   isOpen: boolean;
   isFullscreen: boolean;
-  placement: string;
-  size: string;
-  contained: boolean;
+  placement: "start" | "end";
+  size: "xs" | "sm" | "md" | "lg" | "xl" | "full";
+  contained?: boolean;
 }
 
-export interface SidebarState {
-  settings: SidebarSettings;
-  chatCards: SidebarSettings;
-  userPersons: SidebarSettings;
-  pipeline: SidebarSettings;
-  instructions: SidebarSettings;
-}
+export type SidebarState = Record<string, SidebarSettings>;

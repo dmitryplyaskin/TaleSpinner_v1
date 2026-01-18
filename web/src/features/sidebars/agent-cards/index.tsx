@@ -1,7 +1,6 @@
-
 import { Flex, Button, Stack, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { LuPlus } from 'react-icons/lu';
 
 import { agentCardsModel } from '@model/agent-cards';
@@ -17,11 +16,6 @@ import { ChatListSortFilterControls } from './sort-filter-controls';
 
 export const AgentCardsSidebar: React.FC = () => {
 	const list = useUnit(agentCardsModel.paginationWithSortFilter.$paginatedItems);
-
-	useEffect(() => {
-		agentCardsModel.getItemsFx();
-		agentCardsModel.getSettingsFx();
-	}, []);
 
 	return (
 		<>

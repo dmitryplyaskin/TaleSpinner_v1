@@ -1,6 +1,6 @@
 import { Flex, Box } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { LuPlus } from 'react-icons/lu';
 
 import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
@@ -15,11 +15,6 @@ import { UserPersonCard } from './user-person-card';
 export const UserPersonSidebar: React.FC = () => {
 	// Используем отфильтрованные и отсортированные элементы с пагинацией
 	const persons = useUnit(userPersonsModel.paginationWithSortFilter.$paginatedItems);
-
-	useEffect(() => {
-		userPersonsModel.getItemsFx();
-		userPersonsModel.getSettingsFx();
-	}, []);
 
 	return (
 		<Drawer name="userPersons" title="Список персон">

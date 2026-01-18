@@ -2,7 +2,7 @@ import { type AppSettings } from '@shared/types/app-settings';
 import { createStore, createEvent, createEffect, sample } from 'effector';
 import { debounce } from 'patronum/debounce';
 
-import { BASE_URL } from '../../const';
+import { apiJson } from '../../api/api-json';
 
 // Events
 export const updateAppSettings = createEvent<Partial<AppSettings>>();
@@ -10,25 +10,11 @@ export const resetAppSettings = createEvent();
 
 // Effects
 export const fetchAppSettingsFx = createEffect(async () => {
-	const response = await fetch(`${BASE_URL}/app-settings`);
-	if (!response.ok) {
-		throw new Error('Failed to fetch app settings');
-	}
-	return response.json();
+	return apiJson<AppSettings>('/app-settings');
 });
 
 export const saveAppSettingsFx = createEffect(async (settings: AppSettings) => {
-	const response = await fetch(`${BASE_URL}/app-settings`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(settings),
-	});
-	if (!response.ok) {
-		throw new Error('Failed to save app settings');
-	}
-	return response.json();
+	return apiJson<AppSettings>('/app-settings', { method: 'POST', body: JSON.stringify(settings) });
 });
 
 // Default settings
@@ -61,6 +47,3 @@ sample({
 	clock: debouncedUpdateSettings,
 	target: saveAppSettingsFx,
 });
-
-// Initialize settings on app start
-fetchAppSettingsFx();

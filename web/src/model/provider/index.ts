@@ -154,6 +154,18 @@ sample({
 });
 
 sample({
+	clock: loadRuntimeFx.doneData,
+	filter: (runtime) => Boolean(runtime.activeTokenId),
+	fn: (runtime) => ({
+		providerId: runtime.activeProviderId,
+		scope: runtime.scope,
+		scopeId: runtime.scopeId,
+		tokenId: runtime.activeTokenId,
+	}),
+	target: loadModelsFx,
+});
+
+sample({
 	clock: providerSelected,
 	fn: ({ scope, scopeId, providerId }) => ({
 		scope,

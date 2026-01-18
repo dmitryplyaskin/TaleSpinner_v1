@@ -1,5 +1,4 @@
 import { useUnit } from 'effector-react';
-import { useEffect } from 'react';
 
 import { createEmptyTemplate, templatesModel } from '@model/template';
 import { Drawer } from '@ui/drawer';
@@ -11,11 +10,6 @@ import { TemplateEditor } from './template-editor';
 export const TemplateSidebar = () => {
 	const templates = useUnit(templatesModel.$items);
 	const settings = useUnit(templatesModel.$settings);
-
-	useEffect(() => {
-		templatesModel.getItemsFx();
-		templatesModel.getSettingsFx();
-	}, []);
 
 	return (
 		<Drawer name="templates" title="Шаблоны">

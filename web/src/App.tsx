@@ -2,6 +2,7 @@ import { Box, Button, Flex, Text, VStack } from '@chakra-ui/react';
 import { useUnit } from 'effector-react';
 
 import { $isAgentSelected } from '@model/chat-service';
+import { $appInitError, $appInitPending, $isAppReady, appStarted } from '@model/app-init';
 import { Toaster } from '@ui/chakra-core-ui/toaster';
 
 import { ChatWindow } from './features/chat-window';
@@ -13,6 +14,41 @@ import { createNewAgentCard } from './utils/creation-helper-agent-card';
 
 function App() {
 	const isAgentSelected = useUnit($isAgentSelected);
+	const [isAppReady, isAppInitPending, appInitError, retryInit] = useUnit([
+		$isAppReady,
+		$appInitPending,
+		$appInitError,
+		appStarted,
+	]);
+
+	if (!isAppReady) {
+		return (
+			<>
+				<Flex h="100vh" align="center" justify="center" bg="gray.50" p={6}>
+					<VStack gap={3} maxW="lg">
+						<Text fontSize="lg" fontWeight="semibold">
+							Загрузка приложения…
+						</Text>
+						{appInitError ? (
+							<>
+								<Text color="red.600" textAlign="center">
+									{appInitError}
+								</Text>
+								<Button onClick={() => retryInit()} colorScheme="blue" loading={isAppInitPending}>
+									Повторить
+								</Button>
+							</>
+						) : (
+							<Text color="gray.500" textAlign="center">
+								Пожалуйста, подождите.
+							</Text>
+						)}
+					</VStack>
+				</Flex>
+				<Toaster />
+			</>
+		);
+	}
 
 	return (
 		<>

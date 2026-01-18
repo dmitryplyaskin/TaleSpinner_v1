@@ -1,6 +1,6 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
-import { apiRoutes } from '../api-routes';
+import { apiJson } from '../api/api-json';
 
 import { asyncHandler } from './utils/async-handler';
 
@@ -21,59 +21,53 @@ export type SidebarSetting = {
 	contained?: boolean;
 };
 
-export type SidebarSettings = {
-	[key in SidebarName]: SidebarSetting;
+export type SidebarSettings = Record<string, SidebarSetting>;
+
+const defaultSidebarSetting: SidebarSetting = {
+	isOpen: false,
+	isFullscreen: false,
+	placement: 'start',
+	size: 'lg',
+	contained: false,
 };
 
-export const $sidebars = createStore<SidebarSettings>({
+export const defaultSidebars: SidebarSettings = {
 	settings: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
-		contained: false,
+		...defaultSidebarSetting,
 	},
 	agentCards: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
-		contained: false,
+		...defaultSidebarSetting,
 	},
 	userPersons: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
-		contained: false,
+		...defaultSidebarSetting,
 	},
 	pipeline: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
-		contained: false,
+		...defaultSidebarSetting,
 	},
 	instructions: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
+		...defaultSidebarSetting,
 	},
 	templates: {
-		isOpen: false,
-		isFullscreen: false,
-		placement: 'start',
-		size: 'lg',
+		...defaultSidebarSetting,
 	},
 	appSettings: {
-		isOpen: false,
+		...defaultSidebarSetting,
 		isFullscreen: true,
-		placement: 'start',
 		size: 'full',
-		contained: false,
 	},
-});
+};
+
+function mergeSidebarsState(defaults: SidebarSettings, incoming: SidebarSettings): SidebarSettings {
+	const result: SidebarSettings = { ...defaults, ...incoming };
+	for (const key of Object.keys(result)) {
+		const base = defaults[key] ?? defaultSidebarSetting;
+		const inc = incoming[key] ?? {};
+		result[key] = { ...base, ...inc };
+	}
+	return result;
+}
+
+export const $sidebars = createStore<SidebarSettings>(defaultSidebars);
 
 // Создаем отдельное событие для изменения isOpen
 export const toggleSidebarOpen = createEvent<{ name: SidebarName; isOpen: boolean }>();
@@ -85,7 +79,7 @@ export const changeSidebarSettings = createEvent<{ name: SidebarName; settings: 
 $sidebars.on(toggleSidebarOpen, (sidebars, { name, isOpen }) => ({
 	...sidebars,
 	[name]: {
-		...sidebars[name],
+		...(sidebars[name] ?? defaultSidebars[name] ?? defaultSidebarSetting),
 		isOpen,
 	},
 }));
@@ -113,25 +107,17 @@ export const saveSettingsFx = createEffect<SidebarSettings, void>((settings) =>
 				isOpen: false,
 			};
 		});
-		const response = await fetch(apiRoutes.sidebars.save(), {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(newSettings),
-		});
-		return response.json();
+		await apiJson<SidebarSettings>('/sidebars', { method: 'POST', body: JSON.stringify(newSettings) });
 	}, 'Error saving settings'),
 );
 
 export const getSettingsFx = createEffect<void, SidebarSettings>(() =>
 	asyncHandler(async () => {
-		const response = await fetch(apiRoutes.sidebars.get()).then((response) => response.json());
-		return response;
+		return apiJson<SidebarSettings>('/sidebars');
 	}, 'Error getting settings'),
 );
 
-$sidebars.on(getSettingsFx.doneData, (_, payload) => payload);
+$sidebars.on(getSettingsFx.doneData, (_, payload) => mergeSidebarsState(defaultSidebars, payload));
 
 // Сохраняем настройки только при изменении через changeSidebarSettings
 sample({
@@ -139,5 +125,3 @@ sample({
 	source: $sidebars,
 	target: saveSettingsFx,
 });
-
-getSettingsFx();

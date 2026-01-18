@@ -1,5 +1,5 @@
 import { Tabs } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { samplersModel } from '@model/samplers';
 import { Drawer } from '@ui/drawer';
@@ -11,11 +11,6 @@ type TabType = 'settings' | 'provider';
 
 export const SettingsSidebar = () => {
 	const [activeTab, setActiveTab] = useState<TabType>('settings');
-
-	useEffect(() => {
-		samplersModel.getItemsFx();
-		samplersModel.getSettingsFx();
-	}, []);
 
 	return (
 		<Drawer name="settings" title="Settings">
