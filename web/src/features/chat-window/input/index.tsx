@@ -30,7 +30,7 @@ export const MessageInput = () => {
 	};
 
 	return (
-		<Box w="100%" bg="white" p="md" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
+		<Box w="100%" bg="white" p="md" bdrs="sm">
 			<Flex direction="column" gap="md" w="100%">
 				<Textarea
 					ref={textareaRef}

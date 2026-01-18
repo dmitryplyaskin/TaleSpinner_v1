@@ -72,9 +72,6 @@ export const ChatWindow: React.FC = () => {
 							position: 'sticky',
 							bottom: 0,
 							paddingTop: 12,
-							paddingBottom: 12,
-							background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 45%, rgba(0,0,0,0.18) 100%)',
-							backdropFilter: 'blur(8px)',
 						}}
 					>
 						<MessageInput />
