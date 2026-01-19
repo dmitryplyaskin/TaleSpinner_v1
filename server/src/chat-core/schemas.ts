@@ -10,9 +10,17 @@ export const jsonValueSchema: z.ZodType<unknown> = z.unknown();
 
 export const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
-export const messageVariantKindSchema = z.enum(["generation", "manual_edit", "import"]);
+export const messageVariantKindSchema = z.enum([
+  "generation",
+  "manual_edit",
+  "import",
+]);
 
-export const promptTemplateScopeSchema = z.enum(["global", "entity_profile", "chat"]);
+export const promptTemplateScopeSchema = z.enum([
+  "global",
+  "entity_profile",
+  "chat",
+]);
 
 export const chatStatusSchema = z.enum(["active", "archived", "deleted"]);
 
@@ -100,6 +108,107 @@ export const createMessageBodySchema = z.object({
   meta: jsonValueSchema.optional(),
 });
 
+// ---- Prompt templates
+
+export const listPromptTemplatesQuerySchema = z
+  .object({
+    scope: promptTemplateScopeSchema,
+    scopeId: idSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.scope !== "global" && !val.scopeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "scopeId обязателен для scope=chat/entity_profile",
+        path: ["scopeId"],
+      });
+    }
+    if (val.scope === "global" && typeof val.scopeId === "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "scopeId запрещён для scope=global",
+        path: ["scopeId"],
+      });
+    }
+  });
+
+export const createPromptTemplateBodySchema = z
+  .object({
+    ownerId: ownerIdSchema.optional(),
+    name: z.string().min(1),
+    enabled: z.boolean().optional().default(true),
+    scope: promptTemplateScopeSchema,
+    scopeId: idSchema.optional(),
+    engine: z.literal("liquidjs").optional().default("liquidjs"),
+    templateText: z.string().min(1),
+    meta: jsonValueSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.scope !== "global" && !val.scopeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "scopeId обязателен для scope=chat/entity_profile",
+        path: ["scopeId"],
+      });
+    }
+    if (val.scope === "global" && typeof val.scopeId === "string") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "scopeId запрещён для scope=global",
+        path: ["scopeId"],
+      });
+    }
+  });
+
+export const updatePromptTemplateBodySchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    enabled: z.boolean().optional(),
+    scope: promptTemplateScopeSchema.optional(),
+    scopeId: idSchema.optional().nullable(),
+    engine: z.literal("liquidjs").optional(),
+    templateText: z.string().min(1).optional(),
+    meta: jsonValueSchema.optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (typeof val.scope !== "undefined" && val.scope !== "global") {
+      if (!val.scopeId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "scopeId обязателен при изменении scope на chat/entity_profile",
+          path: ["scopeId"],
+        });
+      }
+    }
+    if (
+      val.scope === "global" &&
+      typeof val.scopeId !== "undefined" &&
+      val.scopeId !== null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "scopeId запрещён для scope=global",
+        path: ["scopeId"],
+      });
+    }
+  });
+
+// ---- Pipelines (DB-first v1)
+
+export const createPipelineBodySchema = z.object({
+  ownerId: ownerIdSchema.optional(),
+  name: z.string().min(1),
+  enabled: z.boolean().optional().default(true),
+  definition: jsonValueSchema,
+});
+
+export const updatePipelineBodySchema = z.object({
+  name: z.string().min(1).optional(),
+  enabled: z.boolean().optional(),
+  definition: jsonValueSchema.optional(),
+});
+
 // ---- Variants (minimal for v1 endpoints later)
 
 export const messageIdParamsSchema = z.object({
@@ -110,4 +219,3 @@ export const selectVariantParamsSchema = z.object({
   id: idSchema, // messageId
   variantId: idSchema,
 });
-

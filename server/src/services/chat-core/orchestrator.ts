@@ -1,9 +1,16 @@
 import { getRuntime } from "../llm/llm-repository";
 import { streamGlobalChat } from "../llm/llm-service";
 
-import { listMessagesForPrompt, updateAssistantText } from "./chats-repository";
+import {
+  getChatById,
+  listMessagesForPrompt,
+  updateAssistantText,
+} from "./chats-repository";
+import { getEntityProfileById } from "./entity-profiles-repository";
 import { registerGeneration, unregisterGeneration } from "./generation-runtime";
 import { finishGeneration } from "./generations-repository";
+import { renderLiquidTemplate } from "./prompt-template-renderer";
+import { pickActivePromptTemplate } from "./prompt-templates-repository";
 
 import type { GenerateMessage } from "@shared/types/generate";
 
@@ -17,9 +24,12 @@ const DEFAULT_HISTORY_LIMIT = 50;
 const DEFAULT_FLUSH_MS = 750;
 
 export async function* runChatGeneration(params: {
+  ownerId?: string;
   generationId: string;
   chatId: string;
   branchId: string;
+  entityProfileId: string;
+  systemPrompt?: string;
   userMessageId: string;
   assistantMessageId: string;
   variantId: string;
@@ -61,8 +71,53 @@ export async function* runChatGeneration(params: {
       excludeMessageIds: [params.assistantMessageId],
     });
 
+    let systemPrompt =
+      typeof params.systemPrompt === "string"
+        ? params.systemPrompt
+        : DEFAULT_SYSTEM_PROMPT;
+    if (typeof params.systemPrompt !== "string") {
+      try {
+        const [chat, entityProfile, template] = await Promise.all([
+          getChatById(params.chatId),
+          getEntityProfileById(params.entityProfileId),
+          pickActivePromptTemplate({
+            ownerId: params.ownerId ?? "global",
+            chatId: params.chatId,
+            entityProfileId: params.entityProfileId,
+          }),
+        ]);
+
+        if (template && entityProfile) {
+          const rendered = await renderLiquidTemplate({
+            templateText: template.templateText,
+            context: {
+              char: entityProfile.spec,
+              user: {},
+              chat: {
+                id: chat?.id ?? params.chatId,
+                title: chat?.title ?? "",
+                branchId: params.branchId,
+                createdAt: chat?.createdAt ?? null,
+                updatedAt: chat?.updatedAt ?? null,
+              },
+              messages: history.map((m) => ({
+                role: m.role,
+                content: m.content,
+              })),
+              rag: {},
+              now: new Date().toISOString(),
+            },
+          });
+          const normalized = rendered.trim();
+          if (normalized) systemPrompt = normalized;
+        }
+      } catch {
+        // Fallback to DEFAULT_SYSTEM_PROMPT on any template/render failure.
+      }
+    }
+
     const prompt: GenerateMessage[] = [
-      { role: "system", content: DEFAULT_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...history.map((m) => ({
         role: m.role,
         content: m.content,

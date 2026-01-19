@@ -8,7 +8,7 @@
 
 ## Текущий статус (2026-01-19)
 
-Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) + Этап 3 (оркестратор/генерации/стриминг) — реализованы**. Дальше по плану — **Этап 4 (prompt templates как продуктовая сущность)** и **Этап 5 (pipelines/run logging)**.
+Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) + Этап 3 (оркестратор/генерации/стриминг) + Этап 4 (prompt templates/LiquidJS) + Этап 5 (pipelines/run logging) — реализованы**. Дальше по плану — **Этап 6 (frontend: thin UI, cutover на новые API)** и **Этап 7 (удаление legacy/JSON)**.
 
 ### Что уже реализовано
 
@@ -74,6 +74,36 @@
     - `POST /generations/:id/abort`
     - `server/src/api/generations.core.api.ts`
 
+- [x] **Этап 4: Prompt templates (LiquidJS)**
+
+  - Добавлена поддержка LiquidJS на бэкенде (рендер выполняется только на сервере).
+  - Добавлен репозиторий и рендер:
+    - `server/src/services/chat-core/prompt-templates-repository.ts`
+    - `server/src/services/chat-core/prompt-template-renderer.ts`
+  - Добавлен core API:
+    - `server/src/api/prompt-templates.core.api.ts`
+    - `GET /prompt-templates?scope&scopeId`
+    - `POST /prompt-templates`
+    - `PUT /prompt-templates/:id`
+    - `DELETE /prompt-templates/:id`
+  - Подключено в общий роутинг:
+    - `server/src/api/_routes_.ts`
+  - Оркестратор выбирает шаблон по приоритету **chat → entity_profile → global**, рендерит system prompt и использует его в генерации:
+    - `server/src/services/chat-core/orchestrator.ts`
+
+- [x] **Этап 5: Pipelines v1 (каркас) + run logging**
+
+  - `GET/POST/PUT/DELETE /pipelines` теперь **DB-first** (таблица `pipelines`), legacy JSON-сервис для `/pipelines` заменён:
+    - `server/src/services/chat-core/pipelines-repository.ts`
+    - `server/src/api/pipelines.api.ts`
+  - Добавлено логирование pipeline runs/step runs для каждого SSE-запроса генерации:
+    - `server/src/services/chat-core/pipeline-runs-repository.ts`
+    - `server/src/services/chat-core/pipeline-step-runs-repository.ts`
+  - `llm_generations` теперь может ссылаться на `pipeline_run_id` и `pipeline_step_run_id` (заполняется при создании generation):
+    - `server/src/services/chat-core/generations-repository.ts`
+  - В SSE-режиме `POST /chats/:id/messages` создаются `pipeline_run` + шаги `pre`/`llm` и завершаются по DONE/ABORT/ERROR:
+    - `server/src/api/chats.core.api.ts`
+
 - [x] **Инфраструктура: автоприменение миграций при старте сервера**
   - Добавлено:
     - `server/src/db/apply-migrations.ts`
@@ -84,8 +114,9 @@
 - **CharSpec normalize (V1–V3 → V3)**: пока **не реализовано**. Сейчас `spec` сохраняется как есть в `entity_profiles.spec_json`.
 - **FK циклы**: намеренно **не добавлялись** жёсткие FK вида `chats.active_branch_id -> chat_branches.id` (во избежание циклических зависимостей), это сейчас проверяется на уровне логики.
 - **Транзакционность createChat**: создание `chat` + `main` branch сейчас сделано последовательными запросами (без явной транзакции).
-- **Prompt templates/LiquidJS**: пока **заглушка** (system prompt фиксированный). CRUD и рендер — **Этап 4**.
-- **Streaming/SSE и Generation**: реализовано в `POST /chats/:id/messages` при `Accept: text/event-stream`.\n+ Текущий набор SSE `event` типов: `llm.stream.meta`, `llm.stream.delta`, `llm.stream.error`, `llm.stream.done`.
+- **Prompt templates/LiquidJS**: реализованы, но контекст v1 минимальный: `user`/`rag` пока пустые, snapshot prompt для репродьюса ещё не логируется.
+- **Pipelines v1**: пока это каркас хранения + run logging; выполнение “definitionJson” как настоящего пайплайна (pre/rag/post обработка) — следующий этап развития.
+- **Streaming/SSE и Generation**: реализовано в `POST /chats/:id/messages` при `Accept: text/event-stream`. Текущий набор SSE `event` типов: `llm.stream.meta`, `llm.stream.delta`, `llm.stream.error`, `llm.stream.done`.
 - **Legacy**: старые JSON-based сервисы/эндпоинты пока не вычищались (это **Этап 7**).
 
 ## Ориентиры (что считаем успехом)

@@ -12,6 +12,8 @@ export type CreateGenerationParams = {
   chatId: string;
   messageId: string; // assistant message id
   variantId: string | null;
+  pipelineRunId?: string | null;
+  pipelineStepRunId?: string | null;
   providerId: string;
   model: string;
   settings: Record<string, unknown>;
@@ -31,8 +33,8 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
     chatId: params.chatId,
     messageId: params.messageId,
     variantId: params.variantId,
-    pipelineRunId: null,
-    pipelineStepRunId: null,
+    pipelineRunId: params.pipelineRunId ?? null,
+    pipelineStepRunId: params.pipelineStepRunId ?? null,
     providerId: params.providerId,
     model: params.model,
     paramsJson: safeJsonStringify(params.settings ?? {}, "{}"),

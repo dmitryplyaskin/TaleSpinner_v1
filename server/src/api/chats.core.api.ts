@@ -19,15 +19,25 @@ import {
   createChatBranch,
   createChatMessage,
   getChatById,
+  listMessagesForPrompt,
   listChatBranches,
   listChatMessages,
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
+import { getEntityProfileById } from "../services/chat-core/entity-profiles-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { createGeneration } from "../services/chat-core/generations-repository";
 import { getGlobalRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
+import { createPipelineRun, finishPipelineRun } from "../services/chat-core/pipeline-runs-repository";
+import {
+  createPipelineStepRun,
+  finishPipelineStepRun,
+} from "../services/chat-core/pipeline-step-runs-repository";
+import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
+import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
 
 const router = express.Router();
+const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
 router.get(
   "/chats/:id",
@@ -199,6 +209,8 @@ router.post(
     const sse = initSse({ res });
 
     let generationId: string | null = null;
+    let pipelineRunId: string | null = null;
+    let llmStepRunId: string | null = null;
     try {
       const userMessage = await createChatMessage({
         ownerId: body.ownerId,
@@ -217,12 +229,92 @@ router.post(
         branchId,
       });
 
+      const pipelineRun = await createPipelineRun({
+        ownerId: body.ownerId,
+        chatId: params.id,
+        entityProfileId: chat.entityProfileId,
+        trigger: "user_message",
+        meta: { branchId, userMessageId: userMessage.id, assistantMessageId: assistant.assistantMessageId },
+      });
+      pipelineRunId = pipelineRun.id;
+
+      // PRE step: pick template + render system prompt
+      const preStep = await createPipelineStepRun({
+        ownerId: body.ownerId,
+        runId: pipelineRunId,
+        stepName: "pre",
+        stepType: "pre",
+        input: { chatId: params.id, branchId },
+      });
+
+      let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+      let templateId: string | null = null;
+      try {
+        const [entityProfile, template, history] = await Promise.all([
+          getEntityProfileById(chat.entityProfileId),
+          pickActivePromptTemplate({
+            ownerId: body.ownerId ?? "global",
+            chatId: params.id,
+            entityProfileId: chat.entityProfileId,
+          }),
+          listMessagesForPrompt({
+            chatId: params.id,
+            branchId,
+            limit: 50,
+            excludeMessageIds: [assistant.assistantMessageId],
+          }),
+        ]);
+
+        if (template) templateId = template.id;
+        if (template && entityProfile) {
+          const rendered = await renderLiquidTemplate({
+            templateText: template.templateText,
+            context: {
+              char: entityProfile.spec,
+              user: {},
+              chat: {
+                id: params.id,
+                title: chat.title,
+                branchId,
+                createdAt: chat.createdAt,
+                updatedAt: chat.updatedAt,
+              },
+              messages: history.map((m) => ({ role: m.role, content: m.content })),
+              rag: {},
+              now: new Date().toISOString(),
+            },
+          });
+          const normalized = rendered.trim();
+          if (normalized) systemPrompt = normalized;
+        }
+      } catch {
+        // Keep fallback prompt on any pre-step failure.
+      }
+
+      await finishPipelineStepRun({
+        id: preStep.id,
+        status: "done",
+        output: { templateId, systemPrompt },
+      });
+
       const runtime = await getGlobalRuntimeInfo();
+
+      const llmStep = await createPipelineStepRun({
+        ownerId: body.ownerId,
+        runId: pipelineRunId,
+        stepName: "llm",
+        stepType: "llm",
+        input: { providerId: runtime.providerId, model: runtime.model, settings: body.settings },
+      });
+      llmStepRunId = llmStep.id;
+
       const createdGen = await createGeneration({
         ownerId: body.ownerId,
         chatId: params.id,
         messageId: assistant.assistantMessageId,
         variantId: assistant.variantId,
+        pipelineRunId,
+        pipelineStepRunId: llmStepRunId,
         providerId: runtime.providerId,
         model: runtime.model,
         settings: body.settings,
@@ -244,22 +336,68 @@ router.post(
         assistantMessageId: assistant.assistantMessageId,
         variantId: assistant.variantId,
         generationId,
+        pipelineRunId,
+        pipelineStepRunId: llmStepRunId,
       });
 
+      let finalStatus: "done" | "aborted" | "error" = "done";
       for await (const evt of runChatGeneration({
+        ownerId: body.ownerId,
         generationId,
         chatId: params.id,
         branchId,
+        entityProfileId: chat.entityProfileId,
+        systemPrompt,
         userMessageId: userMessage.id,
         assistantMessageId: assistant.assistantMessageId,
         variantId: assistant.variantId,
         settings: body.settings,
       })) {
+        if (evt.type === "llm.stream.done") {
+          finalStatus = evt.data.status;
+        }
         sse.send(evt.type, evt.data);
+      }
+
+      // Finalize pipeline run logging.
+      if (llmStepRunId) {
+        await finishPipelineStepRun({
+          id: llmStepRunId,
+          status:
+            finalStatus === "error" ? "error" : "done",
+          output: { status: finalStatus, generationId },
+          error: finalStatus === "error" ? "generation_failed" : null,
+        });
+      }
+      if (pipelineRunId) {
+        await finishPipelineRun({
+          id: pipelineRunId,
+          status: finalStatus === "done" ? "done" : finalStatus === "aborted" ? "aborted" : "error",
+          meta: { branchId, generationId, status: finalStatus },
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       sse.send("llm.stream.error", { message });
+      try {
+        if (llmStepRunId) {
+          await finishPipelineStepRun({
+            id: llmStepRunId,
+            status: "error",
+            output: { status: "error", generationId },
+            error: message,
+          });
+        }
+        if (pipelineRunId) {
+          await finishPipelineRun({
+            id: pipelineRunId,
+            status: "error",
+            meta: { branchId, generationId, status: "error", error: message },
+          });
+        }
+      } catch {
+        // ignore secondary errors
+      }
     } finally {
       sse.close();
     }
