@@ -1,6 +1,7 @@
 import chatRoutes from "./agent-cards.api";
 import chatCoreRoutes from "./chats.core.api";
 import entityProfilesCoreRoutes from "./entity-profiles.core.api";
+import entityProfilesImportRoutes from "./entity-profiles.import.api";
 import fileRoutes from "./files/routes";
 import generationsCoreRoutes from "./generations.core.api";
 import instructionsRoutes from "./instructions.api";
@@ -14,6 +15,7 @@ import userPersonsRoutes from "./user-persons.api";
 export const routes = [
   chatRoutes,
   entityProfilesCoreRoutes,
+  entityProfilesImportRoutes,
   chatCoreRoutes,
   generationsCoreRoutes,
   userPersonsRoutes,

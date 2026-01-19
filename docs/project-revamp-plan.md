@@ -38,12 +38,14 @@
 
   - Добавлены роуты:
     - `server/src/api/entity-profiles.core.api.ts`
+    - `server/src/api/entity-profiles.import.api.ts` (импорт CharSpec)
     - `server/src/api/chats.core.api.ts`
   - Подключены в общий роутинг:
     - `server/src/api/_routes_.ts`
   - Эндпоинты (все под `/api`):
     - `GET /entity-profiles`
     - `POST /entity-profiles`
+    - `POST /entity-profiles/import` (multipart: `.png`/`.json` → normalize V1–V3 → `entity_profiles.spec_json`)
     - `GET /entity-profiles/:id`
     - `PUT /entity-profiles/:id`
     - `DELETE /entity-profiles/:id`
@@ -111,7 +113,11 @@
 
 ### Что важно помнить / ограничения текущей реализации
 
-- **CharSpec normalize (V1–V3 → V3)**: пока **не реализовано**. Сейчас `spec` сохраняется как есть в `entity_profiles.spec_json`.
+- **CharSpec normalize (V1–V3 → V3)**: реализовано для импорта через `POST /entity-profiles/import`.
+  - Поддержка: `.json` (сырой JSON) и `.png` (tEXt `chara`/`ccv3`, base64 JSON).
+  - Нормализатор (best-effort) приводят V1/V2/V3 к единому объекту с top-level полями (`name`, `first_mes`, и т.д.), чтобы `{{char.name}}` работал стабильно.
+  - Технически: `server/src/chat-core/charspec/*`.
+  - Важно: `POST /entity-profiles` и `PUT /entity-profiles/:id` по-прежнему принимают `spec: unknown` и сохраняют как есть (без принудительной нормализации).
 - **FK циклы**: намеренно **не добавлялись** жёсткие FK вида `chats.active_branch_id -> chat_branches.id` (во избежание циклических зависимостей), это сейчас проверяется на уровне логики.
 - **Транзакционность createChat**: создание `chat` + `main` branch сейчас сделано последовательными запросами (без явной транзакции).
 - **Prompt templates/LiquidJS**: реализованы, но контекст v1 минимальный: `user`/`rag` пока пустые, snapshot prompt для репродьюса ещё не логируется.
