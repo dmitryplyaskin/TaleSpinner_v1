@@ -370,6 +370,59 @@ export async function createAssistantMessageWithVariant(params: {
   return { assistantMessageId, variantId, createdAt: ts };
 }
 
+export async function createImportedAssistantMessage(params: {
+  ownerId?: string;
+  chatId: string;
+  branchId: string;
+  promptText: string;
+  meta?: unknown;
+}): Promise<{ assistantMessageId: string; variantId: string; createdAt: Date }> {
+  const db = await initDb();
+  const ts = nowMonotonicDate();
+
+  const assistantMessageId = uuidv4();
+  const variantId = uuidv4();
+  const text = params.promptText ?? "";
+
+  await db.insert(chatMessages).values({
+    id: assistantMessageId,
+    ownerId: params.ownerId ?? "global",
+    chatId: params.chatId,
+    branchId: params.branchId,
+    role: "assistant",
+    createdAt: ts,
+    promptText: text,
+    format: null,
+    blocksJson: "[]",
+    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    activeVariantId: variantId,
+  });
+
+  await db.insert(messageVariants).values({
+    id: variantId,
+    ownerId: params.ownerId ?? "global",
+    messageId: assistantMessageId,
+    createdAt: ts,
+    kind: "import",
+    promptText: text,
+    blocksJson: "[]",
+    metaJson: safeJsonStringify({ importedAt: ts.toISOString() }),
+    isSelected: true,
+  });
+
+  // Update chat preview fields (best-effort)
+  await db
+    .update(chats)
+    .set({
+      lastMessageAt: ts,
+      lastMessagePreview: buildPreview(text),
+      updatedAt: ts,
+    })
+    .where(eq(chats.id, params.chatId));
+
+  return { assistantMessageId, variantId, createdAt: ts };
+}
+
 export async function updateAssistantText(params: {
   assistantMessageId: string;
   variantId: string;

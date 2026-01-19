@@ -75,8 +75,12 @@ export const openEntityProfileFx = createEffect(
 		if (chats[0]?.id) {
 			const chat = await getChatById(chats[0].id);
 			const branchId = chat.activeBranchId;
-			if (!branchId) throw new Error('У чата нет activeBranchId (ожидалось main)');
-			return { chat, branchId };
+			// Если по какой-то причине activeBranchId отсутствует (битые/старые данные) — создаём новый чат.
+			if (branchId) {
+				// Если чат пустой (например, создано ранее без интро) — создаём новый чат.
+				const res = await listChatMessages({ chatId: chat.id, branchId, limit: 1 });
+				if (res.messages.length > 0) return { chat, branchId };
+			}
 		}
 
 		const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: 'New chat' });
@@ -85,6 +89,10 @@ export const openEntityProfileFx = createEffect(
 		return { chat, branchId };
 	},
 );
+
+openEntityProfileFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось открыть чат', description: error instanceof Error ? error.message : String(error) });
+});
 
 export const $currentChat = createStore<ChatDto | null>(null);
 export const $currentBranchId = createStore<string | null>(null);
@@ -118,6 +126,7 @@ export const $variantsByMessageId = createStore<Record<string, MessageVariantDto
 );
 
 const loadVariantsForLastAssistantMaybe = createEvent<{ messageId: string } | null>();
+const loadVariantsForLastAssistant = createEvent<{ messageId: string }>();
 
 // Auto-load variants for the last assistant message in the opened chat.
 sample({
@@ -133,8 +142,12 @@ sample({
 
 sample({
 	clock: loadVariantsForLastAssistantMaybe,
-	filter: (_src, payload): payload is { messageId: string } => Boolean(payload?.messageId),
-	fn: (_src, payload) => payload,
+	filter: (payload): payload is { messageId: string } => Boolean(payload?.messageId),
+	target: loadVariantsForLastAssistant,
+});
+
+sample({
+	clock: loadVariantsForLastAssistant,
 	target: loadVariantsFx,
 });
 

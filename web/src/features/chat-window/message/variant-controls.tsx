@@ -4,7 +4,12 @@ import { useEffect, useMemo } from 'react';
 import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
 
 import type { ChatMessageDto, MessageVariantDto } from '../../../api/chat-core';
-import { $variantsByMessageId, loadVariantsFx, regenerateVariantRequested, selectVariantRequested } from '@model/chat-core';
+import {
+	$variantsByMessageId,
+	loadVariantsFx,
+	regenerateVariantRequested,
+	selectVariantRequested,
+} from '@model/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type Props = {
@@ -34,12 +39,14 @@ export const VariantControls: React.FC<Props> = ({ message, isLast }) => {
 		void loadVariantsFx({ messageId: message.id });
 	}, [isLast, message.id, message.role, variants.length]);
 
-	if (!isLast || message.role !== 'assistant') {
-		return null;
-	}
-
-	const currentIndex = useMemo(() => pickActiveIndex(variants, message.activeVariantId), [variants, message.activeVariantId]);
+	// Hooks must be called unconditionally (React rules of hooks).
+	const currentIndex = useMemo(
+		() => pickActiveIndex(variants, message.activeVariantId),
+		[variants, message.activeVariantId],
+	);
 	const total = variants.length;
+	const shouldShow = isLast && message.role === 'assistant';
+	if (!shouldShow) return null;
 
 	const isFirst = currentIndex <= 0;
 	const isLastVariant = total === 0 ? true : currentIndex === total - 1;
@@ -105,4 +112,3 @@ export const VariantControls: React.FC<Props> = ({ message, isLast }) => {
 		</Paper>
 	);
 };
-

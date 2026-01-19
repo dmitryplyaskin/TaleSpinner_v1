@@ -6,9 +6,8 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { RenderMd } from '@ui/render-md';
 
 export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: string; avatar?: string }) => {
-	if (!note) return null;
-
 	const [opened, setOpened] = useState(false);
+	if (!note) return null;
 
 	return (
 		<>

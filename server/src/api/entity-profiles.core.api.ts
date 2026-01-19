@@ -14,6 +14,7 @@ import {
 } from "../chat-core/schemas";
 import {
   createChat,
+  createImportedAssistantMessage,
   listChatsByEntityProfile,
 } from "../services/chat-core/chats-repository";
 import {
@@ -148,6 +149,24 @@ router.post(
       title: req.body.title,
       meta: req.body.meta,
     });
+
+    // Seed an intro message from CharSpec (like legacy AgentCard introSwipes).
+    // This improves UX: opening a freshly imported profile shows the first message immediately.
+    try {
+      const spec = profile.spec as any;
+      const firstMes = typeof spec?.first_mes === "string" ? spec.first_mes.trim() : "";
+      if (firstMes.length > 0) {
+        await createImportedAssistantMessage({
+          ownerId: req.body.ownerId,
+          chatId: chat.id,
+          branchId: mainBranch.id,
+          promptText: firstMes,
+          meta: { source: "entity_profile_import", kind: "first_mes" },
+        });
+      }
+    } catch {
+      // best-effort; don't fail chat creation
+    }
 
     return { data: { chat, mainBranch } };
   })
