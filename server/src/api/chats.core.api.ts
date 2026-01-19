@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from "express";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { asyncHandler } from "@core/middleware/async-handler";
@@ -13,6 +14,8 @@ import {
   createMessageBodySchema,
   listMessagesQuerySchema,
 } from "../chat-core/schemas";
+import { initDb } from "../db/client";
+import { chatMessages } from "../db/schema";
 import {
   activateBranch,
   createAssistantMessageWithVariant,
@@ -27,7 +30,7 @@ import {
 import { getEntityProfileById } from "../services/chat-core/entity-profiles-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { createGeneration } from "../services/chat-core/generations-repository";
-import { getGlobalRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
+import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import { createPipelineRun, finishPipelineRun } from "../services/chat-core/pipeline-runs-repository";
 import {
   createPipelineStepRun,
@@ -82,11 +85,42 @@ router.post(
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
+    const parentBranchId =
+      req.body.parentBranchId ??
+      (typeof req.body.forkedFromMessageId === "string"
+        ? chat.activeBranchId ?? undefined
+        : undefined);
+
+    if (typeof req.body.forkedFromMessageId === "string") {
+      if (!parentBranchId) {
+        throw new HttpError(
+          400,
+          "parentBranchId обязателен для fork (нет activeBranchId)",
+          "VALIDATION_ERROR"
+        );
+      }
+      const db = await initDb();
+      const forkRows = await db
+        .select({ id: chatMessages.id })
+        .from(chatMessages)
+        .where(
+          and(
+            eq(chatMessages.chatId, params.id),
+            eq(chatMessages.branchId, parentBranchId),
+            eq(chatMessages.id, req.body.forkedFromMessageId)
+          )
+        )
+        .limit(1);
+      if (!forkRows[0]) {
+        throw new HttpError(404, "forkedFromMessageId не найден", "NOT_FOUND");
+      }
+    }
+
     const branch = await createChatBranch({
       ownerId: req.body.ownerId,
       chatId: params.id,
       title: req.body.title,
-      parentBranchId: req.body.parentBranchId,
+      parentBranchId,
       forkedFromMessageId: req.body.forkedFromMessageId,
       forkedFromVariantId: req.body.forkedFromVariantId,
       meta: req.body.meta,
@@ -297,7 +331,7 @@ router.post(
         output: { templateId, systemPrompt },
       });
 
-      const runtime = await getGlobalRuntimeInfo();
+      const runtime = await getRuntimeInfo({ ownerId: body.ownerId ?? "global" });
 
       const llmStep = await createPipelineStepRun({
         ownerId: body.ownerId,

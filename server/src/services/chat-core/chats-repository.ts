@@ -1,9 +1,14 @@
-import { and, desc, eq, lt, ne } from "drizzle-orm";
+import { and, asc, desc, eq, lt, lte, ne } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
-import { chatBranches, chatMessages, chats, messageVariants } from "../../db/schema";
+import {
+  chatBranches,
+  chatMessages,
+  chats,
+  messageVariants,
+} from "../../db/schema";
 
 let _lastTsMs = 0;
 function nowMonotonicDate(): Date {
@@ -86,7 +91,9 @@ export type ChatMessageDto = {
   activeVariantId: string | null;
 };
 
-function messageRowToDto(row: typeof chatMessages.$inferSelect): ChatMessageDto {
+function messageRowToDto(
+  row: typeof chatMessages.$inferSelect
+): ChatMessageDto {
   return {
     id: row.id,
     ownerId: row.ownerId,
@@ -102,10 +109,18 @@ function messageRowToDto(row: typeof chatMessages.$inferSelect): ChatMessageDto 
   };
 }
 
+function isDeletedMessageMeta(meta: unknown | null): boolean {
+  if (!meta || typeof meta !== "object") return false;
+  const obj = meta as Record<string, unknown>;
+  return obj.deleted === true || typeof obj.deletedAt === "string";
+}
+
 function buildPreview(text: string, maxLen = 140): string {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "";
-  return normalized.length > maxLen ? `${normalized.slice(0, maxLen - 1)}…` : normalized;
+  return normalized.length > maxLen
+    ? `${normalized.slice(0, maxLen - 1)}…`
+    : normalized;
 }
 
 export async function listChatsByEntityProfile(params: {
@@ -158,7 +173,10 @@ export async function createChat(params: {
     lastMessageAt: null,
     lastMessagePreview: null,
     version: 0,
-    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    metaJson:
+      typeof params.meta === "undefined"
+        ? null
+        : safeJsonStringify(params.meta),
     originChatId: null,
     originBranchId: null,
     originMessageId: null,
@@ -238,11 +256,113 @@ export async function createChatBranch(params: {
     parentBranchId: params.parentBranchId ?? null,
     forkedFromMessageId: params.forkedFromMessageId ?? null,
     forkedFromVariantId: params.forkedFromVariantId ?? null,
-    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    metaJson:
+      typeof params.meta === "undefined"
+        ? null
+        : safeJsonStringify(params.meta),
   });
 
-  const rows = await db.select().from(chatBranches).where(eq(chatBranches.id, id));
+  const rows = await db
+    .select()
+    .from(chatBranches)
+    .where(eq(chatBranches.id, id));
   if (!rows[0]) throw new Error("Не удалось создать ветку (внутренняя ошибка).");
+
+  // v1 fork semantics (minimal):
+  // If parentBranchId + forkedFromMessageId provided, copy messages up to fork point
+  // into the new branch so it starts with the same history.
+  if (params.parentBranchId && params.forkedFromMessageId) {
+    const forkRows = await db
+      .select()
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.chatId, params.chatId),
+          eq(chatMessages.branchId, params.parentBranchId),
+          eq(chatMessages.id, params.forkedFromMessageId)
+        )
+      )
+      .limit(1);
+    const fork = forkRows[0];
+    if (fork) {
+      const sourceRows = await db
+        .select()
+        .from(chatMessages)
+        .where(
+          and(
+            eq(chatMessages.chatId, params.chatId),
+            eq(chatMessages.branchId, params.parentBranchId),
+            lte(chatMessages.createdAt, fork.createdAt)
+          )
+        )
+        .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
+
+      for (const src of sourceRows) {
+        const meta = safeJsonParse(src.metaJson, null);
+        if (isDeletedMessageMeta(meta)) continue;
+
+        const messageId = uuidv4();
+        const baseMeta =
+          meta && typeof meta === "object"
+            ? (meta as Record<string, unknown>)
+            : {};
+        const forkMeta: Record<string, unknown> = {
+          ...baseMeta,
+          forkedFrom: {
+            messageId: src.id,
+            branchId: params.parentBranchId,
+          },
+        };
+
+        if (src.role === "assistant") {
+          const variantId = uuidv4();
+          await db.insert(chatMessages).values({
+            id: messageId,
+            ownerId: src.ownerId,
+            chatId: params.chatId,
+            branchId: id,
+            role: "assistant",
+            createdAt: src.createdAt,
+            promptText: src.promptText ?? "",
+            format: src.format ?? null,
+            blocksJson: src.blocksJson ?? "[]",
+            metaJson: safeJsonStringify(forkMeta),
+            activeVariantId: variantId,
+          });
+
+          await db.insert(messageVariants).values({
+            id: variantId,
+            ownerId: src.ownerId,
+            messageId,
+            createdAt: src.createdAt,
+            kind: "import",
+            promptText: src.promptText ?? "",
+            blocksJson: src.blocksJson ?? "[]",
+            metaJson: safeJsonStringify({
+              forkedFromVariantId: src.activeVariantId ?? null,
+              importedAt: new Date().toISOString(),
+            }),
+            isSelected: true,
+          });
+        } else {
+          await db.insert(chatMessages).values({
+            id: messageId,
+            ownerId: src.ownerId,
+            chatId: params.chatId,
+            branchId: id,
+            role: src.role,
+            createdAt: src.createdAt,
+            promptText: src.promptText ?? "",
+            format: src.format ?? null,
+            blocksJson: src.blocksJson ?? "[]",
+            metaJson: safeJsonStringify(forkMeta),
+            activeVariantId: null,
+          });
+        }
+      }
+    }
+  }
+
   return branchRowToDto(rows[0]);
 }
 
@@ -284,7 +404,10 @@ export async function listChatMessages(params: {
     .limit(params.limit);
 
   // For UI it's usually nicer oldest->newest; we fetched newest-first for cursor performance.
-  return rows.map(messageRowToDto).reverse();
+  return rows
+    .map(messageRowToDto)
+    .reverse()
+    .filter((m) => !isDeletedMessageMeta(m.meta));
 }
 
 export async function createChatMessage(params: {
@@ -311,7 +434,10 @@ export async function createChatMessage(params: {
     promptText: params.promptText ?? "",
     format: params.format ?? null,
     blocksJson: safeJsonStringify(params.blocks ?? [], "[]"),
-    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    metaJson:
+      typeof params.meta === "undefined"
+        ? null
+        : safeJsonStringify(params.meta),
     activeVariantId: null,
   });
 
@@ -325,8 +451,12 @@ export async function createChatMessage(params: {
     })
     .where(eq(chats.id, params.chatId));
 
-  const rows = await db.select().from(chatMessages).where(eq(chatMessages.id, id));
-  if (!rows[0]) throw new Error("Не удалось создать сообщение (внутренняя ошибка).");
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.id, id));
+  if (!rows[0])
+    throw new Error("Не удалось создать сообщение (внутренняя ошибка).");
   return messageRowToDto(rows[0]);
 }
 
@@ -334,7 +464,11 @@ export async function createAssistantMessageWithVariant(params: {
   ownerId?: string;
   chatId: string;
   branchId: string;
-}): Promise<{ assistantMessageId: string; variantId: string; createdAt: Date }> {
+}): Promise<{
+  assistantMessageId: string;
+  variantId: string;
+  createdAt: Date;
+}> {
   const db = await initDb();
   const ts = nowMonotonicDate();
 
@@ -376,7 +510,11 @@ export async function createImportedAssistantMessage(params: {
   branchId: string;
   promptText: string;
   meta?: unknown;
-}): Promise<{ assistantMessageId: string; variantId: string; createdAt: Date }> {
+}): Promise<{
+  assistantMessageId: string;
+  variantId: string;
+  createdAt: Date;
+}> {
   const db = await initDb();
   const ts = nowMonotonicDate();
 
@@ -394,7 +532,10 @@ export async function createImportedAssistantMessage(params: {
     promptText: text,
     format: null,
     blocksJson: "[]",
-    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    metaJson:
+      typeof params.meta === "undefined"
+        ? null
+        : safeJsonStringify(params.meta),
     activeVariantId: variantId,
   });
 
@@ -450,7 +591,12 @@ export async function listMessagesForPrompt(params: {
   const rowsNewestFirst = await db
     .select()
     .from(chatMessages)
-    .where(and(eq(chatMessages.chatId, params.chatId), eq(chatMessages.branchId, params.branchId)))
+    .where(
+      and(
+        eq(chatMessages.chatId, params.chatId),
+        eq(chatMessages.branchId, params.branchId)
+      )
+    )
     .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
     .limit(params.limit);
 
@@ -460,7 +606,51 @@ export async function listMessagesForPrompt(params: {
     .slice()
     .reverse()
     .filter((r) => !exclude.has(r.id))
+    .filter((r) => !isDeletedMessageMeta(safeJsonParse(r.metaJson, null)))
     .map((r) => ({ role: r.role, content: r.promptText ?? "" }))
     .filter((m) => m.content.trim().length > 0);
 }
 
+export async function softDeleteChatMessage(params: {
+  messageId: string;
+  meta?: unknown;
+}): Promise<{ id: string }> {
+  const db = await initDb();
+  const ts = new Date().toISOString();
+
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.id, params.messageId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error("Message не найден");
+
+  const currentMeta = safeJsonParse(row.metaJson, null);
+  const baseMeta =
+    currentMeta && typeof currentMeta === "object"
+      ? (currentMeta as Record<string, unknown>)
+      : {};
+  const extraMeta =
+    params.meta && typeof params.meta === "object"
+      ? (params.meta as Record<string, unknown>)
+      : {};
+
+  const nextMeta: Record<string, unknown> = {
+    ...baseMeta,
+    ...extraMeta,
+    deleted: true,
+    deletedAt: ts,
+  };
+
+  await db
+    .update(chatMessages)
+    .set({
+      promptText: "",
+      blocksJson: "[]",
+      metaJson: safeJsonStringify(nextMeta),
+    })
+    .where(eq(chatMessages.id, params.messageId));
+
+  return { id: params.messageId };
+}

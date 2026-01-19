@@ -15,6 +15,11 @@ const engine = new Liquid({
   strictVariables: false,
 });
 
+export function validateLiquidTemplate(templateText: string): void {
+  // Throws on syntax errors. Variables/filters are not strict in v1.
+  engine.parse(templateText);
+}
+
 export async function renderLiquidTemplate(params: {
   templateText: string;
   context: PromptTemplateRenderContext;

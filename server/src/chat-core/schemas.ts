@@ -219,3 +219,12 @@ export const selectVariantParamsSchema = z.object({
   id: idSchema, // messageId
   variantId: idSchema,
 });
+
+// ---- Manual edit variant (v1)
+
+export const createManualEditVariantBodySchema = z.object({
+  ownerId: ownerIdSchema.optional(),
+  promptText: z.string().default(""),
+  blocks: blocksSchema.optional(),
+  meta: jsonValueSchema.optional(),
+});

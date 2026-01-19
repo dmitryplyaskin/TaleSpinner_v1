@@ -165,8 +165,45 @@ export async function createChatForEntityProfile(params: {
 	});
 }
 
+export async function deleteChat(chatId: string): Promise<ChatDto> {
+	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`, { method: 'DELETE' });
+}
+
 export async function getChatById(chatId: string): Promise<ChatDto> {
 	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`);
+}
+
+export async function listChatBranches(chatId: string): Promise<ChatBranchDto[]> {
+	return apiJson<ChatBranchDto[]>(`/chats/${encodeURIComponent(chatId)}/branches`);
+}
+
+export async function createChatBranch(params: {
+	chatId: string;
+	title?: string;
+	parentBranchId?: string;
+	forkedFromMessageId?: string;
+	forkedFromVariantId?: string;
+	meta?: unknown;
+	ownerId?: string;
+}): Promise<ChatBranchDto> {
+	return apiJson<ChatBranchDto>(`/chats/${encodeURIComponent(params.chatId)}/branches`, {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			title: params.title,
+			parentBranchId: params.parentBranchId,
+			forkedFromMessageId: params.forkedFromMessageId,
+			forkedFromVariantId: params.forkedFromVariantId,
+			meta: params.meta,
+		}),
+	});
+}
+
+export async function activateChatBranch(params: { chatId: string; branchId: string }): Promise<ChatDto> {
+	return apiJson<ChatDto>(
+		`/chats/${encodeURIComponent(params.chatId)}/branches/${encodeURIComponent(params.branchId)}/activate`,
+		{ method: 'POST' },
+	);
 }
 
 export async function listChatMessages(params: {
@@ -298,6 +335,28 @@ export type MessageVariantDto = {
 	meta: unknown | null;
 	isSelected: boolean;
 };
+
+export async function createManualEditVariant(params: {
+	messageId: string;
+	promptText: string;
+	blocks?: unknown[];
+	meta?: unknown;
+	ownerId?: string;
+}): Promise<MessageVariantDto> {
+	return apiJson<MessageVariantDto>(`/messages/${encodeURIComponent(params.messageId)}/variants`, {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			promptText: params.promptText,
+			blocks: params.blocks,
+			meta: params.meta,
+		}),
+	});
+}
+
+export async function deleteChatMessage(messageId: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
+}
 
 export async function listMessageVariants(messageId: string): Promise<MessageVariantDto[]> {
 	return apiJson<MessageVariantDto[]>(`/messages/${encodeURIComponent(messageId)}/variants`);

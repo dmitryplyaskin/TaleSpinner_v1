@@ -18,6 +18,7 @@ import {
   listPromptTemplates,
   updatePromptTemplate,
 } from "../services/chat-core/prompt-templates-repository";
+import { validateLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 
 const router = express.Router();
 
@@ -44,6 +45,16 @@ router.post(
   "/prompt-templates",
   validate({ body: createPromptTemplateBodySchema }),
   asyncHandler(async (req: Request) => {
+    try {
+      validateLiquidTemplate(req.body.templateText);
+    } catch (error) {
+      throw new HttpError(
+        400,
+        `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+        "VALIDATION_ERROR"
+      );
+    }
+
     const created = await createPromptTemplate({
       ownerId: req.body.ownerId,
       name: req.body.name,
@@ -63,6 +74,18 @@ router.put(
   validate({ params: idParamsSchema, body: updatePromptTemplateBodySchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
+    if (typeof req.body.templateText === "string") {
+      try {
+        validateLiquidTemplate(req.body.templateText);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+          "VALIDATION_ERROR"
+        );
+      }
+    }
+
     const updated = await updatePromptTemplate({
       id: params.id,
       name: req.body.name,

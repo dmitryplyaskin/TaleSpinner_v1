@@ -6,6 +6,7 @@ import BGImages from '../../assets/bg.png';
 
 import { $currentChat, $messages } from '@model/chat-core';
 
+import { ChatHeader } from './chat-header';
 import { MessageInput } from './input';
 import { RenderChat } from './render-chat';
 
@@ -57,7 +58,7 @@ export const ChatWindow: React.FC = () => {
 						flex: 1,
 						minHeight: 0,
 						overflowY: 'auto',
-						paddingTop: 16,
+						paddingTop: 0,
 						paddingBottom: 0,
 						backgroundColor: 'rgba(0,0,0,0.08)',
 						backdropFilter: 'blur(4px)',
@@ -65,6 +66,8 @@ export const ChatWindow: React.FC = () => {
 						paddingInline: 12,
 					}}
 				>
+					<ChatHeader />
+					<Box pt={16}>
 					<RenderChat />
 					<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
 
@@ -76,6 +79,7 @@ export const ChatWindow: React.FC = () => {
 						}}
 					>
 						<MessageInput />
+					</Box>
 					</Box>
 				</Box>
 			</Container>

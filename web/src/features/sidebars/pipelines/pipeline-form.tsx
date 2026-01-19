@@ -1,76 +1,90 @@
-import { Button, Stack, Text } from '@mantine/core';
-import { type PipelineType } from '@shared/types/pipelines';
+import { Alert, Button, Stack, Switch, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect, useRef } from 'react';
-import { useFieldArray, FormProvider, useForm } from 'react-hook-form';
-import { LuPlus } from 'react-icons/lu';
-import { v4 as uuidv4 } from 'uuid';
+import { useEffect, useMemo, useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 
-import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
-
-import { PipelineItem } from './pipeline-item';
+import { type PipelineDbType, createEmptyPipeline, pipelinesModel } from '@model/pipelines';
+import { FormInput } from '@ui/form-components';
 
 export const PipelineForm = () => {
 	const selectedPipeline = useUnit(pipelinesModel.$selectedItem);
-	const ref = useRef<HTMLDivElement>(null);
+	const [jsonError, setJsonError] = useState<string | null>(null);
 
-	const methods = useForm<PipelineType>({
-		defaultValues: selectedPipeline || createEmptyPipeline(),
-	});
+	type PipelineFormValues = Omit<PipelineDbType, 'definition'> & { definitionJson: string };
 
-	useEffect(() => {
-		methods.reset(selectedPipeline || createEmptyPipeline());
+	const initialValues = useMemo<PipelineFormValues>(() => {
+		const p = selectedPipeline ?? createEmptyPipeline();
+		return {
+			...p,
+			definitionJson: JSON.stringify(p.definition ?? {}, null, 2),
+		};
 	}, [selectedPipeline]);
 
-	const { fields, append, remove, move } = useFieldArray({
-		control: methods.control,
-		name: 'pipelines',
-	});
+	const methods = useForm<PipelineFormValues>({ defaultValues: initialValues });
 
-	const handleAddPipeline = () => {
-		append({
-			name: '',
-			tag: '',
-			prompt: '',
-			enabled: false,
-			id: uuidv4(),
-		});
-	};
+	useEffect(() => {
+		setJsonError(null);
+		methods.reset(initialValues);
+	}, [selectedPipeline]);
 
-	const onSubmit = (data: PipelineType) => {
+	const onSubmit = (data: PipelineFormValues) => {
+		let definition: unknown = {};
+		try {
+			definition = data.definitionJson?.trim() ? (JSON.parse(data.definitionJson) as unknown) : {};
+			setJsonError(null);
+		} catch (e) {
+			setJsonError(e instanceof Error ? e.message : String(e));
+			return;
+		}
+
+		const payload: PipelineDbType = {
+			id: data.id,
+			name: data.name,
+			enabled: Boolean(data.enabled),
+			definition,
+			createdAt: data.createdAt,
+			updatedAt: data.updatedAt,
+		};
+
 		if (selectedPipeline) {
-			pipelinesModel.updateItemFx({ ...data, updatedAt: new Date().toISOString() });
+			pipelinesModel.updateItemFx({ ...payload, updatedAt: new Date().toISOString() });
 		} else {
-			pipelinesModel.createItemFx(data);
+			pipelinesModel.createItemFx(payload);
 		}
 	};
 
 	return (
 		<FormProvider {...methods}>
-			<Stack gap="sm">
+			<Stack gap="md">
 				<Text size="lg" fw={700}>
-					Pipelines:
+					Pipeline
 				</Text>
-				<Stack gap="sm" ref={ref}>
-					{fields.map((field, index) => (
-						<PipelineItem
-							key={field.id}
-							index={index}
-							onRemove={() => remove(index)}
-							onMoveUp={() => move(index, index - 1)}
-							onMoveDown={() => move(index, index + 1)}
-							isFirst={index === 0}
-							isLast={index === fields.length - 1}
-							menuPortalTarget={ref.current}
-						/>
-					))}
-				</Stack>
-				<Button onClick={handleAddPipeline} leftSection={<LuPlus />}>
-					Add Pipeline
-				</Button>
-				<Button onClick={methods.handleSubmit(onSubmit)}>
-					Save Pipelines
-				</Button>
+
+				<FormInput name="name" label="Название" placeholder="Введите название пайплайна" />
+
+				<Switch
+					label="Enabled"
+					checked={methods.watch('enabled')}
+					onChange={(e) => methods.setValue('enabled', e.currentTarget.checked, { shouldDirty: true })}
+				/>
+
+				<Textarea
+					label="definitionJson"
+					description="JSON-определение пайплайна (DB-first)."
+					value={methods.watch('definitionJson')}
+					onChange={(e) => methods.setValue('definitionJson', e.currentTarget.value, { shouldDirty: true })}
+					minRows={12}
+					autosize
+					styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' } }}
+				/>
+
+				{jsonError && (
+					<Alert color="red" title="JSON ошибка">
+						{jsonError}
+					</Alert>
+				)}
+
+				<Button onClick={methods.handleSubmit(onSubmit)}>Сохранить</Button>
 			</Stack>
 		</FormProvider>
 	);

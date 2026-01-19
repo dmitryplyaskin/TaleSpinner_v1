@@ -127,6 +127,7 @@ export async function* runChatGeneration(params: {
     const messageStream = streamGlobalChat({
       messages: prompt,
       settings: params.settings ?? {},
+      scopeId: params.ownerId ?? "global",
       abortController,
     });
 
@@ -187,6 +188,18 @@ export async function getGlobalRuntimeInfo(): Promise<{
   model: string;
 }> {
   const runtime = await getRuntime("global", "global");
+  return {
+    providerId: runtime.activeProviderId,
+    model: runtime.activeModel ?? "",
+  };
+}
+
+export async function getRuntimeInfo(params?: { ownerId?: string }): Promise<{
+  providerId: string;
+  model: string;
+}> {
+  const ownerId = params?.ownerId ?? "global";
+  const runtime = await getRuntime("global", ownerId);
   return {
     providerId: runtime.activeProviderId,
     model: runtime.activeModel ?? "",

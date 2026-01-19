@@ -28,11 +28,15 @@ export async function getProvidersForUi(): Promise<
   return listProviders();
 }
 
-export async function getTokensForUi(providerId: LlmProviderId): Promise<
-  Array<{ id: string; name: string; tokenHint: string }>
-> {
+export async function getTokensForUi(
+  providerId: LlmProviderId
+): Promise<Array<{ id: string; name: string; tokenHint: string }>> {
   const tokens = await listTokens(providerId);
-  return tokens.map((t) => ({ id: t.id, name: t.name, tokenHint: t.tokenHint }));
+  return tokens.map((t) => ({
+    id: t.id,
+    name: t.name,
+    tokenHint: t.tokenHint,
+  }));
 }
 
 export async function getModels(params: {
@@ -64,17 +68,21 @@ export async function getModels(params: {
     });
   } catch (error) {
     // Models are optional for UX; don't fail hard.
-    console.warn("Failed to fetch models", { providerId: params.providerId, error });
+    console.warn("Failed to fetch models", {
+      providerId: params.providerId,
+      error,
+    });
     return [];
   }
 }
 
-export async function *streamGlobalChat(params: {
+export async function* streamGlobalChat(params: {
   messages: GenerateMessage[];
   settings: Record<string, unknown>;
+  scopeId?: string;
   abortController?: AbortController;
 }): AsyncGenerator<{ content: string; error: string | null }> {
-  const runtime = await getRuntime("global", "global");
+  const runtime = await getRuntime("global", params.scopeId ?? "global");
   const providerId = runtime.activeProviderId;
   const tokenId = runtime.activeTokenId;
   if (!tokenId) {
@@ -107,4 +115,3 @@ export async function *streamGlobalChat(params: {
     abortController: params.abortController,
   });
 }
-

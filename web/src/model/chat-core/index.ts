@@ -4,7 +4,9 @@ import { toaster } from '@ui/toaster';
 
 import type {
 	ChatDto,
+	ChatBranchDto,
 	ChatMessageDto,
+	CreateChatResponse,
 	EntityProfileDto,
 	ImportEntityProfilesResponse,
 	MessageVariantDto,
@@ -12,12 +14,18 @@ import type {
 } from '../../api/chat-core';
 import {
 	abortGeneration,
+	activateChatBranch,
+	createChatBranch,
 	createChatForEntityProfile,
+	createManualEditVariant,
 	createEntityProfile,
+	deleteChat,
+	deleteChatMessage,
 	deleteEntityProfile,
 	getChatById,
 	importEntityProfiles,
 	listChatMessages,
+	listChatBranches,
 	listChatsForEntityProfile,
 	listEntityProfiles,
 	listMessageVariants,
@@ -70,7 +78,9 @@ export const importEntityProfilesFx = createEffect(async (files: File[]): Promis
 });
 
 export const openEntityProfileFx = createEffect(
-	async (profile: EntityProfileDto): Promise<{ chat: ChatDto; branchId: string }> => {
+	async (
+		profile: EntityProfileDto,
+	): Promise<{ chats: ChatDto[]; chat: ChatDto; branchId: string }> => {
 		const chats = await listChatsForEntityProfile(profile.id);
 		if (chats[0]?.id) {
 			const chat = await getChatById(chats[0].id);
@@ -79,14 +89,14 @@ export const openEntityProfileFx = createEffect(
 			if (branchId) {
 				// Если чат пустой (например, создано ранее без интро) — создаём новый чат.
 				const res = await listChatMessages({ chatId: chat.id, branchId, limit: 1 });
-				if (res.messages.length > 0) return { chat, branchId };
+				if (res.messages.length > 0) return { chats, chat, branchId };
 			}
 		}
 
 		const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: 'New chat' });
 		const chat = created.chat;
 		const branchId = chat.activeBranchId ?? created.mainBranch.id;
-		return { chat, branchId };
+		return { chats: [...chats, chat], chat, branchId };
 	},
 );
 
@@ -97,13 +107,92 @@ openEntityProfileFx.failData.watch((error) => {
 export const $currentChat = createStore<ChatDto | null>(null);
 export const $currentBranchId = createStore<string | null>(null);
 
+export const $chatsForCurrentProfile = createStore<ChatDto[]>([]).on(
+	openEntityProfileFx.doneData,
+	(_, payload) => payload.chats,
+);
+
 export const setOpenedChat = createEvent<{ chat: ChatDto; branchId: string }>();
 $currentChat.on(setOpenedChat, (_, v) => v.chat);
 $currentBranchId.on(setOpenedChat, (_, v) => v.branchId);
 
 sample({
 	clock: openEntityProfileFx.doneData,
+	fn: ({ chat, branchId }) => ({ chat, branchId }),
 	target: setOpenedChat,
+});
+
+// ---- Multi-chat UX (v1): list/create/open/delete chats within current EntityProfile
+
+export const openChatRequested = createEvent<{ chatId: string }>();
+
+export const openChatFx = createEffect(async (params: { chatId: string }): Promise<{ chat: ChatDto; branchId: string }> => {
+	const chat = await getChatById(params.chatId);
+	const branchId = chat.activeBranchId;
+	if (!branchId) throw new Error('branchId обязателен (нет activeBranchId)');
+	return { chat, branchId };
+});
+
+sample({
+	clock: openChatRequested,
+	target: openChatFx,
+});
+
+sample({
+	clock: openChatFx.doneData,
+	target: setOpenedChat,
+});
+
+export const createChatRequested = createEvent<{ title?: string }>();
+
+export const createChatFx = createEffect(
+	async (params: { entityProfileId: string; title?: string }): Promise<CreateChatResponse> => {
+		return createChatForEntityProfile({ entityProfileId: params.entityProfileId, title: params.title ?? 'New chat' });
+	},
+);
+
+sample({
+	clock: createChatRequested,
+	source: $currentEntityProfile,
+	filter: (profile): profile is EntityProfileDto => Boolean(profile?.id),
+	fn: (profile, payload) => ({ entityProfileId: profile!.id, title: payload.title }),
+	target: createChatFx,
+});
+
+sample({
+	clock: createChatFx.doneData,
+	fn: ({ chat, mainBranch }) => ({ chat, branchId: chat.activeBranchId ?? mainBranch.id }),
+	target: setOpenedChat,
+});
+
+// Refresh chats list after create/delete.
+sample({
+	clock: createChatFx.doneData,
+	source: $currentEntityProfile,
+	filter: (profile): profile is EntityProfileDto => Boolean(profile?.id),
+	target: openEntityProfileFx,
+});
+
+export const deleteChatRequested = createEvent<{ chatId: string }>();
+
+export const deleteChatFx = createEffect(async (params: { chatId: string }): Promise<ChatDto> => {
+	return deleteChat(params.chatId);
+});
+
+sample({
+	clock: deleteChatRequested,
+	target: deleteChatFx,
+});
+
+sample({
+	clock: deleteChatFx.doneData,
+	source: $currentEntityProfile,
+	filter: (profile): profile is EntityProfileDto => Boolean(profile?.id),
+	target: openEntityProfileFx,
+});
+
+deleteChatFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось удалить чат', description: error instanceof Error ? error.message : String(error) });
 });
 
 export const loadMessagesFx = createEffect(
@@ -114,6 +203,96 @@ export const loadMessagesFx = createEffect(
 );
 
 export const $messages = createStore<ChatMessageDto[]>([]).on(loadMessagesFx.doneData, (_, items) => items);
+
+// ---- Branches (v1)
+
+export const loadBranchesFx = createEffect(async (params: { chatId: string }): Promise<ChatBranchDto[]> => {
+	return listChatBranches(params.chatId);
+});
+
+export const $branches = createStore<ChatBranchDto[]>([]).on(loadBranchesFx.doneData, (_, items) => items);
+
+// Reload branches when we open a chat.
+sample({
+	clock: setOpenedChat,
+	fn: ({ chat }) => ({ chatId: chat.id }),
+	target: loadBranchesFx,
+});
+
+export const activateBranchRequested = createEvent<{ branchId: string }>();
+
+export const activateBranchFx = createEffect(async (params: { chatId: string; branchId: string }): Promise<ChatDto> => {
+	return activateChatBranch({ chatId: params.chatId, branchId: params.branchId });
+});
+
+sample({
+	clock: activateBranchRequested,
+	source: $currentChat,
+	filter: (chat): chat is ChatDto => Boolean(chat?.id),
+	fn: (chat, payload) => ({ chatId: chat!.id, branchId: payload.branchId }),
+	target: activateBranchFx,
+});
+
+sample({
+	clock: activateBranchFx.doneData,
+	fn: (chat) => ({ chat, branchId: chat.activeBranchId ?? '' }),
+	target: setOpenedChat,
+});
+
+activateBranchFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось активировать ветку', description: error instanceof Error ? error.message : String(error) });
+});
+
+export const createBranchRequested = createEvent<{ title?: string }>();
+
+export const createBranchFx = createEffect(
+	async (params: {
+		chatId: string;
+		parentBranchId?: string;
+		forkedFromMessageId?: string;
+		forkedFromVariantId?: string;
+		title?: string;
+	}): Promise<ChatBranchDto> => {
+		return createChatBranch({
+			chatId: params.chatId,
+			title: params.title,
+			parentBranchId: params.parentBranchId,
+			forkedFromMessageId: params.forkedFromMessageId,
+			forkedFromVariantId: params.forkedFromVariantId,
+		});
+	},
+);
+
+sample({
+	clock: createBranchRequested,
+	source: { chat: $currentChat, branchId: $currentBranchId, msgs: $messages },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId, msgs }, payload) => {
+		const last = [...msgs].reverse().find((m) => !String(m.id).startsWith('local_')) ?? null;
+		const title = payload.title ?? `branch ${new Date().toLocaleTimeString()}`;
+		return {
+			chatId: chat!.id,
+			parentBranchId: branchId ?? undefined,
+			forkedFromMessageId: last?.id,
+			forkedFromVariantId: last?.activeVariantId ?? undefined,
+			title,
+		};
+	},
+	target: createBranchFx,
+});
+
+// After creating a branch, activate it.
+sample({
+	clock: createBranchFx.doneData,
+	source: $currentChat,
+	filter: (chat): chat is ChatDto => Boolean(chat?.id),
+	fn: (chat, branch) => ({ chatId: chat!.id, branchId: branch.id }),
+	target: activateBranchFx,
+});
+
+createBranchFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось создать ветку', description: error instanceof Error ? error.message : String(error) });
+});
 
 export const loadVariantsFx = createEffect(async (params: { messageId: string }) => {
 	const variants = await listMessageVariants(params.messageId);
@@ -472,6 +651,70 @@ sample({
 });
 
 $isChatStreaming.on(runRegenerateStreamFx, () => true).on(runRegenerateStreamFx.finally, () => false);
+
+// ---- Edit/Delete messages (v1)
+
+export const deleteMessageRequested = createEvent<{ messageId: string }>();
+
+export const deleteMessageFx = createEffect(async (params: { messageId: string }): Promise<{ id: string }> => {
+	return deleteChatMessage(params.messageId);
+});
+
+sample({
+	clock: deleteMessageRequested,
+	target: deleteMessageFx,
+});
+
+sample({
+	clock: deleteMessageFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadMessagesFx,
+});
+
+deleteMessageFx.doneData.watch(() => {
+	toaster.success({ title: 'Сообщение удалено' });
+});
+
+deleteMessageFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось удалить сообщение', description: error instanceof Error ? error.message : String(error) });
+});
+
+export const manualEditMessageRequested = createEvent<{ messageId: string; promptText: string }>();
+
+export const manualEditMessageFx = createEffect(
+	async (params: { messageId: string; promptText: string }): Promise<MessageVariantDto> => {
+		return createManualEditVariant({ messageId: params.messageId, promptText: params.promptText });
+	},
+);
+
+sample({
+	clock: manualEditMessageRequested,
+	target: manualEditMessageFx,
+});
+
+sample({
+	clock: manualEditMessageFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadMessagesFx,
+});
+
+sample({
+	clock: manualEditMessageFx.doneData,
+	fn: (variant) => ({ messageId: variant.messageId }),
+	target: loadVariantsFx,
+});
+
+manualEditMessageFx.doneData.watch(() => {
+	toaster.success({ title: 'Вариант сохранён' });
+});
+
+manualEditMessageFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось сохранить правку', description: error instanceof Error ? error.message : String(error) });
+});
 
 // Auto refresh profiles list after creating one
 sample({

@@ -9,6 +9,7 @@ import { initSse } from "@core/sse/sse";
 
 import {
   messageIdParamsSchema,
+  createManualEditVariantBodySchema,
   selectVariantParamsSchema,
 } from "../chat-core/schemas";
 import { initDb } from "../db/client";
@@ -21,10 +22,11 @@ import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { createGeneration } from "../services/chat-core/generations-repository";
 import {
   createVariantForRegenerate,
+  createManualEditVariant,
   listMessageVariants,
   selectMessageVariant,
 } from "../services/chat-core/message-variants-repository";
-import { getGlobalRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
+import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import { createPipelineRun, finishPipelineRun } from "../services/chat-core/pipeline-runs-repository";
 import {
   createPipelineStepRun,
@@ -44,6 +46,41 @@ router.get(
     const params = req.params as unknown as { id: string };
     const variants = await listMessageVariants({ messageId: params.id });
     return { data: variants };
+  })
+);
+
+router.post(
+  "/messages/:id/variants",
+  validate({ params: messageIdParamsSchema, body: createManualEditVariantBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = createManualEditVariantBodySchema.parse(req.body);
+
+    const db = await initDb();
+    const msgRows = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.id, params.id))
+      .limit(1);
+    const msg = msgRows[0];
+    if (!msg) throw new HttpError(404, "Message не найден", "NOT_FOUND");
+    if (msg.role !== "assistant") {
+      throw new HttpError(
+        400,
+        "manual_edit поддерживается только для role=assistant (v1)",
+        "VALIDATION_ERROR"
+      );
+    }
+
+    const created = await createManualEditVariant({
+      ownerId: body.ownerId,
+      messageId: params.id,
+      promptText: body.promptText,
+      blocks: body.blocks,
+      meta: body.meta,
+    });
+
+    return { data: created };
   })
 );
 
@@ -188,7 +225,7 @@ router.post(
         output: { templateId, systemPrompt },
       });
 
-      const runtime = await getGlobalRuntimeInfo();
+      const runtime = await getRuntimeInfo({ ownerId });
 
       const llmStep = await createPipelineStepRun({
         ownerId,

@@ -8,12 +8,15 @@ import { pipelinesModel } from './pipelines';
 import { llmProviderModel } from './provider';
 import { samplersModel } from './samplers';
 import { getSettingsFx as fetchSidebarsFx } from './sidebars';
-import { templatesModel } from './template';
+import { promptTemplatesInitRequested } from './prompt-templates';
 import { userPersonsModel } from './user-persons';
 
 export const appStarted = createEvent();
 
 export const appInitFx = createEffect(async (): Promise<void> => {
+	// Prompt templates depend on selected chat/profile; we still trigger an initial refresh.
+	promptTemplatesInitRequested();
+
 	await Promise.all([
 		// UI state
 		fetchSidebarsFx(),
@@ -26,8 +29,6 @@ export const appInitFx = createEffect(async (): Promise<void> => {
 		instructionsModel.getItemsFx(),
 		pipelinesModel.getSettingsFx(),
 		pipelinesModel.getItemsFx(),
-		templatesModel.getSettingsFx(),
-		templatesModel.getItemsFx(),
 		userPersonsModel.getSettingsFx(),
 		userPersonsModel.getItemsFx(),
 		samplersModel.getSettingsFx(),

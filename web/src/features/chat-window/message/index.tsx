@@ -1,12 +1,13 @@
-import { Avatar, Box, Flex, Stack, Text } from '@mantine/core';
+import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
 import type { ChatMessageDto } from '../../../api/chat-core';
 import { useUnit } from 'effector-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-import { $currentEntityProfile } from '@model/chat-core';
+import { $currentEntityProfile, $isChatStreaming, deleteMessageRequested, manualEditMessageRequested } from '@model/chat-core';
 import { RenderMd } from '@ui/render-md';
 
 import { AssistantIcon } from './assistant-icon';
+import { ActionBar } from './action-bar';
 import { VariantControls } from './variant-controls';
 
 type MessageProps = {
@@ -16,13 +17,17 @@ type MessageProps = {
 
 export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	const currentProfile = useUnit($currentEntityProfile);
+	const isStreaming = useUnit($isChatStreaming);
 
 	const isUser = data.role === 'user';
 	const isAssistant = data.role === 'assistant';
 	const assistantName = currentProfile?.name || 'AI Assistant';
 	const tsLabel = useMemo(() => new Date(data.createdAt).toLocaleTimeString(), [data.createdAt]);
+	const [isEditing, setIsEditing] = useState(false);
+	const [draft, setDraft] = useState(data.promptText ?? '');
 
 	const avatarColW = '64px';
+	const isOptimistic = String(data.id).startsWith('local_') || (typeof data.meta === 'object' && Boolean((data.meta as any)?.optimistic));
 
 	return (
 		<Box
@@ -52,6 +57,31 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 							borderColor: isUser ? 'var(--mantine-color-violet-5)' : 'var(--mantine-color-gray-3)',
 						}}
 					>
+						{!isOptimistic && (
+							<ActionBar
+								isEditing={isEditing}
+								onOpenEdit={() => {
+									if (!isAssistant || isStreaming) return;
+									setDraft(data.promptText ?? '');
+									setIsEditing(true);
+								}}
+								onCancelEdit={() => {
+									setIsEditing(false);
+									setDraft(data.promptText ?? '');
+								}}
+								onConfirmEdit={() => {
+									if (!isAssistant || isStreaming) return;
+									manualEditMessageRequested({ messageId: data.id, promptText: draft });
+									setIsEditing(false);
+								}}
+								onDelete={() => {
+									if (isStreaming) return;
+									if (!window.confirm('Удалить сообщение?')) return;
+									deleteMessageRequested({ messageId: data.id });
+								}}
+							/>
+						)}
+
 						<Flex align="center" justify="space-between" gap="sm">
 							<Stack gap={0}>
 								<Text size="sm" fw={600} c={isUser ? 'violet' : 'dark'}>
@@ -61,11 +91,22 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 									{tsLabel}
 								</Text>
 							</Stack>
-						{isAssistant && <VariantControls message={data} isLast={isLast} />}
+							{isAssistant && <VariantControls message={data} isLast={isLast} />}
 						</Flex>
 
 						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>
-							<RenderMd content={data.promptText ?? ''} />
+							{isEditing ? (
+								<Textarea
+									value={draft}
+									onChange={(e) => setDraft(e.currentTarget.value)}
+									autosize
+									minRows={3}
+									maxRows={12}
+									disabled={isStreaming}
+								/>
+							) : (
+								<RenderMd content={data.promptText ?? ''} />
+							)}
 						</Box>
 					</Box>
 				</Stack>
