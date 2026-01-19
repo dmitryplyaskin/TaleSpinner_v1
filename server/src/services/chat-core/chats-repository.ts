@@ -3,7 +3,14 @@ import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
-import { chatBranches, chatMessages, chats } from "../../db/schema";
+import { chatBranches, chatMessages, chats, messageVariants } from "../../db/schema";
+
+let _lastTsMs = 0;
+function nowMonotonicDate(): Date {
+  const ms = Date.now();
+  _lastTsMs = ms <= _lastTsMs ? _lastTsMs + 1 : ms;
+  return new Date(_lastTsMs);
+}
 
 export type ChatDto = {
   id: string;
@@ -291,7 +298,7 @@ export async function createChatMessage(params: {
   meta?: unknown;
 }): Promise<ChatMessageDto> {
   const db = await initDb();
-  const ts = new Date();
+  const ts = nowMonotonicDate();
   const id = uuidv4();
 
   await db.insert(chatMessages).values({
@@ -321,5 +328,86 @@ export async function createChatMessage(params: {
   const rows = await db.select().from(chatMessages).where(eq(chatMessages.id, id));
   if (!rows[0]) throw new Error("Не удалось создать сообщение (внутренняя ошибка).");
   return messageRowToDto(rows[0]);
+}
+
+export async function createAssistantMessageWithVariant(params: {
+  ownerId?: string;
+  chatId: string;
+  branchId: string;
+}): Promise<{ assistantMessageId: string; variantId: string; createdAt: Date }> {
+  const db = await initDb();
+  const ts = nowMonotonicDate();
+
+  const assistantMessageId = uuidv4();
+  const variantId = uuidv4();
+
+  await db.insert(chatMessages).values({
+    id: assistantMessageId,
+    ownerId: params.ownerId ?? "global",
+    chatId: params.chatId,
+    branchId: params.branchId,
+    role: "assistant",
+    createdAt: ts,
+    promptText: "",
+    format: null,
+    blocksJson: "[]",
+    metaJson: null,
+    activeVariantId: variantId,
+  });
+
+  await db.insert(messageVariants).values({
+    id: variantId,
+    ownerId: params.ownerId ?? "global",
+    messageId: assistantMessageId,
+    createdAt: ts,
+    kind: "generation",
+    promptText: "",
+    blocksJson: "[]",
+    metaJson: null,
+    isSelected: true,
+  });
+
+  return { assistantMessageId, variantId, createdAt: ts };
+}
+
+export async function updateAssistantText(params: {
+  assistantMessageId: string;
+  variantId: string;
+  text: string;
+}): Promise<void> {
+  const db = await initDb();
+  await db
+    .update(messageVariants)
+    .set({ promptText: params.text })
+    .where(eq(messageVariants.id, params.variantId));
+
+  await db
+    .update(chatMessages)
+    .set({ promptText: params.text, activeVariantId: params.variantId })
+    .where(eq(chatMessages.id, params.assistantMessageId));
+}
+
+export async function listMessagesForPrompt(params: {
+  chatId: string;
+  branchId: string;
+  limit: number;
+  excludeMessageIds?: string[];
+}): Promise<Array<{ role: "user" | "assistant" | "system"; content: string }>> {
+  const db = await initDb();
+  const rowsNewestFirst = await db
+    .select()
+    .from(chatMessages)
+    .where(and(eq(chatMessages.chatId, params.chatId), eq(chatMessages.branchId, params.branchId)))
+    .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
+    .limit(params.limit);
+
+  const exclude = new Set(params.excludeMessageIds ?? []);
+  // Return oldest->newest for prompt assembly.
+  return rowsNewestFirst
+    .slice()
+    .reverse()
+    .filter((r) => !exclude.has(r.id))
+    .map((r) => ({ role: r.role, content: r.promptText ?? "" }))
+    .filter((m) => m.content.trim().length > 0);
 }
 

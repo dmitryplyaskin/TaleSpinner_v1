@@ -8,7 +8,7 @@
 
 ## Текущий статус (2026-01-19)
 
-Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) — реализованы**. Дальше по плану — **Этап 3 (оркестратор/генерации/стриминг)** и/или **Этап 4 (prompt templates как продуктовая сущность)**.
+Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) + Этап 3 (оркестратор/генерации/стриминг) — реализованы**. Дальше по плану — **Этап 4 (prompt templates как продуктовая сущность)** и **Этап 5 (pipelines/run logging)**.
 
 ### Что уже реализовано
 
@@ -57,6 +57,23 @@
     - `GET /chats/:id/messages?branchId&limit&before`
     - `POST /chats/:id/messages` (только `user|system`, без стрима на этом шаге)
 
+- [x] **Этап 3: Orchestrator + Generation + Streaming (LLM) (минимум v1)**
+
+  - Добавлена SSE-инфраструктура (единый envelope событий):
+    - `server/src/core/sse/sse.ts`
+  - Добавлен orchestrator (fallback system prompt + сбор prompt из истории + throttle/flush в БД):
+    - `server/src/services/chat-core/orchestrator.ts`
+  - Добавлен runtime registry активных генераций (AbortController по `generationId`):
+    - `server/src/services/chat-core/generation-runtime.ts`
+  - Добавлен репозиторий для `llm_generations`:
+    - `server/src/services/chat-core/generations-repository.ts`
+  - Расширен endpoint `POST /chats/:id/messages`:
+    - `Accept: text/event-stream` → создаёт user+assistant+variant+generation и стримит SSE события
+    - `Accept: application/json` → сохраняет сообщение без генерации (как раньше)
+  - Добавлен endpoint abort:
+    - `POST /generations/:id/abort`
+    - `server/src/api/generations.core.api.ts`
+
 - [x] **Инфраструктура: автоприменение миграций при старте сервера**
   - Добавлено:
     - `server/src/db/apply-migrations.ts`
@@ -67,7 +84,8 @@
 - **CharSpec normalize (V1–V3 → V3)**: пока **не реализовано**. Сейчас `spec` сохраняется как есть в `entity_profiles.spec_json`.
 - **FK циклы**: намеренно **не добавлялись** жёсткие FK вида `chats.active_branch_id -> chat_branches.id` (во избежание циклических зависимостей), это сейчас проверяется на уровне логики.
 - **Транзакционность createChat**: создание `chat` + `main` branch сейчас сделано последовательными запросами (без явной транзакции).
-- **Streaming/SSE и Generation**: в `POST /chats/:id/messages` пока нет режима `Accept: text/event-stream` — это **Этап 3**.
+- **Prompt templates/LiquidJS**: пока **заглушка** (system prompt фиксированный). CRUD и рендер — **Этап 4**.
+- **Streaming/SSE и Generation**: реализовано в `POST /chats/:id/messages` при `Accept: text/event-stream`.\n+ Текущий набор SSE `event` типов: `llm.stream.meta`, `llm.stream.delta`, `llm.stream.error`, `llm.stream.done`.
 - **Legacy**: старые JSON-based сервисы/эндпоинты пока не вычищались (это **Этап 7**).
 
 ## Ориентиры (что считаем успехом)
@@ -184,6 +202,8 @@
 ---
 
 ## Этап 3. Orchestrator + Generation + Streaming (LLM)
+
+Статус: **реализовано (v1 минимум)** — request-scoped SSE в `POST /chats/:id/messages`, запись `llm_generations`, throttle/flush текста в БД, abort по `generationId`.
 
 ### 3.1 Orchestrator service (core)
 
