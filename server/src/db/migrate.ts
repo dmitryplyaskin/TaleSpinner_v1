@@ -1,14 +1,8 @@
-import path from "path";
-
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-
-import { initDb } from "./client";
+import { applyMigrations, resolveMigrationsFolder } from "./apply-migrations";
 
 async function main(): Promise<void> {
-  const db = await initDb();
-  const migrationsFolder = path.join(process.cwd(), "drizzle");
-  migrate(db, { migrationsFolder });
-  console.log(`Migrations applied from: ${migrationsFolder}`);
+  await applyMigrations();
+  console.log(`Migrations applied from: ${resolveMigrationsFolder()}`);
 }
 
 main().catch((error) => {

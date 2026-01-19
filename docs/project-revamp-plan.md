@@ -6,6 +6,70 @@
 
 ---
 
+## Текущий статус (2026-01-19)
+
+Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) — реализованы**. Дальше по плану — **Этап 3 (оркестратор/генерации/стриминг)** и/или **Этап 4 (prompt templates как продуктовая сущность)**.
+
+### Что уже реализовано
+
+- [x] **Этап 0: DTO/валидация (Zod)**
+
+  - Добавлены Zod-схемы/DTO и утилиты JSON:
+    - `server/src/chat-core/schemas.ts`
+    - `server/src/chat-core/json.ts`
+
+- [x] **Этап 1.2: новая схема БД (v1)**
+
+  - Обновлена Drizzle-схема:
+    - `server/src/db/schema.ts`
+  - Добавлена миграция **greenfield для legacy `chats/chat_messages`** (дроп старых таблиц и создание новых):
+    - `server/drizzle/0004_chat_core_v1.sql`
+  - Таблицы в БД (v1, без RAG):  
+    `entity_profiles`, `chats`, `chat_branches`, `chat_messages`, `message_variants`, `llm_generations`, `prompt_templates`, `pipelines`, `pipeline_runs`, `pipeline_step_runs`
+
+- [x] **Этап 1.3: repository слой (минимум под API v1 без LLM)**
+
+  - Реализованы репозитории:
+    - `server/src/services/chat-core/entity-profiles-repository.ts`
+    - `server/src/services/chat-core/chats-repository.ts`
+  - Реализовано: CRUD для `entity_profiles`, создание `chat` + автосоздание `main` ветки, список веток, запись/листинг сообщений (пагинация `limit/before`).
+
+- [x] **Этап 2.1–2.2: новый backend API core домена (без LLM)**
+
+  - Добавлены роуты:
+    - `server/src/api/entity-profiles.core.api.ts`
+    - `server/src/api/chats.core.api.ts`
+  - Подключены в общий роутинг:
+    - `server/src/api/_routes_.ts`
+  - Эндпоинты (все под `/api`):
+    - `GET /entity-profiles`
+    - `POST /entity-profiles`
+    - `GET /entity-profiles/:id`
+    - `PUT /entity-profiles/:id`
+    - `DELETE /entity-profiles/:id`
+    - `GET /entity-profiles/:id/chats`
+    - `POST /entity-profiles/:id/chats` → возвращает `{ chat, mainBranch }`
+    - `GET /chats/:id`
+    - `DELETE /chats/:id` (soft-delete: `status=deleted`)
+    - `GET /chats/:id/branches`
+    - `POST /chats/:id/branches`
+    - `POST /chats/:id/branches/:branchId/activate`
+    - `GET /chats/:id/messages?branchId&limit&before`
+    - `POST /chats/:id/messages` (только `user|system`, без стрима на этом шаге)
+
+- [x] **Инфраструктура: автоприменение миграций при старте сервера**
+  - Добавлено:
+    - `server/src/db/apply-migrations.ts`
+  - `server/src/index.ts` теперь вызывает `applyMigrations()` при запуске, чтобы dev-сервер не падал на “пустой” SQLite.
+
+### Что важно помнить / ограничения текущей реализации
+
+- **CharSpec normalize (V1–V3 → V3)**: пока **не реализовано**. Сейчас `spec` сохраняется как есть в `entity_profiles.spec_json`.
+- **FK циклы**: намеренно **не добавлялись** жёсткие FK вида `chats.active_branch_id -> chat_branches.id` (во избежание циклических зависимостей), это сейчас проверяется на уровне логики.
+- **Транзакционность createChat**: создание `chat` + `main` branch сейчас сделано последовательными запросами (без явной транзакции).
+- **Streaming/SSE и Generation**: в `POST /chats/:id/messages` пока нет режима `Accept: text/event-stream` — это **Этап 3**.
+- **Legacy**: старые JSON-based сервисы/эндпоинты пока не вычищались (это **Этап 7**).
+
 ## Ориентиры (что считаем успехом)
 
 - **Backend source of truth**: фронт не собирает prompt и не хранит каноническую историю.
