@@ -2,6 +2,8 @@ import { BASE_URL } from '../const';
 
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
+export const BACKEND_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
+
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE_URL}${path}`, {
 		...init,
@@ -9,6 +11,25 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 			'Content-Type': 'application/json',
 			...(init?.headers ?? {}),
 		},
+	});
+
+	const body = (await res.json().catch(() => ({}))) as Partial<ApiEnvelope<T>> & {
+		error?: { message?: string };
+	};
+
+	if (!res.ok) {
+		const message = body?.error?.message ?? `HTTP error ${res.status}`;
+		throw new Error(message);
+	}
+
+	return body.data as T;
+}
+
+async function apiForm<T>(path: string, form: FormData, init?: Omit<RequestInit, 'body'>): Promise<T> {
+	const res = await fetch(`${BASE_URL}${path}`, {
+		...init,
+		method: init?.method ?? 'POST',
+		body: form,
 	});
 
 	const body = (await res.json().catch(() => ({}))) as Partial<ApiEnvelope<T>> & {
@@ -106,6 +127,22 @@ export async function createEntityProfile(params: {
 			avatarAssetId: params.avatarAssetId,
 		}),
 	});
+}
+
+export type ImportEntityProfilesResponse = {
+	created: EntityProfileDto[];
+	failed: Array<{ originalName: string; error: string }>;
+	message: string;
+};
+
+export async function importEntityProfiles(files: File[]): Promise<ImportEntityProfilesResponse> {
+	const form = new FormData();
+	files.forEach((f) => form.append('files', f));
+	return apiForm<ImportEntityProfilesResponse>('/entity-profiles/import', form, { method: 'POST' });
+}
+
+export async function deleteEntityProfile(id: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/entity-profiles/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export async function listChatsForEntityProfile(entityProfileId: string): Promise<ChatDto[]> {
@@ -266,7 +303,10 @@ export async function listMessageVariants(messageId: string): Promise<MessageVar
 	return apiJson<MessageVariantDto[]>(`/messages/${encodeURIComponent(messageId)}/variants`);
 }
 
-export async function selectMessageVariant(params: { messageId: string; variantId: string }): Promise<MessageVariantDto> {
+export async function selectMessageVariant(params: {
+	messageId: string;
+	variantId: string;
+}): Promise<MessageVariantDto> {
 	return apiJson<MessageVariantDto>(
 		`/messages/${encodeURIComponent(params.messageId)}/variants/${encodeURIComponent(params.variantId)}/select`,
 		{ method: 'POST' },
@@ -343,4 +383,3 @@ export async function* streamRegenerateMessageVariant(params: {
 		}
 	}
 }
-

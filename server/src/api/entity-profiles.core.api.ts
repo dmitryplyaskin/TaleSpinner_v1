@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import express, { type Request } from "express";
 import { z } from "zod";
 
@@ -10,7 +12,10 @@ import {
   createEntityProfileBodySchema,
   idSchema,
 } from "../chat-core/schemas";
-import { createChat, listChatsByEntityProfile } from "../services/chat-core/chats-repository";
+import {
+  createChat,
+  listChatsByEntityProfile,
+} from "../services/chat-core/chats-repository";
 import {
   createEntityProfile,
   deleteEntityProfile,
@@ -98,7 +103,17 @@ router.delete(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
+    const profile = await getEntityProfileById(params.id);
     await deleteEntityProfile(params.id);
+
+    // Best-effort cleanup for imported avatars (avoid orphaned files).
+    const avatarPath = profile?.avatarAssetId ?? null;
+    if (avatarPath && avatarPath.startsWith("/media/images/entity-profiles/")) {
+      const rel = avatarPath.replace(/^\/media\//, ""); // -> images/entity-profiles/...
+      const filePath = path.join(process.cwd(), "data", "media", rel);
+      await fs.unlink(filePath).catch(() => undefined);
+    }
+
     return { data: { id: params.id } };
   })
 );
@@ -139,4 +154,3 @@ router.post(
 );
 
 export default router;
-

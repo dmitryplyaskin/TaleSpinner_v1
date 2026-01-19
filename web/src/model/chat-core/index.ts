@@ -1,9 +1,12 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
+import { toaster } from '@ui/toaster';
+
 import type {
 	ChatDto,
 	ChatMessageDto,
 	EntityProfileDto,
+	ImportEntityProfilesResponse,
 	MessageVariantDto,
 	SseEnvelope,
 } from '../../api/chat-core';
@@ -11,7 +14,9 @@ import {
 	abortGeneration,
 	createChatForEntityProfile,
 	createEntityProfile,
+	deleteEntityProfile,
 	getChatById,
+	importEntityProfiles,
 	listChatMessages,
 	listChatsForEntityProfile,
 	listEntityProfiles,
@@ -45,32 +50,41 @@ function makeMinimalCharSpecV3(name: string): unknown {
 
 export const loadEntityProfilesFx = createEffect(async (): Promise<EntityProfileDto[]> => listEntityProfiles());
 
-export const $entityProfiles = createStore<EntityProfileDto[]>([]).on(loadEntityProfilesFx.doneData, (_, items) => items);
+export const $entityProfiles = createStore<EntityProfileDto[]>([]).on(
+	loadEntityProfilesFx.doneData,
+	(_, items) => items,
+);
 
 export const selectEntityProfile = createEvent<EntityProfileDto>();
-export const $currentEntityProfile = createStore<EntityProfileDto | null>(null).on(
-	selectEntityProfile,
-	(_, p) => p,
-);
+export const $currentEntityProfile = createStore<EntityProfileDto | null>(null).on(selectEntityProfile, (_, p) => p);
+
+export const clearCurrentEntityProfile = createEvent();
+$currentEntityProfile.on(clearCurrentEntityProfile, () => null);
 
 export const createEntityProfileFx = createEffect(async (params: { name: string }): Promise<EntityProfileDto> => {
 	return createEntityProfile({ name: params.name, spec: makeMinimalCharSpecV3(params.name) });
 });
 
-export const openEntityProfileFx = createEffect(async (profile: EntityProfileDto): Promise<{ chat: ChatDto; branchId: string }> => {
-	const chats = await listChatsForEntityProfile(profile.id);
-	if (chats[0]?.id) {
-		const chat = await getChatById(chats[0].id);
-		const branchId = chat.activeBranchId;
-		if (!branchId) throw new Error('У чата нет activeBranchId (ожидалось main)');
-		return { chat, branchId };
-	}
-
-	const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: 'New chat' });
-	const chat = created.chat;
-	const branchId = chat.activeBranchId ?? created.mainBranch.id;
-	return { chat, branchId };
+export const importEntityProfilesFx = createEffect(async (files: File[]): Promise<ImportEntityProfilesResponse> => {
+	return importEntityProfiles(files);
 });
+
+export const openEntityProfileFx = createEffect(
+	async (profile: EntityProfileDto): Promise<{ chat: ChatDto; branchId: string }> => {
+		const chats = await listChatsForEntityProfile(profile.id);
+		if (chats[0]?.id) {
+			const chat = await getChatById(chats[0].id);
+			const branchId = chat.activeBranchId;
+			if (!branchId) throw new Error('У чата нет activeBranchId (ожидалось main)');
+			return { chat, branchId };
+		}
+
+		const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: 'New chat' });
+		const chat = created.chat;
+		const branchId = chat.activeBranchId ?? created.mainBranch.id;
+		return { chat, branchId };
+	},
+);
 
 export const $currentChat = createStore<ChatDto | null>(null);
 export const $currentBranchId = createStore<string | null>(null);
@@ -84,10 +98,12 @@ sample({
 	target: setOpenedChat,
 });
 
-export const loadMessagesFx = createEffect(async (params: { chatId: string; branchId: string }): Promise<ChatMessageDto[]> => {
-	const res = await listChatMessages({ chatId: params.chatId, branchId: params.branchId, limit: 200 });
-	return res.messages;
-});
+export const loadMessagesFx = createEffect(
+	async (params: { chatId: string; branchId: string }): Promise<ChatMessageDto[]> => {
+		const res = await listChatMessages({ chatId: params.chatId, branchId: params.branchId, limit: 200 });
+		return res.messages;
+	},
+);
 
 export const $messages = createStore<ChatMessageDto[]>([]).on(loadMessagesFx.doneData, (_, items) => items);
 
@@ -220,27 +236,25 @@ sample({
 });
 
 // Start SSE loop (separate effect so we can stream and update stores)
-export const runStreamFx = createEffect(
-	async (prep: Awaited<ReturnType<typeof sendMessageFx>>): Promise<void> => {
-		for await (const env of streamChatMessage({
-			chatId: prep.chatId,
-			branchId: prep.branchId,
-			role: prep.role,
-			promptText: prep.promptText,
-			settings: {},
-			signal: prep.controller.signal,
-		})) {
-			handleSseEnvelope(env);
+export const runStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof sendMessageFx>>): Promise<void> => {
+	for await (const env of streamChatMessage({
+		chatId: prep.chatId,
+		branchId: prep.branchId,
+		role: prep.role,
+		promptText: prep.promptText,
+		settings: {},
+		signal: prep.controller.signal,
+	})) {
+		handleSseEnvelope(env);
 
-			if (env.type === 'llm.stream.done') {
-				break;
-			}
+		if (env.type === 'llm.stream.done') {
+			break;
 		}
+	}
 
-		// Final sync from server to ensure canonical state
-		await loadMessagesFx({ chatId: prep.chatId, branchId: prep.branchId });
-	},
-);
+	// Final sync from server to ensure canonical state
+	await loadMessagesFx({ chatId: prep.chatId, branchId: prep.branchId });
+});
 
 export const handleSseEnvelope = createEvent<SseEnvelope>();
 
@@ -324,7 +338,9 @@ sample({
 	target: applyStreamPatch,
 });
 
-export const abortGenerationFx = createEffect(async (params: { generationId: string }) => abortGeneration(params.generationId));
+export const abortGenerationFx = createEffect(async (params: { generationId: string }) =>
+	abortGeneration(params.generationId),
+);
 
 export const doAbort = createEvent<{ stream: ActiveStreamState; generationId: string | null }>();
 
@@ -349,9 +365,11 @@ $isChatStreaming.on(runStreamFx, () => true).on(runStreamFx.finally, () => false
 export const selectVariantRequested = createEvent<{ messageId: string; variantId: string }>();
 export const regenerateVariantRequested = createEvent<{ messageId: string }>();
 
-export const selectVariantFx = createEffect(async (params: { messageId: string; variantId: string }): Promise<MessageVariantDto> => {
-	return selectMessageVariant({ messageId: params.messageId, variantId: params.variantId });
-});
+export const selectVariantFx = createEffect(
+	async (params: { messageId: string; variantId: string }): Promise<MessageVariantDto> => {
+		return selectMessageVariant({ messageId: params.messageId, variantId: params.variantId });
+	},
+);
 
 const applyVariantsPatch = createEvent<{
 	msgs: ChatMessageDto[];
@@ -368,9 +386,7 @@ sample({
 		const nextVariants = existing.map((v) => ({ ...v, isSelected: v.id === selected.id }));
 		return {
 			msgs: msgs.map((m) =>
-				m.id === selected.messageId
-					? { ...m, activeVariantId: selected.id, promptText: selected.promptText ?? '' }
-					: m,
+				m.id === selected.messageId ? { ...m, activeVariantId: selected.id, promptText: selected.promptText ?? '' } : m,
 			),
 			variantsById: { ...variantsById, [selected.messageId]: nextVariants },
 		};
@@ -383,16 +399,18 @@ sample({
 	target: selectVariantFx,
 });
 
-export const prepareRegenerateFx = createEffect(async (params: { chatId: string; branchId: string; messageId: string }) => {
-	const controller = new AbortController();
-	return {
-		controller,
-		chatId: params.chatId,
-		branchId: params.branchId,
-		assistantMessageId: params.messageId,
-		mode: 'regenerate' as const,
-	};
-});
+export const prepareRegenerateFx = createEffect(
+	async (params: { chatId: string; branchId: string; messageId: string }) => {
+		const controller = new AbortController();
+		return {
+			controller,
+			chatId: params.chatId,
+			branchId: params.branchId,
+			assistantMessageId: params.messageId,
+			mode: 'regenerate' as const,
+		};
+	},
+);
 
 sample({
 	clock: regenerateVariantRequested,
@@ -419,19 +437,21 @@ $activeStream.on(prepareRegenerateFx.doneData, (_, prep) => ({
 	mode: prep.mode,
 }));
 
-export const runRegenerateStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof prepareRegenerateFx>>): Promise<void> => {
-	for await (const env of streamRegenerateMessageVariant({
-		messageId: prep.assistantMessageId!,
-		settings: {},
-		signal: prep.controller.signal,
-	})) {
-		handleSseEnvelope(env);
-		if (env.type === 'llm.stream.done') break;
-	}
+export const runRegenerateStreamFx = createEffect(
+	async (prep: Awaited<ReturnType<typeof prepareRegenerateFx>>): Promise<void> => {
+		for await (const env of streamRegenerateMessageVariant({
+			messageId: prep.assistantMessageId!,
+			settings: {},
+			signal: prep.controller.signal,
+		})) {
+			handleSseEnvelope(env);
+			if (env.type === 'llm.stream.done') break;
+		}
 
-	await loadMessagesFx({ chatId: prep.chatId, branchId: prep.branchId });
-	await loadVariantsFx({ messageId: prep.assistantMessageId! });
-});
+		await loadMessagesFx({ chatId: prep.chatId, branchId: prep.branchId });
+		await loadVariantsFx({ messageId: prep.assistantMessageId! });
+	},
+);
 
 sample({
 	clock: prepareRegenerateFx.doneData,
@@ -451,6 +471,26 @@ sample({
 	target: selectEntityProfile,
 });
 
+importEntityProfilesFx.doneData.watch((res) => {
+	res.failed.forEach(({ originalName, error }) => {
+		toaster.error({ title: `Ошибка импорта ${originalName}`, description: error });
+	});
+	if (res.created.length > 0) {
+		toaster.success({ title: 'Импорт завершён', description: res.message });
+	} else {
+		toaster.error({ title: 'Импорт не удался', description: res.message });
+	}
+});
+
+importEntityProfilesFx.failData.watch((error) => {
+	toaster.error({ title: 'Импорт не удался', description: error instanceof Error ? error.message : String(error) });
+});
+
+sample({
+	clock: importEntityProfilesFx.doneData,
+	target: loadEntityProfilesFx,
+});
+
 // Auto-open first profile on app start (if nothing selected yet)
 sample({
 	clock: loadEntityProfilesFx.doneData,
@@ -466,3 +506,38 @@ sample({
 	target: openEntityProfileFx,
 });
 
+// --- Delete profile (best-effort: clear selection first if it points to the deleted one)
+
+export const deleteEntityProfileRequested = createEvent<{ id: string }>();
+
+export const deleteEntityProfileFx = createEffect(async (params: { id: string }): Promise<{ id: string }> => {
+	return deleteEntityProfile(params.id);
+});
+
+sample({
+	clock: deleteEntityProfileRequested,
+	target: deleteEntityProfileFx,
+});
+
+sample({
+	clock: deleteEntityProfileFx.doneData,
+	source: $currentEntityProfile,
+	filter: (current, payload) => Boolean(current?.id && current.id === payload.id),
+	target: clearCurrentEntityProfile,
+});
+
+sample({
+	clock: deleteEntityProfileFx.doneData,
+	target: loadEntityProfilesFx,
+});
+
+deleteEntityProfileFx.doneData.watch(() => {
+	toaster.success({ title: 'Профиль удалён' });
+});
+
+deleteEntityProfileFx.failData.watch((error) => {
+	toaster.error({
+		title: 'Не удалось удалить профиль',
+		description: error instanceof Error ? error.message : String(error),
+	});
+});

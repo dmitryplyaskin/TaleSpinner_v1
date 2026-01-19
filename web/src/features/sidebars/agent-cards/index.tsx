@@ -7,6 +7,7 @@ import { $entityProfiles, createEntityProfileFx } from '@model/chat-core';
 import { Drawer } from '@ui/drawer';
 
 import { AgentCard } from './agent-card';
+import { Upload } from './components/upload';
 
 export const AgentCardsSidebar: React.FC = () => {
 	const list = useUnit($entityProfiles);
@@ -22,6 +23,7 @@ export const AgentCardsSidebar: React.FC = () => {
 						>
 							Создать профиль
 						</Button>
+						<Upload />
 					</Group>
 
 					{list.map((chat) => (

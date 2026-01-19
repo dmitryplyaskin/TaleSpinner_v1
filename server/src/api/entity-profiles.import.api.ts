@@ -1,4 +1,6 @@
+import fs from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 
 import express, { type Request } from "express";
 import multer from "multer";
@@ -8,7 +10,10 @@ import { HttpError } from "@core/middleware/error-handler";
 
 import { normalizeCharSpec } from "../chat-core/charspec/normalize";
 import { extractCharSpecFromPngBuffer } from "../chat-core/charspec/png";
-import { createEntityProfile, type EntityProfileDto } from "../services/chat-core/entity-profiles-repository";
+import {
+  createEntityProfile,
+  type EntityProfileDto,
+} from "../services/chat-core/entity-profiles-repository";
 
 type ImportFailed = { originalName: string; error: string };
 
@@ -36,6 +41,23 @@ function safeJsonParseBuffer(buffer: Buffer): unknown {
   return JSON.parse(text) as unknown;
 }
 
+function getEntityProfileImagesDir(): string {
+  return path.join(process.cwd(), "data", "media", "images", "entity-profiles");
+}
+
+async function saveEntityProfilePng(
+  fileBuffer: Buffer
+): Promise<{ urlPath: string; filename: string }> {
+  const dir = getEntityProfileImagesDir();
+  await fs.mkdir(dir, { recursive: true });
+
+  const filename = `${randomUUID()}.png`;
+  const filePath = path.join(dir, filename);
+  await fs.writeFile(filePath, fileBuffer);
+
+  return { filename, urlPath: `/media/images/entity-profiles/${filename}` };
+}
+
 router.post(
   "/entity-profiles/import",
   upload.array("files", 10),
@@ -53,8 +75,11 @@ router.post(
       try {
         const ext = path.extname(file.originalname).toLowerCase();
         let rawSpec: unknown;
+        let avatarUrlPath: string | null = null;
 
         if (ext === ".png") {
+          const saved = await saveEntityProfilePng(file.buffer);
+          avatarUrlPath = saved.urlPath;
           rawSpec = await extractCharSpecFromPngBuffer(file.buffer);
         } else if (ext === ".json") {
           rawSpec = safeJsonParseBuffer(file.buffer);
@@ -64,8 +89,12 @@ router.post(
 
         const normalized = normalizeCharSpec(rawSpec);
 
-        const fallbackName = path.parse(file.originalname).name || "Imported profile";
-        const name = normalized.name.trim().length > 0 ? normalized.name.trim() : fallbackName;
+        const fallbackName =
+          path.parse(file.originalname).name || "Imported profile";
+        const name =
+          normalized.name.trim().length > 0
+            ? normalized.name.trim()
+            : fallbackName;
 
         const profile = await createEntityProfile({
           ownerId,
@@ -79,6 +108,7 @@ router.post(
               source: normalized.source,
             },
           },
+          avatarAssetId: avatarUrlPath ?? undefined,
         });
 
         created.push(profile);
@@ -98,4 +128,3 @@ router.post(
 );
 
 export default router;
-
