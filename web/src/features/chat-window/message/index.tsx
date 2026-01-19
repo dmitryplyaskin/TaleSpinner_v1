@@ -7,12 +7,14 @@ import { $currentEntityProfile } from '@model/chat-core';
 import { RenderMd } from '@ui/render-md';
 
 import { AssistantIcon } from './assistant-icon';
+import { VariantControls } from './variant-controls';
 
 type MessageProps = {
 	data: ChatMessageDto;
+	isLast: boolean;
 };
 
-export const Message: React.FC<MessageProps> = ({ data }) => {
+export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	const currentProfile = useUnit($currentEntityProfile);
 
 	const isUser = data.role === 'user';
@@ -59,6 +61,7 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 									{tsLabel}
 								</Text>
 							</Stack>
+						{isAssistant && <VariantControls message={data} isLast={isLast} />}
 						</Flex>
 
 						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>

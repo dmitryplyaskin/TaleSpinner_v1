@@ -6,6 +6,7 @@ import fileRoutes from "./files/routes";
 import generationsCoreRoutes from "./generations.core.api";
 import instructionsRoutes from "./instructions.api";
 import llmRoutes from "./llm.api";
+import messageVariantsCoreRoutes from "./message-variants.core.api";
 import pipelinesRoutes from "./pipelines.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import samplersRoutes from "./samplers.api";
@@ -18,6 +19,7 @@ export const routes = [
   entityProfilesImportRoutes,
   chatCoreRoutes,
   generationsCoreRoutes,
+  messageVariantsCoreRoutes,
   userPersonsRoutes,
   samplersRoutes,
   llmRoutes,

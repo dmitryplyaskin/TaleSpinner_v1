@@ -157,7 +157,7 @@ export type SseEnvelope<T = unknown> = {
 export type ChatStreamMeta = {
 	chatId: string;
 	branchId: string;
-	userMessageId: string;
+	userMessageId?: string | null;
 	assistantMessageId: string;
 	variantId: string;
 	generationId: string;
@@ -248,5 +248,99 @@ export async function* streamChatMessage(params: {
 
 export async function abortGeneration(generationId: string): Promise<void> {
 	await apiJson<{ success: true }>(`/generations/${encodeURIComponent(generationId)}/abort`, { method: 'POST' });
+}
+
+export type MessageVariantDto = {
+	id: string;
+	ownerId: string;
+	messageId: string;
+	createdAt: string;
+	kind: 'generation' | 'manual_edit' | 'import';
+	promptText: string;
+	blocks: unknown[];
+	meta: unknown | null;
+	isSelected: boolean;
+};
+
+export async function listMessageVariants(messageId: string): Promise<MessageVariantDto[]> {
+	return apiJson<MessageVariantDto[]>(`/messages/${encodeURIComponent(messageId)}/variants`);
+}
+
+export async function selectMessageVariant(params: { messageId: string; variantId: string }): Promise<MessageVariantDto> {
+	return apiJson<MessageVariantDto>(
+		`/messages/${encodeURIComponent(params.messageId)}/variants/${encodeURIComponent(params.variantId)}/select`,
+		{ method: 'POST' },
+	);
+}
+
+export async function* streamRegenerateMessageVariant(params: {
+	messageId: string;
+	settings?: Record<string, unknown>;
+	ownerId?: string;
+	signal?: AbortSignal;
+}): AsyncGenerator<SseEnvelope> {
+	const res = await fetch(`${BASE_URL}/messages/${encodeURIComponent(params.messageId)}/regenerate`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'text/event-stream',
+			Connection: 'keep-alive',
+			'Cache-Control': 'no-cache',
+		},
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			settings: params.settings ?? {},
+		}),
+		signal: params.signal,
+	});
+
+	if (!res.ok) {
+		const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+		throw new Error(body?.error?.message ?? `HTTP error ${res.status}`);
+	}
+
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error('SSE: response body is not readable');
+
+	const decoder = new TextDecoder();
+	let buffer = '';
+	let currentEventType: string | null = null;
+
+	while (true) {
+		const { value, done } = await reader.read();
+		if (done) break;
+
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split('\n');
+		buffer = lines.pop() ?? '';
+
+		for (const rawLine of lines) {
+			const line = rawLine.trimEnd();
+			if (!line) {
+				currentEventType = null;
+				continue;
+			}
+			// Heartbeats are comments: ": ping 123"
+			if (line.startsWith(':')) continue;
+
+			if (line.startsWith('event:')) {
+				currentEventType = line.slice('event:'.length).trim();
+				continue;
+			}
+
+			if (line.startsWith('data:')) {
+				const payload = line.slice('data:'.length).trim();
+				if (!payload) continue;
+				try {
+					const env = JSON.parse(payload) as SseEnvelope;
+					// Some clients rely on event:; backend duplicates it in env.type.
+					if (!env.type && currentEventType) env.type = currentEventType;
+					yield env;
+				} catch {
+					// Ignore malformed chunks; stream should keep going.
+				}
+			}
+		}
+	}
 }
 

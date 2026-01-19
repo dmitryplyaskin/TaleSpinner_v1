@@ -1,6 +1,12 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
-import type { ChatDto, ChatMessageDto, EntityProfileDto, SseEnvelope } from '../../api/chat-core';
+import type {
+	ChatDto,
+	ChatMessageDto,
+	EntityProfileDto,
+	MessageVariantDto,
+	SseEnvelope,
+} from '../../api/chat-core';
 import {
 	abortGeneration,
 	createChatForEntityProfile,
@@ -9,7 +15,10 @@ import {
 	listChatMessages,
 	listChatsForEntityProfile,
 	listEntityProfiles,
+	listMessageVariants,
+	selectMessageVariant,
 	streamChatMessage,
+	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
 
 function nowIso(): string {
@@ -82,6 +91,37 @@ export const loadMessagesFx = createEffect(async (params: { chatId: string; bran
 
 export const $messages = createStore<ChatMessageDto[]>([]).on(loadMessagesFx.doneData, (_, items) => items);
 
+export const loadVariantsFx = createEffect(async (params: { messageId: string }) => {
+	const variants = await listMessageVariants(params.messageId);
+	return { messageId: params.messageId, variants };
+});
+
+export const $variantsByMessageId = createStore<Record<string, MessageVariantDto[]>>({}).on(
+	loadVariantsFx.doneData,
+	(prev, { messageId, variants }) => ({ ...prev, [messageId]: variants }),
+);
+
+const loadVariantsForLastAssistantMaybe = createEvent<{ messageId: string } | null>();
+
+// Auto-load variants for the last assistant message in the opened chat.
+sample({
+	clock: loadMessagesFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }, messages) => Boolean(chat?.id && branchId && messages.length > 0),
+	fn: (_, messages) => {
+		const id = [...messages].reverse().find((m) => m.role === 'assistant')?.id;
+		return id ? { messageId: id } : null;
+	},
+	target: loadVariantsForLastAssistantMaybe,
+});
+
+sample({
+	clock: loadVariantsForLastAssistantMaybe,
+	filter: (_src, payload): payload is { messageId: string } => Boolean(payload?.messageId),
+	fn: (_src, payload) => payload,
+	target: loadVariantsFx,
+});
+
 // Reload messages when we open a profile/chat.
 sample({
 	clock: setOpenedChat,
@@ -100,8 +140,9 @@ type ActiveStreamState = {
 	chatId: string;
 	branchId: string;
 	assistantMessageId: string | null;
-	pendingUserTempId: string;
-	pendingAssistantTempId: string;
+	pendingUserTempId?: string;
+	pendingAssistantTempId?: string;
+	mode: 'send' | 'regenerate';
 };
 
 const $activeStream = createStore<ActiveStreamState | null>(null);
@@ -120,6 +161,7 @@ export const sendMessageFx = createEffect(
 			promptText: params.promptText,
 			pendingUserTempId,
 			pendingAssistantTempId,
+			mode: 'send' as const,
 		};
 	},
 );
@@ -210,6 +252,7 @@ $activeStream.on(sendMessageFx.doneData, (_, prep) => ({
 	assistantMessageId: null,
 	pendingUserTempId: prep.pendingUserTempId,
 	pendingAssistantTempId: prep.pendingAssistantTempId,
+	mode: prep.mode,
 }));
 
 sample({
@@ -235,14 +278,24 @@ sample({
 
 		if (env.type === 'llm.stream.meta') {
 			const meta = env.data as any;
-			const userId = meta?.userMessageId as string | undefined;
+			const userId = typeof meta?.userMessageId === 'string' ? (meta.userMessageId as string) : undefined;
 			const assistantId = meta?.assistantMessageId as string | undefined;
 			const generationId = meta?.generationId as string | undefined;
+			const variantId = meta?.variantId as string | undefined;
 
 			return {
 				msgs: msgs.map((m) => {
-					if (m.id === stream.pendingUserTempId && userId) return { ...m, id: userId, meta: null };
-					if (m.id === stream.pendingAssistantTempId && assistantId) return { ...m, id: assistantId, meta: null };
+					if (stream.mode === 'send') {
+						if (m.id === stream.pendingUserTempId && userId) return { ...m, id: userId, meta: null };
+						if (m.id === stream.pendingAssistantTempId && assistantId) return { ...m, id: assistantId, meta: null };
+					}
+					if (stream.mode === 'regenerate' && assistantId && m.id === assistantId) {
+						return {
+							...m,
+							activeVariantId: variantId ?? m.activeVariantId,
+							promptText: '',
+						};
+					}
 					return m;
 				}),
 				stream: { ...stream, assistantMessageId: assistantId ?? stream.assistantMessageId },
@@ -254,7 +307,8 @@ sample({
 			const delta = env.data as any;
 			const content = typeof delta?.content === 'string' ? delta.content : '';
 			if (!content) return { msgs, stream };
-			const assistantId = stream.assistantMessageId ?? stream.pendingAssistantTempId;
+			const assistantId = stream.assistantMessageId ?? stream.pendingAssistantTempId ?? null;
+			if (!assistantId) return { msgs, stream };
 			return {
 				msgs: msgs.map((m) => (m.id === assistantId ? { ...m, promptText: (m.promptText ?? '') + content } : m)),
 				stream,
@@ -289,6 +343,102 @@ doAbort.watch(({ stream, generationId }) => {
 
 // Streaming state for the UI (button toggles / input disabled)
 $isChatStreaming.on(runStreamFx, () => true).on(runStreamFx.finally, () => false);
+
+// ---- Variants: select / regenerate (last assistant message)
+
+export const selectVariantRequested = createEvent<{ messageId: string; variantId: string }>();
+export const regenerateVariantRequested = createEvent<{ messageId: string }>();
+
+export const selectVariantFx = createEffect(async (params: { messageId: string; variantId: string }): Promise<MessageVariantDto> => {
+	return selectMessageVariant({ messageId: params.messageId, variantId: params.variantId });
+});
+
+const applyVariantsPatch = createEvent<{
+	msgs: ChatMessageDto[];
+	variantsById: Record<string, MessageVariantDto[]>;
+}>();
+$messages.on(applyVariantsPatch, (_, p) => p.msgs);
+$variantsByMessageId.on(applyVariantsPatch, (_, p) => p.variantsById);
+
+sample({
+	clock: selectVariantFx.doneData,
+	source: { msgs: $messages, variantsById: $variantsByMessageId },
+	fn: ({ msgs, variantsById }, selected) => {
+		const existing = variantsById[selected.messageId] ?? [];
+		const nextVariants = existing.map((v) => ({ ...v, isSelected: v.id === selected.id }));
+		return {
+			msgs: msgs.map((m) =>
+				m.id === selected.messageId
+					? { ...m, activeVariantId: selected.id, promptText: selected.promptText ?? '' }
+					: m,
+			),
+			variantsById: { ...variantsById, [selected.messageId]: nextVariants },
+		};
+	},
+	target: applyVariantsPatch,
+});
+
+sample({
+	clock: selectVariantRequested,
+	target: selectVariantFx,
+});
+
+export const prepareRegenerateFx = createEffect(async (params: { chatId: string; branchId: string; messageId: string }) => {
+	const controller = new AbortController();
+	return {
+		controller,
+		chatId: params.chatId,
+		branchId: params.branchId,
+		assistantMessageId: params.messageId,
+		mode: 'regenerate' as const,
+	};
+});
+
+sample({
+	clock: regenerateVariantRequested,
+	source: { chat: $currentChat, branchId: $currentBranchId, isStreaming: $isChatStreaming },
+	filter: ({ chat, branchId, isStreaming }) => Boolean(chat?.id && branchId && !isStreaming),
+	fn: ({ chat, branchId }, { messageId }) => ({ chatId: chat!.id, branchId: branchId!, messageId }),
+	target: prepareRegenerateFx,
+});
+
+// Optimistic clear assistant message content before regenerate streaming.
+sample({
+	clock: prepareRegenerateFx.doneData,
+	source: $messages,
+	fn: (msgs, prep) =>
+		msgs.map((m) => (m.id === prep.assistantMessageId ? { ...m, promptText: '', meta: { optimistic: true } } : m)),
+	target: $messages,
+});
+
+$activeStream.on(prepareRegenerateFx.doneData, (_, prep) => ({
+	controller: prep.controller,
+	chatId: prep.chatId,
+	branchId: prep.branchId,
+	assistantMessageId: prep.assistantMessageId,
+	mode: prep.mode,
+}));
+
+export const runRegenerateStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof prepareRegenerateFx>>): Promise<void> => {
+	for await (const env of streamRegenerateMessageVariant({
+		messageId: prep.assistantMessageId!,
+		settings: {},
+		signal: prep.controller.signal,
+	})) {
+		handleSseEnvelope(env);
+		if (env.type === 'llm.stream.done') break;
+	}
+
+	await loadMessagesFx({ chatId: prep.chatId, branchId: prep.branchId });
+	await loadVariantsFx({ messageId: prep.assistantMessageId! });
+});
+
+sample({
+	clock: prepareRegenerateFx.doneData,
+	target: runRegenerateStreamFx,
+});
+
+$isChatStreaming.on(runRegenerateStreamFx, () => true).on(runRegenerateStreamFx.finally, () => false);
 
 // Auto refresh profiles list after creating one
 sample({

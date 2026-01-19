@@ -27,8 +27,15 @@
 
 Осталось по Этапу 6 (крупные хвосты):
 
-- [ ] **Variants/swipes и управление ими (UI + API)**
-  - выбор варианта, регенерация как новый variant, “swipe” UX (см. `docs/chat-core-spec.md`)
+- [x] **Variants/swipes и управление ими (UI + API)**
+  - добавлены core endpoint’ы:
+    - `GET /messages/:id/variants`
+    - `POST /messages/:id/variants/:variantId/select`
+    - `POST /messages/:id/regenerate` (`Accept: text/event-stream`)
+  - UI: добавлены swipe-контролы для **последнего assistant сообщения** (select variant + regenerate)
+  - v1 ограничения:
+    - regenerate разрешён только для **последнего сообщения** в ветке (упрощение семантики)
+    - в `llm.stream.meta` для regenerate `userMessageId=null`
 - [ ] **Сообщения: edit/delete (и/или manual_edit variant)**
 - [ ] **Мульти-чат UX у профиля**
   - список чатов у `EntityProfile`, создание/удаление чатов, переключение активного чата
@@ -38,6 +45,8 @@
   - перейти с legacy `/templates` на `/prompt-templates` и добавить scope (global/entity_profile/chat)
 - [ ] **Pipeline UI**
   - привести UI пайплайнов к DB-first модели `/pipelines` (и убрать legacy ожидания, если есть)
+
+Подробный чеклист доведения до “Done” — ниже, в разделе **Этап 6**.
 
 ### Что уже реализовано
 
@@ -400,12 +409,126 @@
 - Сделано:
   - отправка/стриминг/abort через backend-first core API (SSE)
   - UI больше не собирает prompt (нет client-side template prepend / buildMessages)
+  - variants/swipes: list/select/regenerate (DB-first) + UI-контролы для последнего assistant сообщения
 - Осталось:
-  - variants/swipes + регенерация
-  - branches UX (create/activate + рендер ветки)
-  - редактирование/удаление (или manual_edit variant)
-  - полноценный templates UI через `/prompt-templates` со scope’ами
-  - чистка legacy моделей/фич на фронте (см. Этап 7)
+  - мульти-чат UX у профиля (list/create/switch/delete)
+  - branches UX (list/create/activate + рендер истории выбранной ветки)
+  - edit/delete сообщений (или “manual_edit” через variant)
+  - templates UI v1 через `/prompt-templates` + scopes (global/entity_profile/chat)
+  - pipeline UI: перевести на DB-first `/pipelines` и (опц.) debug-панель runs
+  - финальная чистка legacy моделей/страниц на фронте (подготовка к Этапу 7)
+
+### 6.4 Мульти-чат UX у `EntityProfile`
+
+Цель: профиль — это “контейнер чатов”, а не “один чат навсегда”.
+
+- UI:
+  - список чатов профиля (`GET /entity-profiles/:id/chats`)
+  - создание чата (`POST /entity-profiles/:id/chats`) и авто-переход в него
+  - soft-delete чата (`DELETE /chats/:id`) + скрытие “deleted” по умолчанию
+  - запоминание “активного чата” (в роуте/URL, либо в UI state)
+- Критерий готовности:
+  - можно быстро создать 2–3 чата у одного профиля и переключаться без потери истории/контекста.
+
+### 6.5 Branches UI (ветки)
+
+Цель: показывать историю **только выбранной ветки** и управлять ветками как first-class сущностью.
+
+- UI:
+  - список веток (`GET /chats/:id/branches`)
+  - создание ветки (`POST /chats/:id/branches`) с понятным “fork point” (по спеке)
+  - активация ветки (`POST /chats/:id/branches/:branchId/activate`)
+  - подгрузка сообщений выбранной ветки (`GET /chats/:id/messages?branchId=...`)
+- UX:
+  - ветка по умолчанию — `main`
+  - видимый индикатор активной ветки в заголовке чата
+- Критерий готовности:
+  - переключение ветки меняет ленту сообщений, и отправка нового сообщения пишет в активную ветку.
+
+### 6.6 Variants / Swipes (варианты ответа)
+
+Цель: для каждого assistant сообщения уметь хранить и переключать варианты, а также регенерировать новый вариант без разрушения истории.
+
+Реализовано (v1):
+
+- UI:
+  - swipe-контролы на **последнем** assistant сообщении:
+    - select variant (влево/вправо)
+    - regenerate (на последнем варианте → создаёт новый)
+- API:
+  - `GET /messages/:id/variants`
+  - `POST /messages/:id/variants/:variantId/select`
+  - `POST /messages/:id/regenerate` (`Accept: text/event-stream`)
+- Репозиторий/файлы (для навигации по коду):
+  - `server/src/services/chat-core/message-variants-repository.ts`
+  - `server/src/api/message-variants.core.api.ts`
+  - `web/src/api/chat-core.ts`
+  - `web/src/model/chat-core/index.ts`
+  - `web/src/features/chat-window/message/variant-controls.tsx`
+- v1 ограничения:
+  - regenerate разрешён только для **последнего** сообщения в ветке
+  - UI подключён только для **последнего** assistant сообщения (можно расширить на любое сообщение позже)
+
+Критерий готовности (выполнен в рамках v1):
+
+- регенерация создаёт новый variant у **того же** assistant message, swipe переключает варианты, selected сохраняется в БД и переживает reload.
+
+### 6.7 Edit/Delete сообщений (или manual_edit через variant)
+
+Цель: позволить исправлять историю, не ломая модель “вариантов”.
+
+Рекомендуемый путь v1 (минимум и совместимо с variants):
+
+- **manual_edit**: редактирование делаем как создание нового `message_variant` с меткой/источником `manual_edit` и автоселекцией.
+  - API: `POST /messages/:id/variants` с `{ promptText }` + auto-select
+- **delete**: soft-delete `chat_message` (и скрывать по умолчанию в UI).
+  - API: `DELETE /messages/:id` (или `POST /messages/:id:delete`)
+- Критерий готовности:
+  - можно поправить последнее assistant сообщение вручную (создаётся variant), можно удалить произвольное сообщение, UI корректно пересчитывает ленту.
+
+### 6.8 Templates UI v1 (DB-first, scopes)
+
+Цель: уйти от legacy `/templates` и дать полноценный редактор prompt templates с областями применения.
+
+- UI:
+  - список/создание/редактирование/удаление шаблонов через `/prompt-templates`
+  - выбор scope: `global`, `entity_profile`, `chat` (и `scopeId` где нужно)
+  - включение/выключение (enabled) и понятная логика “активного” шаблона
+  - простая превью/валидация LiquidJS (как минимум: проверка “template compiles” на сохранении)
+- Критерий готовности:
+  - можно назначить шаблон на чат (переопределяет профиль/глобальный), и следующий ответ реально рендерится через него.
+
+### 6.9 Pipeline UI (DB-first)
+
+Цель: UI пайплайнов должен работать поверх `/pipelines` (таблица `pipelines`) без любых JSON-legacy ожиданий.
+
+- UI:
+  - список/CRUD pipelines через `/pipelines`
+  - редактирование `definitionJson` (как JSON editor) + базовая валидация
+  - (опционально) debug: показать `pipeline_run_id` текущей генерации и список последних run’ов/step’ов по чату
+- Критерий готовности:
+  - пайплайны редактируются и сохраняются в БД; UI не падает, если есть новые поля в `definitionJson`.
+
+### 6.10 Definition of Done (Этап 6)
+
+Этап 6 считаем завершённым, когда:
+
+- [ ] **Chat UI полностью backend-first**: нет client-side сборки prompt, нет “канонического” состояния истории на фронте.
+- [ ] **EntityProfile → multi-chat**: list/create/switch/delete чатов работает.
+- [ ] **Branches**: list/create/activate + корректный рендер выбранной ветки.
+- [x] **Variants**: swipe/select + regenerate как новый variant (без создания “лишнего” user сообщения).
+- [ ] **Edit/Delete**: manual_edit через variant и soft-delete сообщения.
+- [ ] **Templates**: UI работает через `/prompt-templates` и поддерживает scopes.
+- [ ] **Pipelines**: UI работает через `/pipelines` (DB-first).
+- [ ] **Нет обращений к legacy endpoints** для chat/templates/pipelines в основных пользовательских сценариях.
+
+Минимальный smoke-чеклист:
+
+- создать профиль → создать 2 чата → отправить сообщение в каждый → перезагрузить страницу → история сохранена
+- создать ветку → активировать → отправить сообщение → вернуться в main → истории не смешались
+- сделать regenerate варианта → переключить swipe → selected переживает reload
+- отредактировать ответ (manual_edit variant) → текст обновился, оригинал доступен как “другой вариант”
+- назначить chat-level template → следующий ответ формируется по нему
 
 ---
 
