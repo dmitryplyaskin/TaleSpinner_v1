@@ -1,12 +1,12 @@
 import { Stack } from '@mantine/core';
 import { useList } from 'effector-react';
 
-import { $currentChat } from '@model/chat-service';
+import { $messages } from '@model/chat-core';
 
 import { Message } from './message';
 
 export const RenderChat = () => {
-	const messages = useList($currentChat, (message) => <Message key={message.id} data={message} />);
+	const messages = useList($messages, (message) => <Message key={message.id} data={message} />);
 
 	if (!messages) return null;
 

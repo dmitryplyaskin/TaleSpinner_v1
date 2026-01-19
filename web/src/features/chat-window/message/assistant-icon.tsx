@@ -1,6 +1,6 @@
 import { useUnit } from 'effector-react';
 
-import { $currentAgentCard } from '@model/chat-service';
+import { $currentEntityProfile } from '@model/chat-core';
 import { Avatar } from '@mantine/core';
 
 type AssistantIconProps = {
@@ -8,13 +8,11 @@ type AssistantIconProps = {
 };
 
 export const AssistantIcon = ({ size = 64 }: AssistantIconProps) => {
-	const currentAgentCard = useUnit($currentAgentCard);
+	const profile = useUnit($currentEntityProfile);
 
-	const name = currentAgentCard?.name;
-	const src = currentAgentCard?.avatarPath;
-	const fullSrc = src ? `http://localhost:5000${src}` : undefined;
+	const name = profile?.name;
 
 	return (
-		<Avatar size={size} name={name ?? 'AI Assistant'} src={fullSrc} color="violet" radius="xl" />
+		<Avatar size={size} name={name ?? 'AI Assistant'} color="violet" radius="xl" />
 	);
 };

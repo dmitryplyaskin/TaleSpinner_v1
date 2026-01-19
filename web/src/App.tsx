@@ -1,18 +1,15 @@
 import { Box, Button, Flex, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 
-import { $isAgentSelected } from '@model/chat-service';
+import { $currentEntityProfile, createEntityProfileFx } from '@model/chat-core';
 import { $appInitError, $appInitPending, $isAppReady, appStarted } from '@model/app-init';
 
 import { ChatWindow } from './features/chat-window';
 import { ConnectSidebars } from './features/sidebars/connect-sidebars';
 import { LeftBar } from './features/sidebars/left-bar';
-import { agentCardsModel } from './model/agent-cards';
-import './model/llm-orchestration';
-import { createNewAgentCard } from './utils/creation-helper-agent-card';
 
 function App() {
-	const isAgentSelected = useUnit($isAgentSelected);
+	const currentProfile = useUnit($currentEntityProfile);
 	const [isAppReady, isAppInitPending, appInitError, retryInit] = useUnit([
 		$isAppReady,
 		$appInitPending,
@@ -54,18 +51,18 @@ function App() {
 				<LeftBar />
 				<Flex flex={1} direction="column" miw={0}>
 					<Box flex={1} style={{ overflow: 'hidden' }}>
-						{isAgentSelected ? (
+						{currentProfile ? (
 							<ChatWindow />
 						) : (
 							<Flex h="100%" align="center" justify="center">
 								<Stack gap="md" align="center">
-									<Text c="dimmed">Выберите существующий чат или создайте новый</Text>
+									<Text c="dimmed">Выберите Entity Profile или создайте новый</Text>
 									<Button
-										onClick={() => agentCardsModel.createItemFx(createNewAgentCard())}
+										onClick={() => createEntityProfileFx({ name: `New profile ${new Date().toLocaleTimeString()}` })}
 										color="blue"
 										size="lg"
 									>
-										Создать новый чат
+										Создать новый профиль
 									</Button>
 								</Stack>
 							</Flex>

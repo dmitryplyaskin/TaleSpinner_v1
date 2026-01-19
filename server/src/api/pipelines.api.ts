@@ -6,6 +6,7 @@ import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
 
 import { createPipelineBodySchema, idSchema, updatePipelineBodySchema } from "../chat-core/schemas";
+import { pipelinesSettingsService } from "../services/pipelines-settings.service";
 import {
   createPipeline,
   deletePipeline,
@@ -17,6 +18,24 @@ import {
 const router = express.Router();
 
 const idParamsSchema = z.object({ id: idSchema });
+
+// UI settings (legacy fabric model expects this endpoint)
+router.get(
+  "/settings/pipelines",
+  asyncHandler(async () => {
+    const settings = await pipelinesSettingsService.getConfig();
+    return { data: settings };
+  })
+);
+
+router.post(
+  "/settings/pipelines",
+  asyncHandler(async (req: Request) => {
+    // v1: accept any shape; service will store as-is (typed at call sites)
+    const settings = await pipelinesSettingsService.saveConfig(req.body);
+    return { data: settings };
+  })
+);
 
 router.get(
   "/pipelines",

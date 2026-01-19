@@ -1,0 +1,252 @@
+import { BASE_URL } from '../const';
+
+type ApiEnvelope<T> = { data: T; error?: unknown };
+
+async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+	const res = await fetch(`${BASE_URL}${path}`, {
+		...init,
+		headers: {
+			'Content-Type': 'application/json',
+			...(init?.headers ?? {}),
+		},
+	});
+
+	const body = (await res.json().catch(() => ({}))) as Partial<ApiEnvelope<T>> & {
+		error?: { message?: string };
+	};
+
+	if (!res.ok) {
+		const message = body?.error?.message ?? `HTTP error ${res.status}`;
+		throw new Error(message);
+	}
+
+	return body.data as T;
+}
+
+export type EntityProfileDto = {
+	id: string;
+	ownerId: string;
+	name: string;
+	kind: 'CharSpec';
+	spec: unknown;
+	meta: unknown | null;
+	avatarAssetId: string | null;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ChatDto = {
+	id: string;
+	ownerId: string;
+	entityProfileId: string;
+	title: string;
+	activeBranchId: string | null;
+	status: 'active' | 'archived' | 'deleted';
+	createdAt: string;
+	updatedAt: string;
+	lastMessageAt: string | null;
+	lastMessagePreview: string | null;
+	version: number;
+	meta: unknown | null;
+};
+
+export type ChatBranchDto = {
+	id: string;
+	ownerId: string;
+	chatId: string;
+	title: string | null;
+	createdAt: string;
+	updatedAt: string;
+	parentBranchId: string | null;
+	forkedFromMessageId: string | null;
+	forkedFromVariantId: string | null;
+	meta: unknown | null;
+};
+
+export type ChatMessageDto = {
+	id: string;
+	ownerId: string;
+	chatId: string;
+	branchId: string;
+	role: 'user' | 'assistant' | 'system';
+	createdAt: string;
+	promptText: string;
+	format: string | null;
+	blocks: unknown[];
+	meta: unknown | null;
+	activeVariantId: string | null;
+};
+
+export type ListChatMessagesResponse = {
+	branchId: string;
+	messages: ChatMessageDto[];
+};
+
+export type CreateChatResponse = { chat: ChatDto; mainBranch: ChatBranchDto };
+
+export async function listEntityProfiles(): Promise<EntityProfileDto[]> {
+	return apiJson<EntityProfileDto[]>('/entity-profiles');
+}
+
+export async function createEntityProfile(params: {
+	name: string;
+	spec: unknown;
+	meta?: unknown;
+	ownerId?: string;
+	avatarAssetId?: string;
+}): Promise<EntityProfileDto> {
+	return apiJson<EntityProfileDto>('/entity-profiles', {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			name: params.name,
+			kind: 'CharSpec',
+			spec: params.spec,
+			meta: params.meta,
+			avatarAssetId: params.avatarAssetId,
+		}),
+	});
+}
+
+export async function listChatsForEntityProfile(entityProfileId: string): Promise<ChatDto[]> {
+	return apiJson<ChatDto[]>(`/entity-profiles/${encodeURIComponent(entityProfileId)}/chats`);
+}
+
+export async function createChatForEntityProfile(params: {
+	entityProfileId: string;
+	title?: string;
+	meta?: unknown;
+	ownerId?: string;
+}): Promise<CreateChatResponse> {
+	return apiJson<CreateChatResponse>(`/entity-profiles/${encodeURIComponent(params.entityProfileId)}/chats`, {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			title: params.title ?? 'New chat',
+			meta: params.meta,
+		}),
+	});
+}
+
+export async function getChatById(chatId: string): Promise<ChatDto> {
+	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`);
+}
+
+export async function listChatMessages(params: {
+	chatId: string;
+	branchId?: string;
+	limit?: number;
+	before?: number;
+}): Promise<ListChatMessagesResponse> {
+	const query = new URLSearchParams();
+	if (params.branchId) query.set('branchId', params.branchId);
+	if (typeof params.limit === 'number') query.set('limit', String(params.limit));
+	if (typeof params.before === 'number') query.set('before', String(params.before));
+
+	const suffix = query.toString() ? `?${query.toString()}` : '';
+	return apiJson<ListChatMessagesResponse>(`/chats/${encodeURIComponent(params.chatId)}/messages${suffix}`);
+}
+
+export type SseEnvelope<T = unknown> = {
+	id: string;
+	type: string;
+	ts: number;
+	data: T;
+};
+
+export type ChatStreamMeta = {
+	chatId: string;
+	branchId: string;
+	userMessageId: string;
+	assistantMessageId: string;
+	variantId: string;
+	generationId: string;
+	pipelineRunId: string | null;
+	pipelineStepRunId: string | null;
+};
+
+export type ChatStreamDelta = { content: string };
+export type ChatStreamError = { message: string };
+export type ChatStreamDone = { status: 'done' | 'aborted' | 'error' };
+
+export async function* streamChatMessage(params: {
+	chatId: string;
+	branchId?: string;
+	role: 'user' | 'system';
+	promptText: string;
+	settings?: Record<string, unknown>;
+	ownerId?: string;
+	signal?: AbortSignal;
+}): AsyncGenerator<SseEnvelope> {
+	const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(params.chatId)}/messages`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'text/event-stream',
+			Connection: 'keep-alive',
+			'Cache-Control': 'no-cache',
+		},
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			branchId: params.branchId,
+			role: params.role,
+			promptText: params.promptText,
+			settings: params.settings ?? {},
+		}),
+		signal: params.signal,
+	});
+
+	if (!res.ok) {
+		const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+		throw new Error(body?.error?.message ?? `HTTP error ${res.status}`);
+	}
+
+	const reader = res.body?.getReader();
+	if (!reader) throw new Error('SSE: response body is not readable');
+
+	const decoder = new TextDecoder();
+	let buffer = '';
+	let currentEventType: string | null = null;
+
+	while (true) {
+		const { value, done } = await reader.read();
+		if (done) break;
+
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split('\n');
+		buffer = lines.pop() ?? '';
+
+		for (const rawLine of lines) {
+			const line = rawLine.trimEnd();
+			if (!line) {
+				currentEventType = null;
+				continue;
+			}
+			// Heartbeats are comments: ": ping 123"
+			if (line.startsWith(':')) continue;
+
+			if (line.startsWith('event:')) {
+				currentEventType = line.slice('event:'.length).trim();
+				continue;
+			}
+
+			if (line.startsWith('data:')) {
+				const payload = line.slice('data:'.length).trim();
+				if (!payload) continue;
+				try {
+					const env = JSON.parse(payload) as SseEnvelope;
+					// Some clients rely on event:; backend duplicates it in env.type.
+					if (!env.type && currentEventType) env.type = currentEventType;
+					yield env;
+				} catch {
+					// Ignore malformed chunks; stream should keep going.
+				}
+			}
+		}
+	}
+}
+
+export async function abortGeneration(generationId: string): Promise<void> {
+	await apiJson<{ success: true }>(`/generations/${encodeURIComponent(generationId)}/abort`, { method: 'POST' });
+}
+

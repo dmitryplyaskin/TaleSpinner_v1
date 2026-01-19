@@ -7,6 +7,16 @@ import { BASE_URL } from '../../const';
 
 import { type FabricSettings } from './types';
 
+async function safeReadJson(response: Response): Promise<unknown> {
+	const text = await response.text();
+	try {
+		return text ? JSON.parse(text) : {};
+	} catch {
+		// Most common case: 404 HTML page or proxy error.
+		throw new Error(`HTTP ${response.status} ${response.statusText}`);
+	}
+}
+
 export const createSettingsModel = <SettingsType extends CommonModelSettingsType>(
 	fabricParams: FabricSettings<SettingsType>,
 	fabricName: string,
@@ -16,7 +26,12 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 	const getSettingsFx = createEffect<void, { data: SettingsType }>(() =>
 		asyncHandler(async () => {
 			const response = await fetch(`${BASE_URL}${fabricParams.route}`);
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: SettingsType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error fetching ${fabricName} settings`),
 	);
 
@@ -31,7 +46,12 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 				body: JSON.stringify(settings),
 			});
 
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: SettingsType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return;
 		}, `Error updating ${fabricName} settings`),
 	);
 

@@ -4,17 +4,18 @@ import React, { useEffect, useRef } from 'react';
 
 import BGImages from '../../assets/bg.png';
 
-import { $currentAgentCard } from '@model/chat-service';
+import { $currentChat, $messages } from '@model/chat-core';
 
 import { MessageInput } from './input';
 import { RenderChat } from './render-chat';
 
 export const ChatWindow: React.FC = () => {
-	const currentAgentCard = useUnit($currentAgentCard);
+	const chat = useUnit($currentChat);
+	const messages = useUnit($messages);
 	const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
-		if (!currentAgentCard) return;
+		if (!chat) return;
 
 		const scrollToBottom = () => {
 			messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
@@ -25,7 +26,7 @@ export const ChatWindow: React.FC = () => {
 			scrollToBottom();
 			requestAnimationFrame(scrollToBottom);
 		});
-	}, [currentAgentCard?.id]);
+	}, [chat?.id, messages.length]);
 
 	return (
 		<Flex

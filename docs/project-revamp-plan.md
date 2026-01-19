@@ -8,7 +8,36 @@
 
 ## Текущий статус (2026-01-19)
 
-Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) + Этап 3 (оркестратор/генерации/стриминг) + Этап 4 (prompt templates/LiquidJS) + Этап 5 (pipelines/run logging) — реализованы**. Дальше по плану — **Этап 6 (frontend: thin UI, cutover на новые API)** и **Этап 7 (удаление legacy/JSON)**.
+Кратко: **Этап 1 (DB) + Этап 2 (core API без LLM) + Этап 3 (оркестратор/генерации/стриминг) + Этап 4 (prompt templates/LiquidJS) + Этап 5 (pipelines/run logging) — реализованы**. Сейчас идёт **Этап 6 (frontend: thin UI, cutover на новые API)**, далее — **Этап 7 (удаление legacy/JSON)**.
+
+### Этап 6 — прогресс (2026-01-19)
+
+- [x] **Cutover chat UI на backend-first core API**
+  - UI работает от `EntityProfile -> Chat -> Messages` через новые endpoint’ы: `/entity-profiles`, `/entity-profiles/:id/chats`, `/chats/:id/messages`
+  - отправка сообщений и стриминг: `POST /chats/:id/messages` + `Accept: text/event-stream`
+  - abort генерации: `POST /generations/:id/abort`
+- [x] **Убрана клиентская сборка prompt**
+  - не используется `buildMessages()` и template prepend на фронте; prompt собирается на сервере (оркестратор + LiquidJS)
+- [x] **Починены “legacy settings” блокирующие запуск фронта**
+  - добавлен `GET/POST /settings/pipelines` (иначе UI падал на 404 HTML → JSON parse)
+  - фронтовые `_fabric_` модели теперь устойчивее к не-JSON ошибочным ответам
+- [x] **Templates UI подключён к DB-first prompt_templates (совместимость)**
+  - legacy UI `/templates` и `/settings/templates` теперь работают поверх таблицы `prompt_templates` (scope=global)
+  - выбранный global template реально влияет на следующие генерации (через pickActivePromptTemplate)
+
+Осталось по Этапу 6 (крупные хвосты):
+
+- [ ] **Variants/swipes и управление ими (UI + API)**
+  - выбор варианта, регенерация как новый variant, “swipe” UX (см. `docs/chat-core-spec.md`)
+- [ ] **Сообщения: edit/delete (и/или manual_edit variant)**
+- [ ] **Мульти-чат UX у профиля**
+  - список чатов у `EntityProfile`, создание/удаление чатов, переключение активного чата
+- [ ] **Branches UI**
+  - список/создание/activate веток, корректный показ истории по выбранной ветке
+- [ ] **Templates UI v1 “по-новому”**
+  - перейти с legacy `/templates` на `/prompt-templates` и добавить scope (global/entity_profile/chat)
+- [ ] **Pipeline UI**
+  - привести UI пайплайнов к DB-first модели `/pipelines` (и убрать legacy ожидания, если есть)
 
 ### Что уже реализовано
 
@@ -365,6 +394,18 @@
 Артефакт готовности:
 
 - фронт не содержит логики “какие сообщения отправлять в LLM”.
+
+### Статус реализации (факт)
+
+- Сделано:
+  - отправка/стриминг/abort через backend-first core API (SSE)
+  - UI больше не собирает prompt (нет client-side template prepend / buildMessages)
+- Осталось:
+  - variants/swipes + регенерация
+  - branches UX (create/activate + рендер ветки)
+  - редактирование/удаление (или manual_edit variant)
+  - полноценный templates UI через `/prompt-templates` со scope’ами
+  - чистка legacy моделей/фич на фронте (см. Этап 7)
 
 ---
 

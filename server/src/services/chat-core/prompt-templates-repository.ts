@@ -89,6 +89,7 @@ export async function getPromptTemplateById(
 }
 
 export async function createPromptTemplate(params: {
+  id?: string;
   ownerId?: string;
   name: string;
   enabled?: boolean;
@@ -100,7 +101,7 @@ export async function createPromptTemplate(params: {
 }): Promise<PromptTemplateDto> {
   const db = await initDb();
   const ts = new Date();
-  const id = uuidv4();
+  const id = typeof params.id === "string" && params.id.length > 0 ? params.id : uuidv4();
 
   await db.insert(promptTemplates).values({
     id,
