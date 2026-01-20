@@ -1,0 +1,121 @@
+# TaleSpinner — Pipelines + Pre/Post Processing Spec (v0.1) — Step types
+
+> Статус: **draft** для обсуждения.  
+> Цель: зафиксировать архитектуру пайплайнов и пре/постпроцессинга, совместимую с текущим chat-core флоу, чтобы дальше согласовать API и начать реализацию.
+
+> Примечание: это часть спеки, выделенная из монолита `pipelines-and-processing-spec-v0.1.md`.
+
+## Step Types (семантика)
+
+### `pre`
+
+Назначение:
+
+- собрать `systemPrompt` (Liquid template + policy composition),
+- выбрать/подготовить history для prompt,
+- нормализовать входы (user message, char/persona fields),
+- подготовить `PromptDraft` и `LLM settings`.
+
+Выход:
+
+- `PromptDraft` готов к отправке в LLM.
+- `pipeline_step_runs.outputJson` содержит: выбранный templateId/имя, системный промпт, параметры тримминга, статистику (кол-во сообщений), возможные предупреждения.
+
+Дополнение (v1): `message_transform` для текущего user input
+
+Иногда пользователи захотят “переписать” user-сообщение (пример: список действий → литературный текст) так, чтобы:
+
+- в UI отображалась “красивая” версия,
+- в prompt уходила “красивая” версия,
+- но оригинал был доступен для дебага/отката.
+
+Это решается через **variants для user-сообщений**, а не через разрушительное редактирование:
+
+- шаг с правом `message_transform` может:
+  - создать variant для **текущего** `userMessageId` (например `kind=normalized|rewritten|dice_enriched`)
+  - сделать его selected/active (policy-controlled)
+  - сохранить исходный ввод как отдельный variant (например `kind=raw_user_input`) или оставить как “исходный selected” и переключить selection
+
+Таким образом инвариант `promptText` сохраняется: мы всё так же берём `promptText` **выбранного** состояния, просто “выбранным” может стать нормализованный вариант.
+
+Не-цель v1:
+
+- массово переписывать прошлые user-сообщения “задним числом” без отдельной операции (см. исторические трансформации).
+
+### `rag` (опционально)
+
+Назначение:
+
+- найти дополнительные знания/контекст,
+- добавить их в PromptDraft так, чтобы это было наблюдаемо и воспроизводимо.
+
+Рекомендация формы инъекции (v1):
+
+- либо добавить один “system appendix” блок в system prompt,
+- либо добавить отдельное “developer note” сообщение в PromptDraft (не в БД историю).
+
+Выход:
+
+- `PromptDraft` дополнен `rag` результатами.
+- В `pipeline_step_runs.outputJson`: список документов/чанков/цитат/скорингов (в пределах разумного).
+
+### `llm`
+
+Назначение:
+
+- создать `Generation`,
+- вызвать провайдера LLM со `PromptDraft.messages`,
+- стримить delta наружу,
+- делать throttled flush текста ассистента в БД.
+
+События (совместимо с текущим SSE):
+
+- `llm.stream.meta`
+- `llm.stream.delta`
+- `llm.stream.error`
+- `llm.stream.done`
+
+Логирование:
+
+- `llm_generations.paramsJson` — LLM settings.
+- `llm_generations.promptSnapshotJson` (опционально) — финальный PromptDraft (или “почти финальный”).
+- `llm_generations.promptTokens/completionTokens` (опционально) — usage.
+
+Дополнение (v1): `llm` шаги бывают двух видов по эффекту:
+
+- **aux LLM (prompt-time)**: создаёт `Augmentation` или другие артефакты для PromptDraft; не стримит в UI и не пишет в `message_variants`.
+- **main LLM (canonical)**: единственный шаг, который стримит и сохраняет assistant variant/message.
+
+### `post` (опционально, но рекомендуется)
+
+Назначение:
+
+- финально обработать результат генерации,
+- привести к каноническому виду для хранения/рендера,
+- (опционально) сформировать `blocksJson`.
+
+Примеры задач:
+
+- нормализация markdown/пробелов,
+- safety redaction,
+- парсинг структурированного вывода (JSON-mode),
+- разбор на blocks (answer/tool_result/reasoning(ui_only)).
+
+Важно:
+
+- В v1 рекомендуется делать `post` **после** `done`, а не в потоковом режиме.
+
+Дополнение: `post` может быть реализован как “отдельный runner” на другой модели (как LLM-call внутри post), но его **write targets** по умолчанию ограничены:
+
+- обновление текущего assistant message/variant (format/safety/blocks),
+- обновление `pipeline_artifacts` (обычно `kind=state`, если разрешено `state_write`),
+- без изменения прошлых `chat_messages`.
+
+### `tool` (опционально)
+
+Назначение:
+
+- выполнить внешнюю функцию/интеграцию (HTTP, поиск, парсер) как шаг пайплайна.
+
+В v1 это может существовать как “tool-before-llm” (до LLM) или “tool-only” (без LLM), но без сложного loop-а.
+
