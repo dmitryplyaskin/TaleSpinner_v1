@@ -15,6 +15,7 @@
 - [30 — Step types](./30-step-types.md)
 - [40 — Artifacts](./40-artifacts.md)
 - [50 — Observability](./50-observability.md)
+- [55 — Logging & reproducibility](./55-logging-and-reproducibility.md)
 - [60 — SSE events](./60-sse-events.md)
 - [90 — Future & open questions](./90-open-questions.md)
 
