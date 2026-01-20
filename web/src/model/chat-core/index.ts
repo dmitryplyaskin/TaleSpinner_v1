@@ -33,7 +33,7 @@ import {
 	streamChatMessage,
 	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
-import { pipelineSseEnvelopeReceived } from '../pipeline-runtime';
+import { $pipelineRuntime, pipelineSseEnvelopeReceived, refreshPipelineStateRequested } from '../pipeline-runtime';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -338,6 +338,13 @@ sample({
 	target: loadMessagesFx,
 });
 
+// Best-effort pipeline status recovery (SSE disconnect / page refresh).
+sample({
+	clock: setOpenedChat,
+	fn: ({ chat, branchId }) => ({ chatId: chat.id, branchId: branchId ? branchId : undefined }),
+	target: refreshPipelineStateRequested,
+});
+
 export const $isChatStreaming = createStore(false);
 export const $activeGenerationId = createStore<string | null>(null);
 
@@ -542,23 +549,32 @@ export const abortGenerationFx = createEffect(async (params: { generationId: str
 	abortGeneration(params.generationId),
 );
 
-export const doAbort = createEvent<{ stream: ActiveStreamState; generationId: string | null }>();
+export const doAbort = createEvent<{ stream: ActiveStreamState | null; generationId: string | null }>();
 
 sample({
 	clock: abortRequested,
-	source: { stream: $activeStream, generationId: $activeGenerationId },
-	filter: ({ stream }) => Boolean(stream),
-	fn: ({ stream, generationId }) => ({ stream: stream!, generationId }),
+	source: { stream: $activeStream, generationId: $activeGenerationId, runtime: $pipelineRuntime },
+	filter: ({ stream, generationId, runtime }) => Boolean(stream || generationId || runtime.generationId),
+	fn: ({ stream, generationId, runtime }) => ({
+		stream,
+		generationId: generationId ?? runtime.generationId ?? null,
+	}),
 	target: doAbort,
 });
 
 doAbort.watch(({ stream, generationId }) => {
-	stream.controller.abort();
+	if (stream) stream.controller.abort();
 	if (generationId) void abortGenerationFx({ generationId });
 });
 
 // Streaming state for the UI (button toggles / input disabled)
 $isChatStreaming.on(runStreamFx, () => true).on(runStreamFx.finally, () => false);
+
+sample({
+	clock: runStreamFx.finally,
+	fn: ({ params }) => ({ chatId: params.chatId, branchId: params.branchId ? params.branchId : undefined }),
+	target: refreshPipelineStateRequested,
+});
 
 // ---- Variants: select / regenerate (last assistant message)
 
@@ -659,6 +675,12 @@ sample({
 });
 
 $isChatStreaming.on(runRegenerateStreamFx, () => true).on(runRegenerateStreamFx.finally, () => false);
+
+sample({
+	clock: runRegenerateStreamFx.finally,
+	fn: ({ params }) => ({ chatId: params.chatId, branchId: params.branchId ? params.branchId : undefined }),
+	target: refreshPipelineStateRequested,
+});
 
 // ---- Edit/Delete messages (v1)
 

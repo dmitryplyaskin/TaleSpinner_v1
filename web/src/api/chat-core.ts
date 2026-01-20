@@ -587,3 +587,57 @@ export async function getChatPipelineDebug(params: {
 	const suffix = query.toString() ? `?${query.toString()}` : '';
 	return apiJson<ChatPipelineDebugDto>(`/chats/${encodeURIComponent(params.chatId)}/pipeline-debug${suffix}`);
 }
+
+export type PipelineStateRunDto = {
+	id: string;
+	trigger: string;
+	status: string;
+	startedAt: string;
+	finishedAt: string | null;
+	branchId: string | null;
+	userMessageId: string | null;
+	assistantMessageId: string | null;
+	assistantVariantId: string | null;
+	generationId: string | null;
+};
+
+export type PipelineStateStepDto = {
+	id: string;
+	runId: string;
+	stepName: string;
+	stepType: string;
+	status: string;
+	startedAt: string;
+	finishedAt: string | null;
+	error: string | null;
+};
+
+export type PipelineStateGenerationDto = {
+	id: string;
+	status: string;
+	startedAt: string;
+	finishedAt: string | null;
+	branchId: string | null;
+	messageId: string;
+	variantId: string | null;
+	pipelineRunId: string | null;
+	pipelineStepRunId: string | null;
+	error: string | null;
+};
+
+export type ChatPipelineStateDto = {
+	chatId: string;
+	run: PipelineStateRunDto | null;
+	step: PipelineStateStepDto | null;
+	generation: PipelineStateGenerationDto | null;
+};
+
+export async function getChatPipelineState(params: {
+	chatId: string;
+	branchId?: string;
+}): Promise<ChatPipelineStateDto> {
+	const query = new URLSearchParams();
+	if (params.branchId) query.set('branchId', params.branchId);
+	const suffix = query.toString() ? `?${query.toString()}` : '';
+	return apiJson<ChatPipelineStateDto>(`/chats/${encodeURIComponent(params.chatId)}/pipeline-state${suffix}`);
+}

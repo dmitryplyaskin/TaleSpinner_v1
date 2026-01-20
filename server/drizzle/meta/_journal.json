@@ -57,6 +57,13 @@
       "when": 1768950600000,
       "tag": "0007_pipeline_idempotency_and_branch",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1768951200000,
+      "tag": "0008_pipeline_profiles_and_bindings",
+      "breakpoints": true
     }
   ]
 }

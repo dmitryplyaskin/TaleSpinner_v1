@@ -94,10 +94,43 @@
     - regenerate: `POST /api/messages/:id/regenerate` (`web/src/api/chat-core.ts`)
   - SSE клиент парсит `event:`/`data:` envelope и прокидывает `env.type/env.data` в обработчик (`web/src/api/chat-core.ts` + `web/src/model/chat-core/index.ts`).
   - Abort кнопка/логика использует `generationId` из `llm.stream.meta` и вызывает `POST /api/generations/:id/abort` (параллельно с `AbortController.abort()` на клиенте).
+-  Показ прогресса пайплайна в основном UI чата (индикатор по `pipeline.run.*`/recovery status, а не только стрим текста).
+-  Восстановление статусов после обрыва SSE (read из `GET /api/chats/:id/pipeline-state?branchId=...` + reconciliation UI).
 - **Нужно ещё сделать**
-  - Показ прогресса пайплайна в основном UI чата (индикатор по `pipeline.run.*`, а не только стрим текста).
-  - Восстановление статусов после обрыва SSE (read из `GET /api/chats/:id/pipeline-state?branchId=...` и reconciliation UI).
   - (Опционально) поддержка `pipeline.step.*` для более детального прогресса внутри run-а.
+
+#### Notes (UX / data shape, важно не забыть)
+
+- Legacy UI (`web/src/legacy/features/sidebars/pipelines/pipeline-item.tsx`) используется только как **референс UX**, не как модель спеки.
+- Pipeline sidebar в web теперь **profile-first**: редактируем `PipelineProfile` (пресеты) и список “пайплайнов” внутри профиля.
+- `PipelineProfile.spec` в UI сохраняется в **версии 1** (`shared/types/pipeline-profile-spec.ts`):
+  - пока это **заглушка под спеку**: `pipelines[]` → `steps[] (pre/llm/post)`,
+  - `step.params` хранится как **opaque JSON** (редактируется в UI) до Phase 2–4 (PromptDraft/artifacts/`promptInclusion`/`uiSurface`).
+
+### Session log (2026-01-21)
+
+> Цель сессии: закрыть хвосты фазы 1 по фронту (наблюдаемость/восстановление) и подготовить “хороший UI” для PipelineProfile (как пресетов), строго в терминологии спеки.
+
+- **Frontend: pipeline progress + recovery (Phase 1 UI хвосты)**
+  - индикатор статуса пайплайна в шапке чата (`pipeline.run.*` + recovery): `web/src/features/chat-window/chat-header.tsx`
+  - добавлен API клиент `GET /chats/:id/pipeline-state`: `web/src/api/chat-core.ts`
+  - reconciliation pipeline runtime из `pipeline-state` + best-effort polling пока `running`: `web/src/model/pipeline-runtime/index.ts`
+  - refresh `pipeline-state` при открытии чата и после завершения стрима send/regenerate: `web/src/model/chat-core/index.ts`
+  - “server-only abort”: abort работает даже если SSE уже оборван (используем `generationId` из runtime/recovery): `web/src/model/chat-core/index.ts`
+
+- **Frontend: Pipeline sidebar (UX)**
+  - сайдбар сделан **profile-first**: сверху управление `PipelineProfile` (создать/дублировать/удалить/сохранить), ниже редактирование `pipelines[]` внутри профиля.
+  - редактор использует **терминологию спеки**: `pipelines[]` → `steps[] (pre/llm/post)` → `params` (JSON-заглушка).
+  - основные файлы: `web/src/features/sidebars/pipelines/index.tsx`, `web/src/features/sidebars/pipelines/pipeline-profile-editor.tsx`, `web/src/features/sidebars/pipelines/profile-pipeline-item.tsx`
+
+- **Shared types**
+  - добавлен spec-ориентированный тип `PipelineProfile.spec` v1: `shared/types/pipeline-profile-spec.ts`
+
+- **DB / migrations (dev)**
+  - исправлена причина `SQLITE_ERROR: no such table: pipeline_profiles`:
+    - миграция существует: `server/drizzle/0008_pipeline_profiles_and_bindings.sql`
+    - но без записи в `server/drizzle/meta/_journal.json` Drizzle её не применял
+  - добавлена запись `0008_pipeline_profiles_and_bindings` в `_journal.json` и прогнаны миграции (`yarn --cwd server db:migrate`), после чего `/api/pipeline-profiles` работает.
 
 ## Фаза 2 — `pre` шаг: сборка `PromptDraft` (без артефактов v1-минимум)
 

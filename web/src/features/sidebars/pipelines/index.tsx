@@ -1,10 +1,10 @@
-import { Button, Divider, Flex, Group, Select, Stack, Switch, Text, Textarea } from '@mantine/core';
+import { Button, Collapse, Divider, Flex, Group, Select, Stack, Switch, Text, Textarea } from '@mantine/core';
 import { type PipelineSettingsType } from '@shared/types/pipelines';
 import { useUnit } from 'effector-react';
 import React from 'react';
 
 import { $currentBranchId, $currentChat } from '@model/chat-core';
-import { createEmptyPipeline, pipelinesModel } from '@model/pipelines';
+import { pipelinesModel } from '@model/pipelines';
 import {
 	$chatActivePipelineProfile,
 	$pipelineDebug,
@@ -19,12 +19,9 @@ import {
 } from '@model/pipeline-runtime';
 import { Drawer } from '@ui/drawer';
 
-import { SidebarHeader } from '../common/sidebar-header';
-
-import { PipelineForm } from './pipeline-form';
+import { PipelineProfileEditor } from './pipeline-profile-editor';
 
 export const PipelineSidebar: React.FC = () => {
-	const pipelines = useUnit(pipelinesModel.$items);
 	const settings = useUnit(pipelinesModel.$settings);
 	const currentChat = useUnit($currentChat);
 	const currentBranchId = useUnit($currentBranchId);
@@ -41,6 +38,8 @@ export const PipelineSidebar: React.FC = () => {
 	const setEntityProfile = useUnit(setEntityActiveProfileRequested);
 	const setGlobalProfile = useUnit(setGlobalActiveProfileRequested);
 
+	const [isDebugOpen, setIsDebugOpen] = React.useState(false);
+
 	const handleSettingsChange = (newSettings: Partial<PipelineSettingsType>) => {
 		pipelinesModel.updateSettingsFx({ ...settings, ...newSettings });
 	};
@@ -49,9 +48,9 @@ export const PipelineSidebar: React.FC = () => {
 		void loadProfiles();
 		if (currentChat?.id) {
 			void loadActiveProfile({ chatId: currentChat.id });
-			void refreshDebug({ chatId: currentChat.id, branchId: currentBranchId ?? undefined });
+			if (isDebugOpen) void refreshDebug({ chatId: currentChat.id, branchId: currentBranchId ?? undefined });
 		}
-	}, [currentChat?.id]);
+	}, [currentChat?.id, currentBranchId, isDebugOpen]);
 
 	const profileOptions = [
 		{ value: '', label: '(inherit / none)' },
@@ -75,41 +74,10 @@ export const PipelineSidebar: React.FC = () => {
 	return (
 		<Drawer name="pipeline" title="Pipeline">
 			<Stack gap="md">
-				<SidebarHeader
-					model={pipelinesModel}
-					items={pipelines}
-					settings={settings}
-					name="pipeline"
-					createEmptyItem={createEmptyPipeline}
-					labels={{
-						createTooltip: 'Создать инструкцию',
-						duplicateTooltip: 'Дублировать инструкцию',
-						deleteTooltip: 'Удалить инструкцию',
-						createAriaLabel: 'Create instruction',
-						duplicateAriaLabel: 'Duplicate instruction',
-						deleteAriaLabel: 'Delete instruction',
-					}}
-				/>
-				<Flex gap="md" wrap="wrap">
-					<Switch
-						checked={settings.enabled}
-						onChange={(e) => handleSettingsChange({ enabled: e.currentTarget.checked })}
-						color="green"
-						label="Enable pipelines"
-						description="Enable pipelines to use them in chat"
-					/>
-					<Switch
-						checked={settings.isFullPipelineProcessing}
-						onChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.currentTarget.checked })}
-						label="Full pipeline processing"
-						description="Completely replaces response generation and is entirely based on pipelines."
-					/>
-				</Flex>
-
-				<Divider />
+				<PipelineProfileEditor />
 
 				<Stack gap="xs">
-					<Text fw={700}>Active PipelineProfile</Text>
+					<Text fw={700}>Использование профиля (bindings)</Text>
 					<Text size="sm" c="dimmed">
 						Resolved: {resolvedLabel} (source: {activeProfile?.resolved?.source ?? '—'})
 					</Text>
@@ -149,41 +117,66 @@ export const PipelineSidebar: React.FC = () => {
 
 				<Divider />
 
-				<Stack gap="xs">
-					<Group justify="space-between" wrap="nowrap">
-						<Text fw={700}>Pipeline Debug</Text>
-						<Button
-							size="xs"
-							variant="light"
-							disabled={!currentChat?.id}
-							onClick={() => currentChat?.id && refreshDebug({ chatId: currentChat.id, branchId: currentBranchId ?? undefined })}
-						>
-							Refresh
-						</Button>
-					</Group>
-
-					<Text size="sm" c="dimmed">
-						Last runtime: {runtime.status ?? '—'} {runtime.runId ? `(runId=${runtime.runId})` : ''}
-					</Text>
-
-					<Text size="sm" c="dimmed">
-						Debug: runId={(debug as any)?.run?.id ?? '—'} genId={(debug as any)?.generation?.id ?? '—'} promptHash=
-						{(debug as any)?.generation?.promptHash ?? '—'}
-					</Text>
-
-					<Textarea
-						label="promptSnapshot (redacted)"
-						value={snapshotText}
-						readOnly
-						minRows={10}
-						autosize
-						styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' } }}
+				<Flex gap="md" wrap="wrap">
+					<Switch
+						checked={settings.enabled}
+						onChange={(e) => handleSettingsChange({ enabled: e.currentTarget.checked })}
+						color="green"
+						label="Enable pipelines"
+						description="Global switch (settings)."
 					/>
-				</Stack>
+					<Switch
+						checked={settings.isFullPipelineProcessing}
+						onChange={(e) => handleSettingsChange({ isFullPipelineProcessing: e.currentTarget.checked })}
+						label="Full pipeline processing"
+						description="Replaces response generation (future)."
+					/>
+				</Flex>
 
 				<Divider />
 
-				<PipelineForm />
+				<Stack gap="xs">
+					<Group justify="space-between" wrap="nowrap">
+						<Text fw={700}>Pipeline Debug</Text>
+						<Group gap="xs" wrap="nowrap">
+							<Button size="xs" variant="light" onClick={() => setIsDebugOpen((v) => !v)}>
+								{isDebugOpen ? 'Hide' : 'Show'}
+							</Button>
+							<Button
+								size="xs"
+								variant="light"
+								disabled={!currentChat?.id || !isDebugOpen}
+								onClick={() =>
+									currentChat?.id && refreshDebug({ chatId: currentChat.id, branchId: currentBranchId ?? undefined })
+								}
+							>
+								Refresh
+							</Button>
+						</Group>
+					</Group>
+
+					<Collapse in={isDebugOpen}>
+						<Stack gap="xs">
+							<Text size="sm" c="dimmed">
+								Last runtime: {runtime.status ?? '—'} {runtime.runId ? `(runId=${runtime.runId})` : ''}
+							</Text>
+
+							<Text size="sm" c="dimmed">
+								Debug: runId={(debug as any)?.run?.id ?? '—'} genId={(debug as any)?.generation?.id ?? '—'} promptHash=
+								{(debug as any)?.generation?.promptHash ?? '—'}
+							</Text>
+
+							<Textarea
+								label="promptSnapshot (redacted)"
+								value={snapshotText}
+								readOnly
+								minRows={10}
+								autosize
+								styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' } }}
+							/>
+						</Stack>
+					</Collapse>
+				</Stack>
 			</Stack>
 		</Drawer>
 	);
