@@ -18,11 +18,21 @@ import {
   listPromptTemplates,
   updatePromptTemplate,
 } from "../services/chat-core/prompt-templates-repository";
+import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { validateLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
+import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 
 const router = express.Router();
 
 const idParamsSchema = z.object({ id: idSchema });
+const prerenderBodySchema = z.object({
+  ownerId: z.string().min(1).optional(),
+  templateText: z.string().min(1),
+  chatId: z.string().min(1).optional(),
+  branchId: z.string().min(1).optional(),
+  entityProfileId: z.string().min(1).optional(),
+  historyLimit: z.number().int().min(1).max(200).optional(),
+});
 
 router.get(
   "/prompt-templates",
@@ -38,6 +48,38 @@ router.get(
       scopeId: query.scopeId,
     });
     return { data: templates };
+  })
+);
+
+router.post(
+  "/prompt-templates/prerender",
+  validate({ body: prerenderBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const body = prerenderBodySchema.parse(req.body);
+    try {
+      validateLiquidTemplate(body.templateText);
+    } catch (error) {
+      throw new HttpError(
+        400,
+        `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+        "VALIDATION_ERROR"
+      );
+    }
+
+    const context = await buildPromptTemplateRenderContext({
+      ownerId: body.ownerId ?? "global",
+      chatId: body.chatId,
+      branchId: body.branchId,
+      entityProfileId: body.entityProfileId,
+      historyLimit: body.historyLimit ?? 50,
+    });
+
+    const rendered = await renderLiquidTemplate({
+      templateText: body.templateText,
+      context,
+    });
+
+    return { data: { rendered } };
   })
 );
 

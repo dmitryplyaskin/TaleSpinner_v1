@@ -79,3 +79,24 @@ export async function deletePromptTemplate(id: string): Promise<{ id: string }> 
 	return apiJson<{ id: string }>(`/prompt-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
+export async function prerenderPromptTemplate(params: {
+	templateText: string;
+	ownerId?: string;
+	chatId?: string;
+	branchId?: string;
+	entityProfileId?: string;
+	historyLimit?: number;
+}): Promise<{ rendered: string }> {
+	return apiJson<{ rendered: string }>('/prompt-templates/prerender', {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			templateText: params.templateText,
+			chatId: params.chatId,
+			branchId: params.branchId,
+			entityProfileId: params.entityProfileId,
+			historyLimit: params.historyLimit,
+		}),
+	});
+}
+

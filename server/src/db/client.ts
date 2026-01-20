@@ -4,6 +4,7 @@ import path from "path";
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
+import { DATA_PATH } from "../const";
 import * as schema from "./schema";
 
 export type Db = BetterSQLite3Database<typeof schema>;
@@ -15,7 +16,8 @@ export type DbInitOptions = {
 };
 
 export function resolveDbPath(): string {
-  return process.env.DB_PATH ?? path.join(process.cwd(), "data", "db.sqlite");
+  // Default to server-local data folder (stable regardless of process.cwd()).
+  return process.env.DB_PATH ?? path.join(DATA_PATH, "db.sqlite");
 }
 
 export async function initDb(options: DbInitOptions = {}): Promise<Db> {

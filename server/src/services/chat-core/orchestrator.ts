@@ -11,6 +11,7 @@ import { registerGeneration, unregisterGeneration } from "./generation-runtime";
 import { finishGeneration } from "./generations-repository";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
 import { pickActivePromptTemplate } from "./prompt-templates-repository";
+import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { GenerateMessage } from "@shared/types/generate";
 
@@ -77,7 +78,7 @@ export async function* runChatGeneration(params: {
         : DEFAULT_SYSTEM_PROMPT;
     if (typeof params.systemPrompt !== "string") {
       try {
-        const [chat, entityProfile, template] = await Promise.all([
+        const [chat, entityProfile, template, userPerson] = await Promise.all([
           getChatById(params.chatId),
           getEntityProfileById(params.entityProfileId),
           pickActivePromptTemplate({
@@ -85,6 +86,7 @@ export async function* runChatGeneration(params: {
             chatId: params.chatId,
             entityProfileId: params.entityProfileId,
           }),
+          getSelectedUserPerson({ ownerId: params.ownerId ?? "global" }),
         ]);
 
         if (template && entityProfile) {
@@ -92,7 +94,7 @@ export async function* runChatGeneration(params: {
             templateText: template.templateText,
             context: {
               char: entityProfile.spec,
-              user: {},
+              user: userPerson ?? {},
               chat: {
                 id: chat?.id ?? params.chatId,
                 title: chat?.title ?? "",

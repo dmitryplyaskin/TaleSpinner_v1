@@ -228,3 +228,36 @@ export const createManualEditVariantBodySchema = z.object({
   blocks: blocksSchema.optional(),
   meta: jsonValueSchema.optional(),
 });
+
+// ---- User persons (global, v1)
+
+export const userPersonTypeSchema = z.literal("default");
+
+export const createUserPersonBodySchema = z.object({
+  ownerId: ownerIdSchema.optional(),
+  id: idSchema.optional(),
+  name: z.string().min(1),
+  prefix: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  type: userPersonTypeSchema.optional().default("default"),
+  contentTypeDefault: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const updateUserPersonBodySchema = z.object({
+  name: z.string().min(1).optional(),
+  prefix: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  type: userPersonTypeSchema.optional(),
+  contentTypeDefault: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const updateUserPersonsSettingsBodySchema = z.object({
+  ownerId: ownerIdSchema.optional(),
+  selectedId: idSchema.nullable(),
+  enabled: z.boolean(),
+  pageSize: z.number().int().min(1).max(200).optional(),
+  sortType: z.string().nullable().optional(),
+});

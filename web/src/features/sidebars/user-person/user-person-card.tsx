@@ -64,7 +64,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 					/>
 				</Group>
 			</Group>
-			<Text c="dimmed">{data.type === 'default' ? data.contentTypeDefault : 'Расширенная персона'}</Text>
+			<Text c="dimmed">{data.contentTypeDefault || ''}</Text>
 		</Paper>
 	);
 };

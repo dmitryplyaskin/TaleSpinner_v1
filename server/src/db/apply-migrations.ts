@@ -5,7 +5,8 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { initDb } from "./client";
 
 export function resolveMigrationsFolder(): string {
-  return path.join(process.cwd(), "drizzle");
+  // Resolve relative to server/ so it works regardless of process.cwd().
+  return path.join(__dirname, "../../drizzle");
 }
 
 /**

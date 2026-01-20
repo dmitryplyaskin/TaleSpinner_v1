@@ -22,12 +22,10 @@ import {
   createChatBranch,
   createChatMessage,
   getChatById,
-  listMessagesForPrompt,
   listChatBranches,
   listChatMessages,
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
-import { getEntityProfileById } from "../services/chat-core/entity-profiles-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { createGeneration } from "../services/chat-core/generations-repository";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
@@ -36,6 +34,7 @@ import {
   createPipelineStepRun,
   finishPipelineStepRun,
 } from "../services/chat-core/pipeline-step-runs-repository";
+import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
 
@@ -284,39 +283,26 @@ router.post(
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       let templateId: string | null = null;
       try {
-        const [entityProfile, template, history] = await Promise.all([
-          getEntityProfileById(chat.entityProfileId),
+        const [template, context] = await Promise.all([
           pickActivePromptTemplate({
             ownerId: body.ownerId ?? "global",
             chatId: params.id,
             entityProfileId: chat.entityProfileId,
           }),
-          listMessagesForPrompt({
+          buildPromptTemplateRenderContext({
+            ownerId: body.ownerId ?? "global",
             chatId: params.id,
             branchId,
-            limit: 50,
+            historyLimit: 50,
             excludeMessageIds: [assistant.assistantMessageId],
           }),
         ]);
 
         if (template) templateId = template.id;
-        if (template && entityProfile) {
+        if (template) {
           const rendered = await renderLiquidTemplate({
             templateText: template.templateText,
-            context: {
-              char: entityProfile.spec,
-              user: {},
-              chat: {
-                id: params.id,
-                title: chat.title,
-                branchId,
-                createdAt: chat.createdAt,
-                updatedAt: chat.updatedAt,
-              },
-              messages: history.map((m) => ({ role: m.role, content: m.content })),
-              rag: {},
-              now: new Date().toISOString(),
-            },
+            context,
           });
           const normalized = rendered.trim();
           if (normalized) systemPrompt = normalized;

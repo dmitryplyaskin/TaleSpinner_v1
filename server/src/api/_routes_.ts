@@ -10,7 +10,7 @@ import messageVariantsCoreRoutes from "./message-variants.core.api";
 import pipelinesRoutes from "./pipelines.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import samplersRoutes from "./samplers.api";
-import userPersonsRoutes from "./user-persons.api";
+import userPersonsCoreRoutes from "./user-persons.core.api";
 
 export const routes = [
   entityProfilesCoreRoutes,
@@ -19,7 +19,7 @@ export const routes = [
   generationsCoreRoutes,
   messagesCoreRoutes,
   messageVariantsCoreRoutes,
-  userPersonsRoutes,
+  userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,
   fileRoutes,

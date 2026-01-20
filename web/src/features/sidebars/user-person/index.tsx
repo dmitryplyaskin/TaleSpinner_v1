@@ -1,4 +1,4 @@
-import { Box, Flex, Stack } from '@mantine/core';
+import { Box, Flex, Group, Select, Stack, Switch } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { LuPlus } from 'react-icons/lu';
@@ -15,10 +15,29 @@ import { UserPersonCard } from './user-person-card';
 export const UserPersonSidebar: React.FC = () => {
 	// Используем отфильтрованные и отсортированные элементы с пагинацией
 	const persons = useUnit(userPersonsModel.paginationWithSortFilter.$paginatedItems);
+	const [items, settings] = useUnit([userPersonsModel.$items, userPersonsModel.$settings]);
+
+	const options = items.map((p) => ({ value: p.id, label: p.name }));
 
 	return (
 		<Drawer name="userPersons" title="Список персон">
 			<Stack gap="md">
+				<Group justify="space-between" align="center" wrap="nowrap">
+					<Select
+						data={options}
+						value={settings?.selectedId ?? null}
+						placeholder="Выберите персону"
+						onChange={(selectedId) => userPersonsModel.updateSettingsFx({ selectedId: selectedId ?? null })}
+						comboboxProps={{ withinPortal: false }}
+						style={{ flex: 1 }}
+					/>
+					<Switch
+						label="Enabled"
+						checked={Boolean(settings?.enabled)}
+						onChange={(e) => userPersonsModel.updateSettingsFx({ enabled: e.currentTarget.checked })}
+					/>
+				</Group>
+
 				<Flex justify="flex-end">
 					<IconButtonWithTooltip
 						tooltip="Добавить персону"
