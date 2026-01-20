@@ -14,7 +14,7 @@
 - собрать `systemPrompt` (Liquid template + policy composition),
 - выбрать/подготовить history для prompt,
 - нормализовать входы (user message, char/persona fields),
-- подготовить `PromptDraft` и `LLM settings`.
+- подготовить `PromptDraft`.
 
 Выход:
 

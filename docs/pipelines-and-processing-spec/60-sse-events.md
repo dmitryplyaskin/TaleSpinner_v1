@@ -63,7 +63,7 @@
 - `stepType`
 - `stepRunId`
 - `status` (для `done`: `done|aborted|error`) + `error?`
-- (опционально) `label`/`summary` — короткая строка для UI (“RAG: retrieving…”, “Post: formatting…”)
+- (опционально) `label`/`summary` — короткая строка для UI (“Context: preparing…”, “Post: formatting…”; RAG/tool — v2+)
 
 ### Keep-alive (v1)
 
