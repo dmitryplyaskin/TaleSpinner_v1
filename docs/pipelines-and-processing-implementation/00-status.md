@@ -65,6 +65,40 @@
 - [x] **F1.4 (server)**: Корректная финализация статусов `pipeline_runs/pipeline_step_runs/llm_generations` на `done/aborted/error`.
 - [x] **F1.5 (server)**: Abort: единый `AbortSignal` на run/step, корректные статусы и `pipeline.run.aborted`.
 
+### Notes по реализации Фазы 1 (что именно сделано)
+
+- Runner реализован вокруг существующего chat-core в SSE endpoints:
+  - `POST /api/chats/:id/messages` (send user_message + stream)
+  - `POST /api/messages/:id/regenerate` (stream regenerate)
+- Идемпотентность/дедуп:
+  - regenerate: `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>` (requestId генерится на web)
+  - user_message: `pipeline_runs.idempotency_key = user_message:<branchId>:<requestId>` (чтобы повтор POST не создавал дубль сообщений)
+- Шаги `pre → llm → post` пишутся в `pipeline_step_runs` для каждого turn (post пока no-op, но статусы/тайминги фиксируются).
+- Корреляция ids в SSE:
+  - все `llm.stream.*` события дополнены `chatId/runId/pipelineId/pipelineName/trigger` и (где применимо) `stepRunId/stepType/generationId/userMessageId/assistantMessageId/assistantVariantId`
+  - добавлены `pipeline.run.started|done|aborted|error` (UI может пока игнорировать)
+- Abort:
+  - единый `AbortController` на run пробрасывается в генерацию
+  - abort работает и по закрытию SSE соединения, и по `POST /api/generations/:id/abort`
+- Финализация:
+  - корректно закрываются статусы `llm_generations`, `pipeline_step_runs`, `pipeline_runs` в `done/aborted/error` (без “вечных running”)
+- Ключевые файлы:
+  - backend: `server/src/api/chats.core.api.ts`, `server/src/api/message-variants.core.api.ts`, `server/src/services/chat-core/orchestrator.ts`
+  - web: `web/src/api/chat-core.ts`
+
+#### Frontend (web): что сделано / что ещё нужно (в контексте Фазы 1)
+
+- **Сделано**
+  - `requestId` генерится и отправляется в backend:
+    - send: `POST /api/chats/:id/messages` (`web/src/api/chat-core.ts`)
+    - regenerate: `POST /api/messages/:id/regenerate` (`web/src/api/chat-core.ts`)
+  - SSE клиент парсит `event:`/`data:` envelope и прокидывает `env.type/env.data` в обработчик (`web/src/api/chat-core.ts` + `web/src/model/chat-core/index.ts`).
+  - Abort кнопка/логика использует `generationId` из `llm.stream.meta` и вызывает `POST /api/generations/:id/abort` (параллельно с `AbortController.abort()` на клиенте).
+- **Нужно ещё сделать**
+  - Показ прогресса пайплайна в основном UI чата (индикатор по `pipeline.run.*`, а не только стрим текста).
+  - Восстановление статусов после обрыва SSE (read из `GET /api/chats/:id/pipeline-state?branchId=...` и reconciliation UI).
+  - (Опционально) поддержка `pipeline.step.*` для более детального прогресса внутри run-а.
+
 ## Фаза 2 — `pre` шаг: сборка `PromptDraft` (без артефактов v1-минимум)
 
 - [ ] **F2.1 (server)**: Представление `PromptDraft.messages[]` (domain роли) + маппинг `developer → system` (v1 правило).
