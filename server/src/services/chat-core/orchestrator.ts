@@ -31,6 +31,11 @@ export async function* runChatGeneration(params: {
   branchId: string;
   entityProfileId: string;
   systemPrompt?: string;
+  /**
+   * If provided, orchestrator will use these messages as-is (v1: built by pipeline pre-step).
+   * Must not include `developer` role (map it to `system` before calling).
+   */
+  promptMessages?: GenerateMessage[];
   userMessageId: string;
   assistantMessageId: string;
   variantId: string;
@@ -75,66 +80,73 @@ export async function* runChatGeneration(params: {
       return;
     }
 
-    const history = await listMessagesForPrompt({
-      chatId: params.chatId,
-      branchId: params.branchId,
-      limit: DEFAULT_HISTORY_LIMIT,
-      excludeMessageIds: [params.assistantMessageId],
-    });
-
-    let systemPrompt =
-      typeof params.systemPrompt === "string"
-        ? params.systemPrompt
-        : DEFAULT_SYSTEM_PROMPT;
-    if (typeof params.systemPrompt !== "string") {
-      try {
-        const [chat, entityProfile, template, userPerson] = await Promise.all([
-          getChatById(params.chatId),
-          getEntityProfileById(params.entityProfileId),
-          pickActivePromptTemplate({
-            ownerId: params.ownerId ?? "global",
-            chatId: params.chatId,
-            entityProfileId: params.entityProfileId,
-          }),
-          getSelectedUserPerson({ ownerId: params.ownerId ?? "global" }),
-        ]);
-
-        if (template && entityProfile) {
-          const rendered = await renderLiquidTemplate({
-            templateText: template.templateText,
-            context: {
-              char: entityProfile.spec,
-              user: userPerson ?? {},
-              chat: {
-                id: chat?.id ?? params.chatId,
-                title: chat?.title ?? "",
-                branchId: params.branchId,
-                createdAt: chat?.createdAt ?? null,
-                updatedAt: chat?.updatedAt ?? null,
-              },
-              messages: history.map((m) => ({
-                role: m.role,
-                content: m.content,
-              })),
-              rag: {},
-              now: new Date().toISOString(),
-            },
-          });
-          const normalized = rendered.trim();
-          if (normalized) systemPrompt = normalized;
-        }
-      } catch {
-        // Fallback to DEFAULT_SYSTEM_PROMPT on any template/render failure.
-      }
+    let prompt: GenerateMessage[] | null = null;
+    if (Array.isArray(params.promptMessages) && params.promptMessages.length > 0) {
+      prompt = params.promptMessages;
     }
 
-    const prompt: GenerateMessage[] = [
-      { role: "system", content: systemPrompt },
-      ...history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    ];
+    if (!prompt) {
+      const history = await listMessagesForPrompt({
+        chatId: params.chatId,
+        branchId: params.branchId,
+        limit: DEFAULT_HISTORY_LIMIT,
+        excludeMessageIds: [params.assistantMessageId],
+      });
+
+      let systemPrompt =
+        typeof params.systemPrompt === "string"
+          ? params.systemPrompt
+          : DEFAULT_SYSTEM_PROMPT;
+      if (typeof params.systemPrompt !== "string") {
+        try {
+          const [chat, entityProfile, template, userPerson] = await Promise.all([
+            getChatById(params.chatId),
+            getEntityProfileById(params.entityProfileId),
+            pickActivePromptTemplate({
+              ownerId: params.ownerId ?? "global",
+              chatId: params.chatId,
+              entityProfileId: params.entityProfileId,
+            }),
+            getSelectedUserPerson({ ownerId: params.ownerId ?? "global" }),
+          ]);
+
+          if (template && entityProfile) {
+            const rendered = await renderLiquidTemplate({
+              templateText: template.templateText,
+              context: {
+                char: entityProfile.spec,
+                user: userPerson ?? {},
+                chat: {
+                  id: chat?.id ?? params.chatId,
+                  title: chat?.title ?? "",
+                  branchId: params.branchId,
+                  createdAt: chat?.createdAt ?? null,
+                  updatedAt: chat?.updatedAt ?? null,
+                },
+                messages: history.map((m) => ({
+                  role: m.role,
+                  content: m.content,
+                })),
+                rag: {},
+                now: new Date().toISOString(),
+              },
+            });
+            const normalized = rendered.trim();
+            if (normalized) systemPrompt = normalized;
+          }
+        } catch {
+          // Fallback to DEFAULT_SYSTEM_PROMPT on any template/render failure.
+        }
+      }
+
+      prompt = [
+        { role: "system", content: systemPrompt },
+        ...history.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      ];
+    }
 
     const messageStream = streamGlobalChat({
       messages: prompt,

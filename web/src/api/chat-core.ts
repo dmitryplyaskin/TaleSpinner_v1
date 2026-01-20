@@ -454,3 +454,136 @@ export async function* streamRegenerateMessageVariant(params: {
 		}
 	}
 }
+
+// ---- Pipeline profiles + debug (Phase 2/3 minimal UI)
+
+export type PipelineProfileDto = {
+	id: string;
+	ownerId: string;
+	name: string;
+	version: number;
+	spec: unknown;
+	meta: unknown | null;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ResolvedActivePipelineProfile = {
+	profile: PipelineProfileDto | null;
+	source: 'chat' | 'entity_profile' | 'global' | 'none';
+	profileId: string | null;
+	profileVersion: number | null;
+};
+
+export type ChatActivePipelineProfileResponse = {
+	chatId: string;
+	entityProfileId: string;
+	resolved: ResolvedActivePipelineProfile;
+	bindings: {
+		chat: { profileId: string } | null;
+		entityProfile: { profileId: string } | null;
+		global: { profileId: string } | null;
+	};
+};
+
+export async function listPipelineProfiles(): Promise<PipelineProfileDto[]> {
+	return apiJson<PipelineProfileDto[]>('/pipeline-profiles');
+}
+
+export async function createPipelineProfile(params: {
+	name: string;
+	spec: unknown;
+	meta?: unknown;
+	ownerId?: string;
+}): Promise<PipelineProfileDto> {
+	return apiJson<PipelineProfileDto>('/pipeline-profiles', {
+		method: 'POST',
+		body: JSON.stringify({
+			ownerId: params.ownerId,
+			name: params.name,
+			spec: params.spec,
+			meta: params.meta,
+		}),
+	});
+}
+
+export async function updatePipelineProfile(params: {
+	id: string;
+	name?: string;
+	spec?: unknown;
+	meta?: unknown;
+}): Promise<PipelineProfileDto> {
+	return apiJson<PipelineProfileDto>(`/pipeline-profiles/${encodeURIComponent(params.id)}`, {
+		method: 'PUT',
+		body: JSON.stringify({
+			name: params.name,
+			spec: params.spec,
+			meta: params.meta,
+		}),
+	});
+}
+
+export async function deletePipelineProfile(id: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/pipeline-profiles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function getChatActivePipelineProfile(chatId: string): Promise<ChatActivePipelineProfileResponse> {
+	return apiJson<ChatActivePipelineProfileResponse>(`/chats/${encodeURIComponent(chatId)}/active-pipeline-profile`);
+}
+
+export async function setChatActivePipelineProfile(params: {
+	chatId: string;
+	profileId: string | null;
+	ownerId?: string;
+}): Promise<{ chatId: string; entityProfileId: string; resolved: ResolvedActivePipelineProfile }> {
+	return apiJson<{ chatId: string; entityProfileId: string; resolved: ResolvedActivePipelineProfile }>(
+		`/chats/${encodeURIComponent(params.chatId)}/active-pipeline-profile`,
+		{
+			method: 'PUT',
+			body: JSON.stringify({ ownerId: params.ownerId, profileId: params.profileId }),
+		},
+	);
+}
+
+export async function setEntityProfileActivePipelineProfile(params: {
+	entityProfileId: string;
+	profileId: string | null;
+	ownerId?: string;
+}): Promise<{ entityProfileId: string; profileId: string | null }> {
+	return apiJson<{ entityProfileId: string; profileId: string | null }>(
+		`/entity-profiles/${encodeURIComponent(params.entityProfileId)}/active-pipeline-profile`,
+		{
+			method: 'PUT',
+			body: JSON.stringify({ ownerId: params.ownerId, profileId: params.profileId }),
+		},
+	);
+}
+
+export async function setGlobalActivePipelineProfile(params: {
+	profileId: string | null;
+	ownerId?: string;
+}): Promise<{ ownerId: string; global: { profileId: string } | null }> {
+	return apiJson<{ ownerId: string; global: { profileId: string } | null }>(`/active-pipeline-profile`, {
+		method: 'PUT',
+		body: JSON.stringify({ ownerId: params.ownerId, profileId: params.profileId }),
+	});
+}
+
+export type ChatPipelineDebugDto = {
+	chatId: string;
+	branchId: string | null;
+	resolvedActiveProfile: ResolvedActivePipelineProfile;
+	run: unknown | null;
+	steps: unknown[];
+	generation: unknown | null;
+};
+
+export async function getChatPipelineDebug(params: {
+	chatId: string;
+	branchId?: string;
+}): Promise<ChatPipelineDebugDto> {
+	const query = new URLSearchParams();
+	if (params.branchId) query.set('branchId', params.branchId);
+	const suffix = query.toString() ? `?${query.toString()}` : '';
+	return apiJson<ChatPipelineDebugDto>(`/chats/${encodeURIComponent(params.chatId)}/pipeline-debug${suffix}`);
+}

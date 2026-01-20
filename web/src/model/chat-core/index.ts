@@ -33,6 +33,7 @@ import {
 	streamChatMessage,
 	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
+import { pipelineSseEnvelopeReceived } from '../pipeline-runtime';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -449,6 +450,13 @@ export const runStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof s
 });
 
 export const handleSseEnvelope = createEvent<SseEnvelope>();
+
+// Forward pipeline events to pipeline runtime model (v1: debug/observability).
+sample({
+	clock: handleSseEnvelope,
+	filter: (env) => env.type.startsWith('pipeline.run.'),
+	target: pipelineSseEnvelopeReceived,
+});
 
 // Track active stream state for abort button
 $activeStream.on(sendMessageFx.doneData, (_, prep) => ({

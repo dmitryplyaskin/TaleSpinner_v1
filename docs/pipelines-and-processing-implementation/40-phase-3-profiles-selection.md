@@ -45,6 +45,16 @@
 - показать “какой профиль сейчас активен” в чате
 - дать выбрать override для чата (с возможностью “inherit”)
 
+Примечание (v1 реализация, минимальная):
+
+- Управление профилями: `GET/POST/PUT/DELETE /api/pipeline-profiles`
+- Установка active profile:
+  - `GET /api/chats/:id/active-pipeline-profile`
+  - `PUT /api/chats/:id/active-pipeline-profile` (chat override)
+  - `PUT /api/entity-profiles/:id/active-pipeline-profile` (entity override)
+  - `PUT /api/active-pipeline-profile` (global default)
+- UI: в Drawer `Pipeline` — 3 селекта (chat/entity/global) + отображение resolved source.
+
 ## Критерии готовности
 
 - Для любого chat можно детерминированно вычислить active profile.

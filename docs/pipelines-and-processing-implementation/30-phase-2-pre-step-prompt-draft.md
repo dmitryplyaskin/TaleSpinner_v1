@@ -10,6 +10,18 @@
 
 ## Что делаем
 
+## UI гейт (v1, чтобы Ф2 была проверяемой)
+
+Без минимального UI мы не сможем ни проверить состав effective prompt, ни отлаживать trimming/шаблон.
+
+Минимум v1 (dev/debug):
+
+- В web Drawer `Pipeline`:
+  - показывать `resolved active profile` (источник: chat/entity/global),
+  - показывать `promptHash` и `promptSnapshotJson (redacted)` для последнего run-а текущего чата.
+- Endpoints:
+  - `GET /api/chats/:id/pipeline-debug?branchId=<id>` — вернуть `run/steps/generation` + `promptHash/promptSnapshotJson`
+
 ### F2.1 — `PromptDraft.messages[]` и роли
 
 Вводим доменные роли:

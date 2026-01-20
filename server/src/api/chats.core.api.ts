@@ -32,9 +32,11 @@ import {
   finishGeneration,
   getGenerationById,
   getLatestGenerationForPipelineRun,
+  updateGenerationPromptData,
 } from "../services/chat-core/generations-repository";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import { normalizePipelineErrorForClient } from "@core/errors/pipeline-errors";
+import { resolveActivePipelineProfile } from "../services/chat-core/pipeline-profile-resolver";
 import {
   createPipelineRun,
   ensurePipelineRun,
@@ -45,6 +47,7 @@ import {
   createPipelineStepRun,
   finishPipelineStepRun,
 } from "../services/chat-core/pipeline-step-runs-repository";
+import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
@@ -276,6 +279,11 @@ router.post(
     });
     try {
       const ownerId = body.ownerId ?? "global";
+      const activeProfile = await resolveActivePipelineProfile({
+        ownerId,
+        chatId: params.id,
+        entityProfileId: chat.entityProfileId,
+      });
       const idempotencyKey =
         typeof body.requestId === "string" && body.requestId.trim()
           ? `user_message:${branchId}:${body.requestId.trim()}`
@@ -289,12 +297,17 @@ router.post(
           trigger: "user_message",
           idempotencyKey,
           branchId,
+          activeProfileId: activeProfile.profileId,
+          activeProfileVersion: activeProfile.profileVersion,
           meta: {
             branchId,
             requestId: body.requestId,
             mode: "user_message",
             pipelineId: DEFAULT_PIPELINE_ID,
             pipelineName: DEFAULT_PIPELINE_NAME,
+            profileSource: activeProfile.source,
+            activeProfileId: activeProfile.profileId,
+            activeProfileVersion: activeProfile.profileVersion,
           },
         });
 
@@ -312,6 +325,9 @@ router.post(
             trigger: "user_message" as const,
             pipelineId: DEFAULT_PIPELINE_ID,
             pipelineName: DEFAULT_PIPELINE_NAME,
+            activeProfileId: ensured.run.activeProfileId ?? null,
+            activeProfileVersion: ensured.run.activeProfileVersion ?? null,
+            profileSource: (activeProfile.source === "none" ? null : activeProfile.source),
             runId: ensured.run.id,
             pipelineRunId: ensured.run.id,
             stepRunId: gen?.pipelineStepRunId ?? null,
@@ -392,12 +408,17 @@ router.post(
           userMessageId: userMessage.id,
           assistantMessageId: assistant.assistantMessageId,
           assistantVariantId: assistant.variantId,
+          activeProfileId: activeProfile.profileId,
+          activeProfileVersion: activeProfile.profileVersion,
           meta: {
             branchId,
             userMessageId: userMessage.id,
             assistantMessageId: assistant.assistantMessageId,
             pipelineId: DEFAULT_PIPELINE_ID,
             pipelineName: DEFAULT_PIPELINE_NAME,
+            profileSource: activeProfile.source,
+            activeProfileId: activeProfile.profileId,
+            activeProfileVersion: activeProfile.profileVersion,
           },
         });
         pipelineRunId = pipelineRun.id;
@@ -444,10 +465,26 @@ router.post(
         // Keep fallback prompt on any pre-step failure.
       }
 
+      const builtPrompt = await buildPromptDraft({
+        chatId: params.id,
+        branchId,
+        systemPrompt,
+        historyLimit: 50,
+        excludeMessageIds: [assistant.assistantMessageId],
+      });
+
       await finishPipelineStepRun({
         id: preStep.id,
         status: "done",
-        output: { templateId, systemPrompt },
+        output: {
+          templateId,
+          promptHash: builtPrompt.promptHash,
+          trimming: builtPrompt.trimming,
+          snapshot: {
+            truncated: builtPrompt.promptSnapshot.truncated,
+            messageCount: builtPrompt.promptSnapshot.messages.length,
+          },
+        },
       });
       preStepFinished = true;
 
@@ -479,6 +516,12 @@ router.post(
         await updatePipelineRunCorrelation({ id: pipelineRunId, generationId });
       }
 
+      await updateGenerationPromptData({
+        id: generationId,
+        promptHash: builtPrompt.promptHash,
+        promptSnapshot: builtPrompt.promptSnapshot,
+      });
+
       shouldAbortOnClose = true;
       if (reqClosed) {
         runAbortController.abort();
@@ -491,6 +534,9 @@ router.post(
         trigger: "user_message" as const,
         pipelineId: DEFAULT_PIPELINE_ID,
         pipelineName: DEFAULT_PIPELINE_NAME,
+        activeProfileId: activeProfile.profileId,
+        activeProfileVersion: activeProfile.profileVersion,
+        profileSource: activeProfile.source === "none" ? null : activeProfile.source,
         runId: pipelineRunId,
         pipelineRunId,
         userMessageId: userMessage.id,
@@ -521,6 +567,7 @@ router.post(
         branchId,
         entityProfileId: chat.entityProfileId,
         systemPrompt,
+        promptMessages: builtPrompt.llmMessages,
         userMessageId: userMessage.id,
         assistantMessageId: assistant.assistantMessageId,
         variantId: assistant.variantId,

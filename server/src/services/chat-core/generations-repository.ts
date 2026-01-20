@@ -139,3 +139,19 @@ export async function finishGeneration(params: {
     .where(eq(llmGenerations.id, params.id));
 }
 
+export async function updateGenerationPromptData(params: {
+  id: string;
+  promptHash?: string | null;
+  promptSnapshot?: unknown | null;
+}): Promise<void> {
+  const db = await initDb();
+  const set: Partial<typeof llmGenerations.$inferInsert> = {};
+  if (typeof params.promptHash !== "undefined") set.promptHash = params.promptHash;
+  if (typeof params.promptSnapshot !== "undefined") {
+    set.promptSnapshotJson =
+      params.promptSnapshot === null ? null : safeJsonStringify(params.promptSnapshot, "{}");
+  }
+  if (Object.keys(set).length === 0) return;
+  await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
+}
+

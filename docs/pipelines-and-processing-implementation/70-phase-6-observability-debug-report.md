@@ -31,6 +31,16 @@ UI должен уметь:
 - показать “Pipeline выполняется” (с именем/шагом)
 - если SSE оборвался — перечитать статусы через API и восстановить индикатор
 
+Минимум v1 (dev/debug UI, чтобы это было проверяемо уже сейчас):
+
+- Drawer `Pipeline` показывает:
+  - `pipeline.run.*` статус (последний известный по SSE),
+  - состояние `run/steps/generation` через debug endpoint,
+  - `promptHash` и `promptSnapshotJson` (redacted).
+- API для восстановления/отладки:
+  - `GET /api/chats/:id/pipeline-state?branchId=<id>` — best-effort “текущий run/step/generation”
+  - `GET /api/chats/:id/pipeline-debug?branchId=<id>` — расширенный debug (steps + prompt snapshot)
+
 ### F6.3 — User-facing Debug report
 
 Минимальный состав (по спеке):

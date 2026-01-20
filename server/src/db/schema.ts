@@ -192,6 +192,51 @@ export const pipelines = sqliteTable("pipelines", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+export const pipelineProfiles = sqliteTable(
+  "pipeline_profiles",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    name: text("name").notNull(),
+    version: integer("version").notNull().default(1),
+    specJson: text("spec_json").notNull(),
+    metaJson: text("meta_json"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({
+    ownerUpdatedAtIdx: index("pipeline_profiles_owner_updated_at_idx").on(
+      t.ownerId,
+      t.updatedAt
+    ),
+  })
+);
+
+export const pipelineProfileBindings = sqliteTable(
+  "pipeline_profile_bindings",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    scope: text("scope", { enum: ["global", "entity_profile", "chat"] })
+      .notNull(),
+    // Note: empty string means global scope (so uniqueness works in SQLite).
+    scopeId: text("scope_id").notNull().default(""),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => pipelineProfiles.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({
+    ownerScopeScopeIdUq: uniqueIndex(
+      "pipeline_profile_bindings_owner_scope_scope_id_uq"
+    ).on(t.ownerId, t.scope, t.scopeId),
+    profileIdIdx: index("pipeline_profile_bindings_profile_id_idx").on(
+      t.profileId
+    ),
+  })
+);
+
 export const pipelineRuns = sqliteTable("pipeline_runs", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull().default("global"),
