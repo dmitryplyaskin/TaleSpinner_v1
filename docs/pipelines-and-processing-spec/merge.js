@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Настройки
-const outputFileName = 'full-docs.txt';
+const outputFileName = 'merged-docs-auto-generated.txt';
 const dirPath = __dirname; // Текущая папка
 
 function mergeDocs() {
