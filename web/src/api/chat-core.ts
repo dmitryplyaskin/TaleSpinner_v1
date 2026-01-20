@@ -243,6 +243,12 @@ export type ChatStreamDelta = { content: string };
 export type ChatStreamError = { message: string };
 export type ChatStreamDone = { status: 'done' | 'aborted' | 'error' };
 
+function makeRequestId(): string {
+	return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+		? crypto.randomUUID()
+		: `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export async function* streamChatMessage(params: {
 	chatId: string;
 	branchId?: string;
@@ -252,6 +258,8 @@ export async function* streamChatMessage(params: {
 	ownerId?: string;
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
+	const requestId = makeRequestId();
+
 	const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(params.chatId)}/messages`, {
 		method: 'POST',
 		headers: {
@@ -266,6 +274,7 @@ export async function* streamChatMessage(params: {
 			role: params.role,
 			promptText: params.promptText,
 			settings: params.settings ?? {},
+			requestId,
 		}),
 		signal: params.signal,
 	});
@@ -378,10 +387,7 @@ export async function* streamRegenerateMessageVariant(params: {
 	ownerId?: string;
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
-	const requestId =
-		typeof crypto !== 'undefined' && 'randomUUID' in crypto
-			? crypto.randomUUID()
-			: `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+	const requestId = makeRequestId();
 
 	const res = await fetch(`${BASE_URL}/messages/${encodeURIComponent(params.messageId)}/regenerate`, {
 		method: 'POST',

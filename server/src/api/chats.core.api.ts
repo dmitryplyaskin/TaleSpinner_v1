@@ -27,11 +27,17 @@ import {
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
-import { createGeneration } from "../services/chat-core/generations-repository";
+import {
+  createGeneration,
+  finishGeneration,
+  getGenerationById,
+  getLatestGenerationForPipelineRun,
+} from "../services/chat-core/generations-repository";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import { normalizePipelineErrorForClient } from "@core/errors/pipeline-errors";
 import {
   createPipelineRun,
+  ensurePipelineRun,
   finishPipelineRun,
   updatePipelineRunCorrelation,
 } from "../services/chat-core/pipeline-runs-repository";
@@ -45,6 +51,8 @@ import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates
 
 const router = express.Router();
 const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
+const DEFAULT_PIPELINE_ID = "builtin:default_v1";
+const DEFAULT_PIPELINE_NAME = "default";
 
 router.get(
   "/chats/:id",
@@ -226,6 +234,7 @@ router.post(
     // SSE mode: save user message + run generation
     const sseBodySchema = createMessageBodySchema.extend({
       settings: z.record(z.string(), z.unknown()).optional().default({}),
+      requestId: z.string().min(1).optional(),
     });
 
     const body = sseBodySchema.parse(req.body);
@@ -249,9 +258,108 @@ router.post(
     let generationId: string | null = null;
     let pipelineRunId: string | null = null;
     let llmStepRunId: string | null = null;
+    let preStepRunId: string | null = null;
+    let postStepRunId: string | null = null;
+    let preStepFinished = false;
+    let postStepFinished = false;
+
+    const runAbortController = new AbortController();
+    let shouldAbortOnClose = false;
+    let reqClosed = false;
+    req.on("close", () => {
+      reqClosed = true;
+      if (shouldAbortOnClose) {
+        runAbortController.abort();
+        if (generationId) abortGeneration(generationId);
+      }
+      sse.close();
+    });
     try {
+      const ownerId = body.ownerId ?? "global";
+      const idempotencyKey =
+        typeof body.requestId === "string" && body.requestId.trim()
+          ? `user_message:${branchId}:${body.requestId.trim()}`
+          : null;
+
+      if (idempotencyKey) {
+        const ensured = await ensurePipelineRun({
+          ownerId,
+          chatId: params.id,
+          entityProfileId: chat.entityProfileId,
+          trigger: "user_message",
+          idempotencyKey,
+          branchId,
+          meta: {
+            branchId,
+            requestId: body.requestId,
+            mode: "user_message",
+            pipelineId: DEFAULT_PIPELINE_ID,
+            pipelineName: DEFAULT_PIPELINE_NAME,
+          },
+        });
+
+        pipelineRunId = ensured.run.id;
+
+        if (!ensured.created) {
+          const gen =
+            ensured.run.generationId
+              ? await getGenerationById(ensured.run.generationId)
+              : await getLatestGenerationForPipelineRun({ pipelineRunId: ensured.run.id });
+
+          const env = {
+            chatId: params.id,
+            branchId: ensured.run.branchId ?? branchId,
+            trigger: "user_message" as const,
+            pipelineId: DEFAULT_PIPELINE_ID,
+            pipelineName: DEFAULT_PIPELINE_NAME,
+            runId: ensured.run.id,
+            pipelineRunId: ensured.run.id,
+            stepRunId: gen?.pipelineStepRunId ?? null,
+            pipelineStepRunId: gen?.pipelineStepRunId ?? null,
+            stepType: gen?.pipelineStepRunId ? ("llm" as const) : null,
+            generationId: gen?.id ?? ensured.run.generationId ?? null,
+            userMessageId: ensured.run.userMessageId ?? null,
+            assistantMessageId: ensured.run.assistantMessageId ?? null,
+            assistantVariantId: ensured.run.assistantVariantId ?? gen?.variantId ?? null,
+            variantId: ensured.run.assistantVariantId ?? gen?.variantId ?? "",
+          };
+
+          // Best-effort: inform UI about existing ids.
+          sse.send("llm.stream.meta", env);
+
+          if (gen && gen.status === "streaming") {
+            sse.send("llm.stream.error", {
+              ...env,
+              code: "pipeline_idempotency_conflict",
+              message: "user_message уже выполняется",
+            });
+            return;
+          }
+
+          if (gen) {
+            sse.send("llm.stream.done", {
+              ...env,
+              status:
+                gen.status === "aborted"
+                  ? "aborted"
+                  : gen.status === "error"
+                    ? "error"
+                    : "done",
+            });
+            return;
+          }
+
+          sse.send("llm.stream.error", {
+            ...env,
+            code: "pipeline_idempotency_conflict",
+            message: "user_message уже выполняется",
+          });
+          return;
+        }
+      }
+
       const userMessage = await createChatMessage({
-        ownerId: body.ownerId,
+        ownerId,
         chatId: params.id,
         branchId,
         role: body.role,
@@ -262,44 +370,60 @@ router.post(
       });
 
       const assistant = await createAssistantMessageWithVariant({
-        ownerId: body.ownerId,
+        ownerId,
         chatId: params.id,
         branchId,
       });
 
-      const pipelineRun = await createPipelineRun({
-        ownerId: body.ownerId,
-        chatId: params.id,
-        entityProfileId: chat.entityProfileId,
-        trigger: "user_message",
-        branchId,
-        userMessageId: userMessage.id,
-        assistantMessageId: assistant.assistantMessageId,
-        assistantVariantId: assistant.variantId,
-        meta: { branchId, userMessageId: userMessage.id, assistantMessageId: assistant.assistantMessageId },
-      });
-      pipelineRunId = pipelineRun.id;
+      if (pipelineRunId) {
+        await updatePipelineRunCorrelation({
+          id: pipelineRunId,
+          userMessageId: userMessage.id,
+          assistantMessageId: assistant.assistantMessageId,
+          assistantVariantId: assistant.variantId,
+        });
+      } else {
+        const pipelineRun = await createPipelineRun({
+          ownerId,
+          chatId: params.id,
+          entityProfileId: chat.entityProfileId,
+          trigger: "user_message",
+          branchId,
+          userMessageId: userMessage.id,
+          assistantMessageId: assistant.assistantMessageId,
+          assistantVariantId: assistant.variantId,
+          meta: {
+            branchId,
+            userMessageId: userMessage.id,
+            assistantMessageId: assistant.assistantMessageId,
+            pipelineId: DEFAULT_PIPELINE_ID,
+            pipelineName: DEFAULT_PIPELINE_NAME,
+          },
+        });
+        pipelineRunId = pipelineRun.id;
+      }
 
       // PRE step: pick template + render system prompt
       const preStep = await createPipelineStepRun({
-        ownerId: body.ownerId,
+        ownerId,
         runId: pipelineRunId,
         stepName: "pre",
         stepType: "pre",
         input: { chatId: params.id, branchId },
       });
+      preStepRunId = preStep.id;
 
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       let templateId: string | null = null;
       try {
         const [template, context] = await Promise.all([
           pickActivePromptTemplate({
-            ownerId: body.ownerId ?? "global",
+            ownerId,
             chatId: params.id,
             entityProfileId: chat.entityProfileId,
           }),
           buildPromptTemplateRenderContext({
-            ownerId: body.ownerId ?? "global",
+            ownerId,
             chatId: params.id,
             branchId,
             historyLimit: 50,
@@ -325,11 +449,12 @@ router.post(
         status: "done",
         output: { templateId, systemPrompt },
       });
+      preStepFinished = true;
 
-      const runtime = await getRuntimeInfo({ ownerId: body.ownerId ?? "global" });
+      const runtime = await getRuntimeInfo({ ownerId });
 
       const llmStep = await createPipelineStepRun({
-        ownerId: body.ownerId,
+        ownerId,
         runId: pipelineRunId,
         stepName: "llm",
         stepType: "llm",
@@ -338,7 +463,7 @@ router.post(
       llmStepRunId = llmStep.id;
 
       const createdGen = await createGeneration({
-        ownerId: body.ownerId,
+        ownerId,
         chatId: params.id,
         branchId,
         messageId: assistant.assistantMessageId,
@@ -354,28 +479,43 @@ router.post(
         await updatePipelineRunCorrelation({ id: pipelineRunId, generationId });
       }
 
-      // Close on disconnect and propagate abort.
-      req.on("close", () => {
-        if (generationId) {
-          abortGeneration(generationId);
-        }
-        sse.close();
+      shouldAbortOnClose = true;
+      if (reqClosed) {
+        runAbortController.abort();
+        if (generationId) abortGeneration(generationId);
+      }
+
+      const baseEnv = {
+        chatId: params.id,
+        branchId,
+        trigger: "user_message" as const,
+        pipelineId: DEFAULT_PIPELINE_ID,
+        pipelineName: DEFAULT_PIPELINE_NAME,
+        runId: pipelineRunId,
+        pipelineRunId,
+        userMessageId: userMessage.id,
+        assistantMessageId: assistant.assistantMessageId,
+        assistantVariantId: assistant.variantId,
+        variantId: assistant.variantId,
+        generationId,
+      };
+
+      sse.send("pipeline.run.started", {
+        ...baseEnv,
+        status: "running",
       });
 
       sse.send("llm.stream.meta", {
-        chatId: params.id,
-        branchId,
-        userMessageId: userMessage.id,
-        assistantMessageId: assistant.assistantMessageId,
-        variantId: assistant.variantId,
-        generationId,
-        pipelineRunId,
+        ...baseEnv,
+        stepRunId: llmStepRunId,
         pipelineStepRunId: llmStepRunId,
+        stepType: "llm",
       });
 
       let finalStatus: "done" | "aborted" | "error" = "done";
+      let lastGenerationErrorMessage: string | null = null;
       for await (const evt of runChatGeneration({
-        ownerId: body.ownerId,
+        ownerId,
         generationId,
         chatId: params.id,
         branchId,
@@ -385,11 +525,43 @@ router.post(
         assistantMessageId: assistant.assistantMessageId,
         variantId: assistant.variantId,
         settings: body.settings,
+        abortController: runAbortController,
       })) {
         if (evt.type === "llm.stream.done") {
           finalStatus = evt.data.status;
         }
-        sse.send(evt.type, evt.data);
+        if (evt.type === "llm.stream.delta") {
+          sse.send("llm.stream.delta", {
+            ...baseEnv,
+            stepRunId: llmStepRunId,
+            pipelineStepRunId: llmStepRunId,
+            stepType: "llm",
+            generationId,
+            ...evt.data,
+          });
+          continue;
+        }
+        if (evt.type === "llm.stream.error") {
+          lastGenerationErrorMessage = evt.data.message;
+          sse.send("llm.stream.error", {
+            ...baseEnv,
+            stepRunId: llmStepRunId,
+            pipelineStepRunId: llmStepRunId,
+            stepType: "llm",
+            generationId,
+            code: "pipeline_generation_error",
+            ...evt.data,
+          });
+          continue;
+        }
+        sse.send("llm.stream.done", {
+          ...baseEnv,
+          stepRunId: llmStepRunId,
+          pipelineStepRunId: llmStepRunId,
+          stepType: "llm",
+          generationId,
+          ...evt.data,
+        });
       }
 
       // Finalize pipeline run logging.
@@ -406,6 +578,21 @@ router.post(
           error: finalStatus === "error" ? "pipeline_generation_error" : null,
         });
       }
+      const postStep = await createPipelineStepRun({
+        ownerId,
+        runId: pipelineRunId,
+        stepName: "post",
+        stepType: "post",
+        input: { status: finalStatus, generationId },
+      });
+      postStepRunId = postStep.id;
+      await finishPipelineStepRun({
+        id: postStep.id,
+        status: finalStatus === "done" ? "done" : finalStatus === "aborted" ? "aborted" : "error",
+        output: { skipped: true, status: finalStatus },
+        error: finalStatus === "error" ? "pipeline_generation_error" : null,
+      });
+      postStepFinished = true;
       if (pipelineRunId) {
         await finishPipelineRun({
           id: pipelineRunId,
@@ -413,13 +600,70 @@ router.post(
           meta: { branchId, generationId, status: finalStatus },
         });
       }
+
+      if (finalStatus === "done") {
+        sse.send("pipeline.run.done", { ...baseEnv, status: "done" });
+      } else if (finalStatus === "aborted") {
+        sse.send("pipeline.run.aborted", { ...baseEnv, status: "aborted" });
+      } else {
+        sse.send("pipeline.run.error", {
+          ...baseEnv,
+          status: "error",
+          error: {
+            code: "pipeline_generation_error",
+            message: lastGenerationErrorMessage ?? "Generation error",
+          },
+        });
+      }
     } catch (error) {
       const clientErr = normalizePipelineErrorForClient(error);
-      sse.send("llm.stream.error", clientErr);
+      const errEnv = {
+        chatId: params.id,
+        branchId,
+        trigger: "user_message" as const,
+        pipelineId: DEFAULT_PIPELINE_ID,
+        pipelineName: DEFAULT_PIPELINE_NAME,
+        runId: pipelineRunId,
+        pipelineRunId,
+        stepRunId: llmStepRunId ?? preStepRunId ?? postStepRunId,
+        pipelineStepRunId: llmStepRunId ?? preStepRunId ?? postStepRunId,
+        stepType: llmStepRunId ? ("llm" as const) : preStepRunId ? ("pre" as const) : postStepRunId ? ("post" as const) : null,
+        generationId,
+      };
+
+      sse.send("llm.stream.error", { ...errEnv, ...clientErr });
+      sse.send("pipeline.run.error", {
+        ...errEnv,
+        status: "error",
+        error: clientErr,
+      });
       try {
+        if (generationId) {
+          await finishGeneration({
+            id: generationId,
+            status: "error",
+            error: clientErr.message,
+          });
+        }
+        if (preStepRunId && !preStepFinished) {
+          await finishPipelineStepRun({
+            id: preStepRunId,
+            status: "error",
+            output: { status: "error" },
+            error: clientErr.code,
+          });
+        }
         if (llmStepRunId) {
           await finishPipelineStepRun({
             id: llmStepRunId,
+            status: "error",
+            output: { status: "error", generationId },
+            error: clientErr.code,
+          });
+        }
+        if (postStepRunId && !postStepFinished) {
+          await finishPipelineStepRun({
+            id: postStepRunId,
             status: "error",
             output: { status: "error", generationId },
             error: clientErr.code,

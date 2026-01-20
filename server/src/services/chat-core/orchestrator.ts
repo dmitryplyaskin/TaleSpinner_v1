@@ -36,8 +36,13 @@ export async function* runChatGeneration(params: {
   variantId: string;
   settings: Record<string, unknown>;
   flushMs?: number;
+  /**
+   * Optional externally-managed AbortController (v1: one controller per PipelineRun).
+   * If omitted, the orchestrator creates and owns its own controller.
+   */
+  abortController?: AbortController;
 }): AsyncGenerator<OrchestratorEvent> {
-  const abortController = new AbortController();
+  const abortController = params.abortController ?? new AbortController();
   registerGeneration(params.generationId, abortController);
 
   let assistantText = "";
@@ -65,6 +70,11 @@ export async function* runChatGeneration(params: {
   }, params.flushMs ?? DEFAULT_FLUSH_MS);
 
   try {
+    if (abortController.signal.aborted) {
+      finishedStatus = "aborted";
+      return;
+    }
+
     const history = await listMessagesForPrompt({
       chatId: params.chatId,
       branchId: params.branchId,

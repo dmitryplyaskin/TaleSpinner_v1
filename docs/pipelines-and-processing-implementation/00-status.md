@@ -55,14 +55,15 @@
 
 ## Фаза 1 — Минимальный runner вокруг существующего chat-core
 
-- [ ] **F1.1 (server)**: Создание `PipelineRun` на `user_message` и `regenerate` с дедупликацией ключа: (**in progress**)
+- [x] **F1.1 (server)**: Создание `PipelineRun` на `user_message` и `regenerate` с дедупликацией ключа
   - `(chatId, userMessageId)` для `user_message`
   - `(chatId, assistantVariantId)` (или стабильный id regenerate) для `regenerate`
   - **note**: выбран вариант **client-sent `requestId`** → `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>` и unique `(chat_id, idempotency_key)`
-- [ ] **F1.2 (server)**: Запись `pipeline_step_runs` для линейной цепочки `pre → llm → post` (пока `pre/post` могут быть no-op).
-- [ ] **F1.3 (server)**: Протянуть корреляцию ids во все записи и SSE envelope (см. `docs/pipelines-and-processing-spec/60-sse-events.md`).
-- [ ] **F1.4 (server)**: Корректная финализация статусов `pipeline_runs/pipeline_step_runs/llm_generations` на `done/aborted/error`.
-- [ ] **F1.5 (server)**: Abort: единый `AbortSignal` на run/step, корректные статусы и `pipeline.run.aborted`.
+  - `user_message` (v1): также поддержан client-sent `requestId` → `pipeline_runs.idempotency_key = user_message:<branchId>:<requestId>` (чтобы повтор POST не создавал дубль сообщений)
+- [x] **F1.2 (server)**: Запись `pipeline_step_runs` для линейной цепочки `pre → llm → post` (пока `pre/post` могут быть no-op).
+- [x] **F1.3 (server)**: Протянуть корреляцию ids во все записи и SSE envelope (см. `docs/pipelines-and-processing-spec/60-sse-events.md`).
+- [x] **F1.4 (server)**: Корректная финализация статусов `pipeline_runs/pipeline_step_runs/llm_generations` на `done/aborted/error`.
+- [x] **F1.5 (server)**: Abort: единый `AbortSignal` на run/step, корректные статусы и `pipeline.run.aborted`.
 
 ## Фаза 2 — `pre` шаг: сборка `PromptDraft` (без артефактов v1-минимум)
 
@@ -107,7 +108,7 @@
 
 ## Гейты / вопросы, которые надо закрыть перед реализацией спорных частей
 
-- [ ] **Q0**: Какой стабильный `requestId` генерируем на фронте для `regenerate` (и надо ли расширять это на `user_message`) — сейчас используется `crypto.randomUUID()` (**answered for regenerate; open for user_message**).
+- [x] **Q0**: Какой стабильный `requestId` генерируем на фронте для `regenerate` (и надо ли расширять это на `user_message`) — используется `crypto.randomUUID()` (fallback: `${Date.now()}-${Math.random().toString(16).slice(2)}`); включено и для `user_message`.
 - [ ] **Q1**: Нужны ли `pipeline.step.*` события уже в v1 (или достаточно `pipeline.run.*`) — см. `docs/pipelines-and-processing-spec/90-open-questions.md`.
 - [ ] **Q2**: Обязателен ли `promptSnapshotJson` в v1 (redacted) или достаточно step-логов + `promptHash`.
 - [ ] **Q3**: Где именно храним активный `PipelineProfile` (chat/entity/global) и какие UX-потоки нужны в web.
