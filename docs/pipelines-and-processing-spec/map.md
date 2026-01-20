@@ -12,7 +12,6 @@
 - [50 — Observability](./50-observability.md)
 - [55 — Logging & reproducibility](./55-logging-and-reproducibility.md)
 - [60 — SSE events](./60-sse-events.md)
-- [70 — Backend contracts (WIP)](./70-backend-contracts-v1.md)
 - [90 — Future & open questions](./90-open-questions.md)
 
 ## Правила ссылок
