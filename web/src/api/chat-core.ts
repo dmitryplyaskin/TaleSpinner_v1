@@ -378,6 +378,11 @@ export async function* streamRegenerateMessageVariant(params: {
 	ownerId?: string;
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
+	const requestId =
+		typeof crypto !== 'undefined' && 'randomUUID' in crypto
+			? crypto.randomUUID()
+			: `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
 	const res = await fetch(`${BASE_URL}/messages/${encodeURIComponent(params.messageId)}/regenerate`, {
 		method: 'POST',
 		headers: {
@@ -389,6 +394,7 @@ export async function* streamRegenerateMessageVariant(params: {
 		body: JSON.stringify({
 			ownerId: params.ownerId,
 			settings: params.settings ?? {},
+			requestId,
 		}),
 		signal: params.signal,
 	});

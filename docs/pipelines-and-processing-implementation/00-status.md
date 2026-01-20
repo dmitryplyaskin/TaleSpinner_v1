@@ -32,16 +32,33 @@
 
 ## Фаза 0 — Foundations (контракты данных + минимальные миграции)
 
-- [ ] **F0.1 (shared)**: Ввести/уточнить типы: `PipelineRun`, `PipelineStepRun`, `Generation`, `PromptDraft`, базовые enum статусов/триггеров.
-- [ ] **F0.2 (db/server)**: Аудит текущих таблиц `pipeline_runs`, `pipeline_step_runs`, `llm_generations`: сопоставить со спекой и добавить недостающие поля (trigger/status/timings/correlation ids), индексы под дедупликацию.
-- [ ] **F0.3 (server)**: Минимальный read-only API для UI: получить состояние “текущий run/step/generation” по `chatId` + связанным ids (для восстановления после обрыва SSE).
-- [ ] **F0.4 (server)**: Единый enum ошибок для pipeline (`policy_error`, `artifact_conflict`, `idempotency_conflict`, …) и безопасные сообщения.
+- [x] **F0.1 (shared)**: Ввести/уточнить типы: `PipelineRun`, `PipelineStepRun`, `Generation`, `PromptDraft`, базовые enum статусов/триггеров.
+- [x] **F0.2 (db/server)**: Аудит текущих таблиц `pipeline_runs`, `pipeline_step_runs`, `llm_generations`: сопоставить со спекой и добавить недостающие поля (trigger/status/timings/correlation ids), индексы под дедупликацию.
+- [x] **F0.3 (server)**: Минимальный read-only API для UI: получить состояние “текущий run/step/generation” по `chatId` + связанным ids (для восстановления после обрыва SSE).
+- [x] **F0.4 (server)**: Единый enum ошибок для pipeline (`policy_error`, `artifact_conflict`, `idempotency_conflict`, …) и безопасные сообщения.
+
+### Notes по текущей реализации (важно для сохранения контекста)
+
+- Типы/контракты v1: `shared/types/pipeline-execution.ts`
+- DB миграции:
+  - `server/drizzle/0006_pipeline_foundations_v1.sql` — корреляционные поля в `pipeline_runs` + индексы, `aborted` в `pipeline_step_runs`
+  - `server/drizzle/0007_pipeline_idempotency_and_branch.sql` — `pipeline_runs.idempotency_key` + unique `(chat_id, idempotency_key)`, и `llm_generations.branch_id`
+- `regenerate` идемпотентность (v1):
+  - фронт шлёт `requestId` (`web/src/api/chat-core.ts`)
+  - сервер использует `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>`
+- Branch-aware восстановление состояния:
+  - endpoint: `GET /api/chats/:id/pipeline-state?branchId=<id>` (query опционален)
+  - backend реализация: `server/src/services/chat-core/pipeline-state.ts` + `server/src/api/pipeline-state.core.api.ts`
+- SSE ошибки:
+  - `llm.stream.error` теперь отдаёт `{ code, message }` (и `message` сохраняется для совместимости с текущим UI)
+  - стабилизация ошибок: `server/src/core/errors/pipeline-errors.ts`
 
 ## Фаза 1 — Минимальный runner вокруг существующего chat-core
 
-- [ ] **F1.1 (server)**: Создание `PipelineRun` на `user_message` и `regenerate` с дедупликацией ключа:
+- [ ] **F1.1 (server)**: Создание `PipelineRun` на `user_message` и `regenerate` с дедупликацией ключа: (**in progress**)
   - `(chatId, userMessageId)` для `user_message`
   - `(chatId, assistantVariantId)` (или стабильный id regenerate) для `regenerate`
+  - **note**: выбран вариант **client-sent `requestId`** → `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>` и unique `(chat_id, idempotency_key)`
 - [ ] **F1.2 (server)**: Запись `pipeline_step_runs` для линейной цепочки `pre → llm → post` (пока `pre/post` могут быть no-op).
 - [ ] **F1.3 (server)**: Протянуть корреляцию ids во все записи и SSE envelope (см. `docs/pipelines-and-processing-spec/60-sse-events.md`).
 - [ ] **F1.4 (server)**: Корректная финализация статусов `pipeline_runs/pipeline_step_runs/llm_generations` на `done/aborted/error`.
@@ -90,6 +107,7 @@
 
 ## Гейты / вопросы, которые надо закрыть перед реализацией спорных частей
 
+- [ ] **Q0**: Какой стабильный `requestId` генерируем на фронте для `regenerate` (и надо ли расширять это на `user_message`) — сейчас используется `crypto.randomUUID()` (**answered for regenerate; open for user_message**).
 - [ ] **Q1**: Нужны ли `pipeline.step.*` события уже в v1 (или достаточно `pipeline.run.*`) — см. `docs/pipelines-and-processing-spec/90-open-questions.md`.
 - [ ] **Q2**: Обязателен ли `promptSnapshotJson` в v1 (redacted) или достаточно step-логов + `promptHash`.
 - [ ] **Q3**: Где именно храним активный `PipelineProfile` (chat/entity/global) и какие UX-потоки нужны в web.

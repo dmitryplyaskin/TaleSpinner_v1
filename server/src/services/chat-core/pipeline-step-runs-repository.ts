@@ -6,7 +6,7 @@ import { initDb } from "../../db/client";
 import { pipelineStepRuns } from "../../db/schema";
 
 export type PipelineStepType = "pre" | "rag" | "llm" | "post" | "tool";
-export type PipelineStepStatus = "running" | "done" | "error" | "skipped";
+export type PipelineStepStatus = "running" | "done" | "aborted" | "error" | "skipped";
 
 export type PipelineStepRunDto = {
   id: string;

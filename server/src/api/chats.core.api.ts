@@ -29,7 +29,12 @@ import {
 import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { createGeneration } from "../services/chat-core/generations-repository";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
-import { createPipelineRun, finishPipelineRun } from "../services/chat-core/pipeline-runs-repository";
+import { normalizePipelineErrorForClient } from "@core/errors/pipeline-errors";
+import {
+  createPipelineRun,
+  finishPipelineRun,
+  updatePipelineRunCorrelation,
+} from "../services/chat-core/pipeline-runs-repository";
 import {
   createPipelineStepRun,
   finishPipelineStepRun,
@@ -267,6 +272,10 @@ router.post(
         chatId: params.id,
         entityProfileId: chat.entityProfileId,
         trigger: "user_message",
+        branchId,
+        userMessageId: userMessage.id,
+        assistantMessageId: assistant.assistantMessageId,
+        assistantVariantId: assistant.variantId,
         meta: { branchId, userMessageId: userMessage.id, assistantMessageId: assistant.assistantMessageId },
       });
       pipelineRunId = pipelineRun.id;
@@ -331,6 +340,7 @@ router.post(
       const createdGen = await createGeneration({
         ownerId: body.ownerId,
         chatId: params.id,
+        branchId,
         messageId: assistant.assistantMessageId,
         variantId: assistant.variantId,
         pipelineRunId,
@@ -340,6 +350,9 @@ router.post(
         settings: body.settings,
       });
       generationId = createdGen.id;
+      if (pipelineRunId) {
+        await updatePipelineRunCorrelation({ id: pipelineRunId, generationId });
+      }
 
       // Close on disconnect and propagate abort.
       req.on("close", () => {
@@ -384,9 +397,13 @@ router.post(
         await finishPipelineStepRun({
           id: llmStepRunId,
           status:
-            finalStatus === "error" ? "error" : "done",
+            finalStatus === "aborted"
+              ? "aborted"
+              : finalStatus === "error"
+                ? "error"
+                : "done",
           output: { status: finalStatus, generationId },
-          error: finalStatus === "error" ? "generation_failed" : null,
+          error: finalStatus === "error" ? "pipeline_generation_error" : null,
         });
       }
       if (pipelineRunId) {
@@ -397,22 +414,22 @@ router.post(
         });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sse.send("llm.stream.error", { message });
+      const clientErr = normalizePipelineErrorForClient(error);
+      sse.send("llm.stream.error", clientErr);
       try {
         if (llmStepRunId) {
           await finishPipelineStepRun({
             id: llmStepRunId,
             status: "error",
             output: { status: "error", generationId },
-            error: message,
+            error: clientErr.code,
           });
         }
         if (pipelineRunId) {
           await finishPipelineRun({
             id: pipelineRunId,
             status: "error",
-            meta: { branchId, generationId, status: "error", error: message },
+            meta: { branchId, generationId, status: "error", errorCode: clientErr.code },
           });
         }
       } catch {

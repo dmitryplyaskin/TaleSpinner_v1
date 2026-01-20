@@ -16,6 +16,7 @@
 
 - `user_message`: ключ дедупа = `(chatId, userMessageId)`
 - `regenerate`: ключ дедупа = `(chatId, assistantVariantId)` (или иной стабильный идентификатор регенерации)
+  - note: выбран вариант **client-sent `requestId`** → `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>` + unique `(chat_id, idempotency_key)`
 
 Поведение:
 

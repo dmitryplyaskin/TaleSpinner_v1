@@ -43,6 +43,20 @@
       "when": 1768906200000,
       "tag": "0005_user_persons",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1768950000000,
+      "tag": "0006_pipeline_foundations_v1",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1768950600000,
+      "tag": "0007_pipeline_idempotency_and_branch",
+      "breakpoints": true
     }
   ]
 }

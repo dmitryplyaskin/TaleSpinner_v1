@@ -7,6 +7,7 @@ import instructionsRoutes from "./instructions.api";
 import llmRoutes from "./llm.api";
 import messagesCoreRoutes from "./messages.core.api";
 import messageVariantsCoreRoutes from "./message-variants.core.api";
+import pipelineStateCoreRoutes from "./pipeline-state.core.api";
 import pipelinesRoutes from "./pipelines.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import samplersRoutes from "./samplers.api";
@@ -19,6 +20,7 @@ export const routes = [
   generationsCoreRoutes,
   messagesCoreRoutes,
   messageVariantsCoreRoutes,
+  pipelineStateCoreRoutes,
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,

@@ -34,7 +34,12 @@
 - ссылки на active profile (id/версия) — даже если профили появятся позже, поле можно добавить заранее
 - индексы под дедупликацию turn-а:
   - `(chatId, userMessageId)` для `user_message`
-  - `(chatId, assistantVariantId)` для `regenerate`
+  - `(chatId, assistantVariantId)` для `regenerate` (в v1 часто недостаточно, т.к. variant создаётся заново на каждый regenerate)
+  - **рекомендуемый v1 ключ**: `pipeline_runs.idempotency_key = regenerate:<assistantMessageId>:<requestId>` (client-sent `requestId`) + unique `(chat_id, idempotency_key)`
+
+Дополнительно (v1 для веток и восстановления):
+
+- `llm_generations.branch_id` — чтобы состояние/активный стрим можно было восстанавливать **по ветке**, а не только по чату.
 
 ### F0.3 (server) — read-only API “восстановления состояния”
 
@@ -46,7 +51,8 @@
 
 Минимум:
 
-- получить текущий run/step/generation статусы по `chatId` и связанным ids.
+- получить текущий run/step/generation статусы по `chatId` и связанным ids
+- (рекомендуемо v1) принимать `branchId` как query, чтобы делать восстановление branch-aware.
 
 ### F0.4 (server) — ошибки и безопасные сообщения
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonStringify } from "../../chat-core/json";
@@ -10,6 +10,7 @@ export type GenerationStatus = "streaming" | "done" | "aborted" | "error";
 export type CreateGenerationParams = {
   ownerId?: string;
   chatId: string;
+  branchId: string;
   messageId: string; // assistant message id
   variantId: string | null;
   pipelineRunId?: string | null;
@@ -31,6 +32,7 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
     id,
     ownerId: params.ownerId ?? "global",
     chatId: params.chatId,
+    branchId: params.branchId,
     messageId: params.messageId,
     variantId: params.variantId,
     pipelineRunId: params.pipelineRunId ?? null,
@@ -49,6 +51,75 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
   });
 
   return { id, startedAt: ts };
+}
+
+export type GenerationDto = {
+  id: string;
+  chatId: string;
+  branchId: string | null;
+  messageId: string;
+  variantId: string | null;
+  pipelineRunId: string | null;
+  pipelineStepRunId: string | null;
+  status: GenerationStatus;
+  startedAt: Date;
+  finishedAt: Date | null;
+  error: string | null;
+};
+
+function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
+  return {
+    id: row.id,
+    chatId: row.chatId,
+    branchId: row.branchId ?? null,
+    messageId: row.messageId,
+    variantId: row.variantId ?? null,
+    pipelineRunId: row.pipelineRunId ?? null,
+    pipelineStepRunId: row.pipelineStepRunId ?? null,
+    status: row.status,
+    startedAt: row.startedAt,
+    finishedAt: row.finishedAt ?? null,
+    error: row.error ?? null,
+  };
+}
+
+export async function getGenerationById(id: string): Promise<GenerationDto | null> {
+  const db = await initDb();
+  const rows = await db.select().from(llmGenerations).where(eq(llmGenerations.id, id)).limit(1);
+  return rows[0] ? rowToDto(rows[0]) : null;
+}
+
+export async function getLatestGenerationForPipelineRun(params: {
+  pipelineRunId: string;
+}): Promise<GenerationDto | null> {
+  const db = await initDb();
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(eq(llmGenerations.pipelineRunId, params.pipelineRunId))
+    .orderBy(desc(llmGenerations.startedAt), desc(llmGenerations.id))
+    .limit(1);
+  return rows[0] ? rowToDto(rows[0]) : null;
+}
+
+export async function getActiveGenerationForChatBranch(params: {
+  chatId: string;
+  branchId: string;
+}): Promise<GenerationDto | null> {
+  const db = await initDb();
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(
+      and(
+        eq(llmGenerations.chatId, params.chatId),
+        eq(llmGenerations.branchId, params.branchId),
+        eq(llmGenerations.status, "streaming")
+      )
+    )
+    .orderBy(desc(llmGenerations.startedAt), desc(llmGenerations.id))
+    .limit(1);
+  return rows[0] ? rowToDto(rows[0]) : null;
 }
 
 export async function finishGeneration(params: {
