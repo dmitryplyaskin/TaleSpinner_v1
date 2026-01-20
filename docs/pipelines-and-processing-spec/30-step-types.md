@@ -100,6 +100,10 @@
 - **aux LLM (prompt-time)**: создаёт `Augmentation` или другие артефакты для PromptDraft; не стримит в UI и не пишет в `message_variants`.
 - **main LLM (canonical)**: единственный шаг, который стримит и сохраняет assistant variant/message.
 
+Примечание v1:
+
+- aux LLM вызовы пайплайна не являются частью “main llm” и не меняют его механику; они могут только производить артефакты, которые затем включаются в effective prompt через `promptInclusion`.
+
 ### `post` (опционально, но рекомендуется)
 
 Назначение:
