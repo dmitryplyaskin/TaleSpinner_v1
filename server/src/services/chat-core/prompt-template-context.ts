@@ -4,6 +4,65 @@ import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
 
+function isRecord(val: unknown): val is Record<string, unknown> {
+  return typeof val === "object" && val !== null && !Array.isArray(val);
+}
+
+function defineToString(obj: Record<string, unknown>, toStringValue: string): void {
+  // LiquidJS stringifies non-primitive values via String(value),
+  // so a custom toString enables `{{char}}` / `{{user}}` while still allowing `{{char.name}}`.
+  Object.defineProperty(obj, "toString", {
+    value: () => toStringValue,
+    enumerable: false,
+    configurable: true,
+  });
+}
+
+function asString(val: unknown): string {
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  return "";
+}
+
+function enrichTemplateContext(base: PromptTemplateRenderContext): PromptTemplateRenderContext {
+  const charObj = isRecord(base.char) ? base.char : {};
+  const userObj = isRecord(base.user) ? base.user : {};
+
+  // Make `{{char}}` and `{{user}}` behave like SillyTavern macros (name strings),
+  // without breaking existing templates that expect `{{char.name}}` / `{{user.name}}`.
+  const charName = asString(charObj.name).trim();
+  if (charName) defineToString(charObj, charName);
+
+  const userName = asString(userObj.name).trim();
+  if (userName) defineToString(userObj, userName);
+
+  // SillyTavern-style top-level aliases (best-effort).
+  // Many of these are used by ST "Story String" templates.
+  base.description = asString(charObj.description);
+  base.scenario = asString(charObj.scenario);
+  base.personality = asString(charObj.personality);
+  base.system = asString(charObj.system_prompt);
+
+  // We don't have a 1:1 "persona description" field yet; `prefix` is the closest concept.
+  base.persona = asString(userObj.prefix);
+
+  // World Info / anchors are not implemented yet in TaleSpinner v1 -> keep empty strings.
+  base.anchorBefore = "";
+  base.anchorAfter = "";
+  base.wiBefore = "";
+  base.wiAfter = "";
+  base.loreBefore = "";
+  base.loreAfter = "";
+
+  // Example messages: we store CC field as `mes_example`.
+  base.mesExamplesRaw = asString(charObj.mes_example);
+  base.mesExamples = base.mesExamplesRaw;
+
+  base.char = charObj;
+  base.user = userObj;
+  return base;
+}
+
 export async function buildPromptTemplateRenderContext(params: {
   ownerId?: string;
   chatId?: string;
@@ -35,7 +94,7 @@ export async function buildPromptTemplateRenderContext(params: {
       const entityProfile = await getEntityProfileById(params.entityProfileId);
       base.char = entityProfile?.spec ?? {};
     }
-    return base;
+    return enrichTemplateContext(base);
   }
 
   const chat = await getChatById(params.chatId);
@@ -57,7 +116,7 @@ export async function buildPromptTemplateRenderContext(params: {
     ? await getEntityProfileById(entityProfileId)
     : null;
 
-  return {
+  return enrichTemplateContext({
     char: entityProfile?.spec ?? {},
     user: selectedUser ?? {},
     chat: {
@@ -70,6 +129,6 @@ export async function buildPromptTemplateRenderContext(params: {
     messages: history.map((m) => ({ role: m.role, content: m.content })),
     rag: {},
     now: new Date().toISOString(),
-  };
+  });
 }
 
