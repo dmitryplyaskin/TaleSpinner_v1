@@ -48,6 +48,7 @@ import {
   finishPipelineStepRun,
 } from "../services/chat-core/pipeline-step-runs-repository";
 import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
+import { runPostProcessing } from "../services/chat-core/post-processing";
 import {
   createMessageTransformVariant,
   createRawUserInputVariant,
@@ -275,6 +276,41 @@ router.post(
     let postStepRunId: string | null = null;
     let preStepFinished = false;
     let postStepFinished = false;
+
+    const sendStepStarted = (params: {
+      baseEnv: Record<string, unknown>;
+      stepRunId: string;
+      stepType: "pre" | "llm" | "post";
+      label?: string;
+    }) => {
+      sse.send("pipeline.step.started", {
+        ...params.baseEnv,
+        stepRunId: params.stepRunId,
+        pipelineStepRunId: params.stepRunId,
+        stepType: params.stepType,
+        status: "running",
+        ...(params.label ? { label: params.label } : {}),
+      });
+    };
+
+    const sendStepDone = (params: {
+      baseEnv: Record<string, unknown>;
+      stepRunId: string;
+      stepType: "pre" | "llm" | "post";
+      status: "done" | "aborted" | "error" | "skipped";
+      error?: { code: string; message: string } | null;
+      label?: string;
+    }) => {
+      sse.send("pipeline.step.done", {
+        ...params.baseEnv,
+        stepRunId: params.stepRunId,
+        pipelineStepRunId: params.stepRunId,
+        stepType: params.stepType,
+        status: params.status,
+        ...(params.label ? { label: params.label } : {}),
+        ...(params.error ? { error: params.error } : {}),
+      });
+    };
 
     const runAbortController = new AbortController();
     let shouldAbortOnClose = false;
@@ -540,6 +576,7 @@ router.post(
           // Redacted snapshot is also stored on Generation; keeping it here enables reconstruction
           // from step logs alone (useful if generation record is missing/incomplete).
           promptSnapshot: builtPrompt.promptSnapshot,
+          artifactInclusions: builtPrompt.artifactInclusions,
           messageTransform: messageTransformInfo,
           snapshot: {
             truncated: builtPrompt.promptSnapshot.truncated,
@@ -611,6 +648,16 @@ router.post(
         ...baseEnv,
         status: "running",
       });
+
+      // Step progress events (v1): pre is already finished by now; emit for UI/debug parity.
+      if (preStepRunId) {
+        sendStepStarted({ baseEnv, stepRunId: preStepRunId, stepType: "pre" });
+        sendStepDone({ baseEnv, stepRunId: preStepRunId, stepType: "pre", status: "done" });
+      }
+
+      if (llmStepRunId) {
+        sendStepStarted({ baseEnv, stepRunId: llmStepRunId, stepType: "llm" });
+      }
 
       sse.send("llm.stream.meta", {
         ...baseEnv,
@@ -685,6 +732,24 @@ router.post(
           output: { status: finalStatus, generationId },
           error: finalStatus === "error" ? "pipeline_generation_error" : null,
         });
+        sendStepDone({
+          baseEnv,
+          stepRunId: llmStepRunId,
+          stepType: "llm",
+          status:
+            finalStatus === "aborted"
+              ? "aborted"
+              : finalStatus === "error"
+                ? "error"
+                : "done",
+          error:
+            finalStatus === "error"
+              ? {
+                  code: "pipeline_generation_error",
+                  message: lastGenerationErrorMessage ?? "Generation error",
+                }
+              : null,
+        });
       }
       const postStep = await createPipelineStepRun({
         ownerId,
@@ -694,32 +759,100 @@ router.post(
         input: { status: finalStatus, generationId },
       });
       postStepRunId = postStep.id;
-      await finishPipelineStepRun({
-        id: postStep.id,
-        status: finalStatus === "done" ? "done" : finalStatus === "aborted" ? "aborted" : "error",
-        output: { skipped: true, status: finalStatus },
-        error: finalStatus === "error" ? "pipeline_generation_error" : null,
-      });
-      postStepFinished = true;
+      sendStepStarted({ baseEnv, stepRunId: postStepRunId, stepType: "post" });
+      let postStatus: "done" | "skipped" | "error" = "skipped";
+      let postError: { code: string; message: string } | null = null;
+      let postOutput: unknown = { skipped: true, reason: finalStatus };
+
+      if (finalStatus !== "done") {
+        await finishPipelineStepRun({
+          id: postStep.id,
+          status: "skipped",
+          output: postOutput,
+          error: null,
+        });
+        postStepFinished = true;
+        sendStepDone({ baseEnv, stepRunId: postStepRunId, stepType: "post", status: "skipped" });
+      } else {
+        try {
+          const post = await runPostProcessing({
+            ownerId,
+            chatId: params.id,
+            assistantMessageId: assistant.assistantMessageId,
+            assistantVariantId: assistant.variantId,
+            activeProfileSpec: activeProfile.profile?.spec ?? null,
+          });
+          postStatus = "done";
+          postOutput = {
+            status: "done",
+            blocks: { count: post.blocks.length },
+            stateWrites: post.stateWrites,
+          };
+          await finishPipelineStepRun({
+            id: postStep.id,
+            status: "done",
+            output: postOutput,
+            error: null,
+          });
+          postStepFinished = true;
+          sendStepDone({ baseEnv, stepRunId: postStepRunId, stepType: "post", status: "done" });
+        } catch (err) {
+          const clientErr = normalizePipelineErrorForClient(err);
+          postStatus = "error";
+          postError = { code: clientErr.code, message: clientErr.message };
+          postOutput = { status: "error", error: clientErr };
+          await finishPipelineStepRun({
+            id: postStep.id,
+            status: "error",
+            output: postOutput,
+            error: clientErr.code,
+          });
+          postStepFinished = true;
+          sendStepDone({
+            baseEnv,
+            stepRunId: postStepRunId,
+            stepType: "post",
+            status: "error",
+            error: postError,
+          });
+        }
+      }
+
+      const runFinalStatus =
+        postStatus === "error"
+          ? "error"
+          : finalStatus === "aborted"
+            ? "aborted"
+            : finalStatus === "error"
+              ? "error"
+              : "done";
+
       if (pipelineRunId) {
         await finishPipelineRun({
           id: pipelineRunId,
-          status: finalStatus === "done" ? "done" : finalStatus === "aborted" ? "aborted" : "error",
-          meta: { branchId, generationId, status: finalStatus },
+          status: runFinalStatus,
+          meta: {
+            branchId,
+            generationId,
+            status: runFinalStatus,
+            llmStatus: finalStatus,
+            postStatus,
+            postError,
+          },
         });
       }
 
-      if (finalStatus === "done") {
+      if (runFinalStatus === "done") {
         sse.send("pipeline.run.done", { ...baseEnv, status: "done" });
-      } else if (finalStatus === "aborted") {
+      } else if (runFinalStatus === "aborted") {
         sse.send("pipeline.run.aborted", { ...baseEnv, status: "aborted" });
       } else {
         sse.send("pipeline.run.error", {
           ...baseEnv,
           status: "error",
           error: {
-            code: "pipeline_generation_error",
-            message: lastGenerationErrorMessage ?? "Generation error",
+            code: postError?.code ?? "pipeline_generation_error",
+            message: postError?.message ?? lastGenerationErrorMessage ?? "Generation error",
           },
         });
       }

@@ -11,6 +11,7 @@ export type PipelineDebugRunDto = {
   status: string;
   startedAt: Date;
   finishedAt: Date | null;
+  idempotencyKey: string | null;
   branchId: string | null;
   userMessageId: string | null;
   assistantMessageId: string | null;
@@ -59,6 +60,19 @@ export type ChatPipelineDebugDto = {
   run: PipelineDebugRunDto | null;
   steps: PipelineDebugStepDto[];
   generation: PipelineDebugGenerationDto | null;
+  report: {
+    trigger: string | null;
+    idempotencyKey: string | null;
+    prompt: {
+      promptHash: string | null;
+      promptSnapshot: unknown | null;
+      trimming: unknown | null;
+      artifactInclusions: unknown[];
+    };
+    post: {
+      stateWrites: unknown[];
+    };
+  };
 };
 
 function mapRun(r: typeof pipelineRuns.$inferSelect): PipelineDebugRunDto {
@@ -68,6 +82,7 @@ function mapRun(r: typeof pipelineRuns.$inferSelect): PipelineDebugRunDto {
     status: r.status,
     startedAt: r.startedAt,
     finishedAt: r.finishedAt ?? null,
+    idempotencyKey: r.idempotencyKey ?? null,
     branchId: r.branchId ?? null,
     userMessageId: r.userMessageId ?? null,
     assistantMessageId: r.assistantMessageId ?? null,
@@ -172,6 +187,12 @@ export async function getChatPipelineDebug(params: {
       run: null,
       steps: [],
       generation: null,
+      report: {
+        trigger: null,
+        idempotencyKey: null,
+        prompt: { promptHash: null, promptSnapshot: null, trimming: null, artifactInclusions: [] },
+        post: { stateWrites: [] },
+      },
     };
   }
 
@@ -190,13 +211,41 @@ export async function getChatPipelineDebug(params: {
       .limit(1),
   ]);
 
+  const run = runRows[0] ? mapRun(runRows[0]) : null;
+  const steps = stepRows.map(mapStep);
+  const generation = genRows[0] ? mapGen(genRows[0]) : null;
+
+  const pre = steps.find((s) => s.stepType === "pre") ?? null;
+  const post = steps.find((s) => s.stepType === "post") ?? null;
+  const preOut = pre?.output && typeof pre.output === "object" ? (pre.output as any) : null;
+  const postOut = post?.output && typeof post.output === "object" ? (post.output as any) : null;
+
+  const report = {
+    trigger: run?.trigger ?? null,
+    idempotencyKey: run?.idempotencyKey ?? null,
+    prompt: {
+      promptHash:
+        (typeof preOut?.promptHash === "string" ? preOut.promptHash : null) ??
+        (typeof generation?.promptHash === "string" ? generation.promptHash : null),
+      promptSnapshot:
+        (typeof preOut?.promptSnapshot !== "undefined" ? preOut.promptSnapshot : null) ??
+        (generation?.promptSnapshot ?? null),
+      trimming: typeof preOut?.trimming !== "undefined" ? preOut.trimming : null,
+      artifactInclusions: Array.isArray(preOut?.artifactInclusions) ? preOut.artifactInclusions : [],
+    },
+    post: {
+      stateWrites: Array.isArray(postOut?.stateWrites) ? postOut.stateWrites : [],
+    },
+  };
+
   return {
     chatId: params.chatId,
     branchId,
     resolvedActiveProfile,
-    run: runRows[0] ? mapRun(runRows[0]) : null,
-    steps: stepRows.map(mapStep),
-    generation: genRows[0] ? mapGen(genRows[0]) : null,
+    run,
+    steps,
+    generation,
+    report,
   };
 }
 

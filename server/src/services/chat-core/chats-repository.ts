@@ -581,6 +581,26 @@ export async function updateAssistantText(params: {
     .where(eq(chatMessages.id, params.assistantMessageId));
 }
 
+export async function updateAssistantBlocks(params: {
+  assistantMessageId: string;
+  variantId: string;
+  blocks: unknown[];
+}): Promise<void> {
+  const db = await initDb();
+  const blocksJson = safeJsonStringify(params.blocks ?? [], "[]");
+
+  await db
+    .update(messageVariants)
+    .set({ blocksJson })
+    .where(eq(messageVariants.id, params.variantId));
+
+  // Keep message cache in sync with the selected variant.
+  await db
+    .update(chatMessages)
+    .set({ blocksJson, activeVariantId: params.variantId })
+    .where(eq(chatMessages.id, params.assistantMessageId));
+}
+
 export async function listMessagesForPrompt(params: {
   chatId: string;
   branchId: string;

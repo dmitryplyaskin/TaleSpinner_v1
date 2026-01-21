@@ -239,24 +239,35 @@
 
 ## Фаза 5 — `post` шаг: канонизация ответа, blocks, state
 
-- [ ] **F5.1 (server)**: `post` выполняется после `llm.stream.done` и может обновлять только write targets текущего хода + артефакты (по policy).
-- [ ] **F5.2 (server)**: Генерация/нормализация `blocksJson` на финале (v1 рекомендация) + правило “reasoning в UI-only”.
-- [ ] **F5.3 (server)**: `PipelineState` как `kind=state` артефакт (json), обновление с `basedOnVersion` и reject при конфликте.
+- [x] **F5.1 (server)**: `post` выполняется после `llm.stream.done` и может обновлять только write targets текущего хода + артефакты (по policy).
+- [x] **F5.2 (server)**: Генерация/нормализация `blocksJson` на финале (v1 рекомендация) + правило “reasoning в UI-only”.
+- [x] **F5.3 (server)**: `PipelineState` как `kind=state` артефакт (json), обновление с `basedOnVersion` и reject при конфликте. *(v1: profile-driven `stateWrites` в `post` step params)*
 - [ ] **F5.4 (web)**: UI для “latest_only” панелей (state) и “timeline” лент (feed) согласно `uiPresentation`.
 
 ## Фаза 6 — Observability + debug report (пользовательская объяснимость)
 
-- [ ] **F6.1 (server)**: SSE события прогресса: `pipeline.run.*` и (опционально v1) `pipeline.step.*`.
+- [x] **F6.1 (server)**: SSE события прогресса: `pipeline.run.*` и (опционально v1) `pipeline.step.*`.
 - [ ] **F6.2 (web)**: UI индикатор “что происходит” (run/step) + восстановление состояния через API при обрыве SSE.
-- [ ] **F6.3 (server/web)**: “Debug report” экран: входы (ids + selected variants), effective prompt (redacted), trimming summary, артефакты (read/write), параметры генерации, приватность.
-- [ ] **F6.4 (server)**: Лимиты/retention логов: truncate/omit больших полей в `inputJson/outputJson` и `promptSnapshotJson`.
+- [ ] **F6.3 (server/web)**: “Debug report” экран: входы (ids + selected variants), effective prompt (redacted), trimming summary, артефакты (read/write), параметры генерации, приватность. *(server: debug payload расширен; web экран пока не делали)*
+- [x] **F6.4 (server)**: Лимиты/retention логов: truncate/omit больших полей в `inputJson/outputJson` и `promptSnapshotJson`.
 
 ---
 
 ## Гейты / вопросы, которые надо закрыть перед реализацией спорных частей
 
 - [x] **Q0**: Какой стабильный `requestId` генерируем на фронте для `regenerate` (и надо ли расширять это на `user_message`) — используется `crypto.randomUUID()` (fallback: `${Date.now()}-${Math.random().toString(16).slice(2)}`); включено и для `user_message`.
-- [ ] **Q1**: Нужны ли `pipeline.step.*` события уже в v1 (или достаточно `pipeline.run.*`) — см. `docs/pipelines-and-processing-spec/90-open-questions.md`.
+- [x] **Q1**: Нужны ли `pipeline.step.*` события уже в v1 (или достаточно `pipeline.run.*`) — см. `docs/pipelines-and-processing-spec/90-open-questions.md`.
 - [ ] **Q2**: Обязателен ли `promptSnapshotJson` в v1 (redacted) или достаточно step-логов + `promptHash`.
 - [ ] **Q3**: Где именно храним активный `PipelineProfile` (chat/entity/global) и какие UX-потоки нужны в web.
+
+### Session log (2026-01-21, server: Phase 5–6)
+
+- **Phase 6.1**: добавлены SSE события `pipeline.step.started|done` для `pre/llm/post` (в send/regenerate SSE endpoints).
+- **Phase 5.1–5.2**: `post` теперь реально выполняется после `llm.stream.done`:\
+  канонизирует `blocksJson` и записывает его в `message_variants` + кэш в `chat_messages`.
+- **Phase 5.3 (v1 минимально)**: profile-driven state writes:\
+  `post` читает `PipelineProfile.spec` и применяет `stateWrites[]` через `pipeline_artifacts` с `basedOnVersion` (optimistic concurrency) + runtime guard single-writer.
+- **Phase 6.3 (server)**: расширен debug payload:\
+  `PromptDraft` логирует `artifactInclusions`, `post` логирует `stateWrites`, debug endpoint агрегирует это в `report`.
+- **Phase 6.4**: введены лимиты для логов (`pipeline_step_runs.inputJson/outputJson`, `llm_generations.promptSnapshotJson`) через bounded stringify.
 

@@ -28,6 +28,18 @@ export type BuiltPromptDraft = {
   trimming: PromptTrimmingSummary;
   promptHash: string;
   promptSnapshot: PromptSnapshotV1;
+  artifactInclusions: Array<{
+    tag: string;
+    version: number;
+    mode: PromptInclusionModeV1;
+    role: "system" | "developer" | "user" | "assistant";
+    format: "text" | "json" | "markdown";
+    contentType: string;
+    visibility: string;
+    uiSurface: string;
+    writerPipelineId: string | null;
+    writerStepName: string | null;
+  }>;
 };
 
 type PromptInclusionModeV1 =
@@ -244,6 +256,25 @@ export async function buildPromptDraft(params: {
 
   let systemPrompt = params.systemPrompt ?? "";
 
+  const artifactInclusions = inclusions.map(({ artifact, inclusion }) => ({
+    tag: artifact.tag,
+    version: artifact.version,
+    mode: inclusion.mode,
+    role: inclusion.role ?? "developer",
+    format:
+      inclusion.format ??
+      (artifact.contentType === "markdown"
+        ? "markdown"
+        : artifact.contentType === "text"
+          ? "text"
+          : "json"),
+    contentType: artifact.contentType,
+    visibility: artifact.visibility,
+    uiSurface: artifact.uiSurface,
+    writerPipelineId: artifact.writerPipelineId ?? null,
+    writerStepName: artifact.writerStepName ?? null,
+  }));
+
   const timelineInsertsAfterLastUser: PromptDraftMessage[] = [];
   const tailMessages: PromptDraftMessage[] = [];
 
@@ -302,6 +333,6 @@ export async function buildPromptDraft(params: {
     historyReturnedCount: history.length,
   });
 
-  return { draft, llmMessages, trimming, promptHash, promptSnapshot };
+  return { draft, llmMessages, trimming, promptHash, promptSnapshot, artifactInclusions };
 }
 

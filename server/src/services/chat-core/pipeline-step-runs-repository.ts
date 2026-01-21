@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
-import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { safeJsonParse, safeJsonStringifyForLog } from "../../chat-core/json";
 import { initDb } from "../../db/client";
 import { pipelineStepRuns } from "../../db/schema";
 
@@ -59,8 +59,14 @@ export async function createPipelineStepRun(params: {
     status: "running",
     startedAt: ts,
     finishedAt: null,
-    inputJson: typeof params.input === "undefined" ? null : safeJsonStringify(params.input),
-    outputJson: typeof params.output === "undefined" ? null : safeJsonStringify(params.output),
+    inputJson:
+      typeof params.input === "undefined"
+        ? null
+        : safeJsonStringifyForLog(params.input, { maxChars: 20_000, fallback: "{}" }),
+    outputJson:
+      typeof params.output === "undefined"
+        ? null
+        : safeJsonStringifyForLog(params.output, { maxChars: 20_000, fallback: "{}" }),
     error: null,
   });
 
@@ -93,7 +99,10 @@ export async function finishPipelineStepRun(params: {
     .set({
       status: params.status,
       finishedAt: ts,
-      outputJson: typeof params.output === "undefined" ? undefined : safeJsonStringify(params.output),
+      outputJson:
+        typeof params.output === "undefined"
+          ? undefined
+          : safeJsonStringifyForLog(params.output, { maxChars: 20_000, fallback: "{}" }),
       error: params.error ?? null,
     })
     .where(eq(pipelineStepRuns.id, params.id));

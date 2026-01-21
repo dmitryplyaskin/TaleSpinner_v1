@@ -50,6 +50,14 @@ export async function listMessageVariants(params: {
   return rows.map(variantRowToDto);
 }
 
+export async function getMessageVariantById(params: {
+  variantId: string;
+}): Promise<MessageVariantDto | null> {
+  const db = await initDb();
+  const rows = await db.select().from(messageVariants).where(eq(messageVariants.id, params.variantId)).limit(1);
+  return rows[0] ? variantRowToDto(rows[0]) : null;
+}
+
 export async function selectMessageVariant(params: {
   messageId: string;
   variantId: string;

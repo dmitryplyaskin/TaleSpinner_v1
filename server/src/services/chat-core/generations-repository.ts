@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
-import { safeJsonStringify } from "../../chat-core/json";
+import { safeJsonStringifyForLog, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
 import { llmGenerations } from "../../db/schema";
 
@@ -149,7 +149,9 @@ export async function updateGenerationPromptData(params: {
   if (typeof params.promptHash !== "undefined") set.promptHash = params.promptHash;
   if (typeof params.promptSnapshot !== "undefined") {
     set.promptSnapshotJson =
-      params.promptSnapshot === null ? null : safeJsonStringify(params.promptSnapshot, "{}");
+      params.promptSnapshot === null
+        ? null
+        : safeJsonStringifyForLog(params.promptSnapshot, { maxChars: 60_000, fallback: "{}" });
   }
   if (Object.keys(set).length === 0) return;
   await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
