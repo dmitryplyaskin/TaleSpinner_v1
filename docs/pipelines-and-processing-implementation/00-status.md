@@ -166,18 +166,76 @@
 
 ## Фаза 3 — PipelineProfile + резолв активного профиля (пока без артефактных коллизий)
 
-- [ ] **F3.1 (db/server)**: Хранение `PipelineProfile` (global default / entityProfile override / chat override) + правило приоритета резолва.
-- [ ] **F3.2 (server)**: Контракт `PipelineDefinition` (линейный список шагов + условия включения).
-- [ ] **F3.3 (server)**: Привязать `PipelineRun` к “активному профилю” (id/версия) для отладки и воспроизводимости.
-- [ ] **F3.4 (web)**: Минимальный UI/настройка выбора профиля на уровне чата (read/write).
+- [x] **F3.1 (db/server)**: Хранение `PipelineProfile` (global default / entityProfile override / chat override) + правило приоритета резолва.
+- [x] **F3.2 (shared/server)**: Контракт `PipelineDefinition` (линейный список шагов + условия включения).
+- [x] **F3.3 (server)**: Привязать `PipelineRun` к “активному профилю” (id/версия) для отладки и воспроизводимости.
+- [x] **F3.4 (web)**: Минимальный UI/настройка выбора профиля на уровне чата (read/write).
+
+### Notes по реализации Фазы 3 (что именно сделано)
+
+- DB:
+  - таблицы: `pipeline_profiles`, `pipeline_profile_bindings` (`server/drizzle/0008_pipeline_profiles_and_bindings.sql`, `server/src/db/schema.ts`)
+  - поля для воспроизводимости в `pipeline_runs`: `active_profile_id`, `active_profile_version` (`server/drizzle/0006_pipeline_foundations_v1.sql`)
+- Контракт профиля:
+  - `PipelineProfile.spec` хранится как JSON (opaque на стороне server)
+  - spec v1 типизирован в shared: `shared/types/pipeline-profile-spec.ts` (`PipelineProfileSpecV1` + `PipelineDefinitionV1` + `PipelineStepDefinitionV1`)
+- Server (API + резолв):
+  - CRUD профилей: `server/src/api/pipeline-profiles.core.api.ts` (`/api/pipeline-profiles`)
+  - bindings + приоритет резолва `chat → entity_profile → global`: `server/src/services/chat-core/pipeline-profile-resolver.ts`
+  - endpoints для overrides:
+    - `GET /api/chats/:id/active-pipeline-profile`
+    - `PUT /api/chats/:id/active-pipeline-profile` (chat override; `profileId: string | null`)
+    - `PUT /api/entity-profiles/:id/active-pipeline-profile` (entity override)
+    - `PUT /api/active-pipeline-profile` (global default)
+- PipelineRun:
+  - при запуске SSE send/regenerate активный профиль резолвится и сохраняется в run (`activeProfileId/activeProfileVersion`), плюс дублируется в `metaJson` для дебага:
+    - `server/src/api/chats.core.api.ts`
+    - `server/src/api/message-variants.core.api.ts`
+  - доступен в debug: `server/src/services/chat-core/pipeline-debug.ts`
+- Web:
+  - API клиент: `web/src/api/chat-core.ts`
+  - UI в Drawer `Pipeline`: редактор профилей + три селекта bindings (chat/entity/global) + resolved source:
+    - `web/src/features/sidebars/pipelines/index.tsx`
+    - `web/src/features/sidebars/pipelines/pipeline-profile-editor.tsx`
+  - состояние/эффекты (Effector): `web/src/model/pipeline-runtime/index.ts`
 
 ## Фаза 4 — Артефакты: `pipeline_artifacts`, SessionView и `art.<tag>`
 
-- [ ] **F4.1 (db/server)**: Ввести `pipeline_artifacts` по модели **Latest + History** (версионирование, retention политика per-tag).
-- [ ] **F4.2 (server)**: `SessionView` для чата (v1 chat-scoped), доступ в Liquid как `art.<tag>.value` и `art.<tag>.history[]`.
-- [ ] **F4.3 (server)**: Runtime-guard `single-writer per persisted tag` + валидация коллизий тегов при активации профиля.
-- [ ] **F4.4 (server)**: `promptInclusion` (минимум v1): `append_after_last_user`, `prepend_system`, `as_message` + детерминированный ordering (profile order → step order → tag → version).
+- [x] **F4.1 (db/server)**: Ввести `pipeline_artifacts` по модели **Latest + History** (версионирование, retention политика per-tag).
+- [x] **F4.2 (server)**: `SessionView` для чата (v1 chat-scoped), доступ в Liquid как `art.<tag>.value` и `art.<tag>.history[]`.
+- [x] **F4.3 (server)**: Runtime-guard `single-writer per persisted tag` + валидация коллизий тегов при активации профиля.
+- [x] **F4.4 (server)**: `promptInclusion` (минимум v1): `append_after_last_user`, `prepend_system`, `as_message` + детерминированный ordering (profile order → step order → tag → version).
 - [ ] **F4.5 (web)**: Базовый рендер артефактов по `uiSurface` (минимум: `panel:*` и `feed:*` как отдельные виджеты/ленты).
+
+### Notes по реализации Фазы 4 (backend-only)
+
+- DB:
+  - миграция: `server/drizzle/0009_pipeline_artifacts.sql` (+ запись в `server/drizzle/meta/_journal.json`)
+  - Drizzle schema: `server/src/db/schema.ts` (`pipelineArtifacts`)
+  - применение миграций (dev): `yarn --cwd server db:migrate`
+- Репозиторий артефактов (Latest + History, optimistic concurrency):
+  - `server/src/services/chat-core/pipeline-artifacts-repository.ts`
+  - запись новой версии persisted артефакта с `basedOnVersion` (mismatch → `pipeline_artifact_conflict`)
+  - single-writer per tag (writerPipelineId mismatch → `pipeline_policy_error`)
+  - (минимум) retention `keep_last_n` как best-effort prune
+- SessionView (`art.<tag>.value/history`) для Liquid:
+  - materialize: `server/src/services/chat-core/session-view.ts`
+  - прокинут в template context: `server/src/services/chat-core/prompt-template-context.ts` (поле `art`)
+  - тип контекста расширен: `server/src/services/chat-core/prompt-template-renderer.ts`
+- `promptInclusion` влияет на effective prompt:
+  - сборка: `server/src/services/chat-core/prompt-draft-builder.ts`
+  - режимы v1: `prepend_system`, `append_after_last_user`, `as_message`
+  - ordering v1 (минимум): profile order (если доступен `activeProfileSpec`) → step order (`pre/llm/post`) → `tag` → `version`
+  - активный профиль пробрасывается в `buildPromptDraft(...)` из SSE endpoints:
+    - `server/src/api/chats.core.api.ts`
+    - `server/src/api/message-variants.core.api.ts`
+- Ошибки:
+  - `pipeline_artifact_conflict` и `pipeline_policy_error` нормализуются для клиента: `server/src/core/errors/pipeline-errors.ts`
+
+### TODO (важно, позже)
+
+- **Tag validation при активации/сохранении профиля**: реализовать валидацию коллизий persisted `tag` (и ownership) при установке active `PipelineProfile` (chat/entity/global).  
+  Зависимость: нужно договориться о декларации write targets (какие `art.<tag>` пайплайн пишет) в `PipelineProfile.spec`/`step.params` (сейчас есть только runtime-guard на запись).
 
 ## Фаза 5 — `post` шаг: канонизация ответа, blocks, state
 

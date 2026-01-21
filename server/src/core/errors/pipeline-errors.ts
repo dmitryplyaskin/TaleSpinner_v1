@@ -18,12 +18,18 @@ export type PipelineClientError = {
  */
 export function normalizePipelineErrorForClient(error: unknown): PipelineClientError {
   if (error instanceof HttpError) {
-    // HttpError.message is intended to be client-safe by design in this codebase.
-    // Still, keep pipeline code stable for UI.
-    return {
-      code: "pipeline_generation_error",
-      message: error.message || "Ошибка генерации",
-    };
+    const code = typeof error.code === "string" ? error.code : null;
+    if (code === "pipeline_policy_error") {
+      return { code: "pipeline_policy_error", message: error.message || "Policy error" };
+    }
+    if (code === "pipeline_artifact_conflict") {
+      return { code: "pipeline_artifact_conflict", message: error.message || "Artifact conflict" };
+    }
+    if (code === "pipeline_idempotency_conflict") {
+      return { code: "pipeline_idempotency_conflict", message: error.message || "Idempotency conflict" };
+    }
+    // Fallback: treat as generation error.
+    return { code: "pipeline_generation_error", message: error.message || "Ошибка генерации" };
   }
 
   return {

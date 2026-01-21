@@ -6,6 +6,9 @@ export interface PromptTemplateRenderContext {
   chat: unknown;
   messages: Array<{ role: string; content: string }>;
   rag: unknown;
+  // Persisted pipeline artifacts materialized as `art.<tag>.value/history`.
+  // v1: chat-scoped session only.
+  art?: Record<string, unknown>;
   now: string;
 
   // --- SillyTavern-like convenience variables (compat layer).

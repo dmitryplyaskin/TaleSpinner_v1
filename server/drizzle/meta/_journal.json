@@ -64,6 +64,13 @@
       "when": 1768951200000,
       "tag": "0008_pipeline_profiles_and_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1768951800000,
+      "tag": "0009_pipeline_artifacts",
+      "breakpoints": true
     }
   ]
 }

@@ -364,11 +364,13 @@ router.post(
       }
 
       const builtPrompt = await buildPromptDraft({
+        ownerId,
         chatId: msg.chatId,
         branchId,
         systemPrompt,
         historyLimit: 50,
         excludeMessageIds: [msg.id],
+        activeProfileSpec: activeProfile.profile?.spec ?? null,
       });
 
       await finishPipelineStepRun({

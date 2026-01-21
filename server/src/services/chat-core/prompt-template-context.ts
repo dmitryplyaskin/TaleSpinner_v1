@@ -1,6 +1,7 @@
 import { getChatById, listMessagesForPrompt } from "./chats-repository";
 import { getEntityProfileById } from "./entity-profiles-repository";
 import { getSelectedUserPerson } from "./user-persons-repository";
+import { buildChatSessionViewSafe } from "./session-view";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
 
@@ -80,6 +81,7 @@ export async function buildPromptTemplateRenderContext(params: {
     chat: {},
     messages: [],
     rag: {},
+    art: {},
     now: new Date().toISOString(),
   };
 
@@ -116,6 +118,11 @@ export async function buildPromptTemplateRenderContext(params: {
     ? await getEntityProfileById(entityProfileId)
     : null;
 
+  const sessionView = await buildChatSessionViewSafe({
+    ownerId,
+    chatId: params.chatId,
+  });
+
   return enrichTemplateContext({
     char: entityProfile?.spec ?? {},
     user: selectedUser ?? {},
@@ -128,6 +135,7 @@ export async function buildPromptTemplateRenderContext(params: {
     },
     messages: history.map((m) => ({ role: m.role, content: m.content })),
     rag: {},
+    art: sessionView.art,
     now: new Date().toISOString(),
   });
 }

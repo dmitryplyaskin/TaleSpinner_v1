@@ -4,6 +4,7 @@ import type { GenerateMessage } from "@shared/types/generate";
 import type { PromptDraft, PromptDraftMessage } from "@shared/types/pipeline-execution";
 
 import { listMessagesForPrompt } from "./chats-repository";
+import { listLatestPersistedArtifactsForSession, type PipelineArtifactDto } from "./pipeline-artifacts-repository";
 
 export type PromptTrimmingSummary = {
   historyLimit: number;
@@ -28,6 +29,113 @@ export type BuiltPromptDraft = {
   promptHash: string;
   promptSnapshot: PromptSnapshotV1;
 };
+
+type PromptInclusionModeV1 =
+  | "none"
+  | "prepend_system"
+  | "append_after_last_user"
+  | "as_message";
+
+type PromptInclusionV1 = {
+  mode: PromptInclusionModeV1;
+  role?: "system" | "developer" | "user" | "assistant";
+  format?: "text" | "json" | "markdown";
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function parsePromptInclusionV1(v: unknown): PromptInclusionV1 | null {
+  if (!isRecord(v)) return null;
+  const mode = v.mode;
+  if (
+    mode !== "none" &&
+    mode !== "prepend_system" &&
+    mode !== "append_after_last_user" &&
+    mode !== "as_message"
+  ) {
+    return null;
+  }
+  const roleRaw = v.role;
+  const role =
+    roleRaw === "system" ||
+    roleRaw === "developer" ||
+    roleRaw === "user" ||
+    roleRaw === "assistant"
+      ? roleRaw
+      : undefined;
+  const formatRaw = v.format;
+  const format =
+    formatRaw === "text" || formatRaw === "json" || formatRaw === "markdown"
+      ? formatRaw
+      : undefined;
+  return { mode, role, format };
+}
+
+function artifactToText(a: PipelineArtifactDto, inclusion: PromptInclusionV1): string {
+  const format = inclusion.format ?? (a.contentType === "markdown" ? "markdown" : a.contentType === "text" ? "text" : "json");
+  if (format === "json") {
+    if (a.contentType === "json") {
+      try {
+        return JSON.stringify(a.contentJson ?? null);
+      } catch {
+        return "{}";
+      }
+    }
+    // Coerce text/markdown to json string value.
+    return JSON.stringify(a.contentText ?? "");
+  }
+  // text/markdown: use textual representation.
+  if (a.contentType === "json") {
+    try {
+      return JSON.stringify(a.contentJson ?? null);
+    } catch {
+      return "{}";
+    }
+  }
+  return String(a.contentText ?? "");
+}
+
+type ArtifactOrderingContext = {
+  pipelineOrderById: Map<string, number>;
+};
+
+function stepTypeOrder(stepName: string | null | undefined): number {
+  if (stepName === "pre") return 0;
+  if (stepName === "llm") return 1;
+  if (stepName === "post") return 2;
+  return 99;
+}
+
+function compareArtifactsForPrompt(a: PipelineArtifactDto, b: PipelineArtifactDto, ctx: ArtifactOrderingContext): number {
+  const aPipe = a.writerPipelineId ? (ctx.pipelineOrderById.get(a.writerPipelineId) ?? 999) : 999;
+  const bPipe = b.writerPipelineId ? (ctx.pipelineOrderById.get(b.writerPipelineId) ?? 999) : 999;
+  if (aPipe !== bPipe) return aPipe - bPipe;
+
+  const aStep = stepTypeOrder(a.writerStepName);
+  const bStep = stepTypeOrder(b.writerStepName);
+  if (aStep !== bStep) return aStep - bStep;
+
+  if (a.tag !== b.tag) return a.tag < b.tag ? -1 : 1;
+  if (a.version !== b.version) return a.version - b.version;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+function extractPipelineOrderFromProfileSpec(spec: unknown): Map<string, number> {
+  // v1: shared type shape: { spec_version: 1, pipelines: [{ id: string, ...}] }
+  if (!isRecord(spec)) return new Map();
+  if (spec.spec_version !== 1) return new Map();
+  const pipelines = (spec as any).pipelines;
+  if (!Array.isArray(pipelines)) return new Map();
+  const map = new Map<string, number>();
+  pipelines.forEach((p: unknown, idx: number) => {
+    if (!isRecord(p)) return;
+    const id = (p as any).id;
+    if (typeof id === "string" && id.trim()) map.set(id, idx);
+  });
+  return map;
+}
 
 function normalizeDraftMessage(msg: PromptDraftMessage): PromptDraftMessage | null {
   const content = typeof msg.content === "string" ? msg.content : "";
@@ -95,12 +203,19 @@ function buildRedactedSnapshot(messages: GenerateMessage[], params: {
 }
 
 export async function buildPromptDraft(params: {
+  ownerId?: string;
   chatId: string;
   branchId: string;
   systemPrompt: string;
   historyLimit?: number;
   excludeMessageIds?: string[];
+  /**
+   * Optional active PipelineProfile spec (v1) to provide deterministic ordering
+   * for prompt inclusions (PipelineProfile order -> step order -> tag -> version).
+   */
+  activeProfileSpec?: unknown;
 }): Promise<BuiltPromptDraft> {
+  const ownerId = params.ownerId ?? "global";
   const historyLimit = params.historyLimit ?? 50;
   const exclude = params.excludeMessageIds ?? [];
 
@@ -111,12 +226,67 @@ export async function buildPromptDraft(params: {
     excludeMessageIds: exclude,
   });
 
+  // --- Phase 4 (v1 minimal): artifacts -> promptInclusion
+  const artifacts = await listLatestPersistedArtifactsForSession({
+    ownerId,
+    sessionId: params.chatId,
+  });
+
+  const orderingCtx: ArtifactOrderingContext = {
+    pipelineOrderById: extractPipelineOrderFromProfileSpec(params.activeProfileSpec),
+  };
+
+  const inclusions = artifacts
+    .filter((a) => a.visibility === "prompt_only" || a.visibility === "prompt_and_ui")
+    .map((a) => ({ artifact: a, inclusion: parsePromptInclusionV1(a.promptInclusion) }))
+    .filter((x): x is { artifact: PipelineArtifactDto; inclusion: PromptInclusionV1 } => Boolean(x.inclusion && x.inclusion.mode !== "none"))
+    .sort((x, y) => compareArtifactsForPrompt(x.artifact, y.artifact, orderingCtx));
+
+  let systemPrompt = params.systemPrompt ?? "";
+
+  const timelineInsertsAfterLastUser: PromptDraftMessage[] = [];
+  const tailMessages: PromptDraftMessage[] = [];
+
+  for (const { artifact, inclusion } of inclusions) {
+    const role = inclusion.role ?? "developer";
+    const content = artifactToText(artifact, inclusion);
+    if (!content.trim()) continue;
+
+    if (inclusion.mode === "prepend_system") {
+      // Apply in deterministic order: earlier items go closer to the start.
+      systemPrompt = `${content}\n\n${systemPrompt}`;
+      continue;
+    }
+    if (inclusion.mode === "append_after_last_user") {
+      timelineInsertsAfterLastUser.push({ role, content });
+      continue;
+    }
+    // as_message: v1 minimal = append to tail.
+    tailMessages.push({ role, content });
+  }
+
   const draft: PromptDraft = {
     messages: [
-      { role: "system", content: params.systemPrompt ?? "" },
+      { role: "system", content: systemPrompt },
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ],
   };
+
+  if (timelineInsertsAfterLastUser.length > 0) {
+    // Find the last user message (excluding the system prompt at index 0).
+    let lastUserIdx = -1;
+    for (let i = draft.messages.length - 1; i >= 1; i--) {
+      if (draft.messages[i]?.role === "user") {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    const insertAt = lastUserIdx >= 1 ? lastUserIdx + 1 : draft.messages.length;
+    draft.messages.splice(insertAt, 0, ...timelineInsertsAfterLastUser);
+  }
+  if (tailMessages.length > 0) {
+    draft.messages.push(...tailMessages);
+  }
 
   const llmMessages = draftToLlmMessages(draft);
   const promptHash = hashPromptMessages(llmMessages);
