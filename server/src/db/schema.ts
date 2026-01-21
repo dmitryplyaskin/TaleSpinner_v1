@@ -140,7 +140,10 @@ export const messageVariants = sqliteTable(
       .references(() => chatMessages.id, { onDelete: "cascade" }),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-    kind: text("kind", { enum: ["generation", "manual_edit", "import"] }).notNull(),
+    // Note: SQLite doesn't enforce enum values here; keep list in sync with app logic.
+    kind: text("kind", {
+      enum: ["generation", "manual_edit", "import", "raw_user_input", "message_transform"],
+    }).notNull(),
     promptText: text("prompt_text").notNull().default(""),
     blocksJson: text("blocks_json").notNull().default("[]"),
     metaJson: text("meta_json"),

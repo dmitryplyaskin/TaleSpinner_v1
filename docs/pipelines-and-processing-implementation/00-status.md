@@ -134,13 +134,35 @@
 
 ## Фаза 2 — `pre` шаг: сборка `PromptDraft` (без артефактов v1-минимум)
 
-- [ ] **F2.1 (server)**: Представление `PromptDraft.messages[]` (domain роли) + маппинг `developer → system` (v1 правило).
-- [ ] **F2.2 (server)**: Сборка effective prompt из:
+- [x] **F2.1 (server)**: Представление `PromptDraft.messages[]` (domain роли) + маппинг `developer → system` (v1 правило).
+- [x] **F2.2 (server)**: Сборка effective prompt из:
   - system prompt (шаблон/инструкции/политика),
   - history как `promptText` выбранных вариантов,
   - prompt-time trimming (логируем решения, не “полотна”).
-- [ ] **F2.3 (server)**: (Опционально v1) `message_transform` только для **текущего** `userMessageId` через variants, под контролем policy.
-- [ ] **F2.4 (server)**: Redacted `promptSnapshotJson` + `promptHash` (см. `55-logging-and-reproducibility.md`).
+- [x] **F2.3 (server)**: (Опционально v1) `message_transform` только для **текущего** `userMessageId` через variants, под контролем policy.
+- [x] **F2.4 (server)**: Redacted `promptSnapshotJson` + `promptHash` (см. `55-logging-and-reproducibility.md`).
+
+### Notes по реализации Фазы 2 (что именно считается “effective prompt” в v1)
+
+- **Где собирается**:
+  - pre-step + сборка draft: `server/src/services/chat-core/prompt-draft-builder.ts`
+  - SSE send/regenerate используют `buildPromptDraft(...)` и передают `builtPrompt.llmMessages` в `runChatGeneration(...)`:
+    - `server/src/api/chats.core.api.ts`
+    - `server/src/api/message-variants.core.api.ts`
+- **Что такое effective prompt (v1 минимум)**:
+  - `systemPrompt` берём из активного prompt template (Liquid) + контекста (char/user/chat/messages) с fallback на дефолт.
+  - `history` берём из `chat_messages.promptText` в **порядке старое→новое** (т.е. “выбранное состояние” истории).
+  - `PromptDraft` хранит domain роли (`system|developer|user|assistant`), но на границе LLM применяется правило v1: `developer → system`.
+- **Логирование/воспроизводимость**:
+  - `promptHash` + redacted `promptSnapshotJson` пишутся в `llm_generations` (см. `server/src/services/chat-core/generations-repository.ts`).
+  - Ключевые поля pre-step (включая `promptHash`, trimming summary, redacted snapshot) пишутся в `pipeline_step_runs.outputJson` для восстановления процесса “только по шагам”.
+- **F2.3: `message_transform` (только текущий turn, без переписывания истории)**:
+  - реализовано через **variants** для **текущего** `userMessageId` в SSE send (`POST /api/chats/:id/messages`, SSE режим).
+  - запрос может передать `messageTransform: { promptText, label? }` → сервер создаёт:
+    - variant `kind=raw_user_input` (исходный текст),
+    - variant `kind=message_transform` (преобразованный текст) и делает его selected (обновляет `chat_messages.promptText` как кэш выбранного варианта).
+  - в prompt дальше попадает **выбранный** `promptText` (т.е. трансформированный), а исходник остаётся доступным для дебага/отката.
+  - regenerate/прошлая история не мутируются (v1 ограничение policy).
 
 ## Фаза 3 — PipelineProfile + резолв активного профиля (пока без артефактных коллизий)
 

@@ -48,6 +48,10 @@ import {
   finishPipelineStepRun,
 } from "../services/chat-core/pipeline-step-runs-repository";
 import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
+import {
+  createMessageTransformVariant,
+  createRawUserInputVariant,
+} from "../services/chat-core/message-variants-repository";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
@@ -238,6 +242,12 @@ router.post(
     const sseBodySchema = createMessageBodySchema.extend({
       settings: z.record(z.string(), z.unknown()).optional().default({}),
       requestId: z.string().min(1).optional(),
+      messageTransform: z
+        .object({
+          promptText: z.string().min(1),
+          label: z.string().min(1).optional(),
+        })
+        .optional(),
     });
 
     const body = sseBodySchema.parse(req.body);
@@ -434,6 +444,51 @@ router.post(
       });
       preStepRunId = preStep.id;
 
+      // Optional v1: message_transform for the *current* user message only.
+      // Implemented via variants so prompt assembly still reads selected `promptText`.
+      let messageTransformInfo:
+        | { rawVariantId: string; transformedVariantId: string; label: string | null }
+        | null = null;
+      if (body.messageTransform) {
+        if (body.role !== "user") {
+          throw new HttpError(
+            400,
+            "messageTransform разрешён только для role=user (v1)",
+            "VALIDATION_ERROR"
+          );
+        }
+
+        const raw = String(body.promptText ?? "");
+        const transformed = String(body.messageTransform.promptText ?? "").trim();
+        if (!transformed) {
+          throw new HttpError(400, "messageTransform.promptText пустой", "VALIDATION_ERROR");
+        }
+
+        const rawVariant = await createRawUserInputVariant({
+          ownerId,
+          messageId: userMessage.id,
+          promptText: raw,
+          meta: { source: "user_message", createdBy: "pipeline.pre" },
+        });
+
+        const transformedVariant = await createMessageTransformVariant({
+          ownerId,
+          messageId: userMessage.id,
+          promptText: transformed,
+          meta: {
+            source: "message_transform",
+            label: body.messageTransform.label ?? null,
+            createdBy: "pipeline.pre",
+          },
+        });
+
+        messageTransformInfo = {
+          rawVariantId: rawVariant.id,
+          transformedVariantId: transformedVariant.id,
+          label: body.messageTransform.label ?? null,
+        };
+      }
+
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       let templateId: string | null = null;
       try {
@@ -480,6 +535,10 @@ router.post(
           templateId,
           promptHash: builtPrompt.promptHash,
           trimming: builtPrompt.trimming,
+          // Redacted snapshot is also stored on Generation; keeping it here enables reconstruction
+          // from step logs alone (useful if generation record is missing/incomplete).
+          promptSnapshot: builtPrompt.promptSnapshot,
+          messageTransform: messageTransformInfo,
           snapshot: {
             truncated: builtPrompt.promptSnapshot.truncated,
             messageCount: builtPrompt.promptSnapshot.messages.length,

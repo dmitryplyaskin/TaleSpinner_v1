@@ -17,7 +17,7 @@ export type MessageVariantDto = {
   ownerId: string;
   messageId: string;
   createdAt: Date;
-  kind: "generation" | "manual_edit" | "import";
+  kind: "generation" | "manual_edit" | "import" | "raw_user_input" | "message_transform";
   promptText: string;
   blocks: unknown[];
   meta: unknown | null;
@@ -59,7 +59,12 @@ export async function selectMessageVariant(params: {
   const rows = await db
     .select()
     .from(messageVariants)
-    .where(and(eq(messageVariants.id, params.variantId), eq(messageVariants.messageId, params.messageId)));
+    .where(
+      and(
+        eq(messageVariants.id, params.variantId),
+        eq(messageVariants.messageId, params.messageId)
+      )
+    );
   const selected = rows[0];
   if (!selected) return null;
 
@@ -151,8 +156,7 @@ export async function createManualEditVariant(params: {
     kind: "manual_edit",
     promptText: params.promptText ?? "",
     blocksJson: safeJsonStringify(params.blocks ?? [], "[]"),
-    metaJson:
-      typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
     isSelected: true,
   });
 
@@ -167,6 +171,89 @@ export async function createManualEditVariant(params: {
 
   const rows = await db.select().from(messageVariants).where(eq(messageVariants.id, id));
   if (!rows[0]) throw new Error("Не удалось создать manual_edit variant (внутренняя ошибка).");
+  return variantRowToDto(rows[0]);
+}
+
+// v1: user-message variants used by pipeline `message_transform` without rewriting history.
+export async function createRawUserInputVariant(params: {
+  ownerId?: string;
+  messageId: string;
+  promptText: string;
+  meta?: unknown;
+}): Promise<MessageVariantDto> {
+  const db = await initDb();
+  const ts = nowMonotonicDate();
+  const id = uuidv4();
+
+  await db
+    .update(messageVariants)
+    .set({ isSelected: false })
+    .where(eq(messageVariants.messageId, params.messageId));
+
+  await db.insert(messageVariants).values({
+    id,
+    ownerId: params.ownerId ?? "global",
+    messageId: params.messageId,
+    createdAt: ts,
+    kind: "raw_user_input",
+    promptText: params.promptText ?? "",
+    blocksJson: "[]",
+    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    isSelected: true,
+  });
+
+  await db
+    .update(chatMessages)
+    .set({
+      activeVariantId: id,
+      promptText: params.promptText ?? "",
+      blocksJson: "[]",
+    })
+    .where(eq(chatMessages.id, params.messageId));
+
+  const rows = await db.select().from(messageVariants).where(eq(messageVariants.id, id));
+  if (!rows[0]) throw new Error("Не удалось создать raw_user_input variant (внутренняя ошибка).");
+  return variantRowToDto(rows[0]);
+}
+
+export async function createMessageTransformVariant(params: {
+  ownerId?: string;
+  messageId: string;
+  promptText: string;
+  meta?: unknown;
+}): Promise<MessageVariantDto> {
+  const db = await initDb();
+  const ts = nowMonotonicDate();
+  const id = uuidv4();
+
+  await db
+    .update(messageVariants)
+    .set({ isSelected: false })
+    .where(eq(messageVariants.messageId, params.messageId));
+
+  await db.insert(messageVariants).values({
+    id,
+    ownerId: params.ownerId ?? "global",
+    messageId: params.messageId,
+    createdAt: ts,
+    kind: "message_transform",
+    promptText: params.promptText ?? "",
+    blocksJson: "[]",
+    metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    isSelected: true,
+  });
+
+  await db
+    .update(chatMessages)
+    .set({
+      activeVariantId: id,
+      promptText: params.promptText ?? "",
+      blocksJson: "[]",
+    })
+    .where(eq(chatMessages.id, params.messageId));
+
+  const rows = await db.select().from(messageVariants).where(eq(messageVariants.id, id));
+  if (!rows[0]) throw new Error("Не удалось создать message_transform variant (внутренняя ошибка).");
   return variantRowToDto(rows[0]);
 }
 

@@ -36,7 +36,11 @@ export async function* runChatGeneration(params: {
    * Must not include `developer` role (map it to `system` before calling).
    */
   promptMessages?: GenerateMessage[];
-  userMessageId: string;
+  /**
+   * Optional correlation id for the current user message.
+   * Regenerate flow does not have a user message; do not pass empty strings.
+   */
+  userMessageId?: string;
   assistantMessageId: string;
   variantId: string;
   settings: Record<string, unknown>;

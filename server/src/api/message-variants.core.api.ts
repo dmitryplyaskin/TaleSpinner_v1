@@ -378,6 +378,9 @@ router.post(
           templateId,
           promptHash: builtPrompt.promptHash,
           trimming: builtPrompt.trimming,
+          // Redacted snapshot is also stored on Generation; keeping it here enables reconstruction
+          // from step logs alone (useful if generation record is missing/incomplete).
+          promptSnapshot: builtPrompt.promptSnapshot,
           snapshot: {
             truncated: builtPrompt.promptSnapshot.truncated,
             messageCount: builtPrompt.promptSnapshot.messages.length,
@@ -462,9 +465,6 @@ router.post(
         entityProfileId: chat.entityProfileId,
         systemPrompt,
         promptMessages: builtPrompt.llmMessages,
-        // runChatGeneration currently requires a userMessageId, but regenerate doesn't have one.
-        // It is not used inside the orchestrator (v1), so we pass an empty string.
-        userMessageId: "",
         assistantMessageId: msg.id,
         variantId: variant.id,
         settings: body.settings,
