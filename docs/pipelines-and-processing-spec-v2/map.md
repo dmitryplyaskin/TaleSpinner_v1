@@ -6,6 +6,10 @@
 ## Оглавление
 
 - [00 — Термины и определения](./00-terminology.md)
+- [10 — Operation (контракт и модель исполнения)](./10-operation.md)
+  - [11 — Operation / kind=llm](./11-operation-kind-llm.md)
+  - [12 — Operation / kind=template](./12-operation-kind-template.md)
+- [30 — Run (жизненный цикл запуска и граница main LLM)](./30-run.md)
 
 ## Примечания
 
