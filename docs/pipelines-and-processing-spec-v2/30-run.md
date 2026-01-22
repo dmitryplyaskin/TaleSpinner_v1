@@ -34,7 +34,7 @@
 
 - `trigger`: `"generate" | "regenerate"`
 - `chatId`
-- `branchId?` (если есть ветвление)
+- `branchId`
 - идентификаторы текущего хода:
   - при `generate`: создаётся новый `turn` (новый `userMessageId` / `turnId`), потому что есть новый user input
   - при `regenerate`: используется текущий `turn` (существующий `userMessageId` / `turnId`), но создаётся новый `assistantVariantId` (или резервируется место под него)

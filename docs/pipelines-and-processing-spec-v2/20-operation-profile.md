@@ -212,7 +212,7 @@ type PlannedOperation = {
 Сессия однозначно определяется кортежем:
 
 - `chatId`
-- `branchId?` (если ветвление поддерживается)
+- `branchId`
 - `operationProfileRef` (или эквивалент: `profileId` + версия/источник)
 - `operationProfileSessionId` (resettable id из профиля)
 

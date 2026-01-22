@@ -99,7 +99,7 @@ Operation **не “встраивается внутрь” main LLM** и не 
 
 - **Run meta**
   - `runId`, `trigger`, `hook`
-  - `chatId`, `branchId?`, `turnId`/`userMessageId`, `assistantVariantId?`
+  - `chatId`, `branchId`, `turnId`/`userMessageId`, `assistantVariantId?`
 - **Main LLM граница**
   - если `hook=before_main_llm`: доступен “черновик” effective prompt (см. ниже)
   - если `hook=after_main_llm`: доступен результат main LLM (selected assistant variant + финальный текст/blocks/meta)
