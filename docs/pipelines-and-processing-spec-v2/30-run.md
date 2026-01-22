@@ -16,7 +16,9 @@
 
 - описывает **модель поведения Run**, не привязываясь к конкретной реализации (DB/ORM/очереди);
 - опирается на модель `Operation` (хуки, статусы, `required`, `dependsOn`, `order`) из `10-operation.md`;
-- считает, что выбор `OperationProfile` и точная структура `OperationEffects` описаны в других местах (как отдельные спеки), но **использует их как понятия**.
+- считает, что `OperationProfile` (как persisted хранилище операций) и `OperationProfileSession` (persisted состояние между run) описаны в других местах (как отдельные спеки), но **использует их как понятия**:
+  - `OperationProfile`: [`20-operation-profile.md`](./20-operation-profile.md)
+  - (частично) `OperationProfileSession`: [`20-operation-profile.md`](./20-operation-profile.md)
 
 ## 1) Что такое Run (в одном абзаце)
 
@@ -46,6 +48,32 @@
 - `initiator`: кто запустил (user/system)
 - `clientRequestId?` (идемпотентность на уровне API)
 
+### 2.1 `OperationProfile` (источник операций)
+
+`Run` получает `operationProfileRef` и по нему оркестратор **загружает `OperationProfile` из БД**.
+
+Ключевой принцип: `OperationProfile` — это **persisted контейнер операций** (конфиг), а не процесс/движок исполнения.
+
+Политика “Run без операций”:
+
+- если профиль не задан / выбран режим “без профиля” → `Run` выполняется как “чистая генерация main LLM” без операций;
+- если профиль загружен, но `profile.enabled=false` → `Run` также выполняется как “без операций” (профиль выбран, но выключен).
+
+### 2.2 `OperationProfileSession` (persisted состояние между Run)
+
+Помимо профиля, `Run` работает с persisted состоянием профиля — **`OperationProfileSession`**.
+
+`OperationProfileSession` — это состояние **между** `Run`, с которым работают операции (например persisted‑артефакты `art.<tag>` и их history).
+
+Сессия выбирается/создаётся по ключу:
+
+- `chatId`
+- `branchId`
+- `operationProfileRef` (или эквивалент идентификации профиля)
+- `operationProfileSessionId` (resettable id из `OperationProfile`)
+
+Если по такому ключу сессии нет — она создаётся. Если есть — переиспользуется.
+
 ## 3) Выход Run (что считается результатом)
 
 Результат Run включает:
@@ -69,7 +97,9 @@
 
 1) Оркестратор определяет набор операций на этот Run:
 
-- фильтрует по `enabled`,
+- по `operationProfileRef` загружает `OperationProfile` из БД (или получает “уже разрешённый” список операций, если Run был создан в таком режиме);
+- по ключу сессии загружает/создаёт `OperationProfileSession` (persisted состояние между run);
+- фильтрует операции по `enabled`,
 - фильтрует по `triggers[]` (если заданы),
 - группирует по `hooks` (`before_main_llm` / `after_main_llm`).
 
