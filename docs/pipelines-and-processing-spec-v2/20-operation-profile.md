@@ -71,6 +71,11 @@ type OperationProfile = {
   // Можно выбрать профиль, но полностью выключить его (Run без операций).
   enabled: boolean; // default true
 
+  // Режим исполнения операций внутри одного hook.
+  // `concurrent`: операции могут выполняться конкурентно (асинхронно) с учётом зависимостей `dependsOn`.
+  // `sequential`: операции выполняются строго последовательно (по одной) в детерминированном порядке (см. `30-run.md`).
+  executionMode: "concurrent" | "sequential"; // default "concurrent"
+
   // Resettable id для привязки persistent-хранилища между run.
   // Пользователь может перегенерировать его, чтобы начать новую “сессию профиля”.
   operationProfileSessionId: string; // например UUID
@@ -101,6 +106,7 @@ type OperationProfile = {
 
 - `profileId` не пустой.
 - `enabled` задан и является boolean.
+- `executionMode` задан и является `"concurrent" | "sequential"` (если поле не хранится явно, считается `"concurrent"`).
 - `operationProfileSessionId` не пустой.
 - `operations[]` задан (пустой список допустим, если продукт позволяет “профиль без операций”).
 - внутри `operations[]` **нет дубликатов `operationId`**.

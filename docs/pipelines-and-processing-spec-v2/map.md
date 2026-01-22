@@ -11,6 +11,7 @@
   - [12 — Operation / kind=template](./12-operation-kind-template.md)
 - [20 — OperationProfile (профиль операций)](./20-operation-profile.md)
 - [30 — Run (жизненный цикл запуска и граница main LLM)](./30-run.md)
+- [40 — Artifacts (артефакты)](./40-artifacts.md)
 
 ## Примечания
 
