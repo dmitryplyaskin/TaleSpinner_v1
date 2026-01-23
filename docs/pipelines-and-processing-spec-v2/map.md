@@ -7,6 +7,8 @@
 
 - [00 — Термины и определения](./00-terminology.md)
 - [10 — Operation (контракт и модель исполнения)](./10-operation.md)
+  - [15 — Effects (контракт и commit)](./15-effects.md)
+  - [16 — Effect Commit (как применяются эффекты)](./16-effect-commit.md)
   - [11 — Operation / kind=llm](./11-operation-kind-llm.md)
   - [12 — Operation / kind=template](./12-operation-kind-template.md)
 - [20 — OperationProfile (профиль операций)](./20-operation-profile.md)
