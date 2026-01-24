@@ -12,6 +12,7 @@ import pipelineProfilesCoreRoutes from "./pipeline-profiles.core.api";
 import pipelineStateCoreRoutes from "./pipeline-state.core.api";
 import pipelinesRoutes from "./pipelines.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
+import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import samplersRoutes from "./samplers.api";
 import userPersonsCoreRoutes from "./user-persons.core.api";
 
@@ -25,6 +26,7 @@ export const routes = [
   pipelineDebugCoreRoutes,
   pipelineProfilesCoreRoutes,
   pipelineStateCoreRoutes,
+  operationProfilesCoreRoutes,
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,

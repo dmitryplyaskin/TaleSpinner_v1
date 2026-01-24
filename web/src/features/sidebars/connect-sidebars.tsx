@@ -2,6 +2,7 @@
 import { AgentCardsSidebar } from './agent-cards';
 import { AppSettingsSidebar } from './app-settings';
 import { InstructionsSidebar } from './instructions';
+import { OperationProfilesSidebar } from './operation-profiles';
 import { PipelineSidebar } from './pipelines';
 import { SettingsSidebar } from './settings';
 import { TemplateSidebar } from './templates';
@@ -14,6 +15,7 @@ export const ConnectSidebars = () => {
 			<AgentCardsSidebar />
 			<UserPersonSidebar />
 			<PipelineSidebar />
+			<OperationProfilesSidebar />
 			<InstructionsSidebar />
 			<TemplateSidebar />
 			<AppSettingsSidebar />

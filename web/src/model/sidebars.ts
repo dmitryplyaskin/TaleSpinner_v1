@@ -9,6 +9,7 @@ export type SidebarName =
 	| 'agentCards'
 	| 'userPersons'
 	| 'pipeline'
+	| 'operationProfiles'
 	| 'instructions'
 	| 'templates'
 	| 'appSettings';
@@ -42,6 +43,9 @@ export const defaultSidebars: SidebarSettings = {
 		...defaultSidebarSetting,
 	},
 	pipeline: {
+		...defaultSidebarSetting,
+	},
+	operationProfiles: {
 		...defaultSidebarSetting,
 	},
 	instructions: {

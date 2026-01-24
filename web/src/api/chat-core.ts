@@ -1,4 +1,10 @@
 import { BASE_URL } from '../const';
+import type {
+	OperationProfileSettings,
+	OperationProfile,
+	OperationProfileExport,
+	OperationProfileUpsertInput,
+} from '@shared/types/operation-profiles';
 
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
@@ -467,6 +473,71 @@ export type PipelineProfileDto = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+// ---- Operation profiles
+
+export type OperationProfileDto = Omit<OperationProfile, 'createdAt' | 'updatedAt'> & {
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type OperationProfileSettingsDto = Omit<OperationProfileSettings, 'updatedAt'> & {
+	updatedAt: string;
+};
+
+export async function listOperationProfiles(): Promise<OperationProfileDto[]> {
+	return apiJson<OperationProfileDto[]>('/operation-profiles');
+}
+
+export async function createOperationProfile(params: {
+	ownerId?: string;
+	input: OperationProfileUpsertInput;
+}): Promise<OperationProfileDto> {
+	return apiJson<OperationProfileDto>('/operation-profiles', {
+		method: 'POST',
+		body: JSON.stringify({ ownerId: params.ownerId, input: params.input }),
+	});
+}
+
+export async function updateOperationProfile(params: {
+	ownerId?: string;
+	profileId: string;
+	patch: Partial<OperationProfileUpsertInput>;
+}): Promise<OperationProfileDto> {
+	return apiJson<OperationProfileDto>(`/operation-profiles/${encodeURIComponent(params.profileId)}`, {
+		method: 'PUT',
+		body: JSON.stringify({ ownerId: params.ownerId, patch: params.patch }),
+	});
+}
+
+export async function deleteOperationProfile(profileId: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/operation-profiles/${encodeURIComponent(profileId)}`, { method: 'DELETE' });
+}
+
+export async function exportOperationProfile(profileId: string): Promise<OperationProfileExport> {
+	return apiJson<OperationProfileExport>(`/operation-profiles/${encodeURIComponent(profileId)}/export`);
+}
+
+export async function importOperationProfiles(params: {
+	ownerId?: string;
+	items: OperationProfileExport | OperationProfileExport[];
+}): Promise<{ created: OperationProfileDto[] }> {
+	return apiJson<{ created: OperationProfileDto[] }>('/operation-profiles/import', {
+		method: 'POST',
+		body: JSON.stringify({ ownerId: params.ownerId, items: params.items }),
+	});
+}
+
+export async function getActiveOperationProfile(): Promise<OperationProfileSettingsDto> {
+	return apiJson<OperationProfileSettingsDto>('/operation-profiles/active');
+}
+
+export async function setActiveOperationProfile(activeProfileId: string | null): Promise<OperationProfileSettingsDto> {
+	return apiJson<OperationProfileSettingsDto>('/operation-profiles/active', {
+		method: 'PUT',
+		body: JSON.stringify({ activeProfileId }),
+	});
+}
 
 export type ResolvedActivePipelineProfile = {
 	profile: PipelineProfileDto | null;
