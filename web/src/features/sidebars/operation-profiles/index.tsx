@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Select, Stack, Text } from '@mantine/core';
+import { Group, Select, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { LuCopyPlus, LuDownload, LuPlus, LuTrash2, LuUpload } from 'react-icons/lu';
@@ -19,6 +19,7 @@ import {
 	duplicateOperationProfileRequested,
 } from '@model/operation-profiles';
 import { Drawer } from '@ui/drawer';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
 import { OperationProfileEditor } from './operation-profile-editor';
@@ -67,10 +68,6 @@ export const OperationProfilesSidebar: React.FC = () => {
 	return (
 		<Drawer name="operationProfiles" title="Operations">
 			<Stack gap="md">
-				<Alert color="blue" title="Scope (сейчас)">
-					Только <b>kind=template</b>. Исполнение операций не делаем — только хранение профилей и валидации при сохранении.
-				</Alert>
-
 				<Stack gap="xs">
 					<Text fw={700}>Активный профиль (глобально)</Text>
 					<Select
@@ -93,8 +90,10 @@ export const OperationProfilesSidebar: React.FC = () => {
 						/>
 
 						<Group gap="xs" wrap="nowrap">
-							<Button
-								leftSection={<LuPlus />}
+							<IconButtonWithTooltip
+								aria-label="Create profile"
+								tooltip="Создать профиль"
+								icon={<LuPlus />}
 								onClick={() =>
 									doCreate({
 										name: 'New profile',
@@ -106,37 +105,35 @@ export const OperationProfilesSidebar: React.FC = () => {
 										meta: undefined,
 									})
 								}
-							>
-								Создать
-							</Button>
-							<Button
-								leftSection={<LuCopyPlus />}
-								variant="light"
+							/>
+							<IconButtonWithTooltip
+								aria-label="Duplicate profile"
+								tooltip="Дублировать профиль"
+								icon={<LuCopyPlus />}
 								disabled={!selected?.profileId}
 								onClick={() => selected?.profileId && doDuplicate({ sourceProfileId: selected.profileId })}
-							>
-								Дубликат
-							</Button>
-							<Button
-								leftSection={<LuTrash2 />}
-								color="red"
-								variant="outline"
+							/>
+							<IconButtonWithTooltip
+								aria-label="Delete profile"
+								tooltip="Удалить профиль"
+								icon={<LuTrash2 />}
+								colorPalette="red"
 								disabled={!selected?.profileId}
 								onClick={() => {
 									if (!selected?.profileId) return;
 									if (!window.confirm('Удалить OperationProfile?')) return;
 									doDelete({ profileId: selected.profileId });
 								}}
-							>
-								Удалить
-							</Button>
+							/>
 						</Group>
 					</Group>
 
 					<Group gap="xs" justify="flex-end">
-						<Button
-							leftSection={<LuDownload />}
-							variant="light"
+						<IconButtonWithTooltip
+							aria-label="Export profile"
+							tooltip="Экспорт"
+							icon={<LuDownload />}
+							variant="ghost"
 							disabled={!selected?.profileId}
 							onClick={async () => {
 								if (!selected?.profileId) return;
@@ -150,9 +147,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 									});
 								}
 							}}
-						>
-							Экспорт
-						</Button>
+						/>
 
 						<input
 							ref={fileInputRef}
@@ -181,15 +176,15 @@ export const OperationProfilesSidebar: React.FC = () => {
 							}}
 						/>
 
-						<Button
-							leftSection={<LuUpload />}
-							variant="light"
+						<IconButtonWithTooltip
+							aria-label="Import profiles"
+							tooltip="Импорт"
+							icon={<LuUpload />}
+							variant="ghost"
 							onClick={() => {
 								fileInputRef.current?.click();
 							}}
-						>
-							Импорт
-						</Button>
+						/>
 					</Group>
 				</Stack>
 
