@@ -12,7 +12,14 @@ export type ArtifactSemantics =
   | "intermediate"
   | (string & {});
 
-export type OperationKind = "template";
+export type OperationKind =
+  | "template"
+  | "llm"
+  | "rag"
+  | "tool"
+  | "compute"
+  | "transform"
+  | "legacy";
 
 export type PromptTimeMessageRole = "system" | "developer" | "user" | "assistant";
 
@@ -88,22 +95,42 @@ export type OperationTemplateParams = {
   output: OperationOutput;
 };
 
-export type OperationConfig = {
+export type OperationOtherKindParams = {
+  /**
+   * Draft UI for non-template operations:
+   * kind-specific params live here as a plain JSON object.
+   */
+  params: Record<string, unknown>;
+  output: OperationOutput;
+};
+
+export type OperationParams = OperationTemplateParams | OperationOtherKindParams;
+
+export type OperationConfig<TParams extends OperationParams = OperationParams> = {
   enabled: boolean;
   required: boolean;
   hooks: OperationHook[];
   triggers?: OperationTrigger[];
   order: number;
   dependsOn?: string[]; // list of opId
-  params: OperationTemplateParams;
+  params: TParams;
 };
 
-export type OperationInProfile = {
+export type TemplateOperationInProfile = {
   opId: string; // UUID
   name: string;
-  kind: OperationKind;
-  config: OperationConfig;
+  kind: "template";
+  config: OperationConfig<OperationTemplateParams>;
 };
+
+export type NonTemplateOperationInProfile = {
+  opId: string; // UUID
+  name: string;
+  kind: Exclude<OperationKind, "template">;
+  config: OperationConfig<OperationOtherKindParams>;
+};
+
+export type OperationInProfile = TemplateOperationInProfile | NonTemplateOperationInProfile;
 
 export type OperationProfile = {
   profileId: string; // UUID

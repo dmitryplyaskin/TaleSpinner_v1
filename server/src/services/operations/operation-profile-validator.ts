@@ -8,6 +8,7 @@ import type {
   OperationExecutionMode,
   OperationHook,
   OperationInProfile,
+  OperationKind,
   OperationProfileExport,
   OperationProfileUpsertInput,
   OperationTrigger,
@@ -101,7 +102,12 @@ const templateParamsSchema = z.union([templateParamsNewSchema, templateParamsLeg
   };
 });
 
-const operationConfigSchema = z.object({
+const otherKindParamsSchema = z.object({
+  params: z.record(z.string(), z.unknown()),
+  output: operationOutputSchema,
+});
+
+const operationConfigTemplateSchema = z.object({
   enabled: z.boolean(),
   required: z.boolean(),
   hooks: z.array(operationHookSchema).min(1),
@@ -111,12 +117,41 @@ const operationConfigSchema = z.object({
   params: templateParamsSchema,
 });
 
-const operationInProfileSchema: z.ZodType<OperationInProfile> = z.object({
-  opId: uuidSchema,
-  name: z.string().trim().min(1),
-  kind: z.literal("template"),
-  config: operationConfigSchema,
+const operationConfigOtherSchema = z.object({
+  enabled: z.boolean(),
+  required: z.boolean(),
+  hooks: z.array(operationHookSchema).min(1),
+  triggers: z.array(operationTriggerSchema).min(1).optional(),
+  order: z.number().finite(),
+  dependsOn: z.array(uuidSchema).optional(),
+  params: otherKindParamsSchema,
 });
+
+const operationKindSchema = z.enum(
+  ["template", "llm", "rag", "tool", "compute", "transform", "legacy"] satisfies OperationKind[]
+);
+
+const operationInProfileSchema: z.ZodType<OperationInProfile> = z.discriminatedUnion("kind", [
+  z.object({
+    opId: uuidSchema,
+    name: z.string().trim().min(1),
+    kind: z.literal("template"),
+    config: operationConfigTemplateSchema,
+  }),
+  z.object({
+    opId: uuidSchema,
+    name: z.string().trim().min(1),
+    kind: z.enum([
+      "llm",
+      "rag",
+      "tool",
+      "compute",
+      "transform",
+      "legacy",
+    ] satisfies Exclude<OperationKind, "template">[]),
+    config: operationConfigOtherSchema,
+  }),
+]);
 
 const upsertInputSchema: z.ZodType<OperationProfileUpsertInput> = z.object({
   name: z.string().trim().min(1),
@@ -214,8 +249,9 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
 
   const tags = new Map<string, string>(); // tag -> opId
   for (const op of input.operations) {
-    if (op.config.params.output.type !== "artifacts") continue;
-    const tag = op.config.params.output.writeArtifact.tag;
+    const params: any = op.config.params as any;
+    if (!params?.output || params.output.type !== "artifacts") continue;
+    const tag = params.output.writeArtifact.tag;
     const existing = tags.get(tag);
     if (existing) {
       throw new HttpError(400, "Duplicate artifact tag in profile", "VALIDATION_ERROR", {
@@ -238,15 +274,20 @@ export function validateOperationProfileUpsertInput(
     });
   }
 
-  const normalizedOps: OperationInProfile[] = parsed.data.operations.map((op) => ({
-    ...op,
-    config: {
-      ...op.config,
-      hooks: normalizeHooks(op.config.hooks),
-      triggers: normalizeTriggers(op.config.triggers),
-      dependsOn: normalizeDependsOn(op.config.dependsOn),
-    },
-  }));
+  const normalizedOps: OperationInProfile[] = parsed.data.operations.map(
+    (op): OperationInProfile => {
+      const normalizedConfig = {
+        ...op.config,
+        hooks: normalizeHooks(op.config.hooks),
+        triggers: normalizeTriggers(op.config.triggers),
+        dependsOn: normalizeDependsOn(op.config.dependsOn),
+      };
+      if (op.kind === "template") {
+        return { ...op, config: normalizedConfig } as OperationInProfile;
+      }
+      return { ...op, config: normalizedConfig } as OperationInProfile;
+    }
+  );
 
   const validated: ValidatedOperationProfileInput = {
     ...parsed.data,

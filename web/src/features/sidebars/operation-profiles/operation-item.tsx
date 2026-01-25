@@ -14,6 +14,16 @@ type Props = {
 	onRemove: () => void;
 };
 
+const kindOptions = [
+	{ value: 'template', label: 'template' },
+	{ value: 'llm', label: 'llm' },
+	{ value: 'rag', label: 'rag' },
+	{ value: 'tool', label: 'tool' },
+	{ value: 'compute', label: 'compute' },
+	{ value: 'transform', label: 'transform' },
+	{ value: 'legacy', label: 'legacy' },
+];
+
 const hookOptions = [
 	{ value: 'before_main_llm', label: 'before_main_llm' },
 	{ value: 'after_main_llm', label: 'after_main_llm' },
@@ -313,15 +323,63 @@ const OutputFields: React.FC<{ index: number }> = ({ index }) => {
 
 export const OperationItem: React.FC<Props> = memo(({ index, depsKey, onRemove }) => {
 	const opId = useWatch({ name: `operations.${index}.opId` }) as string | undefined;
+	const output = useWatch({ name: `operations.${index}.config.params.output` }) as unknown;
+	const { setValue, control } = useFormContext();
+
+	const {
+		field: { value: kindValue, onChange: onKindChange, ...kindField },
+	} = useController({
+		control,
+		name: `operations.${index}.kind`,
+	});
+
+	const normalizedKind =
+		kindValue === 'template' ||
+		kindValue === 'llm' ||
+		kindValue === 'rag' ||
+		kindValue === 'tool' ||
+		kindValue === 'compute' ||
+		kindValue === 'transform' ||
+		kindValue === 'legacy'
+			? (kindValue as string)
+			: 'template';
 
 	return (
 		<Card withBorder>
 			<Stack gap="xs">
 				<Group justify="space-between" wrap="nowrap" align="flex-end">
-					<FormInput
-						name={`operations.${index}.name`}
-						label="Название операции"
-						inputProps={{ style: { flex: 1 } }}
+					<FormInput name={`operations.${index}.name`} label="Название операции" inputProps={{ style: { flex: 1 } }} />
+					<Select
+						{...kindField}
+						label="kind"
+						data={kindOptions}
+						value={normalizedKind}
+						onChange={(next) => {
+							const nextKind = next ?? 'template';
+							onKindChange(nextKind);
+
+							const safeOutput =
+								output && typeof output === 'object'
+									? (output as any)
+									: makeDefaultArtifactsOutput();
+
+							if (nextKind === 'template') {
+								setValue(
+									`operations.${index}.config.params`,
+									{ template: '', strictVariables: false, output: safeOutput },
+									{ shouldDirty: true },
+								);
+							} else {
+								setValue(
+									`operations.${index}.config.params`,
+									{ paramsJson: '{\n  \n}', output: safeOutput },
+									{ shouldDirty: true },
+								);
+							}
+						}}
+						comboboxProps={{ withinPortal: false }}
+						description="Тип операции определяет, какие поля params доступны."
+						style={{ width: 180 }}
 					/>
 
 					<IconButtonWithTooltip
@@ -385,20 +443,32 @@ export const OperationItem: React.FC<Props> = memo(({ index, depsKey, onRemove }
 
 				<Divider />
 
-				<Stack gap="xs">
-					<Text fw={600}>Template</Text>
-					<FormCheckbox
-						name={`operations.${index}.config.params.strictVariables`}
-						label="Strict variables"
-						infoTip="Если включено, шаблон должен использовать только разрешённые/известные переменные (строгая валидация)."
-					/>
-					<FormTextarea
-						name={`operations.${index}.config.params.template`}
-						label="Шаблон (template)"
-						infoTip="Текст шаблона операции (kind=template)."
-						textareaProps={{ minRows: 4, autosize: true }}
-					/>
-				</Stack>
+				{normalizedKind === 'template' ? (
+					<Stack gap="xs">
+						<Text fw={600}>Template</Text>
+						<FormCheckbox
+							name={`operations.${index}.config.params.strictVariables`}
+							label="Strict variables"
+							infoTip="Если включено, шаблон должен использовать только разрешённые/известные переменные (строгая валидация)."
+						/>
+						<FormTextarea
+							name={`operations.${index}.config.params.template`}
+							label="Шаблон (template)"
+							infoTip="Текст шаблона операции (kind=template)."
+							textareaProps={{ minRows: 4, autosize: true }}
+						/>
+					</Stack>
+				) : (
+					<Stack gap="xs">
+						<Text fw={600}>Params</Text>
+						<FormTextarea
+							name={`operations.${index}.config.params.paramsJson`}
+							label="params (JSON)"
+							infoTip="Черновой UI: для non-template операций параметры редактируются как JSON-объект. Будет заменено на типизированную форму под конкретный kind."
+							textareaProps={{ minRows: 6, autosize: true }}
+						/>
+					</Stack>
+				)}
 
 				<Divider />
 

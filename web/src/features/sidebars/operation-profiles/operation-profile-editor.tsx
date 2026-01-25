@@ -1,4 +1,4 @@
-import { Button, Card, Collapse, Divider, Group, Stack, Text } from '@mantine/core';
+import { Alert, Button, Card, Collapse, Divider, Group, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
@@ -6,7 +6,7 @@ import { LuChevronDown, LuChevronUp, LuPlus, LuRotateCcw, LuSave } from 'react-i
 import { v4 as uuidv4 } from 'uuid';
 
 import type { OperationProfileDto } from '../../../api/chat-core';
-import type { OperationConfig, OperationInProfile, OperationTemplateParams } from '@shared/types/operation-profiles';
+import type { OperationInProfile, OperationKind, OperationOutput, OperationTemplateParams } from '@shared/types/operation-profiles';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
 import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
@@ -15,14 +15,27 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { OperationDepsOptionsProvider } from './operation-deps-options';
 import { OperationItem } from './operation-item';
 
-type FormOperation = OperationInProfile & {
-	config: OperationConfig & {
-		params: OperationTemplateParams & {
-			strictVariables: boolean;
-		};
-		triggers: Array<'generate' | 'regenerate'>;
+type FormTemplateParams = OperationTemplateParams & {
+	strictVariables: boolean;
+};
+
+type FormOtherKindParams = {
+	paramsJson: string;
+	output: OperationOutput;
+};
+
+type FormOperation = {
+	opId: string;
+	name: string;
+	kind: OperationKind;
+	config: {
+		enabled: boolean;
+		required: boolean;
 		hooks: Array<'before_main_llm' | 'after_main_llm'>;
+		triggers: Array<'generate' | 'regenerate'>;
+		order: number;
 		dependsOn: string[];
+		params: FormTemplateParams | FormOtherKindParams;
 	};
 };
 
@@ -35,6 +48,18 @@ type FormValues = {
 	operations: FormOperation[];
 };
 
+function makeDefaultArtifactOutput(): Extract<OperationOutput, { type: 'artifacts' }> {
+	return {
+		type: 'artifacts',
+		writeArtifact: {
+			tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
+			persistence: 'run_only',
+			usage: 'internal',
+			semantics: 'intermediate',
+		},
+	};
+}
+
 function normalizeTemplateParams(params: unknown): OperationTemplateParams {
 	if (!params || typeof params !== 'object') {
 		return {
@@ -42,12 +67,7 @@ function normalizeTemplateParams(params: unknown): OperationTemplateParams {
 			strictVariables: false,
 			output: {
 				type: 'artifacts',
-				writeArtifact: {
-					tag: 'artifact',
-					persistence: 'run_only',
-					usage: 'internal',
-					semantics: 'intermediate',
-				},
+				writeArtifact: makeDefaultArtifactOutput().writeArtifact,
 			},
 		};
 	}
@@ -73,13 +93,25 @@ function normalizeTemplateParams(params: unknown): OperationTemplateParams {
 		output: {
 			type: 'artifacts',
 			writeArtifact: {
-				tag: 'artifact',
+				tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
 				persistence: 'run_only',
 				usage: 'internal',
 				semantics: 'intermediate',
 			},
 		},
 	};
+}
+
+function normalizeOtherKindParams(params: unknown): FormOtherKindParams {
+	const defaultOutput = makeDefaultArtifactOutput();
+	if (!params || typeof params !== 'object') {
+		return { paramsJson: '{\n  \n}', output: defaultOutput };
+	}
+
+	const p = params as any;
+	const output: OperationOutput = p.output && typeof p.output === 'object' ? (p.output as OperationOutput) : defaultOutput;
+	const rawParams = p.params && typeof p.params === 'object' && !Array.isArray(p.params) ? (p.params as Record<string, unknown>) : {};
+	return { paramsJson: JSON.stringify(rawParams, null, 2), output };
 }
 
 function toForm(profile: OperationProfileDto): FormValues {
@@ -90,46 +122,96 @@ function toForm(profile: OperationProfileDto): FormValues {
 		executionMode: profile.executionMode,
 		operationProfileSessionId: profile.operationProfileSessionId,
 		operations: (profile.operations ?? []).map((op): FormOperation => ({
-			...op,
+			opId: op.opId,
+			name: op.name,
+			kind: op.kind,
 			config: {
-				...op.config,
 				hooks: (op.config.hooks?.length ? op.config.hooks : ['before_main_llm']) as any,
 				triggers: (op.config.triggers?.length ? op.config.triggers : ['generate', 'regenerate']) as any,
 				dependsOn: op.config.dependsOn ?? [],
-				params: {
-					...normalizeTemplateParams(op.config.params as unknown),
-					strictVariables: Boolean((op.config.params as any)?.strictVariables),
-				},
+				enabled: Boolean(op.config.enabled),
+				required: Boolean(op.config.required),
+				order: Number((op.config as any).order ?? 0),
+				params:
+					op.kind === 'template'
+						? ({
+								...normalizeTemplateParams(op.config.params as unknown),
+								strictVariables: Boolean((op.config.params as any)?.strictVariables),
+							} satisfies FormTemplateParams)
+						: (normalizeOtherKindParams(op.config.params as unknown) satisfies FormOtherKindParams),
 			},
 		})),
 	};
 }
 
-function fromForm(values: FormValues): { name: string; description?: string; enabled: boolean; executionMode: 'concurrent' | 'sequential'; operationProfileSessionId: string; operations: OperationInProfile[] } {
+function fromForm(values: FormValues, options?: { validateJson?: boolean }): {
+	name: string;
+	description?: string;
+	enabled: boolean;
+	executionMode: 'concurrent' | 'sequential';
+	operationProfileSessionId: string;
+	operations: OperationInProfile[];
+} {
 	return {
 		name: values.name,
 		description: values.description.trim() ? values.description.trim() : undefined,
 		enabled: values.enabled,
 		executionMode: values.executionMode,
 		operationProfileSessionId: values.operationProfileSessionId,
-		operations: values.operations.map((op): OperationInProfile => ({
-			opId: op.opId,
-			name: op.name,
-			kind: 'template',
-			config: {
-				enabled: Boolean(op.config.enabled),
-				required: Boolean(op.config.required),
-				hooks: op.config.hooks,
-				triggers: op.config.triggers,
-				order: Number(op.config.order),
-				dependsOn: op.config.dependsOn?.length ? op.config.dependsOn : undefined,
-				params: {
-					template: op.config.params.template,
-					strictVariables: op.config.params.strictVariables ? true : undefined,
-					output: op.config.params.output,
+		operations: values.operations.map((op): OperationInProfile => {
+			if (op.kind === 'template') {
+				const params = op.config.params as FormTemplateParams;
+				return {
+					opId: op.opId,
+					name: op.name,
+					kind: 'template',
+					config: {
+						enabled: Boolean(op.config.enabled),
+						required: Boolean(op.config.required),
+						hooks: op.config.hooks,
+						triggers: op.config.triggers,
+						order: Number(op.config.order),
+						dependsOn: op.config.dependsOn?.length ? op.config.dependsOn : undefined,
+						params: {
+							template: params.template,
+							strictVariables: params.strictVariables ? true : undefined,
+							output: params.output,
+						},
+					},
+				};
+			}
+
+			const params = op.config.params as FormOtherKindParams;
+			let parsed: unknown = {};
+			const raw = params.paramsJson?.trim() ?? '';
+			if (raw) {
+				try {
+					parsed = JSON.parse(raw) as unknown;
+				} catch (e) {
+					if (options?.validateJson) throw e;
+					parsed = {};
+				}
+			}
+			const asObj = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+
+			return {
+				opId: op.opId,
+				name: op.name,
+				kind: op.kind as Exclude<OperationKind, 'template'>,
+				config: {
+					enabled: Boolean(op.config.enabled),
+					required: Boolean(op.config.required),
+					hooks: op.config.hooks,
+					triggers: op.config.triggers,
+					order: Number(op.config.order),
+					dependsOn: op.config.dependsOn?.length ? op.config.dependsOn : undefined,
+					params: {
+						params: asObj,
+						output: params.output,
+					},
 				},
-			},
-		})),
+			};
+		}),
 	};
 }
 
@@ -148,15 +230,7 @@ function makeDefaultOperation(): FormOperation {
 			params: {
 				template: '',
 				strictVariables: false,
-				output: {
-					type: 'artifacts',
-					writeArtifact: {
-						tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
-						persistence: 'run_only',
-						usage: 'internal',
-						semantics: 'intermediate',
-					},
-				},
+				output: makeDefaultArtifactOutput(),
 			},
 		},
 	};
@@ -177,15 +251,22 @@ export const OperationProfileEditor: React.FC<{ profile: OperationProfileDto }> 
 
 	const [depsKey, setDepsKey] = useState(0);
 	const [isProfileOpen, setIsProfileOpen] = useState(true);
+	const [jsonError, setJsonError] = useState<string | null>(null);
 
 	useEffect(() => {
+		setJsonError(null);
 		methods.reset(initial);
 		setDepsKey((v) => v + 1);
 	}, [initial]);
 
 	const onSave = methods.handleSubmit((values) => {
-		const payload = fromForm(values);
-		doUpdate({ profileId: profile.profileId, patch: payload });
+		setJsonError(null);
+		try {
+			const payload = fromForm(values, { validateJson: true });
+			doUpdate({ profileId: profile.profileId, patch: payload });
+		} catch (e) {
+			setJsonError(e instanceof Error ? e.message : String(e));
+		}
 	});
 
 	return (
@@ -270,6 +351,12 @@ export const OperationProfileEditor: React.FC<{ profile: OperationProfileDto }> 
 								Добавить
 							</Button>
 						</Group>
+
+						{jsonError && (
+							<Alert color="red" title="Ошибка JSON">
+								{jsonError}
+							</Alert>
+						)}
 
 						{fields.length === 0 ? (
 							<Text size="sm" c="dimmed">
