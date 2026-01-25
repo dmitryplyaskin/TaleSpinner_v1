@@ -35,6 +35,53 @@ type FormValues = {
 	operations: FormOperation[];
 };
 
+function normalizeTemplateParams(params: unknown): OperationTemplateParams {
+	if (!params || typeof params !== 'object') {
+		return {
+			template: '',
+			strictVariables: false,
+			output: {
+				type: 'artifacts',
+				writeArtifact: {
+					tag: 'artifact',
+					persistence: 'run_only',
+					usage: 'internal',
+					semantics: 'intermediate',
+				},
+			},
+		};
+	}
+
+	const p = params as any;
+	if (p.output && typeof p.output === 'object') return p as OperationTemplateParams;
+
+	// Legacy compatibility: params.writeArtifact -> params.output.type="artifacts"
+	if (p.writeArtifact && typeof p.writeArtifact === 'object') {
+		return {
+			template: typeof p.template === 'string' ? p.template : '',
+			strictVariables: Boolean(p.strictVariables),
+			output: {
+				type: 'artifacts',
+				writeArtifact: p.writeArtifact,
+			},
+		};
+	}
+
+	return {
+		template: typeof p.template === 'string' ? p.template : '',
+		strictVariables: Boolean(p.strictVariables),
+		output: {
+			type: 'artifacts',
+			writeArtifact: {
+				tag: 'artifact',
+				persistence: 'run_only',
+				usage: 'internal',
+				semantics: 'intermediate',
+			},
+		},
+	};
+}
+
 function toForm(profile: OperationProfileDto): FormValues {
 	return {
 		name: profile.name,
@@ -50,8 +97,8 @@ function toForm(profile: OperationProfileDto): FormValues {
 				triggers: (op.config.triggers?.length ? op.config.triggers : ['generate', 'regenerate']) as any,
 				dependsOn: op.config.dependsOn ?? [],
 				params: {
-					...op.config.params,
-					strictVariables: Boolean(op.config.params.strictVariables),
+					...normalizeTemplateParams(op.config.params as unknown),
+					strictVariables: Boolean((op.config.params as any)?.strictVariables),
 				},
 			},
 		})),
@@ -79,7 +126,7 @@ function fromForm(values: FormValues): { name: string; description?: string; ena
 				params: {
 					template: op.config.params.template,
 					strictVariables: op.config.params.strictVariables ? true : undefined,
-					writeArtifact: op.config.params.writeArtifact,
+					output: op.config.params.output,
 				},
 			},
 		})),
@@ -101,11 +148,14 @@ function makeDefaultOperation(): FormOperation {
 			params: {
 				template: '',
 				strictVariables: false,
-				writeArtifact: {
-					tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
-					persistence: 'run_only',
-					usage: 'internal',
-					semantics: 'intermediate',
+				output: {
+					type: 'artifacts',
+					writeArtifact: {
+						tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
+						persistence: 'run_only',
+						usage: 'internal',
+						semantics: 'intermediate',
+					},
 				},
 			},
 		},

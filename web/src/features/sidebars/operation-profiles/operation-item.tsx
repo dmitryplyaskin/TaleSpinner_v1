@@ -1,6 +1,6 @@
-import { Card, Divider, Group, Stack, Text } from '@mantine/core';
+import { Card, Divider, Group, Select, Stack, Text } from '@mantine/core';
 import React, { memo } from 'react';
-import { useWatch } from 'react-hook-form';
+import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { LuTrash2 } from 'react-icons/lu';
 
 import { FormCheckbox, FormInput, FormMultiSelect, FormNumberInput, FormSelect, FormTextarea } from '@ui/form-components';
@@ -43,6 +43,64 @@ const DependsOnInfoTip =
 const OrderInfoTip =
 	'Порядок commit эффектов: сначала зависимости, затем меньший order раньше; при равенстве — tie-break по operationId. Даже при параллельном execute commit идёт детерминированно.';
 
+const outputTypeOptions = [
+	{ value: 'artifacts', label: 'Artifacts' },
+	{ value: 'prompt_time', label: 'Prompt-time effects' },
+	{ value: 'turn_canonicalization', label: 'Turn canonicalization effects' },
+];
+
+const promptTimeRoleOptions = [
+	{ value: 'system', label: 'system' },
+	{ value: 'developer', label: 'developer' },
+	{ value: 'user', label: 'user' },
+	{ value: 'assistant', label: 'assistant' },
+];
+
+const promptTimeKindOptions = [
+	{ value: 'append_after_last_user', label: 'prompt.append_after_last_user' },
+	{ value: 'system_update', label: 'prompt.system_update' },
+	{ value: 'insert_at_depth', label: 'prompt.insert_at_depth' },
+];
+
+const systemUpdateModeOptions = [
+	{ value: 'prepend', label: 'prepend' },
+	{ value: 'append', label: 'append' },
+	{ value: 'replace', label: 'replace' },
+];
+
+function makeDefaultArtifactsOutput() {
+	return {
+		type: 'artifacts' as const,
+		writeArtifact: {
+			tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
+			persistence: 'run_only' as const,
+			usage: 'internal' as const,
+			semantics: 'intermediate',
+		},
+	};
+}
+
+function makeDefaultPromptTimeOutput() {
+	return {
+		type: 'prompt_time' as const,
+		promptTime: {
+			kind: 'append_after_last_user' as const,
+			role: 'developer' as const,
+			source: 'template_output',
+		},
+	};
+}
+
+function makeDefaultTurnCanonicalizationOutput() {
+	return {
+		type: 'turn_canonicalization' as const,
+		canonicalization: {
+			kind: 'replace_text' as const,
+			target: 'user' as const,
+		},
+	};
+}
+
 const OperationDependsOnField: React.FC<{ index: number; depsKey: number; selfOpId: string }> = ({ index, depsKey, selfOpId }) => {
 	const depOptions = useOperationDepsOptions();
 	return (
@@ -58,6 +116,198 @@ const OperationDependsOnField: React.FC<{ index: number; depsKey: number; selfOp
 				searchable: true,
 			}}
 		/>
+	);
+};
+
+const OutputFields: React.FC<{ index: number }> = ({ index }) => {
+	const { control, setValue } = useFormContext();
+
+	const {
+		field: { value: outputType, onChange: onOutputTypeChange, ...outputTypeField },
+	} = useController({
+		control,
+		name: `operations.${index}.config.params.output.type`,
+	});
+
+	const normalizedType =
+		outputType === 'artifacts' || outputType === 'prompt_time' || outputType === 'turn_canonicalization'
+			? (outputType as string)
+			: 'artifacts';
+
+	const {
+		field: { value: promptTimeKindValue, onChange: onPromptTimeKindChange, ...promptTimeKindField },
+	} = useController({
+		control,
+		name: `operations.${index}.config.params.output.promptTime.kind`,
+	});
+
+	const promptKind =
+		promptTimeKindValue === 'append_after_last_user' ||
+		promptTimeKindValue === 'system_update' ||
+		promptTimeKindValue === 'insert_at_depth'
+			? (promptTimeKindValue as string)
+			: 'append_after_last_user';
+
+	return (
+		<Stack gap="xs">
+			<Text fw={600}>Effects / Output</Text>
+
+			<Select
+				{...outputTypeField}
+				label="Тип эффекта"
+				data={outputTypeOptions}
+				value={normalizedType}
+				onChange={(next) => {
+					const nextType = next ?? 'artifacts';
+					onOutputTypeChange(nextType);
+					if (nextType === 'artifacts') {
+						setValue(`operations.${index}.config.params.output`, makeDefaultArtifactsOutput(), { shouldDirty: true });
+					}
+					if (nextType === 'prompt_time') {
+						setValue(`operations.${index}.config.params.output`, makeDefaultPromptTimeOutput(), { shouldDirty: true });
+					}
+					if (nextType === 'turn_canonicalization') {
+						setValue(`operations.${index}.config.params.output`, makeDefaultTurnCanonicalizationOutput(), { shouldDirty: true });
+					}
+				}}
+				comboboxProps={{ withinPortal: false }}
+				description="Результат template будет применён как один из эффектов v2 (см. спеку)."
+			/>
+
+			{normalizedType === 'artifacts' && (
+				<Stack gap="xs">
+					<Group grow wrap="wrap">
+						<FormInput
+							name={`operations.${index}.config.params.output.writeArtifact.tag`}
+							label="Artifact tag"
+							infoTip="Имя тега без префикса `art.`. В одном профиле один tag может записывать только одна операция."
+						/>
+						<FormSelect
+							name={`operations.${index}.config.params.output.writeArtifact.persistence`}
+							label="Persistence"
+							infoTip="persisted — сохраняется между ходами; run_only — только в рамках текущего Run."
+							selectProps={{ options: persistenceOptions, comboboxProps: { withinPortal: false } }}
+						/>
+					</Group>
+					<Group grow wrap="wrap">
+						<FormSelect
+							name={`operations.${index}.config.params.output.writeArtifact.usage`}
+							label="Usage"
+							infoTip="Как артефакт будет использоваться: только в prompt, только в UI, в обоих, или internal."
+							selectProps={{ options: usageOptions, comboboxProps: { withinPortal: false } }}
+						/>
+						<FormInput
+							name={`operations.${index}.config.params.output.writeArtifact.semantics`}
+							label="Semantics"
+							infoTip='Смысл артефакта: "state", "log/feed", "lore/memory", "intermediate", или произвольная строка.'
+						/>
+					</Group>
+				</Stack>
+			)}
+
+			{normalizedType === 'prompt_time' && (
+				<Stack gap="xs">
+					<Select
+						{...promptTimeKindField}
+						label="Prompt-time effect"
+						description="Эффект применяется только в before_main_llm и влияет на effective prompt текущего main LLM вызова."
+						data={promptTimeKindOptions}
+						value={promptKind}
+						onChange={(next) => {
+							const nextKind = next ?? 'append_after_last_user';
+							onPromptTimeKindChange(nextKind);
+							if (nextKind === 'system_update') {
+								setValue(
+									`operations.${index}.config.params.output.promptTime`,
+									{ kind: nextKind, mode: 'prepend', source: 'template_output' },
+									{ shouldDirty: true },
+								);
+							}
+							if (nextKind === 'append_after_last_user') {
+								setValue(
+									`operations.${index}.config.params.output.promptTime`,
+									{ kind: nextKind, role: 'developer', source: 'template_output' },
+									{ shouldDirty: true },
+								);
+							}
+							if (nextKind === 'insert_at_depth') {
+								setValue(
+									`operations.${index}.config.params.output.promptTime`,
+									{ kind: nextKind, depthFromEnd: 0, role: 'developer', source: 'template_output' },
+									{ shouldDirty: true },
+								);
+							}
+						}}
+						comboboxProps={{ withinPortal: false }}
+					/>
+
+					{promptKind === 'system_update' && (
+						<Group grow wrap="wrap">
+							<FormSelect
+								name={`operations.${index}.config.params.output.promptTime.mode`}
+								label="Mode"
+								infoTip="prepend: payload + system; append: system + payload; replace: system := payload."
+								selectProps={{ options: systemUpdateModeOptions, comboboxProps: { withinPortal: false } }}
+							/>
+							<FormInput
+								name={`operations.${index}.config.params.output.promptTime.source`}
+								label="Source (optional)"
+								infoTip="Опциональная метка источника для дебага/объяснимости."
+							/>
+						</Group>
+					)}
+
+					{(promptKind === 'append_after_last_user' || promptKind === 'insert_at_depth') && (
+						<Group grow wrap="wrap">
+							<FormSelect
+								name={`operations.${index}.config.params.output.promptTime.role`}
+								label="Role"
+								infoTip="Какой ролью будет вставлено синтетическое сообщение в effective prompt."
+								selectProps={{ options: promptTimeRoleOptions, comboboxProps: { withinPortal: false } }}
+							/>
+							<FormInput
+								name={`operations.${index}.config.params.output.promptTime.source`}
+								label="Source (optional)"
+								infoTip="Опциональная метка источника для дебага/объяснимости."
+							/>
+						</Group>
+					)}
+
+					{promptKind === 'insert_at_depth' && (
+						<FormNumberInput
+							name={`operations.${index}.config.params.output.promptTime.depthFromEnd`}
+							label="depthFromEnd"
+							infoTip="0 — вставить в самый конец; -N — вставить на глубину (ближе к концу)."
+							numberInputProps={{ step: 1 }}
+						/>
+					)}
+
+					<Text size="xs" c="dimmed">
+						Контент эффекта берётся из результата template (output string).
+					</Text>
+				</Stack>
+			)}
+
+			{normalizedType === 'turn_canonicalization' && (
+				<Stack gap="xs">
+					<FormSelect
+						name={`operations.${index}.config.params.output.canonicalization.target`}
+						label="Target"
+						infoTip="before_main_llm: можно канонизировать только user; after_main_llm: user и assistant."
+						selectProps={{
+							options: [
+								{ value: 'user', label: 'user' },
+								{ value: 'assistant', label: 'assistant' },
+							],
+							comboboxProps: { withinPortal: false },
+						}}
+					/>
+					<Text size="xs" c="dimmed">
+						Пока поддерживаем минимальный режим: replace_text (перезаписать текст выбранной части хода результатом template).
+					</Text>
+				</Stack>
+			)}
+		</Stack>
 	);
 };
 
@@ -152,35 +402,7 @@ export const OperationItem: React.FC<Props> = memo(({ index, depsKey, onRemove }
 
 				<Divider />
 
-				<Stack gap="xs">
-					<Text fw={600}>writeArtifact</Text>
-					<Group grow wrap="wrap">
-						<FormInput
-							name={`operations.${index}.config.params.writeArtifact.tag`}
-							label="Tag"
-							infoTip="Имя тега без префикса `art.` (например `world_state`)."
-						/>
-						<FormSelect
-							name={`operations.${index}.config.params.writeArtifact.persistence`}
-							label="Persistence"
-							infoTip="persisted — сохраняется между ходами; run_only — только в рамках текущего Run."
-							selectProps={{ options: persistenceOptions, comboboxProps: { withinPortal: false } }}
-						/>
-					</Group>
-					<Group grow wrap="wrap">
-						<FormSelect
-							name={`operations.${index}.config.params.writeArtifact.usage`}
-							label="Usage"
-							infoTip="Как артефакт будет использоваться: только в prompt, только в UI, в обоих, или internal."
-							selectProps={{ options: usageOptions, comboboxProps: { withinPortal: false } }}
-						/>
-						<FormInput
-							name={`operations.${index}.config.params.writeArtifact.semantics`}
-							label="Semantics"
-							infoTip='Смысл артефакта: "state", "log/feed", "lore/memory", "intermediate", или произвольная строка.'
-						/>
-					</Group>
-				</Stack>
+				<OutputFields index={index} />
 			</Stack>
 		</Card>
 	);

@@ -11,6 +11,7 @@ import type {
   OperationProfileExport,
   OperationProfileUpsertInput,
   OperationTrigger,
+  PromptTimeMessageRole,
 } from "@shared/types/operation-profiles";
 
 const uuidSchema = z.string().uuid();
@@ -28,15 +29,76 @@ const artifactTagSchema = z
   .min(1)
   .regex(/^[a-z][a-z0-9_]*$/, "tag must match ^[a-z][a-z0-9_]*$");
 
-const templateParamsSchema = z.object({
+const promptTimeRoleSchema = z.enum(["system", "developer", "user", "assistant"] satisfies PromptTimeMessageRole[]);
+
+const artifactWriteTargetSchema = z.object({
+  tag: artifactTagSchema,
+  persistence: artifactPersistenceSchema,
+  usage: artifactUsageSchema,
+  semantics: z.string().min(1),
+});
+
+const promptTimeEffectSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("append_after_last_user"),
+    role: promptTimeRoleSchema,
+    source: z.string().trim().min(1).optional(),
+  }),
+  z.object({
+    kind: z.literal("system_update"),
+    mode: z.enum(["prepend", "append", "replace"]),
+    source: z.string().trim().min(1).optional(),
+  }),
+  z.object({
+    kind: z.literal("insert_at_depth"),
+    depthFromEnd: z.number().int(),
+    role: promptTimeRoleSchema,
+    source: z.string().trim().min(1).optional(),
+  }),
+]);
+
+const turnCanonicalizationEffectSchema = z.object({
+  kind: z.literal("replace_text"),
+  target: z.enum(["user", "assistant"]),
+});
+
+const operationOutputSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("artifacts"),
+    writeArtifact: artifactWriteTargetSchema,
+  }),
+  z.object({
+    type: z.literal("prompt_time"),
+    promptTime: promptTimeEffectSchema,
+  }),
+  z.object({
+    type: z.literal("turn_canonicalization"),
+    canonicalization: turnCanonicalizationEffectSchema,
+  }),
+]);
+
+const templateParamsNewSchema = z.object({
   template: z.string(),
   strictVariables: z.boolean().optional(),
-  writeArtifact: z.object({
-    tag: artifactTagSchema,
-    persistence: artifactPersistenceSchema,
-    usage: artifactUsageSchema,
-    semantics: z.string().min(1),
-  }),
+  output: operationOutputSchema,
+});
+
+const templateParamsLegacySchema = z.object({
+  template: z.string(),
+  strictVariables: z.boolean().optional(),
+  writeArtifact: artifactWriteTargetSchema,
+});
+
+const templateParamsSchema = z.union([templateParamsNewSchema, templateParamsLegacySchema]).transform((v) => {
+  if ("output" in v) return v;
+  return {
+    template: v.template,
+    strictVariables: v.strictVariables,
+    output: {
+      type: "artifacts" as const,
+      writeArtifact: v.writeArtifact,
+    },
+  };
 });
 
 const operationConfigSchema = z.object({
@@ -152,7 +214,8 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
 
   const tags = new Map<string, string>(); // tag -> opId
   for (const op of input.operations) {
-    const tag = op.config.params.writeArtifact.tag;
+    if (op.config.params.output.type !== "artifacts") continue;
+    const tag = op.config.params.output.writeArtifact.tag;
     const existing = tags.get(tag);
     if (existing) {
       throw new HttpError(400, "Duplicate artifact tag in profile", "VALIDATION_ERROR", {

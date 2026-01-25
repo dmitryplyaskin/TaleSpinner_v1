@@ -14,21 +14,78 @@ export type ArtifactSemantics =
 
 export type OperationKind = "template";
 
-export type OperationTemplateParams = {
-  template: string;
-  strictVariables?: boolean;
+export type PromptTimeMessageRole = "system" | "developer" | "user" | "assistant";
+
+export type PromptTimeEffect =
+  | {
+      kind: "append_after_last_user";
+      role: PromptTimeMessageRole;
+      /**
+       * Optional human-readable label to help debug where the injected message came from,
+       * e.g. "art.world_state" or "template_output".
+       */
+      source?: string;
+    }
+  | {
+      kind: "system_update";
+      mode: "prepend" | "append" | "replace";
+      source?: string;
+    }
+  | {
+      kind: "insert_at_depth";
+      /**
+       * 0 = insert at tail; -N = insert N messages from the end (closer to tail).
+       */
+      depthFromEnd: number;
+      role: PromptTimeMessageRole;
+      source?: string;
+    };
+
+export type TurnCanonicalizationEffect = {
+  /**
+   * Minimal v2 UI placeholder for canonicalization.
+   * Current implementation is intentionally narrow and may expand with `effects` contract docs.
+   */
+  kind: "replace_text";
+  /**
+   * What part of the current turn to rewrite.
+   * - user: current user message (before_main_llm also allowed)
+   * - assistant: selected assistant variant (after_main_llm only)
+   */
+  target: "user" | "assistant";
+};
+
+export type ArtifactWriteTarget = {
   /**
    * Invariant: to validate single-writer-per-tag at save-time, every operation must
    * explicitly declare where it writes its output.
    *
    * `tag` is stored without the `art.` prefix.
    */
-  writeArtifact: {
-    tag: string;
-    persistence: ArtifactPersistence;
-    usage: ArtifactUsage;
-    semantics: ArtifactSemantics;
-  };
+  tag: string;
+  persistence: ArtifactPersistence;
+  usage: ArtifactUsage;
+  semantics: ArtifactSemantics;
+};
+
+export type OperationOutput =
+  | {
+      type: "artifacts";
+      writeArtifact: ArtifactWriteTarget;
+    }
+  | {
+      type: "prompt_time";
+      promptTime: PromptTimeEffect;
+    }
+  | {
+      type: "turn_canonicalization";
+      canonicalization: TurnCanonicalizationEffect;
+    };
+
+export type OperationTemplateParams = {
+  template: string;
+  strictVariables?: boolean;
+  output: OperationOutput;
 };
 
 export type OperationConfig = {
