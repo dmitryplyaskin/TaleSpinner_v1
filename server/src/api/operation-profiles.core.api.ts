@@ -53,6 +53,38 @@ router.post(
   })
 );
 
+// ---- Active profile (global only)
+
+router.get(
+  "/operation-profiles/active",
+  asyncHandler(async () => {
+    const settings = await getOperationProfileSettings();
+    return { data: settings };
+  })
+);
+
+const setActiveBodySchema = z.object({
+  activeProfileId: idSchema.nullable(),
+});
+
+router.put(
+  "/operation-profiles/active",
+  validate({ body: setActiveBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const body = setActiveBodySchema.parse(req.body);
+    if (body.activeProfileId !== null) {
+      const exists = await getOperationProfileById(body.activeProfileId);
+      if (!exists) {
+        throw new HttpError(404, "OperationProfile не найден", "NOT_FOUND");
+      }
+    }
+    const updated = await setActiveOperationProfile({
+      activeProfileId: body.activeProfileId,
+    });
+    return { data: updated };
+  })
+);
+
 router.get(
   "/operation-profiles/:id",
   validate({ params: idParamsSchema }),
@@ -139,38 +171,6 @@ router.post(
       created.push(profile);
     }
     return { data: { created } };
-  })
-);
-
-// ---- Active profile (global only)
-
-router.get(
-  "/operation-profiles/active",
-  asyncHandler(async () => {
-    const settings = await getOperationProfileSettings();
-    return { data: settings };
-  })
-);
-
-const setActiveBodySchema = z.object({
-  activeProfileId: idSchema.nullable(),
-});
-
-router.put(
-  "/operation-profiles/active",
-  validate({ body: setActiveBodySchema }),
-  asyncHandler(async (req: Request) => {
-    const body = setActiveBodySchema.parse(req.body);
-    if (body.activeProfileId !== null) {
-      const exists = await getOperationProfileById(body.activeProfileId);
-      if (!exists) {
-        throw new HttpError(404, "OperationProfile не найден", "NOT_FOUND");
-      }
-    }
-    const updated = await setActiveOperationProfile({
-      activeProfileId: body.activeProfileId,
-    });
-    return { data: updated };
   })
 );
 
