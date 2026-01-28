@@ -135,12 +135,14 @@ const operationInProfileSchema: z.ZodType<OperationInProfile> = z.discriminatedU
   z.object({
     opId: uuidSchema,
     name: z.string().trim().min(1),
+    description: z.string().trim().min(1).optional(),
     kind: z.literal("template"),
     config: operationConfigTemplateSchema,
   }),
   z.object({
     opId: uuidSchema,
     name: z.string().trim().min(1),
+    description: z.string().trim().min(1).optional(),
     kind: z.enum([
       "llm",
       "rag",

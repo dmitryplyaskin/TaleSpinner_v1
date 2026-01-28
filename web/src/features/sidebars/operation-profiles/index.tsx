@@ -1,7 +1,7 @@
-import { Group, Select, Stack, Text } from '@mantine/core';
+import { Button, Group, Select, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
-import { LuCopyPlus, LuDownload, LuPlus, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCopyPlus, LuDownload, LuGitFork, LuPlus, LuTrash2, LuUpload } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -23,6 +23,7 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
 import { OperationProfileEditor } from './operation-profile-editor';
+import { OperationProfileNodeEditorModal } from './operation-profile-node-editor-modal';
 
 function downloadJson(filename: string, data: unknown) {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -52,6 +53,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 	const doDuplicate = useUnit(duplicateOperationProfileRequested);
 
 	const fileInputRef = React.useRef<HTMLInputElement>(null);
+	const [isNodeEditorOpen, setIsNodeEditorOpen] = React.useState(false);
 
 	React.useEffect(() => {
 		void loadProfiles();
@@ -193,7 +195,24 @@ export const OperationProfilesSidebar: React.FC = () => {
 						Выберите или создайте профиль, чтобы редактировать операции.
 					</Text>
 				) : (
-					<OperationProfileEditor profile={selected} />
+					<Stack gap="md">
+						<Button
+							leftSection={<LuGitFork />}
+							variant="light"
+							onClick={() => setIsNodeEditorOpen(true)}
+							title="Открыть нодовый редактор (полный экран)"
+						>
+							Открыть нодовый редактор
+						</Button>
+
+						<OperationProfileEditor profile={selected} />
+
+						<OperationProfileNodeEditorModal
+							opened={isNodeEditorOpen}
+							onClose={() => setIsNodeEditorOpen(false)}
+							profile={selected}
+						/>
+					</Stack>
 				)}
 			</Stack>
 		</Drawer>

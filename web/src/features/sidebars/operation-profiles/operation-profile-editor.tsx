@@ -6,7 +6,6 @@ import { LuChevronDown, LuChevronUp, LuPlus, LuRotateCcw, LuSave } from 'react-i
 import { v4 as uuidv4 } from 'uuid';
 
 import type { OperationProfileDto } from '../../../api/chat-core';
-import type { OperationInProfile, OperationKind, OperationOutput, OperationTemplateParams } from '@shared/types/operation-profiles';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
 import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
@@ -14,233 +13,13 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { OperationDepsOptionsProvider } from './operation-deps-options';
 import { OperationItem } from './operation-item';
-
-type FormTemplateParams = OperationTemplateParams & {
-	strictVariables: boolean;
-};
-
-type FormOtherKindParams = {
-	paramsJson: string;
-	output: OperationOutput;
-};
-
-type FormOperation = {
-	opId: string;
-	name: string;
-	kind: OperationKind;
-	config: {
-		enabled: boolean;
-		required: boolean;
-		hooks: Array<'before_main_llm' | 'after_main_llm'>;
-		triggers: Array<'generate' | 'regenerate'>;
-		order: number;
-		dependsOn: string[];
-		params: FormTemplateParams | FormOtherKindParams;
-	};
-};
-
-type FormValues = {
-	name: string;
-	description: string;
-	enabled: boolean;
-	executionMode: 'concurrent' | 'sequential';
-	operationProfileSessionId: string;
-	operations: FormOperation[];
-};
-
-function makeDefaultArtifactOutput(): Extract<OperationOutput, { type: 'artifacts' }> {
-	return {
-		type: 'artifacts',
-		writeArtifact: {
-			tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
-			persistence: 'run_only',
-			usage: 'internal',
-			semantics: 'intermediate',
-		},
-	};
-}
-
-function normalizeTemplateParams(params: unknown): OperationTemplateParams {
-	if (!params || typeof params !== 'object') {
-		return {
-			template: '',
-			strictVariables: false,
-			output: {
-				type: 'artifacts',
-				writeArtifact: makeDefaultArtifactOutput().writeArtifact,
-			},
-		};
-	}
-
-	const p = params as any;
-	if (p.output && typeof p.output === 'object') return p as OperationTemplateParams;
-
-	// Legacy compatibility: params.writeArtifact -> params.output.type="artifacts"
-	if (p.writeArtifact && typeof p.writeArtifact === 'object') {
-		return {
-			template: typeof p.template === 'string' ? p.template : '',
-			strictVariables: Boolean(p.strictVariables),
-			output: {
-				type: 'artifacts',
-				writeArtifact: p.writeArtifact,
-			},
-		};
-	}
-
-	return {
-		template: typeof p.template === 'string' ? p.template : '',
-		strictVariables: Boolean(p.strictVariables),
-		output: {
-			type: 'artifacts',
-			writeArtifact: {
-				tag: `artifact_${Math.random().toString(16).slice(2, 8)}`,
-				persistence: 'run_only',
-				usage: 'internal',
-				semantics: 'intermediate',
-			},
-		},
-	};
-}
-
-function normalizeOtherKindParams(params: unknown): FormOtherKindParams {
-	const defaultOutput = makeDefaultArtifactOutput();
-	if (!params || typeof params !== 'object') {
-		return { paramsJson: '{\n  \n}', output: defaultOutput };
-	}
-
-	const p = params as any;
-	const output: OperationOutput = p.output && typeof p.output === 'object' ? (p.output as OperationOutput) : defaultOutput;
-	const rawParams = p.params && typeof p.params === 'object' && !Array.isArray(p.params) ? (p.params as Record<string, unknown>) : {};
-	return { paramsJson: JSON.stringify(rawParams, null, 2), output };
-}
-
-function toForm(profile: OperationProfileDto): FormValues {
-	return {
-		name: profile.name,
-		description: profile.description ?? '',
-		enabled: profile.enabled,
-		executionMode: profile.executionMode,
-		operationProfileSessionId: profile.operationProfileSessionId,
-		operations: (profile.operations ?? []).map((op): FormOperation => ({
-			opId: op.opId,
-			name: op.name,
-			kind: op.kind,
-			config: {
-				hooks: (op.config.hooks?.length ? op.config.hooks : ['before_main_llm']) as any,
-				triggers: (op.config.triggers?.length ? op.config.triggers : ['generate', 'regenerate']) as any,
-				dependsOn: op.config.dependsOn ?? [],
-				enabled: Boolean(op.config.enabled),
-				required: Boolean(op.config.required),
-				order: Number((op.config as any).order ?? 0),
-				params:
-					op.kind === 'template'
-						? ({
-								...normalizeTemplateParams(op.config.params as unknown),
-								strictVariables: Boolean((op.config.params as any)?.strictVariables),
-							} satisfies FormTemplateParams)
-						: (normalizeOtherKindParams(op.config.params as unknown) satisfies FormOtherKindParams),
-			},
-		})),
-	};
-}
-
-function fromForm(values: FormValues, options?: { validateJson?: boolean }): {
-	name: string;
-	description?: string;
-	enabled: boolean;
-	executionMode: 'concurrent' | 'sequential';
-	operationProfileSessionId: string;
-	operations: OperationInProfile[];
-} {
-	return {
-		name: values.name,
-		description: values.description.trim() ? values.description.trim() : undefined,
-		enabled: values.enabled,
-		executionMode: values.executionMode,
-		operationProfileSessionId: values.operationProfileSessionId,
-		operations: values.operations.map((op): OperationInProfile => {
-			if (op.kind === 'template') {
-				const params = op.config.params as FormTemplateParams;
-				return {
-					opId: op.opId,
-					name: op.name,
-					kind: 'template',
-					config: {
-						enabled: Boolean(op.config.enabled),
-						required: Boolean(op.config.required),
-						hooks: op.config.hooks,
-						triggers: op.config.triggers,
-						order: Number(op.config.order),
-						dependsOn: op.config.dependsOn?.length ? op.config.dependsOn : undefined,
-						params: {
-							template: params.template,
-							strictVariables: params.strictVariables ? true : undefined,
-							output: params.output,
-						},
-					},
-				};
-			}
-
-			const params = op.config.params as FormOtherKindParams;
-			let parsed: unknown = {};
-			const raw = params.paramsJson?.trim() ?? '';
-			if (raw) {
-				try {
-					parsed = JSON.parse(raw) as unknown;
-				} catch (e) {
-					if (options?.validateJson) throw e;
-					parsed = {};
-				}
-			}
-			const asObj = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-
-			return {
-				opId: op.opId,
-				name: op.name,
-				kind: op.kind as Exclude<OperationKind, 'template'>,
-				config: {
-					enabled: Boolean(op.config.enabled),
-					required: Boolean(op.config.required),
-					hooks: op.config.hooks,
-					triggers: op.config.triggers,
-					order: Number(op.config.order),
-					dependsOn: op.config.dependsOn?.length ? op.config.dependsOn : undefined,
-					params: {
-						params: asObj,
-						output: params.output,
-					},
-				},
-			};
-		}),
-	};
-}
-
-function makeDefaultOperation(): FormOperation {
-	return {
-		opId: uuidv4(),
-		name: 'New operation',
-		kind: 'template',
-		config: {
-			enabled: true,
-			required: false,
-			hooks: ['before_main_llm'],
-			triggers: ['generate', 'regenerate'],
-			order: 10,
-			dependsOn: [],
-			params: {
-				template: '',
-				strictVariables: false,
-				output: makeDefaultArtifactOutput(),
-			},
-		},
-	};
-}
+import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './operation-profile-form';
 
 export const OperationProfileEditor: React.FC<{ profile: OperationProfileDto }> = ({ profile }) => {
 	const doUpdate = useUnit(updateOperationProfileFx);
 
-	const initial = useMemo(() => toForm(profile), [profile]);
-	const methods = useForm<FormValues>({ defaultValues: initial });
+	const initial = useMemo(() => toOperationProfileForm(profile), [profile]);
+	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
 	const { control, formState } = methods;
 
 	const { fields, append, remove } = useFieldArray({
@@ -262,7 +41,7 @@ export const OperationProfileEditor: React.FC<{ profile: OperationProfileDto }> 
 	const onSave = methods.handleSubmit((values) => {
 		setJsonError(null);
 		try {
-			const payload = fromForm(values, { validateJson: true });
+			const payload = fromOperationProfileForm(values, { validateJson: true });
 			doUpdate({ profileId: profile.profileId, patch: payload });
 		} catch (e) {
 			setJsonError(e instanceof Error ? e.message : String(e));

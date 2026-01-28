@@ -119,6 +119,7 @@ export type OperationConfig<TParams extends OperationParams = OperationParams> =
 export type TemplateOperationInProfile = {
   opId: string; // UUID
   name: string;
+  description?: string;
   kind: "template";
   config: OperationConfig<OperationTemplateParams>;
 };
@@ -126,6 +127,7 @@ export type TemplateOperationInProfile = {
 export type NonTemplateOperationInProfile = {
   opId: string; // UUID
   name: string;
+  description?: string;
   kind: Exclude<OperationKind, "template">;
   config: OperationConfig<OperationOtherKindParams>;
 };

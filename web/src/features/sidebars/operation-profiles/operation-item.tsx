@@ -396,6 +396,13 @@ export const OperationItem: React.FC<Props> = memo(({ index, depsKey, onRemove }
 					opId: {opId}
 				</Text>
 
+				<FormTextarea
+					name={`operations.${index}.description`}
+					label="Описание"
+					infoTip="Короткое описание операции. Показывается в нодах и может использоваться для документации профиля."
+					textareaProps={{ minRows: 2, autosize: true }}
+				/>
+
 				<Group grow wrap="wrap">
 					<FormCheckbox
 						name={`operations.${index}.config.enabled`}

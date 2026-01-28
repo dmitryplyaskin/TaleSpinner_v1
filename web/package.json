@@ -33,6 +33,7 @@
     "@tiptap/pm": "^3.15.3",
     "@tiptap/react": "^3.15.3",
     "@tiptap/starter-kit": "^3.15.3",
+    "@xyflow/react": "^12.10.0",
     "autoprefixer": "^10.4.23",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
