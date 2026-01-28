@@ -1,5 +1,5 @@
 ---
-description: Frontend (web/): Vite + React + TypeScript + Effector + Chakra UI, code quality & architecture rules
+description: Frontend (web/): Vite + React + TypeScript + Effector + Mantine, code quality & architecture rules
 alwaysApply: false
 ---
 
@@ -12,7 +12,7 @@ Write production-grade code: strict types, clear boundaries, small modules, and 
 
 - **App location**: `web/` (Vite + React + TypeScript)
 - **State management**: **Effector** + `effector-react` (+ `patronum` when useful)
-- **UI**: **Chakra UI v3** (`@chakra-ui/react`) + local wrappers in `web/src/ui/chakra-core-ui/*`
+- **UI**: **Mantine** (`@mantine/core`)
 - **Icons**: `react-icons/lu`
 - **Markdown**: `react-markdown` (currently with `rehype-raw` in places)
 - **Package manager**: **Yarn Classic (1.x)** (do not suggest npm/pnpm)
@@ -21,17 +21,17 @@ Write production-grade code: strict types, clear boundaries, small modules, and 
 
 - **Yarn only**. Use repository scripts; prefer `yarn --cwd web <script>` from repo root.
 - **Effector is the source of truth** for state and async flows. UI binds state via `useUnit`.
-- **Chakra UI is primary**. Prefer Chakra primitives/tokens over custom CSS when reasonable.
+- **Mantine is primary**. Prefer Mantine components/tokens over custom CSS when reasonable.
 - **Do not introduce new heavy infra** (new router, new global state lib, new form framework) unless explicitly requested.
 - **Comments must be in English**.
 
 ## Project structure (as-is)
 
-This codebase is “FSD-like”, but the current frontend is organized as:
+This codebase follows **strict FSD** (Feature-Sliced Design).
 
 - `web/src/features/*` — UI features (chat window, sidebars, etc.)
 - `web/src/model/*` — Effector stores/events/effects and domain logic
-- `web/src/ui/*` — shared UI components/wrappers (Chakra-based)
+- `web/src/ui/*` — shared UI components/wrappers (Mantine-based)
 - `web/src/utils/*` — helpers
 - `web/src/api/*` — API helpers (note: some legacy API code still lives elsewhere)
 - `shared/types/*` — shared contracts with backend
@@ -47,10 +47,10 @@ This codebase is “FSD-like”, but the current frontend is organized as:
 
 ## Naming conventions
 
-The repo is in transition; keep new code consistent:
+Keep new code consistent:
 
 - **Folders**: `kebab-case`
-- **Files**: prefer `kebab-case` for new files; do not mass-rename legacy paths unless needed
+- **Files**: `kebab-case`
 - **React components**: `PascalCase` component names
 - **Booleans**: `is/has/can/should*`
 - **Effector**:
