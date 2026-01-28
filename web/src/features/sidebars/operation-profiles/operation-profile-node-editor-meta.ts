@@ -1,6 +1,7 @@
 export type OperationProfileNodeEditorMetaV1 = {
 	version: 1;
 	nodes: Record<string, { x: number; y: number }>;
+	groups?: Record<string, { name: string; nodeIds: string[]; bg?: string }>;
 	viewport?: { x: number; y: number; zoom: number };
 };
 
@@ -36,7 +37,26 @@ export function readNodeEditorMeta(meta: unknown): OperationProfileNodeEditorMet
 			? { x: viewportRaw.x, y: viewportRaw.y, zoom: viewportRaw.zoom }
 			: undefined;
 
-	return { version: 1, nodes, viewport };
+	const groupsRaw = nodeEditor.groups;
+	let groups: OperationProfileNodeEditorMetaV1['groups'] | undefined;
+	if (isRecord(groupsRaw)) {
+		const out: Record<string, { name: string; nodeIds: string[]; bg?: string }> = {};
+		for (const [groupId, g] of Object.entries(groupsRaw)) {
+			if (!isRecord(g)) continue;
+			const name = typeof g.name === 'string' ? g.name : '';
+			const nodeIdsRaw = g.nodeIds;
+			const nodeIds = Array.isArray(nodeIdsRaw) ? nodeIdsRaw.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : [];
+			if (!groupId || !name.trim() || nodeIds.length === 0) continue;
+
+			const bgRaw = (g as Record<string, unknown>).bg;
+			const bg = typeof bgRaw === 'string' && bgRaw.trim() ? bgRaw.trim() : undefined;
+
+			out[groupId] = { name: name.trim(), nodeIds: [...new Set(nodeIds)], bg };
+		}
+		if (Object.keys(out).length) groups = out;
+	}
+
+	return { version: 1, nodes, groups, viewport };
 }
 
 export function writeNodeEditorMeta(existingMeta: unknown, nodeEditor: OperationProfileNodeEditorMetaV1): unknown {
