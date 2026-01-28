@@ -21,14 +21,14 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
 	const { control } = useFormContext();
 	const {
 		field: { value, onChange, ...field },
-		formState: { errors },
+		fieldState,
 	} = useController({
 		name,
 		control: control,
 		...containerProps,
 	});
 
-	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
+	const errorMessage = typeof fieldState.error?.message === 'string' ? fieldState.error.message : '';
 	const labelComponent = label && (
 		<Group gap={6} wrap="nowrap">
 			{label}

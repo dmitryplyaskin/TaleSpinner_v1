@@ -28,9 +28,8 @@ import {
 	useNodesState,
 } from '@xyflow/react';
 
-import { OperationDepsOptionsProvider } from '../operation-deps-options';
-import { OperationItem } from '../operation-item';
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from '../form/operation-profile-form-mapping';
+import { OperationEditor } from '../ui/operation-editor/operation-editor';
 import { OperationFlowNode, type OperationFlowNodeData } from './flow/operation-flow-node';
 import { computeSimpleLayout, readNodeEditorMeta, writeNodeEditorMeta } from './meta/node-editor-meta';
 
@@ -198,14 +197,13 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
 	const { control, formState, setValue } = methods;
 
-	const { fields, append, replace } = useFieldArray({ name: 'operations', control, keyName: '_key' });
+	const { append, replace } = useFieldArray({ name: 'operations', control, keyName: '_key' });
 	const operations = useWatch({ control, name: 'operations' }) as OperationProfileFormValues['operations'] | undefined;
 
 	const [selectedOpId, setSelectedOpId] = useState<string | null>(null);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [groups, setGroups] = useState<Record<string, EditorGroup>>({});
 	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-	const [depsKey, setDepsKey] = useState(0);
 	const [jsonError, setJsonError] = useState<string | null>(null);
 	const [isLayoutDirty, setIsLayoutDirty] = useState(false);
 	const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
@@ -233,7 +231,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setGroups(metaGroups);
 		setSelectedGroupId(null);
 		setGroupEditor(null);
-		setDepsKey((v) => v + 1);
 		setIsLayoutDirty(false);
 	}, [initial, profile.meta]);
 
@@ -395,7 +392,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	const addOperation = () => {
 		const next = makeDefaultOperation();
 		append(next);
-		setDepsKey((v) => v + 1);
 
 		let position = { x: 0, y: safeOperations.length * 160 };
 		if (flow && flowWrapperRef.current) {
@@ -438,7 +434,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		replace(nextOps);
 
 		setNodes((prev) => prev.filter((n) => !ids.includes(String(n.id))));
-		setDepsKey((v) => v + 1);
 		setIsLayoutDirty(true);
 
 		setSelectedNodeIds((prev) => prev.filter((id) => !ids.includes(id)));
@@ -679,7 +674,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		const current = (methods.getValues(path) ?? []) as string[];
 		if (current.includes(conn.source)) return;
 		setValue(path, [...current, conn.source], { shouldDirty: true });
-		setDepsKey((v) => v + 1);
 	};
 
 	const onConnectStart = (_: unknown, params: { nodeId?: string | null; handleType?: 'source' | 'target' | null }) => {
@@ -716,7 +710,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		const next = makeDefaultOperation();
 		next.config.dependsOn = [sourceId];
 		append(next);
-		setDepsKey((v) => v + 1);
 
 		setNodes((prev) => [
 			...prev,
@@ -757,7 +750,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				{ shouldDirty: true },
 			);
 		}
-		setDepsKey((v) => v + 1);
 	};
 
 	const onNodesChange = (changes: NodeChange[]) => {
@@ -974,29 +966,26 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 						<Divider orientation="vertical" />
 
 						<ScrollArea style={{ width: 480, height: '100%' }} p="md">
-							<OperationDepsOptionsProvider>
-								<Stack gap="md">
-									<Group justify="space-between" wrap="nowrap">
-										<Text fw={800}>Operation</Text>
-										<Text size="xs" c="dimmed">
-											{selectedIndex === null ? '—' : `#${selectedIndex + 1}`}
-										</Text>
-									</Group>
+							<Stack gap="md">
+								<Group justify="space-between" wrap="nowrap">
+									<Text fw={800}>Operation</Text>
+									<Text size="xs" c="dimmed">
+										{selectedIndex === null ? '—' : `#${selectedIndex + 1}`}
+									</Text>
+								</Group>
 
-									{selectedIndex === null ? (
-										<Text size="sm" c="dimmed">
-											Выберите ноду, чтобы редактировать операцию.
-										</Text>
-									) : (
-										<OperationItem
-											key={`${fields[selectedIndex]?._key ?? selectedOpId}-${depsKey}`}
-											index={selectedIndex}
-											depsKey={depsKey}
-											onRemove={() => deleteSelectedNodes()}
-										/>
-									)}
-								</Stack>
-							</OperationDepsOptionsProvider>
+								{selectedIndex === null ? (
+									<Text size="sm" c="dimmed">
+										Выберите ноду, чтобы редактировать операцию.
+									</Text>
+								) : (
+									<OperationEditor
+										key={selectedOpId ?? String(selectedIndex)}
+										index={selectedIndex}
+										onRemove={() => deleteSelectedNodes()}
+									/>
+								)}
+							</Stack>
 						</ScrollArea>
 					</Group>
 				</Stack>

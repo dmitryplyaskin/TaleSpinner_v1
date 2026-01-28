@@ -32,14 +32,14 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 	const { control } = useFormContext();
 	const {
 		field,
-		formState: { errors },
+		fieldState,
 	} = useController({
 		name,
 		control: control,
 		...containerProps,
 	});
 
-	const errorMessage = typeof errors[name]?.message === 'string' ? errors[name]?.message : '';
+	const errorMessage = typeof fieldState.error?.message === 'string' ? fieldState.error.message : '';
 	const labelComponent = (
 		<Group gap={6} wrap="nowrap">
 			{label}

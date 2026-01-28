@@ -278,22 +278,27 @@ Key idea: make Drawer editor and Node editor share **the same “edit one operat
   - [x] `operation-profile-flow-nodes.tsx` → `node-editor/flow/operation-flow-node.tsx`
   - [x] `operation-profile-node-editor-modal.tsx` → `node-editor/node-editor-modal.tsx` (if applicable)
 - [x] Update imports to new paths and remove temporary compatibility re-exports
-- [ ] Introduce placeholder modules for planned extracts (empty exports or thin re-exports to keep moves incremental)
-  - [ ] `node-editor/utils/color.ts`
-  - [ ] `node-editor/utils/bounds.ts`
-  - [ ] `node-editor/utils/layout.ts`
-  - [ ] `ui/profile-picker.tsx`
-  - [ ] `ui/profile-actions.tsx`
-  - [ ] `ui/operation-list.tsx`
-  - [ ] `ui/operation-row.tsx`
-  - [ ] `ui/operation-editor/operation-editor.tsx`
+- [x] Introduce placeholder modules for planned extracts (empty exports or thin re-exports to keep moves incremental)
+  - [x] `node-editor/utils/color.ts`
+  - [x] `node-editor/utils/bounds.ts`
+  - [x] `node-editor/utils/layout.ts`
+  - [x] `ui/profile-picker.tsx`
+  - [x] `ui/profile-actions.tsx`
+  - [x] `ui/operation-list.tsx`
+  - [x] `ui/operation-row.tsx`
+  - [x] `ui/operation-editor/operation-editor.tsx`
 
 ### Phase 1 — P0 perf fixes (highest impact)
 
-- [ ] Drawer: replace “render all OperationItem” with “list + single editor” (or single-mounted accordion)
-- [ ] Remove `depsKey` remount hack
-- [ ] Make dependsOn options cheap & stable (avoid `useWatch('operations')` + context update on every keystroke)
-- [ ] Reduce controlled-input cost in large forms (prefer `register` for text inputs/textarea where possible)
+- [x] Drawer: replace “render all OperationItem” with “list + single editor” (or single-mounted accordion)
+- [x] Remove `depsKey` remount hack
+- [x] Make dependsOn options cheap & stable (avoid `useWatch('operations')` + context update on every keystroke)
+- [x] Reduce controlled-input cost in large forms (prefer `register` for text inputs/textarea where possible)
+
+Notes (Phase 1 implementation):
+- Drawer now mounts **exactly one** `OperationEditor` at a time; the list is lightweight and uses per-row `useWatch`.
+- `depsKey` and `OperationDepsOptionsProvider` were removed; dependsOn options are built by `useOperationDepsOptions()` and consumed only by the mounted editor.
+- `@ui/form-components` now reads errors via `fieldState.error` (fixes dot-path fields and reduces error-driven re-renders).
 
 ### Phase 2 — P1 refactors for smoother UX
 
