@@ -22,15 +22,28 @@ export const loadOperationProfilesFx = createEffect(async (): Promise<OperationP
 
 export const $operationProfiles = createStore<OperationProfileDto[]>([]).on(loadOperationProfilesFx.doneData, (_, p) => p);
 
-export const selectOperationProfileForEdit = createEvent<string | null>();
-export const $selectedOperationProfileId = createStore<string | null>(null).on(selectOperationProfileForEdit, (_, id) => id);
+// ---- Active profile (global)
+
+export const loadActiveOperationProfileFx = createEffect(async (): Promise<OperationProfileSettingsDto> => {
+	return getActiveOperationProfile();
+});
+
+export const $operationProfileSettings = createStore<OperationProfileSettingsDto | null>(null).on(
+	loadActiveOperationProfileFx.doneData,
+	(_, data) => data,
+);
+
+export const setActiveOperationProfileRequested = createEvent<string | null>();
+
+export const setActiveOperationProfileFx = createEffect(async (activeProfileId: string | null) => {
+	return setActiveOperationProfile(activeProfileId);
+});
+
+sample({ clock: setActiveOperationProfileRequested, target: setActiveOperationProfileFx });
 
 sample({
-	clock: loadOperationProfilesFx.doneData,
-	source: $selectedOperationProfileId,
-	filter: (selectedId, profiles) => !selectedId && profiles.length > 0,
-	fn: (_, profiles) => profiles[0]!.profileId,
-	target: selectOperationProfileForEdit,
+	clock: setActiveOperationProfileFx.doneData,
+	target: loadActiveOperationProfileFx,
 });
 
 export const createOperationProfileFx = createEffect(async (input: OperationProfileUpsertInput) => {
@@ -69,7 +82,7 @@ sample({
 sample({
 	clock: createOperationProfileFx.doneData,
 	fn: (created) => created.profileId,
-	target: selectOperationProfileForEdit,
+	target: setActiveOperationProfileRequested,
 });
 
 sample({
@@ -77,12 +90,18 @@ sample({
 	target: loadOperationProfilesFx,
 });
 
+// If active profile is missing (deleted or not set), auto-pick the first available profile.
 sample({
-	clock: deleteOperationProfileFx.doneData,
-	source: $selectedOperationProfileId,
-	filter: (selectedId, deleted) => Boolean(selectedId && selectedId === deleted.id),
-	fn: () => null,
-	target: selectOperationProfileForEdit,
+	clock: loadOperationProfilesFx.doneData,
+	source: $operationProfileSettings,
+	filter: (settings, profiles) => {
+		if (!settings) return false;
+		const activeProfileId = settings.activeProfileId;
+		const hasActive = Boolean(activeProfileId && profiles.some((p) => p.profileId === activeProfileId));
+		return !hasActive && profiles.length > 0;
+	},
+	fn: (_, profiles) => profiles[0]!.profileId,
+	target: setActiveOperationProfileRequested,
 });
 
 createOperationProfileFx.doneData.watch((p) => {
@@ -104,30 +123,6 @@ deleteOperationProfileFx.failData.watch((e) => {
 	toaster.error({ title: 'Не удалось удалить OperationProfile', description: e instanceof Error ? e.message : String(e) });
 });
 
-// ---- Active profile (global)
-
-export const loadActiveOperationProfileFx = createEffect(async (): Promise<OperationProfileSettingsDto> => {
-	return getActiveOperationProfile();
-});
-
-export const $operationProfileSettings = createStore<OperationProfileSettingsDto | null>(null).on(
-	loadActiveOperationProfileFx.doneData,
-	(_, data) => data,
-);
-
-export const setActiveOperationProfileRequested = createEvent<string | null>();
-
-export const setActiveOperationProfileFx = createEffect(async (activeProfileId: string | null) => {
-	return setActiveOperationProfile(activeProfileId);
-});
-
-sample({ clock: setActiveOperationProfileRequested, target: setActiveOperationProfileFx });
-
-sample({
-	clock: setActiveOperationProfileFx.doneData,
-	target: loadActiveOperationProfileFx,
-});
-
 // ---- Import / export
 
 export const exportOperationProfileFx = createEffect(async (profileId: string): Promise<OperationProfileExport> => {
@@ -143,7 +138,7 @@ export const importOperationProfilesFx = createEffect(
 sample({
 	clock: importOperationProfilesFx.doneData,
 	fn: (payload) => payload.created[0]?.profileId ?? null,
-	target: selectOperationProfileForEdit,
+	target: setActiveOperationProfileRequested,
 });
 
 sample({

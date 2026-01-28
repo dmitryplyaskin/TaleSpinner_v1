@@ -1,0 +1,11 @@
+.opProfileNodeEditorFlow .react-flow__viewport-portal {
+	z-index: 1;
+}
+
+.opProfileNodeEditorFlow .react-flow__edges {
+	z-index: 2;
+}
+
+.opProfileNodeEditorFlow .react-flow__nodes {
+	z-index: 3;
+}

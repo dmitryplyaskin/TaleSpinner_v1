@@ -1,6 +1,6 @@
-import React, { memo } from 'react';
-
+import { Badge, Group, Paper, Stack, Text } from '@mantine/core';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import React, { memo } from 'react';
 
 export type OperationFlowNodeData = {
 	opId: string;
@@ -11,79 +11,61 @@ export type OperationFlowNodeData = {
 	isRequired: boolean;
 };
 
+const NODE_WIDTH = 260;
+const HANDLE_STYLE: React.CSSProperties = { width: 10, height: 10, border: '2px solid var(--mantine-color-blue-6)' };
+
 export const OperationFlowNode: React.FC<NodeProps> = memo(({ data, selected }) => {
 	const d = data as OperationFlowNodeData;
 	return (
-		<div
+		<Paper
+			withBorder
+			shadow={selected ? 'md' : 'sm'}
+			radius="md"
+			p="sm"
 			style={{
-				width: 260,
-				borderRadius: 12,
-				padding: 12,
-				border: selected ? '2px solid #4C6EF5' : '1px solid rgba(0,0,0,0.15)',
-				background: 'rgba(255,255,255,0.92)',
-				boxShadow: selected ? '0 8px 24px rgba(76,110,245,0.25)' : '0 8px 24px rgba(0,0,0,0.08)',
+				width: NODE_WIDTH,
 				position: 'relative',
+				borderWidth: selected ? 2 : 1,
+				borderColor: selected ? 'var(--mantine-color-blue-6)' : undefined,
 			}}
 		>
 			{/* dependsOn: incoming edges -> target handle on the left */}
-			<Handle type="target" position={Position.Left} style={{ width: 10, height: 10, border: '2px solid #4C6EF5' }} />
+			<Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
 			{/* outgoing edges -> source handle on the right */}
-			<Handle type="source" position={Position.Right} style={{ width: 10, height: 10, border: '2px solid #4C6EF5' }} />
+			<Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
 
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-				<div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name}</div>
-				<div
-					style={{
-						fontSize: 12,
-						padding: '2px 8px',
-						borderRadius: 999,
-						background: 'rgba(0,0,0,0.06)',
-						whiteSpace: 'nowrap',
-					}}
-				>
-					{d.kind}
-				</div>
-			</div>
+			<Stack gap={6}>
+				<Group justify="space-between" wrap="nowrap" gap="xs">
+					<Text fw={700} size="sm" lineClamp={1} style={{ minWidth: 0 }}>
+						{d.name}
+					</Text>
+					<Badge size="sm" variant="light">
+						{d.kind}
+					</Badge>
+				</Group>
 
-			<div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-				<div
-					style={{
-						fontSize: 12,
-						padding: '2px 8px',
-						borderRadius: 999,
-						background: d.isEnabled ? 'rgba(34,139,34,0.12)' : 'rgba(220,0,0,0.10)',
-						color: d.isEnabled ? '#1B5E20' : '#8A0000',
-					}}
-				>
-					{d.isEnabled ? 'enabled' : 'disabled'}
-				</div>
-				{d.isRequired && (
-					<div style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,193,7,0.18)', color: '#7A5D00' }}>
-						required
-					</div>
-				)}
-			</div>
+				<Group gap={6} wrap="wrap">
+					<Badge size="sm" color={d.isEnabled ? 'green' : 'gray'} variant="light">
+						{d.isEnabled ? 'enabled' : 'disabled'}
+					</Badge>
+					{d.isRequired && (
+						<Badge size="sm" color="orange" variant="light">
+							required
+						</Badge>
+					)}
+				</Group>
 
-			{d.description?.trim() ? (
-				<div
-					style={{
-						marginTop: 8,
-						fontSize: 12,
-						opacity: 0.85,
-						display: '-webkit-box',
-						WebkitLineClamp: 3,
-						WebkitBoxOrient: 'vertical',
-						overflow: 'hidden',
-					}}
-				>
-					{d.description}
-				</div>
-			) : null}
+				{d.description?.trim() ? (
+					<Text size="xs" c="dimmed" lineClamp={3}>
+						{d.description}
+					</Text>
+				) : null}
 
-			<div style={{ marginTop: 8, fontSize: 11, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-				{d.opId}
-			</div>
-		</div>
+				<Text size="xs" c="dimmed" lineClamp={1}>
+					{d.opId}
+				</Text>
+			</Stack>
+		</Paper>
 	);
 });
 

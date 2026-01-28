@@ -1,4 +1,4 @@
-import { Card, Divider, Group, Select, Stack, Text } from '@mantine/core';
+import { Card, Group, Select, Stack, Text } from '@mantine/core';
 import React, { memo } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { LuTrash2 } from 'react-icons/lu';
@@ -9,10 +9,7 @@ import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { makeDefaultArtifactOutput, type FormOtherKindParams, type FormTemplateParams } from '../../form/operation-profile-form-mapping';
-import { BasicsSection } from './sections/basics-section';
-import { ExecutionSection } from './sections/execution-section';
-import { OutputSection } from './sections/output-section';
-import { ParamsSection } from './sections/params-section';
+import { OperationSectionsAccordion } from './operation-sections-accordion';
 
 type Props = {
 	index: number;
@@ -113,19 +110,7 @@ export const OperationEditor: React.FC<Props> = memo(({ index, onRemove }) => {
 					opId: {safeOpId || '—'}
 				</Text>
 
-				<BasicsSection index={index} />
-
-				<Divider />
-
-				<ExecutionSection index={index} />
-
-				<Divider />
-
-				<ParamsSection index={index} kind={normalizedKind === 'template' ? 'template' : 'other'} />
-
-				<Divider />
-
-				<OutputSection index={index} />
+				<OperationSectionsAccordion index={index} kind={normalizedKind} />
 			</Stack>
 		</Card>
 	);

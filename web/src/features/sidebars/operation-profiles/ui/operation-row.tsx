@@ -7,9 +7,10 @@ export type OperationRowProps = {
 	opId: string;
 	selected: boolean;
 	onSelect: (opId: string) => void;
+	query?: string;
 };
 
-export const OperationRow: React.FC<OperationRowProps> = memo(({ index, opId, selected, onSelect }) => {
+export const OperationRow: React.FC<OperationRowProps> = memo(({ index, opId, selected, onSelect, query }) => {
 	const name = useWatch({ name: `operations.${index}.name` }) as unknown;
 	const kind = useWatch({ name: `operations.${index}.kind` }) as unknown;
 	const enabled = useWatch({ name: `operations.${index}.config.enabled` }) as unknown;
@@ -21,6 +22,12 @@ export const OperationRow: React.FC<OperationRowProps> = memo(({ index, opId, se
 	const isEnabled = Boolean(enabled);
 	const isRequired = Boolean(required);
 	const depsCount = Array.isArray(dependsOn) ? dependsOn.length : 0;
+
+	const q = (query ?? '').trim().toLowerCase();
+	if (q) {
+		const hay = `${nameLabel}\n${opId}\n${kindLabel}`.toLowerCase();
+		if (!hay.includes(q)) return null;
+	}
 
 	return (
 		<Paper

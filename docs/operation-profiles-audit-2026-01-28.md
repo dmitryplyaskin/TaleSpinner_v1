@@ -302,13 +302,33 @@ Notes (Phase 1 implementation):
 
 ### Phase 2 — P1 refactors for smoother UX
 
-- [ ] Split `OperationItem` into sections; lazy-mount heavy parts (Template/Params, Output)
-- [ ] Node editor: throttle/RAF group dragging; update only affected nodes
-- [ ] Node editor: memoize/cached color parsing; avoid render-time IIFEs for derived values
+- [x] Split `OperationItem` into sections; lazy-mount heavy parts (Template/Params, Output)
+  - Implemented as Accordion + lazy-mount in:
+    - `web/src/features/sidebars/operation-profiles/ui/operation-editor/operation-editor.tsx`
+    - `web/src/features/sidebars/operation-profiles/ui/operation-editor/operation-sections-accordion.tsx`
+- [x] Node editor: throttle/RAF group dragging; update only affected nodes
+  - Implemented via `requestAnimationFrame` throttling + updating only group nodes:
+    - `web/src/features/sidebars/operation-profiles/node-editor/hooks/use-group-label-drag.ts`
+- [x] Node editor: memoize/cached color parsing; avoid render-time IIFEs for derived values
+  - Cached canvas parsing + helpers:
+    - `web/src/features/sidebars/operation-profiles/node-editor/utils/color.ts`
+  - Node editor uses it (no render-time IIFE for color input anymore):
+    - `web/src/features/sidebars/operation-profiles/node-editor/node-editor-modal.tsx`
 
 ### Phase 3 — P2 UX / model cleanup
 
-- [ ] Unify “active profile” vs “edit profile” into one “current profile” flow
-- [ ] Reduce default visual noise (collapse advanced sections; hide raw JSON behind Advanced)
-- [ ] (If list stays long) add virtualization for operation rows
+- [x] Unify “active profile” vs “edit profile” into one “current profile” flow
+  - UI: single select that immediately sets global active profile:
+    - `web/src/features/sidebars/operation-profiles/index.tsx`
+    - `web/src/features/sidebars/operation-profiles/ui/profile-picker.tsx`
+    - `web/src/features/sidebars/operation-profiles/ui/profile-actions.tsx`
+  - Model cleanup: removed edit-selection concept; create/import now set active:
+    - `web/src/model/operation-profiles/index.ts`
+- [x] Reduce default visual noise (collapse advanced sections; hide raw JSON behind Advanced)
+  - Advanced sections (Template/Params, Output) are collapsed by default in Accordion:
+    - `web/src/features/sidebars/operation-profiles/ui/operation-editor/operation-sections-accordion.tsx`
+- [x] (If list stays long) add virtualization for operation rows
+  - Added lightweight search/filter for operation list (no extra deps). Virtualization not added yet:
+    - `web/src/features/sidebars/operation-profiles/ui/operation-list.tsx`
+    - `web/src/features/sidebars/operation-profiles/ui/operation-row.tsx`
 
