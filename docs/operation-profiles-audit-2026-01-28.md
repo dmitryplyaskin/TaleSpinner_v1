@@ -258,3 +258,52 @@ Key idea: make Drawer editor and Node editor share **the same “edit one operat
 
 ---
 
+## Work checklist (trackable)
+
+> Use this checklist as a working plan. Check items as you complete them.
+
+### Phase 0 — repo structure & naming (no behavior changes)
+
+- [x] Create folder structure proposed in “Recommended folder/module structure”
+  - [x] `web/src/features/sidebars/operation-profiles/ui/`
+  - [x] `web/src/features/sidebars/operation-profiles/ui/operation-editor/sections/`
+  - [x] `web/src/features/sidebars/operation-profiles/ui/operation-editor/kind-sections/`
+  - [x] `web/src/features/sidebars/operation-profiles/node-editor/flow/`
+  - [x] `web/src/features/sidebars/operation-profiles/node-editor/meta/`
+  - [x] `web/src/features/sidebars/operation-profiles/node-editor/utils/`
+  - [x] `web/src/features/sidebars/operation-profiles/form/`
+- [x] Rename/move files to match naming recommendations (no logic changes; only path/exports/imports adjustments if needed)
+  - [x] `operation-profile-form.ts` → `form/operation-profile-form-mapping.ts`
+  - [x] `operation-profile-node-editor-meta.ts` → `node-editor/meta/node-editor-meta.ts`
+  - [x] `operation-profile-flow-nodes.tsx` → `node-editor/flow/operation-flow-node.tsx`
+  - [x] `operation-profile-node-editor-modal.tsx` → `node-editor/node-editor-modal.tsx` (if applicable)
+- [x] Update imports to new paths and remove temporary compatibility re-exports
+- [ ] Introduce placeholder modules for planned extracts (empty exports or thin re-exports to keep moves incremental)
+  - [ ] `node-editor/utils/color.ts`
+  - [ ] `node-editor/utils/bounds.ts`
+  - [ ] `node-editor/utils/layout.ts`
+  - [ ] `ui/profile-picker.tsx`
+  - [ ] `ui/profile-actions.tsx`
+  - [ ] `ui/operation-list.tsx`
+  - [ ] `ui/operation-row.tsx`
+  - [ ] `ui/operation-editor/operation-editor.tsx`
+
+### Phase 1 — P0 perf fixes (highest impact)
+
+- [ ] Drawer: replace “render all OperationItem” with “list + single editor” (or single-mounted accordion)
+- [ ] Remove `depsKey` remount hack
+- [ ] Make dependsOn options cheap & stable (avoid `useWatch('operations')` + context update on every keystroke)
+- [ ] Reduce controlled-input cost in large forms (prefer `register` for text inputs/textarea where possible)
+
+### Phase 2 — P1 refactors for smoother UX
+
+- [ ] Split `OperationItem` into sections; lazy-mount heavy parts (Template/Params, Output)
+- [ ] Node editor: throttle/RAF group dragging; update only affected nodes
+- [ ] Node editor: memoize/cached color parsing; avoid render-time IIFEs for derived values
+
+### Phase 3 — P2 UX / model cleanup
+
+- [ ] Unify “active profile” vs “edit profile” into one “current profile” flow
+- [ ] Reduce default visual noise (collapse advanced sections; hide raw JSON behind Advanced)
+- [ ] (If list stays long) add virtualization for operation rows
+

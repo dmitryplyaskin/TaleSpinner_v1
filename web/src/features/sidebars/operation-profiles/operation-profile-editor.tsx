@@ -13,7 +13,7 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { OperationDepsOptionsProvider } from './operation-deps-options';
 import { OperationItem } from './operation-item';
-import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './operation-profile-form';
+import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './form/operation-profile-form-mapping';
 
 export const OperationProfileEditor: React.FC<{ profile: OperationProfileDto }> = ({ profile }) => {
 	const doUpdate = useUnit(updateOperationProfileFx);

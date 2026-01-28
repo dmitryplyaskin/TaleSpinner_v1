@@ -7,7 +7,7 @@ import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { LuLayoutDashboard, LuPlus, LuSave, LuTrash2, LuX } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { OperationProfileDto } from '../../../api/chat-core';
+import type { OperationProfileDto } from '../../../../api/chat-core';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
 import {
@@ -28,11 +28,11 @@ import {
 	useNodesState,
 } from '@xyflow/react';
 
-import { OperationDepsOptionsProvider } from './operation-deps-options';
-import { OperationItem } from './operation-item';
-import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './operation-profile-form';
-import { OperationFlowNode, type OperationFlowNodeData } from './operation-profile-flow-nodes';
-import { computeSimpleLayout, readNodeEditorMeta, writeNodeEditorMeta } from './operation-profile-node-editor-meta';
+import { OperationDepsOptionsProvider } from '../operation-deps-options';
+import { OperationItem } from '../operation-item';
+import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from '../form/operation-profile-form-mapping';
+import { OperationFlowNode, type OperationFlowNodeData } from './flow/operation-flow-node';
+import { computeSimpleLayout, readNodeEditorMeta, writeNodeEditorMeta } from './meta/node-editor-meta';
 
 type Props = {
 	opened: boolean;

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import type { OperationProfileDto } from '../../../api/chat-core';
+import type { OperationProfileDto } from '../../../../api/chat-core';
 import type { OperationInProfile, OperationKind, OperationOutput, OperationTemplateParams } from '@shared/types/operation-profiles';
 
 export type FormTemplateParams = OperationTemplateParams & {

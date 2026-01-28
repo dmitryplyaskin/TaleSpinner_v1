@@ -23,7 +23,7 @@ import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
 import { OperationProfileEditor } from './operation-profile-editor';
-import { OperationProfileNodeEditorModal } from './operation-profile-node-editor-modal';
+import { OperationProfileNodeEditorModal } from './node-editor/node-editor-modal';
 
 function downloadJson(filename: string, data: unknown) {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
