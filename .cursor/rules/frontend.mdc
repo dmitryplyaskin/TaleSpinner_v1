@@ -1,124 +1,89 @@
 ---
-description: Frontend (web/): Vite + React + TypeScript + Effector + Mantine, code quality & architecture rules
+description: Frontend (web/): Vite + React + TypeScript + Effector + Mantine — code & architecture protocol
 alwaysApply: false
 ---
 
-## Role
+## Frontend task protocol
 
-You are a Senior Frontend Developer for this repository.
-Write production-grade code: strict types, clear boundaries, small modules, and **no unreadable monsters**.
+When editing or creating frontend code under `web/`, follow these **non‑negotiable rules**.
 
-## Current frontend stack (this repo)
+### Output format
 
-- **App location**: `web/` (Vite + React + TypeScript)
-- **State management**: **Effector** + `effector-react` (+ `patronum` when useful)
-- **UI**: **Mantine** (`@mantine/core`)
-- **Icons**: `react-icons/lu`
-- **Markdown**: `react-markdown` (currently with `rehype-raw` in places)
-- **Package manager**: **Yarn Classic (1.x)** (do not suggest npm/pnpm)
+- Prefer returning **only**:
+  - a single TypeScript/TSX code block, or
+  - a minimal diff (explained in plain English + code block)
+- Do not add conversational fluff.
+- If clarification is needed, ask short, targeted questions **before** generating large code blocks.
 
-## Non-negotiable constraints
+### Stack (must respect)
 
-- **Yarn only**. Use repository scripts; prefer `yarn --cwd web <script>` from repo root.
-- **Effector is the source of truth** for state and async flows. UI binds state via `useUnit`.
-- **Mantine is primary**. Prefer Mantine components/tokens over custom CSS when reasonable.
-- **Do not introduce new heavy infra** (new router, new global state lib, new form framework) unless explicitly requested.
-- **Comments must be in English**.
+- App location: `web/` (Vite + React + TypeScript)
+- State management: **Effector** + `effector-react` (+ `patronum` when useful)
+- UI: **Mantine** (`@mantine/core`)
+- Icons: `react-icons/lu`
+- Markdown: `react-markdown` (with `rehype-raw` in some places)
+- Package manager: **Yarn Classic (1.x)** — do not suggest npm/pnpm
 
-## Project structure (as-is)
+### Architecture & boundaries
 
-This codebase follows **strict FSD** (Feature-Sliced Design).
+- Project uses **strict Feature-Sliced Design (FSD)**:
+  - `web/src/features/*` — UI features (chat window, sidebars, etc.)
+  - `web/src/model/*` — Effector stores/events/effects and domain logic
+  - `web/src/ui/*` — shared UI components / wrappers (Mantine-based)
+  - `web/src/utils/*` — helpers
+  - `web/src/api/*` — API helpers (some legacy code exists elsewhere)
+  - `shared/types/*` — shared contracts with backend
+- Import rules:
+  - Prefer path aliases: `@model/*`, `@ui/*`, `@utils/*`, `@shared/*`
+  - Avoid circular dependencies between `model/*` domains
+  - `model/*` must not import from `features/*`
+  - `ui/*` must not import from `features/*` or concrete domain models
+  - Avoid side-effect imports; initialization via explicit `init` modules from `main.tsx` / `App.tsx`
 
-- `web/src/features/*` — UI features (chat window, sidebars, etc.)
-- `web/src/model/*` — Effector stores/events/effects and domain logic
-- `web/src/ui/*` — shared UI components/wrappers (Mantine-based)
-- `web/src/utils/*` — helpers
-- `web/src/api/*` — API helpers (note: some legacy API code still lives elsewhere)
-- `shared/types/*` — shared contracts with backend
+### Code style and TypeScript
 
-### Import rules (pragmatic)
+- No new `any` in new or modified code.
+- Avoid `// @ts-ignore`. If unavoidable, use `// @ts-expect-error -- <reason>` (English reason required).
+- Prefer `import type { ... }` for type-only imports.
+- Comments in code must be in **English**.
 
-- **Prefer path aliases** (`@model/*`, `@ui/*`, `@utils/*`, `@shared/*`) over long relatives.
-- **Avoid circular dependencies** between `model/*` domains. If two domains need each other, introduce a small shared abstraction.
-- **Keep boundaries**:
-  - `model/*` must not import from `features/*` (no UI in models).
-  - `ui/*` must not import from `features/*` or concrete domain models (keep UI generic).
-- **Avoid side-effect imports**. If you need initialization, prefer an explicit `init` module called from `main.tsx`/`App.tsx`.
+### UI and component rules
 
-## Naming conventions
+- Components should be small and focused:
+  - component file size target: ≤ 200 lines
+  - any handler: ≤ 40 lines
+- Heavy logic lives in `model/*` or `utils/*`, not in React components.
+- Avoid `key={index}` for lists; prefer stable IDs.
+- Prefer Mantine components/tokens over custom CSS when reasonable.
 
-Keep new code consistent:
+### State and forms
 
-- **Folders**: `kebab-case`
-- **Files**: `kebab-case`
-- **React components**: `PascalCase` component names
-- **Booleans**: `is/has/can/should*`
-- **Effector**:
-  - Stores: `$name`
-  - Events: `verbNoun` (imperative, meaningful)
-  - Effects: `nameFx`
+- **Effector is the source of truth** for state and async flows; UI binds state via `useUnit`.
+- Existing forms: `react-hook-form` is used in places — do not replace wholesale.
+- For new complex business flows:
+  - prefer Effector-driven state where it improves predictability
+  - when extending existing `react-hook-form` forms, follow local style
 
-## TypeScript rules (strict)
+### Networking & data
 
-- **No `any`** in new/modified code. Use `unknown` + type guards, or proper generics.
-- **Do not use `// @ts-ignore`**. If absolutely unavoidable, use `// @ts-expect-error -- <reason>` with an English reason.
-- Prefer `import type { ... }` when importing types only.
+- Prefer a single API client approach (shared fetch wrapper, consistent error handling, typed responses).
+- Avoid introducing parallel API layers in new code.
 
-## UI rules
+### Content safety (Markdown/HTML)
 
-- Keep components **small and focused**:
-  - UI component file: aim for **≤ 200 lines**
-  - Any handler: aim for **≤ 40 lines**
-- UI should be mostly declarative; heavy logic goes to `model/*` or `utils/*`.
-- Avoid `key={index}` for lists; use stable IDs.
+- Treat Markdown/HTML as untrusted unless strictly system-authored.
+- If user-provided content is rendered with Markdown, sanitize before allowing raw HTML.
+- Prefer disabling raw HTML where possible; only enable when explicitly required.
 
-## Forms (current reality)
+### Verification commands (do not auto‑run more)
 
-This repo currently uses `react-hook-form` in multiple places. Do not replace it wholesale.
+From repo root:
 
-- For new complex “business” flows, prefer **Effector-driven state** where it improves predictability.
-- If you extend an existing `react-hook-form` form, stay consistent with that form.
-
-## Networking & data
-
-- Prefer a **single API client approach** (shared fetch wrapper, consistent error handling, typed responses).
-- Avoid mixing multiple competing API layers in new code.
-
-## Content safety (Markdown/HTML)
-
-The app currently uses `rehype-raw` for Markdown rendering in places.
-
-- Treat Markdown/HTML as **untrusted** unless it is strictly system-authored.
-- If user-provided content can reach Markdown renderer, **sanitize** before allowing raw HTML.
-- Prefer disabling raw HTML rendering unless explicitly needed.
-
-## Code quality tooling (how to verify)
-
-Frontend scripts live in `web/package.json`.
-
-- From repo root:
-
+- Allowed:
   - `yarn build:web`
-
 - From `web/`:
   - `yarn build`
   - `yarn typecheck`
 
-## Command execution policy (IMPORTANT)
-
-Goal: avoid large auto-generated diffs, context desync, and runaway cost/iterations when tools rewrite files.
-
-- **STRICTLY FORBIDDEN (without explicit user permission)**:
-  - Any **lint / formatter / auto-fix** commands, including (examples):
-    - `eslint ...`, `yarn lint`, `yarn eslint ...`
-    - `prettier ...`, `yarn format`, `prettier --check`, `prettier --write`
-    - `stylelint ...`, `biome ...`, `rome ...`
-    - any command that **rewrites many files automatically** or applies formatting fixes
-- **Allowed verification commands (do not rewrite code)**:
-  - `yarn build:web`
-  - `yarn --cwd web build`
-  - `yarn --cwd web typecheck`
-
-**CRITICAL: LLM must NEVER run lint/formatter commands automatically.** Linting is only for manual execution by the developer.
-
-If TypeScript fails, keep fixing until **0 TS errors**.
+**Never** run lint/formatter or any command that rewrites many files automatically without explicit user permission (e.g. `eslint`, `prettier`, `yarn lint`, `yarn format`).
+Fix TypeScript errors until there are **0 TS errors** before considering the task complete.
