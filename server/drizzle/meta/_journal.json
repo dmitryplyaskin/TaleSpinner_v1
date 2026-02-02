@@ -78,6 +78,13 @@
       "when": 1768952400000,
       "tag": "0010_operation_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1769950000000,
+      "tag": "0011_chat_entry_parts",
+      "breakpoints": true
     }
   ]
 }

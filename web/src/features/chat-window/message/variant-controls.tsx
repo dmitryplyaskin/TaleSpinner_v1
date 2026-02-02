@@ -22,6 +22,13 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 	const variantsById = useUnit($variantsByEntryId);
 	const variants = variantsById[entry.entry.entryId] ?? [];
 
+	const isImportedFirstMessage =
+		entry.variant?.kind === 'import' &&
+		typeof entry.entry.meta === 'object' &&
+		entry.entry.meta !== null &&
+		Boolean((entry.entry.meta as any)?.imported) &&
+		((entry.entry.meta as any)?.kind === 'first_mes' || (entry.entry.meta as any)?.source === 'entity_profile_import');
+
 	useEffect(() => {
 		if (!isLast) return;
 		if (entry.entry.role !== 'assistant') return;
@@ -51,8 +58,8 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 
 	const handleRight = () => {
 		if (total === 0) {
-			// If not loaded yet (or variants disabled), treat as regenerate.
-			regenerateRequested({ entryId: entry.entry.entryId });
+			// Variants are loaded lazily. Do not treat "no variants loaded" as regenerate.
+			void loadVariantsFx({ entryId: entry.entry.entryId });
 			return;
 		}
 
@@ -62,8 +69,11 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 			return;
 		}
 
+		if (isImportedFirstMessage) return;
 		regenerateRequested({ entryId: entry.entry.entryId });
 	};
+
+	const rightDisabled = total === 0 ? true : isImportedFirstMessage ? isLastVariant : false;
 
 	return (
 		<Paper
@@ -96,7 +106,16 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 					variant="ghost"
 					colorPalette="violet"
 					icon={<LuArrowRight />}
-					tooltip={isLastVariant ? 'Regenerate' : 'Next variant'}
+					disabled={rightDisabled}
+					tooltip={
+						total === 0
+							? 'Loading…'
+							: isImportedFirstMessage && isLastVariant
+								? 'Regenerate is disabled for imported greeting'
+								: isLastVariant
+									? 'Regenerate'
+									: 'Next variant'
+					}
 					onClick={handleRight}
 				/>
 			</Group>

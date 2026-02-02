@@ -20,6 +20,10 @@ export const loadEntriesFx = createEffect(async (params: { chatId: string; branc
 export const $entries = createStore<ChatEntryWithVariantDto[]>([]).on(loadEntriesFx.doneData, (_, res) => res.entries);
 export const $currentTurn = createStore<number>(0).on(loadEntriesFx.doneData, (_, res) => res.currentTurn);
 
+loadEntriesFx.failData.watch((error) => {
+	toaster.error({ title: 'Не удалось загрузить чат', description: error instanceof Error ? error.message : String(error) });
+});
+
 // Reload entries when we open a chat (chat-core still owns chat/branch selection).
 sample({
 	clock: setOpenedChat,

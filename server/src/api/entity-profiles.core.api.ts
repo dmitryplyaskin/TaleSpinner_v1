@@ -17,6 +17,10 @@ import {
   createImportedAssistantMessage,
   listChatsByEntityProfile,
 } from "../services/chat-core/chats-repository";
+import { getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-repository";
+import { createEntryWithVariant } from "../services/chat-entry-parts/entries-repository";
+import { createPart } from "../services/chat-entry-parts/parts-repository";
+import { createVariant } from "../services/chat-entry-parts/variants-repository";
 import {
   createEntityProfile,
   deleteEntityProfile,
@@ -155,6 +159,66 @@ router.post(
     try {
       const spec = profile.spec as any;
       const firstMes = typeof spec?.first_mes === "string" ? spec.first_mes.trim() : "";
+
+      const altGreetingsRaw = Array.isArray(spec?.alternate_greetings) ? spec.alternate_greetings : [];
+      const altGreetings = altGreetingsRaw
+        .filter((x: unknown) => typeof x === "string")
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
+      // --- New model: seed entry-parts so chat window (v2) renders immediately.
+      if (firstMes.length > 0) {
+        const ownerId = req.body.ownerId ?? "global";
+        const createdTurn = await getBranchCurrentTurn({ branchId: mainBranch.id });
+
+        const seeded = await createEntryWithVariant({
+          ownerId,
+          chatId: chat.id,
+          branchId: mainBranch.id,
+          role: "assistant",
+          variantKind: "import",
+          meta: { imported: true, source: "entity_profile_import", kind: "first_mes" },
+        });
+
+        await createPart({
+          ownerId,
+          variantId: seeded.variant.variantId,
+          channel: "main",
+          order: 0,
+          payload: firstMes,
+          payloadFormat: "markdown",
+          visibility: { ui: "always", prompt: true },
+          ui: { rendererId: "markdown" },
+          prompt: { serializerId: "asText" },
+          lifespan: "infinite",
+          createdTurn,
+          source: "import",
+        });
+
+        for (const greeting of altGreetings) {
+          const v = await createVariant({
+            ownerId,
+            entryId: seeded.entry.entryId,
+            kind: "import",
+          });
+          await createPart({
+            ownerId,
+            variantId: v.variantId,
+            channel: "main",
+            order: 0,
+            payload: greeting,
+            payloadFormat: "markdown",
+            visibility: { ui: "always", prompt: true },
+            ui: { rendererId: "markdown" },
+            prompt: { serializerId: "asText" },
+            lifespan: "infinite",
+            createdTurn,
+            source: "import",
+          });
+        }
+      }
+
+      // --- Legacy model: keep for now (other parts of the app still use chatMessages/messageVariants).
       if (firstMes.length > 0) {
         await createImportedAssistantMessage({
           ownerId: req.body.ownerId,
