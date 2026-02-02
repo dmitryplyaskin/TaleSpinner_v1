@@ -3,49 +3,40 @@ import { useUnit } from 'effector-react';
 import { useEffect, useMemo } from 'react';
 import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
 
-import type { ChatMessageDto, MessageVariantDto } from '../../../api/chat-core';
-import {
-	$variantsByMessageId,
-	loadVariantsFx,
-	regenerateVariantRequested,
-	selectVariantRequested,
-} from '@model/chat-core';
+import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
+import { $variantsByEntryId, loadVariantsFx, regenerateRequested, selectVariantRequested } from '@model/chat-entry-parts';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type Props = {
-	message: ChatMessageDto;
+	entry: ChatEntryWithVariantDto;
 	isLast: boolean;
 };
 
-function pickActiveIndex(variants: MessageVariantDto[], activeVariantId: string | null): number {
+function pickActiveIndex(variants: Array<{ variantId: string }>, activeVariantId: string): number {
 	if (variants.length === 0) return -1;
-	if (activeVariantId) {
-		const idx = variants.findIndex((v) => v.id === activeVariantId);
-		if (idx >= 0) return idx;
-	}
-	const selectedIdx = variants.findIndex((v) => v.isSelected);
-	return selectedIdx >= 0 ? selectedIdx : 0;
+	const idx = variants.findIndex((v) => v.variantId === activeVariantId);
+	return idx >= 0 ? idx : variants.length - 1;
 }
 
-export const VariantControls: React.FC<Props> = ({ message, isLast }) => {
-	const variantsById = useUnit($variantsByMessageId);
-	const variants = variantsById[message.id] ?? [];
+export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
+	const variantsById = useUnit($variantsByEntryId);
+	const variants = variantsById[entry.entry.entryId] ?? [];
 
 	useEffect(() => {
 		if (!isLast) return;
-		if (message.role !== 'assistant') return;
+		if (entry.entry.role !== 'assistant') return;
 		if (variants.length > 0) return;
 		// Best-effort: ensure we have variants loaded for swipe UI.
-		void loadVariantsFx({ messageId: message.id });
-	}, [isLast, message.id, message.role, variants.length]);
+		void loadVariantsFx({ entryId: entry.entry.entryId });
+	}, [isLast, entry.entry.entryId, entry.entry.role, variants.length]);
 
 	// Hooks must be called unconditionally (React rules of hooks).
 	const currentIndex = useMemo(
-		() => pickActiveIndex(variants, message.activeVariantId),
-		[variants, message.activeVariantId],
+		() => pickActiveIndex(variants, entry.entry.activeVariantId),
+		[variants, entry.entry.activeVariantId],
 	);
 	const total = variants.length;
-	const shouldShow = isLast && message.role === 'assistant';
+	const shouldShow = isLast && entry.entry.role === 'assistant';
 	if (!shouldShow) return null;
 
 	const isFirst = currentIndex <= 0;
@@ -55,23 +46,23 @@ export const VariantControls: React.FC<Props> = ({ message, isLast }) => {
 		if (total === 0) return;
 		if (isFirst) return;
 		const next = variants[currentIndex - 1];
-		if (next) selectVariantRequested({ messageId: message.id, variantId: next.id });
+		if (next) selectVariantRequested({ entryId: entry.entry.entryId, variantId: next.variantId });
 	};
 
 	const handleRight = () => {
 		if (total === 0) {
 			// If not loaded yet (or variants disabled), treat as regenerate.
-			regenerateVariantRequested({ messageId: message.id });
+			regenerateRequested({ entryId: entry.entry.entryId });
 			return;
 		}
 
 		if (!isLastVariant) {
 			const next = variants[currentIndex + 1];
-			if (next) selectVariantRequested({ messageId: message.id, variantId: next.id });
+			if (next) selectVariantRequested({ entryId: entry.entry.entryId, variantId: next.variantId });
 			return;
 		}
 
-		regenerateVariantRequested({ messageId: message.id });
+		regenerateRequested({ entryId: entry.entry.entryId });
 	};
 
 	return (

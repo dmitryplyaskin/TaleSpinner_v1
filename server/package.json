@@ -31,6 +31,8 @@
     "build": "tsc -p tsconfig.json",
     "build:watch": "tsc -p tsconfig.json -w",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint . --config eslint.config.mjs",
     "lint:fix": "eslint . --config eslint.config.mjs --fix",
     "lint:ci": "eslint . --config eslint.config.mjs --max-warnings=0",
@@ -68,6 +70,8 @@
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.53.0",
+    "vite-tsconfig-paths": "^6.0.5",
+    "vitest": "3"
   }
 }

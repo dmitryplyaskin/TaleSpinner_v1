@@ -1,4 +1,5 @@
 import chatCoreRoutes from "./chats.core.api";
+import chatEntriesRoutes from "./chat-entries.api";
 import entityProfilesCoreRoutes from "./entity-profiles.core.api";
 import entityProfilesImportRoutes from "./entity-profiles.import.api";
 import fileRoutes from "./files/routes";
@@ -20,6 +21,7 @@ export const routes = [
   entityProfilesCoreRoutes,
   entityProfilesImportRoutes,
   chatCoreRoutes,
+  chatEntriesRoutes,
   generationsCoreRoutes,
   messagesCoreRoutes,
   messageVariantsCoreRoutes,

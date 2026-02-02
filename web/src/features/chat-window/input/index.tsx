@@ -2,7 +2,7 @@ import { Box, Button, Flex, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useRef } from 'react';
 
-import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-core';
+import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-entry-parts';
 import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
 import { SendActionMenu } from './send-action-menu';

@@ -1,19 +1,19 @@
 import { Stack } from '@mantine/core';
 import { useUnit } from 'effector-react';
 
-import { $messages } from '@model/chat-core';
+import { $entries } from '@model/chat-entry-parts';
 
 import { Message } from './message';
 
 export const RenderChat = () => {
-	const messages = useUnit($messages);
+	const entries = useUnit($entries);
 
-	if (!messages) return null;
+	if (!entries) return null;
 
 	return (
 		<Stack gap="md">
-			{messages.map((message, index) => (
-				<Message key={message.id} data={message} isLast={index === messages.length - 1} />
+			{entries.map((entry, index) => (
+				<Message key={entry.entry.entryId} data={entry} isLast={index === entries.length - 1} />
 			))}
 		</Stack>
 	);

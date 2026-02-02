@@ -4,7 +4,8 @@ import React, { useEffect, useRef } from 'react';
 
 import BGImages from '../../assets/bg.png';
 
-import { $currentChat, $messages } from '@model/chat-core';
+import { $currentChat } from '@model/chat-core';
+import { $entries } from '@model/chat-entry-parts';
 
 import { ChatHeader } from './chat-header';
 import { MessageInput } from './input';
@@ -12,7 +13,7 @@ import { RenderChat } from './render-chat';
 
 export const ChatWindow: React.FC = () => {
 	const chat = useUnit($currentChat);
-	const messages = useUnit($messages);
+	const entries = useUnit($entries);
 	const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
@@ -27,7 +28,7 @@ export const ChatWindow: React.FC = () => {
 			scrollToBottom();
 			requestAnimationFrame(scrollToBottom);
 		});
-	}, [chat?.id, messages.length]);
+	}, [chat?.id, entries.length]);
 
 	return (
 		<Flex

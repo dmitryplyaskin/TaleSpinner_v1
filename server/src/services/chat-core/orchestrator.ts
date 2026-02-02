@@ -6,6 +6,7 @@ import {
   listMessagesForPrompt,
   updateAssistantText,
 } from "./chats-repository";
+import { updatePartPayloadText } from "../chat-entry-parts/parts-repository";
 import { getEntityProfileById } from "./entity-profiles-repository";
 import { registerGeneration, unregisterGeneration } from "./generation-runtime";
 import { finishGeneration } from "./generations-repository";
@@ -43,6 +44,13 @@ export async function* runChatGeneration(params: {
   userMessageId?: string;
   assistantMessageId: string;
   variantId: string;
+  /**
+   * Persistence mode:
+   * - "legacy": writes to chat_messages/message_variants promptText cache
+   * - "entry_parts": writes to variant_parts (assistant main part payload)
+   */
+  persistMode?: "legacy" | "entry_parts";
+  assistantMainPartId?: string;
   settings: Record<string, unknown>;
   flushMs?: number;
   /**
@@ -65,6 +73,14 @@ export async function* runChatGeneration(params: {
     // Serialize flush calls to avoid overlapping writes.
     flushing = flushing.then(async () => {
       if (closed) return;
+      if (params.persistMode === "entry_parts" && typeof params.assistantMainPartId === "string") {
+        await updatePartPayloadText({
+          partId: params.assistantMainPartId,
+          payloadText: assistantText,
+          payloadFormat: "markdown",
+        });
+        return;
+      }
       await updateAssistantText({
         assistantMessageId: params.assistantMessageId,
         variantId: params.variantId,
@@ -187,11 +203,19 @@ export async function* runChatGeneration(params: {
     clearInterval(timer);
     try {
       // Final flush: ensure DB has the latest.
-      await updateAssistantText({
-        assistantMessageId: params.assistantMessageId,
-        variantId: params.variantId,
-        text: assistantText,
-      });
+      if (params.persistMode === "entry_parts" && typeof params.assistantMainPartId === "string") {
+        await updatePartPayloadText({
+          partId: params.assistantMainPartId,
+          payloadText: assistantText,
+          payloadFormat: "markdown",
+        });
+      } else {
+        await updateAssistantText({
+          assistantMessageId: params.assistantMessageId,
+          variantId: params.variantId,
+          text: assistantText,
+        });
+      }
 
       await finishGeneration({
         id: params.generationId,

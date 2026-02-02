@@ -1,33 +1,33 @@
-import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
-import type { ChatMessageDto } from '../../../api/chat-core';
+import { Avatar, Box, Flex, Stack, Text } from '@mantine/core';
+import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
 import { useUnit } from 'effector-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import { $currentEntityProfile, $isChatStreaming, deleteMessageRequested, manualEditMessageRequested } from '@model/chat-core';
-import { RenderMd } from '@ui/render-md';
+import { $currentEntityProfile } from '@model/chat-core';
+import { $currentTurn, $isChatStreaming } from '@model/chat-entry-parts';
 
 import { AssistantIcon } from './assistant-icon';
-import { ActionBar } from './action-bar';
 import { VariantControls } from './variant-controls';
+import { PartsView } from './parts/parts-view';
 
 type MessageProps = {
-	data: ChatMessageDto;
+	data: ChatEntryWithVariantDto;
 	isLast: boolean;
 };
 
 export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	const currentProfile = useUnit($currentEntityProfile);
 	const isStreaming = useUnit($isChatStreaming);
+	const currentTurn = useUnit($currentTurn);
 
-	const isUser = data.role === 'user';
-	const isAssistant = data.role === 'assistant';
+	const isUser = data.entry.role === 'user';
+	const isAssistant = data.entry.role === 'assistant';
 	const assistantName = currentProfile?.name || 'AI Assistant';
-	const tsLabel = useMemo(() => new Date(data.createdAt).toLocaleTimeString(), [data.createdAt]);
-	const [isEditing, setIsEditing] = useState(false);
-	const [draft, setDraft] = useState(data.promptText ?? '');
+	const tsLabel = useMemo(() => new Date(data.entry.createdAt).toLocaleTimeString(), [data.entry.createdAt]);
 
 	const avatarColW = '64px';
-	const isOptimistic = String(data.id).startsWith('local_') || (typeof data.meta === 'object' && Boolean((data.meta as any)?.optimistic));
+	const isOptimistic =
+		String(data.entry.entryId).startsWith('local_') || (typeof data.entry.meta === 'object' && Boolean((data.entry.meta as any)?.optimistic));
 
 	return (
 		<Box
@@ -57,31 +57,6 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 							borderColor: isUser ? 'var(--mantine-color-violet-5)' : 'var(--mantine-color-gray-3)',
 						}}
 					>
-						{!isOptimistic && (
-							<ActionBar
-								isEditing={isEditing}
-								onOpenEdit={() => {
-									if (!isAssistant || isStreaming) return;
-									setDraft(data.promptText ?? '');
-									setIsEditing(true);
-								}}
-								onCancelEdit={() => {
-									setIsEditing(false);
-									setDraft(data.promptText ?? '');
-								}}
-								onConfirmEdit={() => {
-									if (!isAssistant || isStreaming) return;
-									manualEditMessageRequested({ messageId: data.id, promptText: draft });
-									setIsEditing(false);
-								}}
-								onDelete={() => {
-									if (isStreaming) return;
-									if (!window.confirm('Удалить сообщение?')) return;
-									deleteMessageRequested({ messageId: data.id });
-								}}
-							/>
-						)}
-
 						<Flex align="center" justify="space-between" gap="sm">
 							<Stack gap={0}>
 								<Text size="sm" fw={600} c={isUser ? 'violet' : 'dark'}>
@@ -90,23 +65,22 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 								<Text size="xs" c="dimmed">
 									{tsLabel}
 								</Text>
+								{isLast && isAssistant && isStreaming && (
+									<Text size="xs" c="dimmed">
+										Streaming…
+									</Text>
+								)}
+								{isOptimistic && (
+									<Text size="xs" c="dimmed">
+										Saving…
+									</Text>
+								)}
 							</Stack>
-							{isAssistant && <VariantControls message={data} isLast={isLast} />}
+							{isAssistant && <VariantControls entry={data} isLast={isLast} />}
 						</Flex>
 
 						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>
-							{isEditing ? (
-								<Textarea
-									value={draft}
-									onChange={(e) => setDraft(e.currentTarget.value)}
-									autosize
-									minRows={3}
-									maxRows={12}
-									disabled={isStreaming}
-								/>
-							) : (
-								<RenderMd content={data.promptText ?? ''} />
-							)}
+							<PartsView entry={data.entry} variant={data.variant} currentTurn={currentTurn} />
 						</Box>
 					</Box>
 				</Stack>

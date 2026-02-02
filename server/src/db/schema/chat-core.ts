@@ -91,6 +91,10 @@ export const chatBranches = sqliteTable(
     forkedFromMessageId: text("forked_from_message_id"),
     forkedFromVariantId: text("forked_from_variant_id"),
     metaJson: text("meta_json"),
+
+    // Chat-entry-parts: monotonically increasing per-branch turn counter.
+    // Incremented once per LLM call; used for Part TTL calculations.
+    currentTurn: integer("current_turn").notNull().default(0),
   },
   (t) => ({
     chatCreatedAtIdx: index("chat_branches_chat_created_at_idx").on(

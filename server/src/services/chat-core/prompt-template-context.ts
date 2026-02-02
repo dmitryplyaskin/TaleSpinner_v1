@@ -2,6 +2,7 @@ import { getChatById, listMessagesForPrompt } from "./chats-repository";
 import { getEntityProfileById } from "./entity-profiles-repository";
 import { getSelectedUserPerson } from "./user-persons-repository";
 import { buildChatSessionViewSafe } from "./session-view";
+import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
 
@@ -71,6 +72,7 @@ export async function buildPromptTemplateRenderContext(params: {
   entityProfileId?: string;
   historyLimit?: number;
   excludeMessageIds?: string[];
+  excludeEntryIds?: string[];
 }): Promise<PromptTemplateRenderContext> {
   const ownerId = params.ownerId ?? "global";
 
@@ -104,15 +106,36 @@ export async function buildPromptTemplateRenderContext(params: {
   const entityProfileId = params.entityProfileId ?? chat?.entityProfileId ?? null;
 
   // If chat exists but branch is not resolved (shouldn't happen in v1), keep empty history.
-  const history =
-    branchId && params.chatId
-      ? await listMessagesForPrompt({
-          chatId: params.chatId,
-          branchId,
-          limit: params.historyLimit ?? 50,
-          excludeMessageIds: params.excludeMessageIds,
-        })
-      : [];
+  let history: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+  let usedEntries = false;
+  if (branchId && params.chatId) {
+    try {
+      const projected = await listProjectedPromptMessages({
+        chatId: params.chatId,
+        branchId,
+        limit: params.historyLimit ?? 50,
+        excludeEntryIds: params.excludeEntryIds,
+      });
+      if (projected.entryCount > 0) {
+        usedEntries = true;
+        history = projected.messages.map((m) => ({ role: m.role, content: m.content }));
+      }
+    } catch {
+      // ignore; fallback below
+    }
+  }
+
+  if (!usedEntries) {
+    history =
+      branchId && params.chatId
+        ? await listMessagesForPrompt({
+            chatId: params.chatId,
+            branchId,
+            limit: params.historyLimit ?? 50,
+            excludeMessageIds: params.excludeMessageIds,
+          })
+        : [];
+  }
 
   const entityProfile = entityProfileId
     ? await getEntityProfileById(entityProfileId)

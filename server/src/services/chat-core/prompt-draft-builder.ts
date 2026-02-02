@@ -5,6 +5,7 @@ import type { PromptDraft, PromptDraftMessage } from "@shared/types/pipeline-exe
 
 import { listMessagesForPrompt } from "./chats-repository";
 import { listLatestPersistedArtifactsForSession, type PipelineArtifactDto } from "./pipeline-artifacts-repository";
+import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
 
 export type PromptTrimmingSummary = {
   historyLimit: number;
@@ -221,6 +222,7 @@ export async function buildPromptDraft(params: {
   systemPrompt: string;
   historyLimit?: number;
   excludeMessageIds?: string[];
+  excludeEntryIds?: string[];
   /**
    * Optional active PipelineProfile spec (v1) to provide deterministic ordering
    * for prompt inclusions (PipelineProfile order -> step order -> tag -> version).
@@ -231,12 +233,31 @@ export async function buildPromptDraft(params: {
   const historyLimit = params.historyLimit ?? 50;
   const exclude = params.excludeMessageIds ?? [];
 
-  const history = await listMessagesForPrompt({
-    chatId: params.chatId,
-    branchId: params.branchId,
-    limit: historyLimit,
-    excludeMessageIds: exclude,
-  });
+  let history: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+  let usedEntries = false;
+  try {
+    const projected = await listProjectedPromptMessages({
+      chatId: params.chatId,
+      branchId: params.branchId,
+      limit: historyLimit,
+      excludeEntryIds: params.excludeEntryIds,
+    });
+    if (projected.entryCount > 0) {
+      usedEntries = true;
+      history = projected.messages.map((m) => ({ role: m.role, content: m.content }));
+    }
+  } catch {
+    // best-effort: fall back to legacy history below
+  }
+
+  if (!usedEntries) {
+    history = await listMessagesForPrompt({
+      chatId: params.chatId,
+      branchId: params.branchId,
+      limit: historyLimit,
+      excludeMessageIds: exclude,
+    });
+  }
 
   // --- Phase 4 (v1 minimal): artifacts -> promptInclusion
   const artifacts = await listLatestPersistedArtifactsForSession({
@@ -324,7 +345,9 @@ export async function buildPromptDraft(params: {
 
   const trimming: PromptTrimmingSummary = {
     historyLimit,
-    excludedMessageIdsCount: exclude.length,
+    excludedMessageIdsCount: usedEntries
+      ? (params.excludeEntryIds ?? []).length
+      : exclude.length,
     historyReturnedCount: history.length,
   };
 
