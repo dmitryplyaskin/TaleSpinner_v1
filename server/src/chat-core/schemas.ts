@@ -194,21 +194,6 @@ export const updatePromptTemplateBodySchema = z
     }
   });
 
-// ---- Pipelines (DB-first v1)
-
-export const createPipelineBodySchema = z.object({
-  ownerId: ownerIdSchema.optional(),
-  name: z.string().min(1),
-  enabled: z.boolean().optional().default(true),
-  definition: jsonValueSchema,
-});
-
-export const updatePipelineBodySchema = z.object({
-  name: z.string().min(1).optional(),
-  enabled: z.boolean().optional(),
-  definition: jsonValueSchema.optional(),
-});
-
 // ---- Variants (minimal for v1 endpoints later)
 
 export const messageIdParamsSchema = z.object({

@@ -8,10 +8,6 @@ import instructionsRoutes from "./instructions.api";
 import llmRoutes from "./llm.api";
 import messagesCoreRoutes from "./messages.core.api";
 import messageVariantsCoreRoutes from "./message-variants.core.api";
-import pipelineDebugCoreRoutes from "./pipeline-debug.core.api";
-import pipelineProfilesCoreRoutes from "./pipeline-profiles.core.api";
-import pipelineStateCoreRoutes from "./pipeline-state.core.api";
-import pipelinesRoutes from "./pipelines.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import samplersRoutes from "./samplers.api";
@@ -25,9 +21,6 @@ export const routes = [
   generationsCoreRoutes,
   messagesCoreRoutes,
   messageVariantsCoreRoutes,
-  pipelineDebugCoreRoutes,
-  pipelineProfilesCoreRoutes,
-  pipelineStateCoreRoutes,
   operationProfilesCoreRoutes,
   userPersonsCoreRoutes,
   samplersRoutes,
@@ -35,5 +28,4 @@ export const routes = [
   fileRoutes,
   instructionsRoutes,
   promptTemplatesCoreRoutes,
-  pipelinesRoutes,
 ];

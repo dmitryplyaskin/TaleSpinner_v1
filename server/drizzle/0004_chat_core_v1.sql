@@ -114,56 +114,12 @@ CREATE TABLE `prompt_templates` (
 CREATE INDEX `prompt_templates_scope_scope_id_enabled_idx` ON `prompt_templates` (`scope`,`scope_id`,`enabled`);
 --> statement-breakpoint
 
-CREATE TABLE `pipelines` (
-	`id` text PRIMARY KEY NOT NULL,
-	`owner_id` text DEFAULT 'global' NOT NULL,
-	`name` text NOT NULL,
-	`enabled` integer DEFAULT true NOT NULL,
-	`definition_json` text NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
-);
---> statement-breakpoint
-
-CREATE TABLE `pipeline_runs` (
-	`id` text PRIMARY KEY NOT NULL,
-	`owner_id` text DEFAULT 'global' NOT NULL,
-	`chat_id` text NOT NULL,
-	`entity_profile_id` text NOT NULL,
-	`trigger` text DEFAULT 'user_message' NOT NULL,
-	`status` text DEFAULT 'running' NOT NULL,
-	`started_at` integer NOT NULL,
-	`finished_at` integer,
-	`meta_json` text,
-	FOREIGN KEY (`chat_id`) REFERENCES `chats`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`entity_profile_id`) REFERENCES `entity_profiles`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-
-CREATE TABLE `pipeline_step_runs` (
-	`id` text PRIMARY KEY NOT NULL,
-	`owner_id` text DEFAULT 'global' NOT NULL,
-	`run_id` text NOT NULL,
-	`step_name` text NOT NULL,
-	`step_type` text DEFAULT 'llm' NOT NULL,
-	`status` text DEFAULT 'running' NOT NULL,
-	`started_at` integer NOT NULL,
-	`finished_at` integer,
-	`input_json` text,
-	`output_json` text,
-	`error` text,
-	FOREIGN KEY (`run_id`) REFERENCES `pipeline_runs`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-
 CREATE TABLE `llm_generations` (
 	`id` text PRIMARY KEY NOT NULL,
 	`owner_id` text DEFAULT 'global' NOT NULL,
 	`chat_id` text NOT NULL,
 	`message_id` text NOT NULL,
 	`variant_id` text,
-	`pipeline_run_id` text,
-	`pipeline_step_run_id` text,
 	`provider_id` text NOT NULL,
 	`model` text NOT NULL,
 	`params_json` text NOT NULL,
@@ -177,9 +133,7 @@ CREATE TABLE `llm_generations` (
 	`error` text,
 	FOREIGN KEY (`chat_id`) REFERENCES `chats`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`message_id`) REFERENCES `chat_messages`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`variant_id`) REFERENCES `message_variants`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`pipeline_run_id`) REFERENCES `pipeline_runs`(`id`) ON UPDATE no action ON DELETE set null,
-	FOREIGN KEY (`pipeline_step_run_id`) REFERENCES `pipeline_step_runs`(`id`) ON UPDATE no action ON DELETE set null
+	FOREIGN KEY (`variant_id`) REFERENCES `message_variants`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE INDEX `llm_generations_chat_started_at_idx` ON `llm_generations` (`chat_id`,`started_at`);

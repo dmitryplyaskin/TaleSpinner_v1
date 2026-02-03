@@ -13,8 +13,6 @@ export type CreateGenerationParams = {
   branchId: string;
   messageId: string; // assistant message id
   variantId: string | null;
-  pipelineRunId?: string | null;
-  pipelineStepRunId?: string | null;
   providerId: string;
   model: string;
   settings: Record<string, unknown>;
@@ -35,8 +33,6 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
     branchId: params.branchId,
     messageId: params.messageId,
     variantId: params.variantId,
-    pipelineRunId: params.pipelineRunId ?? null,
-    pipelineStepRunId: params.pipelineStepRunId ?? null,
     providerId: params.providerId,
     model: params.model,
     paramsJson: safeJsonStringify(params.settings ?? {}, "{}"),
@@ -59,8 +55,6 @@ export type GenerationDto = {
   branchId: string | null;
   messageId: string;
   variantId: string | null;
-  pipelineRunId: string | null;
-  pipelineStepRunId: string | null;
   status: GenerationStatus;
   startedAt: Date;
   finishedAt: Date | null;
@@ -74,8 +68,6 @@ function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
     branchId: row.branchId ?? null,
     messageId: row.messageId,
     variantId: row.variantId ?? null,
-    pipelineRunId: row.pipelineRunId ?? null,
-    pipelineStepRunId: row.pipelineStepRunId ?? null,
     status: row.status,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt ?? null,
@@ -86,19 +78,6 @@ function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
 export async function getGenerationById(id: string): Promise<GenerationDto | null> {
   const db = await initDb();
   const rows = await db.select().from(llmGenerations).where(eq(llmGenerations.id, id)).limit(1);
-  return rows[0] ? rowToDto(rows[0]) : null;
-}
-
-export async function getLatestGenerationForPipelineRun(params: {
-  pipelineRunId: string;
-}): Promise<GenerationDto | null> {
-  const db = await initDb();
-  const rows = await db
-    .select()
-    .from(llmGenerations)
-    .where(eq(llmGenerations.pipelineRunId, params.pipelineRunId))
-    .orderBy(desc(llmGenerations.startedAt), desc(llmGenerations.id))
-    .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 

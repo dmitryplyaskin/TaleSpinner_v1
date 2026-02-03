@@ -7,7 +7,6 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { chatMessages, chats, messageVariants } from "./chat-core";
-import { pipelineRuns, pipelineStepRuns } from "./pipelines";
 
 export const llmGenerations = sqliteTable(
   "llm_generations",
@@ -24,13 +23,6 @@ export const llmGenerations = sqliteTable(
     variantId: text("variant_id").references(() => messageVariants.id, {
       onDelete: "set null",
     }),
-    pipelineRunId: text("pipeline_run_id").references(() => pipelineRuns.id, {
-      onDelete: "set null",
-    }),
-    pipelineStepRunId: text("pipeline_step_run_id").references(
-      () => pipelineStepRuns.id,
-      { onDelete: "set null" }
-    ),
 
     providerId: text("provider_id").notNull(),
     model: text("model").notNull(),

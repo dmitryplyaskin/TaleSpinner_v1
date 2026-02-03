@@ -14,7 +14,6 @@ import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
-import { resolveActivePipelineProfile } from "../services/chat-core/pipeline-profile-resolver";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import {
   createVariantForRegenerate,
@@ -183,12 +182,6 @@ router.post(
       });
 
       // --- Build system prompt and prompt draft (history from entry parts).
-      const activeProfile = await resolveActivePipelineProfile({
-        ownerId,
-        chatId: params.id,
-        entityProfileId: chat.entityProfileId,
-      });
-
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
@@ -224,7 +217,7 @@ router.post(
         systemPrompt,
         historyLimit: 50,
         excludeEntryIds: [assistant.entry.entryId],
-        activeProfileSpec: activeProfile.profile?.spec ?? null,
+        activeProfileSpec: null,
       });
 
       // --- Create generation record (legacy FK targets) and start streaming.
@@ -235,8 +228,6 @@ router.post(
         branchId,
         messageId: legacyAssistant.assistantMessageId,
         variantId: legacyAssistant.variantId,
-        pipelineRunId: null,
-        pipelineStepRunId: null,
         providerId: runtime.providerId,
         model: runtime.model,
         settings: body.settings,
@@ -393,12 +384,6 @@ router.post(
         derived: { legacyMessageId, legacyVariantId: legacyVariant.id },
       });
 
-      const activeProfile = await resolveActivePipelineProfile({
-        ownerId,
-        chatId: entry.chatId,
-        entityProfileId: chat.entityProfileId,
-      });
-
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
@@ -434,7 +419,7 @@ router.post(
         systemPrompt,
         historyLimit: 50,
         excludeEntryIds: [entry.entryId],
-        activeProfileSpec: activeProfile.profile?.spec ?? null,
+        activeProfileSpec: null,
       });
 
       const runtime = await getRuntimeInfo({ ownerId });
@@ -444,8 +429,6 @@ router.post(
         branchId: entry.branchId,
         messageId: legacyMessageId,
         variantId: legacyVariant.id,
-        pipelineRunId: null,
-        pipelineStepRunId: null,
         providerId: runtime.providerId,
         model: runtime.model,
         settings: body.settings,
