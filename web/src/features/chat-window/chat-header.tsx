@@ -1,4 +1,4 @@
-import { Badge, Box, Group, Loader, Select, Text } from '@mantine/core';
+import { Box, Group, Select, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 
@@ -14,52 +14,21 @@ import {
 	deleteChatRequested,
 	openChatRequested,
 } from '@model/chat-core';
-import { $pipelineRuntime } from '@model/pipeline-runtime';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { LuGitBranchPlus, LuMessageSquarePlus, LuTrash2 } from 'react-icons/lu';
 
 export const ChatHeader: React.FC = () => {
-	const [profile, chats, chat, branches, currentBranchId, runtime] = useUnit([
+	const [profile, chats, chat, branches, currentBranchId] = useUnit([
 		$currentEntityProfile,
 		$chatsForCurrentProfile,
 		$currentChat,
 		$branches,
 		$currentBranchId,
-		$pipelineRuntime,
 	]);
 
 	const chatOptions = chats.map((c) => ({ value: c.id, label: c.title || c.id }));
 	const branchOptions = branches.map((b) => ({ value: b.id, label: b.title ?? b.id }));
-
-	const isRuntimeRelevant =
-		Boolean(chat?.id) &&
-		runtime.chatId === chat!.id &&
-		// If backend reports a branch, it must match; otherwise treat as chat-scoped signal.
-		(!runtime.branchId || runtime.branchId === currentBranchId);
-
-	const runtimeStatus = isRuntimeRelevant ? runtime.status : null;
-	const runtimeLabel =
-		runtimeStatus === 'running'
-			? 'идёт'
-			: runtimeStatus === 'done'
-				? 'готово'
-				: runtimeStatus === 'aborted'
-					? 'прервано'
-					: runtimeStatus === 'error'
-						? 'ошибка'
-						: null;
-
-	const runtimeColor =
-		runtimeStatus === 'running'
-			? 'blue'
-			: runtimeStatus === 'done'
-				? 'green'
-				: runtimeStatus === 'aborted'
-					? 'gray'
-					: runtimeStatus === 'error'
-						? 'red'
-						: 'gray';
 
 	return (
 		<Box
@@ -115,14 +84,6 @@ export const ChatHeader: React.FC = () => {
 				</Group>
 
 				<Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-					{runtimeStatus && runtimeStatus !== 'done' && runtimeLabel && (
-						<Group gap={6} wrap="nowrap" title={runtime.lastError?.message ?? undefined}>
-							{runtimeStatus === 'running' && <Loader size="xs" />}
-							<Badge color={runtimeColor} variant="light">
-								Pipeline: {runtimeLabel}
-							</Badge>
-						</Group>
-					)}
 					<Select
 						data={branchOptions}
 						value={currentBranchId ?? null}

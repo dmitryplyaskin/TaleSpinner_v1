@@ -33,7 +33,6 @@ import {
 	streamChatMessage,
 	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
-import { $pipelineRuntime, pipelineSseEnvelopeReceived, refreshPipelineStateRequested } from '../pipeline-runtime';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -338,13 +337,6 @@ sample({
 	target: loadMessagesFx,
 });
 
-// Best-effort pipeline status recovery (SSE disconnect / page refresh).
-sample({
-	clock: setOpenedChat,
-	fn: ({ chat, branchId }) => ({ chatId: chat.id, branchId: branchId ? branchId : undefined }),
-	target: refreshPipelineStateRequested,
-});
-
 export const $isChatStreaming = createStore(false);
 export const $activeGenerationId = createStore<string | null>(null);
 
@@ -458,13 +450,6 @@ export const runStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof s
 
 export const handleSseEnvelope = createEvent<SseEnvelope>();
 
-// Forward pipeline events to pipeline runtime model (v1: debug/observability).
-sample({
-	clock: handleSseEnvelope,
-	filter: (env) => env.type.startsWith('pipeline.run.'),
-	target: pipelineSseEnvelopeReceived,
-});
-
 // Track active stream state for abort button
 $activeStream.on(sendMessageFx.doneData, (_, prep) => ({
 	controller: prep.controller,
@@ -553,12 +538,9 @@ export const doAbort = createEvent<{ stream: ActiveStreamState | null; generatio
 
 sample({
 	clock: abortRequested,
-	source: { stream: $activeStream, generationId: $activeGenerationId, runtime: $pipelineRuntime },
-	filter: ({ stream, generationId, runtime }) => Boolean(stream || generationId || runtime.generationId),
-	fn: ({ stream, generationId, runtime }) => ({
-		stream,
-		generationId: generationId ?? runtime.generationId ?? null,
-	}),
+	source: { stream: $activeStream, generationId: $activeGenerationId },
+	filter: ({ stream, generationId }) => Boolean(stream || generationId),
+	fn: ({ stream, generationId }) => ({ stream, generationId }),
 	target: doAbort,
 });
 
@@ -569,12 +551,6 @@ doAbort.watch(({ stream, generationId }) => {
 
 // Streaming state for the UI (button toggles / input disabled)
 $isChatStreaming.on(runStreamFx, () => true).on(runStreamFx.finally, () => false);
-
-sample({
-	clock: runStreamFx.finally,
-	fn: ({ params }) => ({ chatId: params.chatId, branchId: params.branchId ? params.branchId : undefined }),
-	target: refreshPipelineStateRequested,
-});
 
 // ---- Variants: select / regenerate (last assistant message)
 
@@ -675,12 +651,6 @@ sample({
 });
 
 $isChatStreaming.on(runRegenerateStreamFx, () => true).on(runRegenerateStreamFx.finally, () => false);
-
-sample({
-	clock: runRegenerateStreamFx.finally,
-	fn: ({ params }) => ({ chatId: params.chatId, branchId: params.branchId ? params.branchId : undefined }),
-	target: refreshPipelineStateRequested,
-});
 
 // ---- Edit/Delete messages (v1)
 

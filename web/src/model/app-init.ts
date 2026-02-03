@@ -4,7 +4,6 @@ import { fetchAppSettingsFx } from './app-settings';
 import { loadEntityProfilesFx } from './chat-core';
 import { instructionsModel } from './instructions';
 import { fetchSettingsFx as fetchLlmSettingsFx } from './llm-settings';
-import { pipelinesModel } from './pipelines';
 import { llmProviderModel } from './provider';
 import { samplersModel } from './samplers';
 import { getSettingsFx as fetchSidebarsFx } from './sidebars';
@@ -27,8 +26,6 @@ export const appInitFx = createEffect(async (): Promise<void> => {
 		loadEntityProfilesFx(),
 		instructionsModel.getSettingsFx(),
 		instructionsModel.getItemsFx(),
-		pipelinesModel.getSettingsFx(),
-		pipelinesModel.getItemsFx(),
 		userPersonsModel.getSettingsFx(),
 		userPersonsModel.getItemsFx(),
 		samplersModel.getSettingsFx(),

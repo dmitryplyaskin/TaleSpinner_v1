@@ -1,8 +1,7 @@
-import { type PipelineItemType } from '@shared/types/pipelines';
 import { attach, createEffect, createEvent, createStore, sample } from 'effector';
 
 import { templatesModel } from '@model/template';
-import { createNewMessage, createNewSwipeComponent } from '@utils/creation-helper-agent-card';
+import { createNewMessage } from '@utils/creation-helper-agent-card';
 import { getLastMessageState } from '@utils/get-agent-card-ids';
 
 import { buildMessages } from '../../../utils/build-messages';
@@ -108,45 +107,5 @@ sample({
 sample({
 	clock: completionsFx,
 	target: [clearUserMessage],
-});
-
-type PipelineCompletionsFxProps = {
-	pipeline: PipelineItemType;
-};
-
-export const pipelineCompletionsFx = createEffect(async ({ pipeline }: PipelineCompletionsFxProps) => {
-	const streamId_ = streamController.createStream();
-	addStreamId({ streamId: streamId_, streamName: pipeline.id });
-
-	const agentCard = $currentAgentCard.getState();
-	if (!agentCard) return;
-
-	const messages = buildMessages(agentCard);
-
-	const assistantMessage = createNewMessage({ role: 'assistant', content: '' });
-	const newSwipeComponent = createNewSwipeComponent({ content: '', type: 'reasoning' });
-
-	assistantMessage.message.swipes[0].components.unshift(newSwipeComponent.content);
-
-	addNewAssistantMessage(assistantMessage.message);
-
-	const templatedPrompt = renderTemplate(pipeline.prompt, { messagesHistory: messages });
-
-	await generate({
-		llmSettings: undefined,
-		messages: [{ role: 'system', content: templatedPrompt }],
-		stream: true,
-		streamId: streamId_,
-		streamCb: ({ chunk }) => {
-			updateSwipeStream({
-				messageId: assistantMessage.messageId,
-				swipeId: assistantMessage.swipeId,
-				componentId: newSwipeComponent.contentId,
-				content: chunk,
-			});
-		},
-	});
-
-	await completionsFx({ type: 'current-message', userMessage: '' });
 });
 
