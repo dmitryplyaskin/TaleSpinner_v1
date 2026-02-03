@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import { type NextFunction, type Request, type Response } from "express";
 
 import { type ApiErrorBody } from "@core/http/response";
 import { type Logger } from "@core/types/common";
@@ -28,7 +28,8 @@ const toErrorBody = (
 });
 
 export const errorHandler = (logger?: Logger) => {
-  return (error: Error, req: Request, res: Response) => {
+  // Express recognizes error middleware by 4 params: (err, req, res, next)
+  return (error: Error, req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof HttpError) {
       logger?.error(error.message, {
         statusCode: error.statusCode,

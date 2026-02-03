@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { routes } from "./api/_routes_";
 import staticRouter from "./api/static.api";
 import { errorHandler } from "./core/middleware/error-handler";
+import { applyMigrations } from "./db/apply-migrations";
 import { initDb } from "./db/client";
 import appSettingsRoutes from "./routes/app-settings-routes";
 import generateRoutes from "./routes/generate-routes";
@@ -41,6 +42,7 @@ app.use(errorHandler(console));
 
 async function main(): Promise<void> {
   await initDb();
+  await applyMigrations();
   await bootstrapLlm();
 
   app.listen(port, () => {

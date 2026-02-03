@@ -4,17 +4,20 @@ import React, { useEffect, useRef } from 'react';
 
 import BGImages from '../../assets/bg.png';
 
-import { $currentAgentCard } from '@model/chat-service';
+import { $currentChat } from '@model/chat-core';
+import { $entries } from '@model/chat-entry-parts';
 
+import { ChatHeader } from './chat-header';
 import { MessageInput } from './input';
 import { RenderChat } from './render-chat';
 
 export const ChatWindow: React.FC = () => {
-	const currentAgentCard = useUnit($currentAgentCard);
+	const chat = useUnit($currentChat);
+	const entries = useUnit($entries);
 	const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
-		if (!currentAgentCard) return;
+		if (!chat) return;
 
 		const scrollToBottom = () => {
 			messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
@@ -25,7 +28,7 @@ export const ChatWindow: React.FC = () => {
 			scrollToBottom();
 			requestAnimationFrame(scrollToBottom);
 		});
-	}, [currentAgentCard?.id]);
+	}, [chat?.id, entries.length]);
 
 	return (
 		<Flex
@@ -56,7 +59,7 @@ export const ChatWindow: React.FC = () => {
 						flex: 1,
 						minHeight: 0,
 						overflowY: 'auto',
-						paddingTop: 16,
+						paddingTop: 0,
 						paddingBottom: 0,
 						backgroundColor: 'rgba(0,0,0,0.08)',
 						backdropFilter: 'blur(4px)',
@@ -64,6 +67,8 @@ export const ChatWindow: React.FC = () => {
 						paddingInline: 12,
 					}}
 				>
+					<ChatHeader />
+					<Box pt={16}>
 					<RenderChat />
 					<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
 
@@ -75,6 +80,7 @@ export const ChatWindow: React.FC = () => {
 						}}
 					>
 						<MessageInput />
+					</Box>
 					</Box>
 				</Box>
 			</Container>

@@ -1,8 +1,6 @@
-import { ActionIcon, Button, Group, Paper, Stack, Switch, TextInput, Textarea, Text } from '@mantine/core';
+import { Button, Group, Paper, Stack, TextInput, Textarea } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React, { useState } from 'react';
-import { LuPlus, LuX } from 'react-icons/lu';
-import { v4 as uuidv4 } from 'uuid';
 
 import { userPersonsModel } from '@model/user-persons';
 
@@ -15,51 +13,20 @@ interface UserPersonEditorProps {
 
 export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClose }) => {
 	const [personData, setPersonData] = useState<UserPersonType>(data);
-	const [contentType, setContentType] = useState(data.type);
 
 	const handleSave = () => {
-		userPersonsModel.updateItemFx(personData);
-		onClose();
-	};
-
-	const handleAddField = () => {
-		if (personData.type === 'extended') {
-			const newField = {
-				id: uuidv4(),
-				name: '',
-				value: '',
-				isEnabled: true,
-			};
-			setPersonData({
-				...personData,
-				contentTypeExtended: personData.contentTypeExtended
-					? [...personData.contentTypeExtended, newField]
-					: [newField],
-			});
-		}
-	};
-
-	const handleRemoveField = (id: string) => {
-		if (personData.type === 'extended' && personData.contentTypeExtended) {
-			setPersonData({
-				...personData,
-				contentTypeExtended: personData.contentTypeExtended.filter((field) => field.id !== id),
-			});
-		}
-	};
-
-	const handleContentTypeChange = (type: 'default' | 'extended') => {
-		setContentType(type);
-		setPersonData({
+		userPersonsModel.updateItemFx({
 			...personData,
-			type,
+			type: 'default',
 		});
+		onClose();
 	};
 
 	const handleAvatarChange = (avatarUrl: string) => {
 		const updatedData = {
 			...personData,
 			avatarUrl,
+			type: 'default' as const,
 		};
 
 		setPersonData(updatedData);
@@ -92,89 +59,19 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 					onChange={(e) => setPersonData({ ...personData, prefix: e.currentTarget.value })}
 				/>
 
-				<Switch
-					checked={contentType === 'extended'}
-					onChange={(e) => handleContentTypeChange(e.currentTarget.checked ? 'extended' : 'default')}
-					label="Расширенная версия персоны"
+				<Textarea
+					label="Описание"
+					value={personData.contentTypeDefault || ''}
+					autosize
+					minRows={6}
+					onChange={(e) =>
+						setPersonData({
+							...personData,
+							type: 'default',
+							contentTypeDefault: e.currentTarget.value,
+						})
+					}
 				/>
-
-				{contentType === 'default' ? (
-					<Textarea
-						label="Описание"
-						value={personData.contentTypeDefault || ''}
-						autosize
-						minRows={6}
-						onChange={(e) =>
-							setPersonData({
-								...personData,
-								contentTypeDefault: e.currentTarget.value,
-							})
-						}
-					/>
-				) : (
-					<Stack gap="sm">
-						<Group justify="space-between" align="center">
-							<Text fw={500}>Дополнительные поля</Text>
-							<ActionIcon aria-label="Add field" size="sm" variant="outline" onClick={handleAddField}>
-								<LuPlus />
-							</ActionIcon>
-						</Group>
-						{personData.contentTypeExtended && (
-							<Stack gap="sm">
-								{personData.contentTypeExtended?.map((field) => (
-									<Stack key={field.id} gap="xs">
-										<TextInput
-											placeholder="Название поля"
-											value={field.name || ''}
-											onChange={(e) =>
-												setPersonData({
-													...personData,
-													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, name: e.currentTarget.value } : f,
-													),
-												})
-											}
-										/>
-										<TextInput
-											placeholder="Тег"
-											value={field.tagName || ''}
-											onChange={(e) =>
-												setPersonData({
-													...personData,
-													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, tagName: e.currentTarget.value } : f,
-													),
-												})
-											}
-										/>
-										<Textarea
-											autosize
-											placeholder="Значение"
-											value={field.value}
-											onChange={(e) =>
-												setPersonData({
-													...personData,
-													contentTypeExtended: personData.contentTypeExtended?.map((f) =>
-														f.id === field.id ? { ...f, value: e.currentTarget.value } : f,
-													),
-												})
-											}
-										/>
-										<ActionIcon
-											aria-label="Remove field"
-											size="sm"
-											variant="outline"
-											color="red"
-											onClick={() => handleRemoveField(field.id)}
-										>
-											<LuX />
-										</ActionIcon>
-									</Stack>
-								))}
-							</Stack>
-						)}
-					</Stack>
-				)}
 
 				<Group justify="flex-end" gap="sm">
 					<Button variant="subtle" onClick={onClose}>

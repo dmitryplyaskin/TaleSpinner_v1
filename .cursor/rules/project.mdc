@@ -2,39 +2,48 @@
 alwaysApply: true
 ---
 
-# Project overview: TaleSpinner
+# System context: TaleSpinner
 
-**TaleSpinner** is a **self-hosted web application** (currently web-only) for interacting with **LLMs** in a chat/RP workflow, with support for reusable **agent cards**, **personas**, **instructions/system prompts**, **templates**, and **pipelines**.
+TaleSpinner is a **self-hosted web application** for interacting with LLMs in a chat / roleplay workflow.
 
-## What we build in this repo
+## Scope of this repository
 
-- **Chat orchestration**: streaming generation, abort/retry, message history handling, and multi-branch / swipe-like UX where applicable.
-- **Reusable assets**:
-  - **Agent cards / chats** (including imported metadata when relevant)
-  - **User personas**
-  - **Instructions** (system prompt presets)
-  - **Templates** (prompt templating)
-  - **Pipelines** (multi-step prompt chains; agents/workflows will grow here)
-  - **Samplers / generation settings**
-- **App configuration**: self-hosted settings, UI preferences, provider configuration.
-- **Provider integrations**: **OpenRouter is primary**; additional providers may be added later.
+- Chat orchestration:
+  - streaming generation
+  - abort / retry
+  - message history handling
+  - multi-branch / “swipe-like” UX where applicable
+- Reusable assets:
+  - agent cards / chats (including imported metadata when relevant)
+  - user personas
+  - instructions (system prompt presets)
+  - templates (prompt templating)
+  - pipelines (multi-step prompt chains; agents / workflows live here)
+  - samplers / generation settings
+- App configuration:
+  - self-hosted settings
+  - UI preferences
+  - provider configuration
+- Provider integrations:
+  - primary: **OpenRouter**
+  - others may be added later
 
 ## Platform & deployment
 
-- **Target platform**: web-only for now.
-- **Deployment**: self-hosted.
+- Target platform: web-only (for now)
+- Deployment: self-hosted
 
-## Persistence roadmap
+## Persistence
 
-- **Current state**: some data/settings are stored in JSON (legacy / transitional).
-- **Near-term goal**: migrate persistence to a proper **database** (JSON storage will be removed).
+- Current: some data / settings stored as JSON (legacy / transitional)
+- Goal: migrate persistence to a proper database (JSON storage will be removed)
 
 ## Language & localization
 
-- **Current focus**: English-only UI and user-facing strings.
-- **Later**: i18n will be introduced (not a hard requirement for every new UI string today).
+- Current: English-only UI and user-facing strings
+- Future: i18n can be introduced later (not required for each new string today)
 
-## Repository layout (high-level)
+## Repository layout (high level)
 
 - `web/` — frontend (Vite + React + TypeScript)
 - `server/` — backend API (Node.js + TypeScript)

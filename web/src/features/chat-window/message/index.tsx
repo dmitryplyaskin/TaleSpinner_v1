@@ -1,92 +1,33 @@
-import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
-import { type InteractionMessage } from '@shared/types/agent-card';
+import { Avatar, Box, Flex, Stack, Text } from '@mantine/core';
+import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
 import { useUnit } from 'effector-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 
-import { $currentAgentCard, deleteMessage, updateSwipe } from '@model/chat-service';
-import { RenderMd } from '@ui/render-md';
+import { $currentEntityProfile } from '@model/chat-core';
+import { $currentTurn, $isChatStreaming } from '@model/chat-entry-parts';
 
-import { autosizeTextarea } from '../input/use-autosize-textarea';
-
-import { ActionBar } from './action-bar';
 import { AssistantIcon } from './assistant-icon';
-import { ReasoningBlock } from './reasoning-block';
-import { SwipeControls } from './swipe-controls';
+import { VariantControls } from './variant-controls';
+import { PartsView } from './parts/parts-view';
 
 type MessageProps = {
-	data: InteractionMessage;
+	data: ChatEntryWithVariantDto;
+	isLast: boolean;
 };
 
-export const Message: React.FC<MessageProps> = ({ data }) => {
-	const currentAgentCard = useUnit($currentAgentCard);
+export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
+	const currentProfile = useUnit($currentEntityProfile);
+	const isStreaming = useUnit($isChatStreaming);
+	const currentTurn = useUnit($currentTurn);
 
-	const selectedSwipe = useMemo(
-		() => data.swipes.find((swipe) => swipe.id === data.activeSwipeId),
-		[data.activeSwipeId, data.swipes],
-	);
-	const answer = useMemo(
-		() => selectedSwipe?.components.find((component) => component.type === 'answer'),
-		[selectedSwipe],
-	);
-
-	const reasoning = useMemo(
-		() => selectedSwipe?.components.filter((component) => component.type === 'reasoning') || [],
-		[selectedSwipe],
-	);
-
-	const answerContent = answer?.content || '';
-
-	const [isEditing, setIsEditing] = useState(false);
-	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-	const initialContentRef = useRef<string>(answerContent);
-
-	const isUser = data.role === 'user';
-	const isAssistant = data.role === 'assistant';
-	const assistantName = currentAgentCard?.name || 'AI Assistant';
-
-	useEffect(() => {
-		if (!isEditing) initialContentRef.current = answerContent;
-	}, [answerContent, isEditing]);
-
-	useEffect(() => {
-		if (!isEditing) return;
-
-		const textarea = textareaRef.current;
-		if (!textarea) return;
-
-		autosizeTextarea(textarea, { minRows: 1 });
-		textarea.focus();
-		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-	}, [isEditing]);
+	const isUser = data.entry.role === 'user';
+	const isAssistant = data.entry.role === 'assistant';
+	const assistantName = currentProfile?.name || 'AI Assistant';
+	const tsLabel = useMemo(() => new Date(data.entry.createdAt).toLocaleTimeString(), [data.entry.createdAt]);
 
 	const avatarColW = '64px';
-
-	const handleOpenEdit = () => {
-		initialContentRef.current = answerContent;
-		setIsEditing(true);
-	};
-
-	const handleCancelEdit = () => {
-		setIsEditing(false);
-	};
-
-	const handleConfirmEdit = () => {
-		if (!answer || !selectedSwipe?.id) return;
-
-		const nextContent = textareaRef.current?.value ?? initialContentRef.current;
-
-		updateSwipe({
-			messageId: data.id,
-			swipeId: selectedSwipe.id,
-			componentId: answer.id,
-			content: nextContent,
-		});
-		setIsEditing(false);
-	};
-
-	const handleDelete = () => {
-		deleteMessage(data.id);
-	};
+	const isOptimistic =
+		String(data.entry.entryId).startsWith('local_') || (typeof data.entry.meta === 'object' && Boolean((data.entry.meta as any)?.optimistic));
 
 	return (
 		<Box
@@ -104,16 +45,6 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 
 			<Box style={{ minWidth: 0 }}>
 				<Stack gap="xs" style={{ width: '100%' }}>
-					{reasoning.length > 0 &&
-						reasoning.map((reasoning) => (
-							<ReasoningBlock
-								data={reasoning}
-								key={reasoning.id}
-								messageId={data.id}
-								swipeId={selectedSwipe?.id || ''}
-							/>
-						))}
-
 					<Box
 						style={{
 							position: 'relative',
@@ -132,44 +63,26 @@ export const Message: React.FC<MessageProps> = ({ data }) => {
 									{isUser ? 'You' : assistantName}
 								</Text>
 								<Text size="xs" c="dimmed">
-									{new Date(data.timestamp).toLocaleTimeString()}
+									{tsLabel}
 								</Text>
+								{isLast && isAssistant && isStreaming && (
+									<Text size="xs" c="dimmed">
+										Streaming…
+									</Text>
+								)}
+								{isOptimistic && (
+									<Text size="xs" c="dimmed">
+										Saving…
+									</Text>
+								)}
 							</Stack>
-
-							{answer && selectedSwipe?.id ? (
-								<ActionBar
-									placement="inline"
-									isEditing={isEditing}
-									onOpenEdit={handleOpenEdit}
-									onCancelEdit={handleCancelEdit}
-									onConfirmEdit={handleConfirmEdit}
-									onDelete={handleDelete}
-								/>
-							) : null}
+							{isAssistant && <VariantControls entry={data} isLast={isLast} />}
 						</Flex>
 
 						<Box mt="xs" style={{ width: '100%', position: 'relative' }}>
-							{isEditing ? (
-								<Textarea
-									ref={textareaRef}
-									defaultValue={initialContentRef.current}
-									spellCheck={false}
-									autosize
-									minRows={1}
-									style={{ width: '100%' }}
-									styles={{
-										root: { width: '100%' },
-										input: { width: '100%', display: 'block' },
-									}}
-									onInput={(e) => autosizeTextarea(e.currentTarget, { minRows: 1 })}
-								/>
-							) : (
-								<RenderMd content={answerContent} />
-							)}
+							<PartsView entry={data.entry} variant={data.variant} currentTurn={currentTurn} />
 						</Box>
 					</Box>
-
-					<SwipeControls data={data} />
 				</Stack>
 			</Box>
 

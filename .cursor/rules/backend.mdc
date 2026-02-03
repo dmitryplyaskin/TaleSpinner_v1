@@ -1,144 +1,126 @@
 ---
-description: Backend, Server, Node.js, Express, SQLite, API design, services layer and other backend or server features
+description: Backend (server/): Node.js + Express + TypeScript + SQLite/Drizzle — API and services protocol
 alwaysApply: false
 ---
 
-## Role
+## Backend task protocol
 
-You are a Senior Backend Developer for this project (Node.js + Express + TypeScript).
-Write production-grade code: strict types, predictable HTTP behavior, clear module boundaries, and no “god files”.
+When editing or creating backend code under `server/`, follow these **non‑negotiable rules**.
 
-## Current backend stack (this repo)
+### Output format
 
-- **Location**: `server/` (Node.js + TypeScript)
-- **HTTP**: **Express v5**
-- **Validation**: **zod** (+ `validate` middleware)
-- **LLM provider**: **OpenRouter** via **OpenAI SDK** (`openai`)
-- **Files/media**: `multer` uploads + static `/media` from `data/media`
-- **Persistence (current reality)**:
-  - primary: **JSON files under `data/`** (legacy / transitional)
-  - WIP: **SQLite + Drizzle** (`better-sqlite3` + `drizzle-orm`, migrations in `server/drizzle/`)
-  - target: **fully move away from JSON to DB** (do not expand JSON persistence in new code)
-- **Package manager**: **Yarn Classic (1.x)** (do not suggest npm/pnpm)
+- Prefer returning:
+  - a single TypeScript code block for the relevant file(s), or
+  - a minimal diff description + code block
+- Keep narrative text minimal; focus on code and short rationales.
+- Ask for clarification before large changes if the requirements are ambiguous.
 
-## Non-negotiable constraints
+### Backend stack (must respect)
 
-- **Package manager:** use **Yarn only**. Never suggest npm/pnpm.
-- **Runtime:** Node.js, TypeScript. Build output goes to `server/dist/` via `tsc`.
-- **Framework:** **Express**. Keep HTTP layer thin; orchestration lives outside routers.
-- **Comments:** if you write comments in code, they must be **in English**.
-- **No heavy infra**: don’t introduce new frameworks/ORMs/loggers unless explicitly requested (Drizzle is already present).
+- Location: `server/` (Node.js + TypeScript)
+- HTTP: **Express v5**
+- Validation: **zod** with shared `validate` middleware
+- LLM provider: **OpenRouter** via **OpenAI SDK** (`openai`)
+- Files/media: `multer` uploads + static `/media` from `data/media`
+- Persistence (current reality):
+  - primary: JSON files under `data/` (legacy / transitional)
+  - WIP: SQLite + Drizzle (`better-sqlite3` + `drizzle-orm`, migrations in `server/drizzle/`)
+  - target: fully move away from JSON; do **not** expand JSON persistence
+- Package manager: **Yarn Classic (1.x)** — never suggest npm/pnpm
 
-## Repository structure (follow existing layout)
+### Architecture and module boundaries
 
-- `server/src/index.ts` — Express app bootstrap: middleware, routes, final `errorHandler`, listen.
-- `server/src/routes/*` — **legacy** “handwritten” routes (still used).
-- `server/src/api/*` — **preferred** modular API (routers created via factories/controllers).
-- `server/src/core/*` — framework glue:
-  - `core/middleware/*` — `asyncHandler`, `errorHandler`, `validate`
-  - `core/http/response.ts` — `ApiResult` contract (`data` / `error`, `raw`, `headers`, `status`)
-  - `core/factories/*` — `RouteFactory` + controllers factory (`CrudController`, `ConfigController`, `GeneralController`)
-  - `core/services/*` — file-based “repositories” (`BaseService`, `ConfigService`)
-  - `core/types/*` — shared backend types (`BaseEntity`, `Logger`, etc.)
-- `server/src/services/*` — domain services (agent cards, templates, settings, OpenRouter, files, etc.)
-- `server/src/db/*` + `server/drizzle/*` — SQLite+Drizzle scaffolding (migrations are applied via script, runtime usage may be WIP)
-- `shared/types/*` — shared contracts between frontend and backend
+- Follow existing structure:
+  - `server/src/index.ts` — Express app bootstrap (middleware, routes, final `errorHandler`, listen)
+  - `server/src/routes/*` — legacy routes
+  - `server/src/api/*` — preferred modular API (factory-based routers/controllers)
+  - `server/src/core/*` — framework glue:
+    - `core/middleware/*` — `asyncHandler`, `errorHandler`, `validate`
+    - `core/http/response.ts` — `ApiResult` contract
+    - `core/factories/*` — route and controller factories
+    - `core/services/*` — file-based repositories
+    - `core/types/*` — shared backend types
+  - `server/src/services/*` — domain services
+  - `server/src/db/*` + `server/drizzle/*` — SQLite+Drizzle
+  - `shared/types/*` — shared contracts with frontend
+- Import/architecture rules:
+  - HTTP layer (`routes/*`, `api/*`, `core/factories/*`) may import:
+    - domain services (`server/src/services/*`)
+    - core helpers (`server/src/core/*`)
+    - shared types (`shared/types/*`)
+  - Domain services must **not** import Express request/response types and must not depend on HTTP layer.
+  - File-based persistence lives in `core/services/*` and is an implementation detail.
+  - Avoid circular dependencies; if needed, extract a small shared module.
 
-## Architectural rules (strict enough to keep sane)
+### TypeScript rules
 
-- **HTTP layer** (`routes/*`, `api/*`, `core/factories/*`) may import:
-  - domain services (`server/src/services/*`)
-  - core helpers (`server/src/core/*`)
-  - shared types (`shared/types/*`)
-- **Domain services** must not import Express request/response types and must not know how HTTP is shaped.
-- **File-based persistence** lives in `core/services/*` (today) and should be treated as an infrastructure detail.
-- Avoid circular dependencies. If two domains need each other, extract a small shared abstraction/module.
-
-## TypeScript rules (strict)
-
-- **No new `any`** in new/modified code. Use `unknown` + guards, or proper generics.
-- Public (exported) functions must have explicit return types.
-- Prefer `interface` for object shapes and `type` for unions/utility types.
-- Do not use `// @ts-ignore`. If absolutely unavoidable, use `// @ts-expect-error -- <reason>` with an English reason.
+- No new `any` in new or modified code.
+- Exported functions must have explicit return types.
+- Prefer `interface` for object shapes, `type` for unions/utility types.
+- Do not use `// @ts-ignore`. If absolutely necessary, use `// @ts-expect-error -- <reason>` (English reason).
 - Prefer `import type { ... }` for type-only imports.
 
-## HTTP/API conventions (Express)
+### HTTP/API conventions
 
-- Validate and normalize input early (params/query/body) using **zod**.
-  - Prefer the shared `validate({ params, query, body })` middleware.
-  - Avoid `req.body as Type` without runtime validation.
+- Validate and normalize input early using **zod** and `validate({ params, query, body })`.
+- Avoid `req.body as Type` without runtime validation.
 - Prefer the **“new” API style** for new endpoints:
-  - return `ApiResult` from handlers (`{ data: ... }`, or `{ data, headers, raw: true }`)
-  - wrap handlers with `asyncHandler`
-- **Errors**:
+  - handlers return `ApiResult` (`{ data: ... }` or `{ data, headers, raw: true }`)
+  - handlers are wrapped with `asyncHandler`
+- Error handling:
   - throw `HttpError(status, message, code?, details?)` for expected failures
-  - rely on the final `errorHandler` middleware to shape `ApiErrorBody`
-  - never leak stack traces/secret values to clients
-- Use early returns and small functions to keep flow readable.
+  - rely on final `errorHandler` to shape `ApiErrorBody`
+  - never leak stack traces or secrets to clients
+- Use early returns and small functions for readability.
 
-## Streaming (SSE) & concurrency
+### Streaming & concurrency
 
-- For SSE endpoints (generation streaming):
-  - always set proper SSE headers
+- For SSE endpoints:
+  - set proper SSE headers
   - track streams by id and ensure cleanup (`finally` removing controllers)
   - support aborts via `AbortController`
-- For heavy I/O (files/images):
+- For heavy I/O:
   - avoid unbounded parallelism
   - validate file types/sizes
-  - prefer async FS (`fs/promises`) over sync FS in request path
+  - prefer `fs/promises` over synchronous FS in request paths
 
-## Data paths & persistence rules (important for correctness)
+### Data paths & persistence
 
-- The project stores data under `server/data/` (JSON entities/config + media).
-- **Migration direction**: JSON persistence is legacy. For new features, prefer **DB-backed storage** (Drizzle/SQLite) or introduce a repository abstraction so the storage can be swapped without rewriting HTTP/services.
-- **Do not rely on `__dirname` for data paths in runtime-critical code** (it breaks after `tsc` into `dist/`).
-  - Prefer `process.cwd()` + env vars (e.g. `DB_PATH`) for path resolution.
-  - If you introduce a new path, make it configurable and keep one source of truth.
-- File-based “DB” writes should be safe:
-  - avoid partially-written JSON (consider atomic write: temp → rename)
+- Data lives under `server/data/` (JSON entities/config + media).
+- Migration direction: from JSON to DB (Drizzle/SQLite) for new features.
+- Do not rely on `__dirname` for data paths in runtime-critical code:
+  - prefer `process.cwd()` + env (e.g. `DB_PATH`)
+  - keep one source of truth for paths
+- File-based writes should be safe:
+  - avoid partially-written JSON (temp → atomic rename)
   - consider minimal in-memory locking for concurrent writes if you touch that code
 
-## Security rules (mandatory)
+### Security
 
-- **Never serve `data/` wholesale as static** (it can expose configs/secrets). Only serve explicitly public folders (e.g. `data/media` via `/media`).
-- **Secrets**:
-  - do not return API keys in API responses (mask in UI-facing endpoints)
-  - prefer env/config for secrets (today some config may still live in `data/config/*` — treat as sensitive)
-- Always enforce payload limits for JSON and uploads; don’t increase limits without a clear reason.
+- Never serve `data/` wholesale as static; only expose explicitly public folders (e.g. `data/media` via `/media`).
+- Secrets:
+  - never return API keys in responses (mask in UI-facing endpoints)
+  - prefer env/config for secrets (treat `data/config/*` as sensitive)
+- Enforce payload limits for JSON and uploads; don’t increase without a clear reason.
 
-## No “god files” (mandatory decomposition)
+### Decomposition (no “god files”)
 
-- **One file = one responsibility.**
-- If a module grows beyond ~200 lines or mixes concerns (HTTP + business + infra), split it:
-  - route handlers stay in `routes/`
-  - orchestration rules in `services/`
-  - framework glue in `core/`
-  - persistence/infra in `core/services/` and/or `db/`
+- One file = one responsibility.
+- If a module grows beyond ~200 lines or mixes concerns:
+  - route handlers → `routes/`
+  - orchestration → `services/`
+  - framework glue → `core/`
+  - persistence/infra → `core/services/` or `db/`
 
-## How to verify (mandatory)
+### Verification commands
 
-After completing **any** backend coding task, run type checks and fix issues until they are clean:
+After any backend changes, run type checks and fix all issues:
 
 - From repo root:
   - `yarn typecheck:server`
-- Or directly:
+- Or:
   - `yarn -C server typecheck`
+- DB migrations when relevant:
+  - `yarn -C server db:migrate`
 
-## Command execution policy (IMPORTANT)
-
-Goal: avoid large auto-generated diffs, context desync, and runaway cost/iterations when tools rewrite files.
-
-- **STRICTLY FORBIDDEN (without explicit user permission)**:
-  - Any **lint / formatter / auto-fix** commands, including (examples):
-    - `eslint ...`, `yarn lint`, `yarn eslint ...`
-    - `prettier ...`, `yarn format`, `prettier --check`, `prettier --write`
-    - `stylelint ...`, `biome ...`, `rome ...`
-    - any command that **rewrites many files automatically** or applies formatting fixes
-- **Allowed verification commands (do not rewrite code)**:
-  - `yarn typecheck:server`
-  - `yarn -C server typecheck`
-  - DB migrations (only when relevant): `yarn -C server db:migrate`
-
-**CRITICAL: LLM must NEVER run lint/formatter commands automatically.** Linting is only for manual execution by the developer.
-
-If you worked on DB migrations, use: `yarn -C server db:migrate`
+**Never** run lint/formatter commands or any bulk auto-fix tools without explicit user permission.

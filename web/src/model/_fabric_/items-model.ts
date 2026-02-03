@@ -9,6 +9,15 @@ import { BASE_URL } from '../../const';
 
 import { type FabricItems } from './types';
 
+async function safeReadJson(response: Response): Promise<unknown> {
+	const text = await response.text();
+	try {
+		return text ? JSON.parse(text) : {};
+	} catch {
+		throw new Error(`HTTP ${response.status} ${response.statusText}`);
+	}
+}
+
 
 
 
@@ -22,14 +31,24 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 	const getItemsFx = createEffect<void, { data: ItemType[] }>(() =>
 		asyncHandler(async () => {
 			const response = await fetch(`${BASE_URL}${itemsParams.route}`);
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType[]; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error fetching ${fabricName} items`),
 	);
 
 	const getItemByIdFx = createEffect<string, { data: ItemType }>((id) =>
 		asyncHandler(async () => {
 			const response = await fetch(`${BASE_URL}${itemsParams.route}/${id}`);
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error fetching ${fabricName} item by id`),
 	);
 
@@ -42,7 +61,12 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 				},
 				body: JSON.stringify(item),
 			});
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error creating ${fabricName} item`),
 	);
 
@@ -57,11 +81,16 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 				body: JSON.stringify(newItem),
 			});
 
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error updating ${fabricName} item`),
 	);
 
-	const deleteItemFx = createEffect<string, { data: ItemType }>((id) =>
+	const deleteItemFx = createEffect<string, { data: ItemType } | undefined>((id) =>
 		asyncHandler(async () => {
 			if (!window.confirm(`Вы уверены, что хотите удалить этот ${fabricName}?`)) {
 				return;
@@ -69,7 +98,12 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 			const response = await fetch(`${BASE_URL}${itemsParams.route}/${id}`, {
 				method: 'DELETE',
 			});
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error deleting ${fabricName} item`),
 	);
 
@@ -89,7 +123,12 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 				},
 				body: JSON.stringify(newItem),
 			});
-			return response.json();
+			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
+			if (!response.ok) {
+				const message = json?.error?.message ?? `HTTP error ${response.status}`;
+				throw new Error(message);
+			}
+			return json;
 		}, `Error duplicating ${fabricName} item`),
 	);
 
@@ -107,7 +146,10 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 	$items
 		.on([createItemFx.doneData, duplicateItemFx.doneData], (state, { data }) => [...state, data])
 		.on(updateItemFx.doneData, (state, { data }) => state.map((i) => (i.id === data.id ? data : i)))
-		.on(deleteItemFx.doneData, (state, { data }) => state.filter((i) => i.id !== data.id))
+		.on(deleteItemFx.doneData, (state, payload) => {
+			if (!payload) return state;
+			return state.filter((i) => i.id !== payload.data.id);
+		})
 		.on([changeItem, changeItemDebounced_], (state, item) => state.map((i) => (i.id === item.id ? item : i)));
 
 	return {

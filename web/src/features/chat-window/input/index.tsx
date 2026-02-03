@@ -2,15 +2,15 @@ import { Box, Button, Flex, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useRef } from 'react';
 
-import { $isCompletionsProcessing, attachCompletionsFx } from '@model/llm-orchestration';
-import { $userMessage, setUserMessage } from '@model/llm-orchestration/user-message';
+import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-entry-parts';
+import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
 import { SendActionMenu } from './send-action-menu';
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
 
 export const MessageInput = () => {
-	const isProcessing = useUnit($isCompletionsProcessing);
+	const isProcessing = useUnit($isChatStreaming);
 	const message = useUnit($userMessage);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -19,7 +19,12 @@ export const MessageInput = () => {
 	};
 
 	const handleSendMessage = () => {
-		attachCompletionsFx('new-message');
+		if (isProcessing) {
+			abortRequested();
+			return;
+		}
+		sendMessageRequested({ promptText: message, role: 'user' });
+		clearUserMessage();
 	};
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

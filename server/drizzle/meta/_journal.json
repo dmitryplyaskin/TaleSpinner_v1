@@ -29,6 +29,34 @@
       "when": 1768740646272,
       "tag": "0003_ui_sidebars_state",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1768830919778,
+      "tag": "0004_chat_core_v1",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1768906200000,
+      "tag": "0005_user_persons",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1768952400000,
+      "tag": "0010_operation_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769950000000,
+      "tag": "0011_chat_entry_parts",
+      "breakpoints": true
     }
   ]
 }

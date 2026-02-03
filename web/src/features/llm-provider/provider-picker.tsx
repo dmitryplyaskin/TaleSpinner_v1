@@ -1,4 +1,4 @@
-import { Button, Group, Input, Select, Stack, Text, TextInput } from "@mantine/core";
+import { Autocomplete, Button, Group, Input, Select, Stack, Text, TextInput } from "@mantine/core";
 import { useUnit } from "effector-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -114,6 +114,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
     [configByProvider, activeProviderId]
   );
   const [configDraft, setConfigDraft] = useState<LlmProviderConfig>({});
+  const [modelInput, setModelInput] = useState("");
 
   useEffect(() => {
     if (activeProviderId === "custom_openai") {
@@ -122,6 +123,10 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
     }
     setConfigDraft(providerConfig);
   }, [providerConfig, activeProviderId]);
+
+  useEffect(() => {
+    setModelInput(activeModel ?? "");
+  }, [activeModel]);
 
   const saveConfig = async () => {
     await patchProviderConfigFx({ providerId: activeProviderId, config: configDraft });
@@ -133,6 +138,27 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
   const loadModels = async () => {
     if (!canLoadModels) return;
     await loadModelsFx({ providerId: activeProviderId, scope, scopeId, tokenId: activeTokenId });
+  };
+
+  const modelAutocompleteData = useMemo(() => {
+    // Autocomplete items are plain strings; include both name and id when they differ.
+    return modelOptions.map((o) => (o.label === o.value ? o.value : `${o.label} — ${o.value}`));
+  }, [modelOptions]);
+
+  const resolveModelIdFromAutocompleteValue = (value: string): string => {
+    const trimmed = value.trim();
+    const direct = modelOptions.find((o) => o.value === trimmed || o.label === trimmed);
+    if (direct) return direct.value;
+
+    const match = trimmed.match(/\s—\s(.+)$/);
+    if (match) {
+      const id = match[1].trim();
+      const exists = modelOptions.some((o) => o.value === id);
+      if (exists) return id;
+    }
+
+    // Allow custom model id input (e.g., when models list isn't loaded).
+    return trimmed;
   };
 
   return (
@@ -147,6 +173,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
           }}
           placeholder="Select provider..."
           searchable
+          comboboxProps={{ withinPortal: false }}
         />
       </Input.Wrapper>
 
@@ -165,6 +192,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
           placeholder={tokens.length ? "Select token..." : "No tokens"}
           clearable
           searchable
+          comboboxProps={{ withinPortal: false }}
         />
         <TokenManager providerId={activeProviderId} scope={scope} scopeId={scopeId} />
       </Stack>
@@ -203,13 +231,27 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
           </Button>
         </Group>
 
-        <Select
-          data={modelOptions}
-          value={activeModel}
-          onChange={(value) => selectModel({ scope, scopeId, model: value ?? null })}
+        <Autocomplete
+          data={modelAutocompleteData}
+          value={modelInput}
+          onChange={(value) => {
+            setModelInput(value);
+            if (value === "") {
+              selectModel({ scope, scopeId, model: null });
+            }
+          }}
+          onOptionSubmit={(value) => {
+            setModelInput(value);
+            const modelId = resolveModelIdFromAutocompleteValue(value);
+            selectModel({ scope, scopeId, model: modelId || null });
+          }}
+          onBlur={() => {
+            const modelId = resolveModelIdFromAutocompleteValue(modelInput);
+            selectModel({ scope, scopeId, model: modelId || null });
+          }}
           placeholder={canLoadModels ? "Select model..." : "Select token first"}
-          clearable
-          searchable
+          disabled={!canLoadModels}
+          comboboxProps={{ withinPortal: false }}
         />
 
         <Text size="sm" c="dimmed">
