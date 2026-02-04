@@ -1,5 +1,6 @@
-import { getRuntime } from "../llm/llm-repository";
+import { getProviderConfig, getRuntime } from "../llm/llm-repository";
 import { streamGlobalChat } from "../llm/llm-service";
+import { resolveGatewayModel } from "../llm/llm-gateway-adapter";
 
 import {
   getChatById,
@@ -240,9 +241,14 @@ export async function getGlobalRuntimeInfo(): Promise<{
   model: string;
 }> {
   const runtime = await getRuntime("global", "global");
+  const config = await getProviderConfig(runtime.activeProviderId);
   return {
     providerId: runtime.activeProviderId,
-    model: runtime.activeModel ?? "",
+    model: resolveGatewayModel({
+      providerId: runtime.activeProviderId,
+      runtimeModel: runtime.activeModel,
+      providerConfig: config.config,
+    }),
   };
 }
 
@@ -252,8 +258,13 @@ export async function getRuntimeInfo(params?: { ownerId?: string }): Promise<{
 }> {
   const ownerId = params?.ownerId ?? "global";
   const runtime = await getRuntime("global", ownerId);
+  const config = await getProviderConfig(runtime.activeProviderId);
   return {
     providerId: runtime.activeProviderId,
-    model: runtime.activeModel ?? "",
+    model: resolveGatewayModel({
+      providerId: runtime.activeProviderId,
+      runtimeModel: runtime.activeModel,
+      providerConfig: config.config,
+    }),
   };
 }

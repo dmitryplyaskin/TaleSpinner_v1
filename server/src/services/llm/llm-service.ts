@@ -1,6 +1,8 @@
+import axios from "axios";
+
 import { HttpError } from "@core/middleware/error-handler";
 
-import { getProvider } from "./llm-provider-registry";
+import { llmGateway } from "@core/llm-gateway";
 import {
   getProviderConfig,
   getRuntime,
@@ -14,6 +16,10 @@ import {
 
 import type { LlmProviderId } from "./llm-definitions";
 import type { GenerateMessage } from "@shared/types/generate";
+import {
+  buildGatewayStreamRequest,
+  resolveGatewayProviderSpec,
+} from "./llm-gateway-adapter";
 
 export async function getRuntimeOrThrow(
   scope: LlmScope,
@@ -58,14 +64,40 @@ export async function getModels(params: {
   }
 
   const config = await getProviderConfig(params.providerId);
-  const provider = getProvider(params.providerId);
   try {
-    return await provider.getModels({
+    if (params.providerId === "openrouter") {
+      const response = await axios.get("https://openrouter.ai/api/v1/models", {
+        headers: {
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "TaleSpinner",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const raw = (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
+      return raw
+        .filter((m) => typeof m?.id === "string" && m.id.length > 0)
+        .map((m) => ({ id: m.id, name: m.name ?? m.id }));
+    }
+
+    const providerSpec = resolveGatewayProviderSpec({
       providerId: params.providerId,
       token,
-      model: params.modelOverride ?? runtime.activeModel ?? "",
-      config: config.config,
+      providerConfig: config.config,
     });
+
+    if (!providerSpec.baseUrl) return [];
+
+    const response = await axios.get(`${providerSpec.baseUrl}/models`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const raw = (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
+    return raw
+      .filter((m) => typeof m?.id === "string" && m.id.length > 0)
+      .map((m) => ({ id: m.id, name: m.name ?? m.id }));
   } catch (error) {
     // Models are optional for UX; don't fail hard.
     console.warn("Failed to fetch models", {
@@ -99,19 +131,29 @@ export async function* streamGlobalChat(params: {
   }
 
   const config = await getProviderConfig(providerId);
-  const provider = getProvider(providerId);
 
   await touchTokenLastUsed(tokenId);
 
-  yield* provider.streamChat({
-    ctx: {
-      providerId,
-      token,
-      model: runtime.activeModel ?? "",
-      config: config.config,
-    },
+  const abortSignal = params.abortController?.signal;
+  const req = buildGatewayStreamRequest({
+    providerId,
+    token,
+    providerConfig: config.config,
+    runtimeModel: runtime.activeModel,
     messages: params.messages,
-    settings: params.settings,
-    abortController: params.abortController,
+    settings: params.settings ?? {},
+    abortSignal,
   });
+
+  for await (const evt of llmGateway.stream(req)) {
+    if (abortSignal?.aborted) return;
+    if (evt.type === "delta") {
+      yield { content: evt.text, error: null };
+      continue;
+    }
+    if (evt.type === "error") {
+      yield { content: "", error: evt.message };
+      return;
+    }
+  }
 }

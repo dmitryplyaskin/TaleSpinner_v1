@@ -1,4 +1,4 @@
-export type LlmProviderId = "openrouter" | "custom_openai";
+export type LlmProviderId = "openrouter" | "openai_compatible";
 
 export type LlmScope = "global" | "agent";
 

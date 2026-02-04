@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { LlmGatewayMessage, LlmGatewayNormalizeMessagesResult, LlmGatewayPlugin } from "../types";
 
 export type MessageNormalizationFeature = {
+  /** If true, enables this plugin. Default: false. */
+  enabled?: boolean;
   /** If true, merges all system messages into a single system message. Default: true. */
   mergeSystem?: boolean;
   /**
@@ -16,6 +18,7 @@ export type MessageNormalizationFeature = {
 
 export const messageNormalizationSchema = z
   .object({
+    enabled: z.boolean().optional(),
     mergeSystem: z.boolean().optional(),
     mergeConsecutiveAssistant: z.boolean().optional(),
     separator: z.string().optional(),
@@ -67,7 +70,14 @@ function mergeConsecutiveAssistant(messages: LlmGatewayMessage[], sep: string): 
 export const messageNormalizationPlugin: LlmGatewayPlugin<MessageNormalizationFeature> = {
   id: "messageNormalization",
   schema: messageNormalizationSchema,
+  match: (ctx) => {
+    const feature = ctx.features["messageNormalization"] as MessageNormalizationFeature | undefined;
+    return feature?.enabled === true;
+  },
   normalizeMessages: (_ctx, feature): LlmGatewayNormalizeMessagesResult => {
+    if (feature?.enabled !== true) {
+      return { messages: _ctx.messages };
+    }
     const mergeSystem = feature?.mergeSystem ?? true;
     const mergeConsecutive = feature?.mergeConsecutiveAssistant ?? true;
     const sep = feature?.separator ?? "\n\n";

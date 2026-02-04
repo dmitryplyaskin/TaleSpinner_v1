@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type LlmProviderId = "openrouter" | "custom_openai";
+export type LlmProviderId = "openrouter" | "openai_compatible";
 
 export type LlmProviderUiField =
   | {
@@ -45,8 +45,8 @@ export const llmProviderDefinitions: ReadonlyArray<LlmProviderDefinition> = [
     ],
   },
   {
-    id: "custom_openai",
-    name: "Custom OpenAI (OpenAI-compatible)",
+    id: "openai_compatible",
+    name: "OpenAI-compatible",
     enabledByDefault: true,
     requiresToken: true,
     supportsModels: true,
@@ -77,22 +77,22 @@ export const openRouterConfigSchema = z
 
 export type OpenRouterConfig = z.infer<typeof openRouterConfigSchema>;
 
-export const customOpenAiConfigSchema = z
+export const openAiCompatibleConfigSchema = z
   .object({
     baseUrl: z.string().min(1),
     defaultModel: z.string().min(1).optional(),
   })
   .passthrough();
 
-export type CustomOpenAiConfig = z.infer<typeof customOpenAiConfigSchema>;
+export type OpenAiCompatibleConfig = z.infer<typeof openAiCompatibleConfigSchema>;
 
 export function parseProviderConfig(
   providerId: LlmProviderId,
   config: unknown
-): OpenRouterConfig | CustomOpenAiConfig {
+): OpenRouterConfig | OpenAiCompatibleConfig {
   if (providerId === "openrouter") {
     return openRouterConfigSchema.parse(config ?? {});
   }
-  return customOpenAiConfigSchema.parse(config ?? {});
+  return openAiCompatibleConfigSchema.parse(config ?? {});
 }
 

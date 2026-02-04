@@ -117,7 +117,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
   const [modelInput, setModelInput] = useState("");
 
   useEffect(() => {
-    if (activeProviderId === "custom_openai") {
+    if (activeProviderId === "openai_compatible") {
       setConfigDraft({ baseUrl: "", ...providerConfig });
       return;
     }
@@ -200,7 +200,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
       <Stack gap="sm">
         <Text fw={600}>Provider config</Text>
 
-        {activeProviderId === "custom_openai" && (
+        {activeProviderId === "openai_compatible" && (
           <TextInput
             label="Base URL"
             value={String(configDraft.baseUrl ?? "")}

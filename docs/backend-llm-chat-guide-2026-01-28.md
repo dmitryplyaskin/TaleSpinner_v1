@@ -7,7 +7,7 @@ _Дата: 2026‑01‑28. Состояние соответствует тек�
 - **Сообщения чата хранятся в SQLite** (Drizzle schema `server/src/db/schema/chat-core.ts`) в таблице `chat_messages`.
 - **В LLM уходит упрощённый массив** `GenerateMessage[]` вида `{ role, content }` (тип `shared/types/generate.ts`).
 - **`content` берётся из `chat_messages.promptText`** (и фильтруются удалённые/пустые сообщения).
-- **Стриминг** идёт через `services/llm/*` → провайдер (`openrouter` / `custom_openai`) → OpenAI SDK (`client.chat.completions.create(..., stream: true)`).
+- **Стриминг** идёт через `services/llm/*` → `core/llm-gateway/*` → OpenAI SDK (`client.chat.completions.create(..., stream: true)`).
 - **Ответ ассистента пишется в БД постепенно** (flush) в `message_variants.promptText` + кэш в `chat_messages.promptText`.
 
 ---
@@ -37,13 +37,11 @@ _Дата: 2026‑01‑28. Состояние соответствует тек�
 ### LLM слой
 
 - **Выбор провайдера/токена/модели и прокси‑стрим**: `server/src/services/llm/llm-service.ts`
-- **Провайдеры**:
-  - OpenRouter: `server/src/services/llm/providers/openrouter-provider.ts`
-  - Custom OpenAI‑compatible: `server/src/services/llm/providers/custom-openai-provider.ts`
+- **Адаптер runtime→gateway (резолвинг модели/настроек)**: `server/src/services/llm/llm-gateway-adapter.ts`
+- **Gateway (providers/plugins)**: `server/src/core/llm-gateway/*`
 
 ### Legacy (важно не перепутать)
 
-- `server/src/services/open-router-service.ts` — старая реализация с чтением `data/config/openrouter.json`.
 - `server/src/api/llm.api.ts` явно глушит legacy endpoint `/config/openrouter` (410).
 
 ---

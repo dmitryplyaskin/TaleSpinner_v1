@@ -144,9 +144,9 @@ export class LlmGateway {
 
   private parsePluginFeature(plugin: LlmGatewayPlugin, features: Record<string, unknown>): unknown {
     const featureValue = features[plugin.id];
+    if (typeof featureValue === "undefined") return undefined;
     if (!plugin.schema) return featureValue;
     try {
-      // schema may accept undefined, depending on plugin choice.
       return plugin.schema.parse(featureValue);
     } catch (err) {
       throw new LlmGatewayError("FEATURE_VALIDATION_ERROR", `Invalid feature: ${plugin.id}`, {
@@ -210,11 +210,15 @@ export class LlmGateway {
   async generate(req: LlmGatewayRequest): Promise<LlmGatewayResult> {
     const parsed = requestSchema.parse(req) as unknown as LlmGatewayRequest;
 
-    if (parsed.abortSignal && !(parsed.abortSignal instanceof AbortSignal)) {
-      // Some environments may not expose AbortSignal constructor; keep it permissive.
-      // If it's not a real signal, ignore it.
-      this.logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
-      parsed.abortSignal = undefined;
+    if (parsed.abortSignal) {
+      const AbortSignalCtor: typeof AbortSignal | undefined =
+        typeof AbortSignal === "undefined" ? undefined : AbortSignal;
+      if (AbortSignalCtor && !(parsed.abortSignal instanceof AbortSignalCtor)) {
+        // Some environments may not expose AbortSignal constructor; keep it permissive.
+        // If it's not a real signal, ignore it.
+        this.logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
+        parsed.abortSignal = undefined;
+      }
     }
 
     if (parsed.abortSignal?.aborted) {
@@ -331,9 +335,13 @@ export class LlmGateway {
     async function* run(): AsyncGenerator<LlmGatewayStreamEvent> {
       const parsed = requestSchema.parse(req) as unknown as LlmGatewayRequest;
 
-      if (parsed.abortSignal && !(parsed.abortSignal instanceof AbortSignal)) {
-        self.logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
-        parsed.abortSignal = undefined;
+      if (parsed.abortSignal) {
+        const AbortSignalCtor: typeof AbortSignal | undefined =
+          typeof AbortSignal === "undefined" ? undefined : AbortSignal;
+        if (AbortSignalCtor && !(parsed.abortSignal instanceof AbortSignalCtor)) {
+          self.logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
+          parsed.abortSignal = undefined;
+        }
       }
 
       if (parsed.abortSignal?.aborted) {

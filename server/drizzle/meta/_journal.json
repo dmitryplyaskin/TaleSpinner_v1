@@ -57,6 +57,13 @@
       "when": 1769950000000,
       "tag": "0011_chat_entry_parts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770231120559,
+      "tag": "0012_llm_gateway_provider_ids",
+      "breakpoints": true
     }
   ]
 }

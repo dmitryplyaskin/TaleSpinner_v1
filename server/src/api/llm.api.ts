@@ -5,8 +5,8 @@ import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
 import {
-  customOpenAiConfigSchema,
   llmProviderDefinitions,
+  openAiCompatibleConfigSchema,
   openRouterConfigSchema,
   type LlmProviderId,
 } from "@services/llm/llm-definitions";
@@ -27,7 +27,7 @@ import { getModels } from "@services/llm/llm-service";
 
 const router = express.Router();
 
-const providerIdSchema = z.enum(["openrouter", "custom_openai"]);
+const providerIdSchema = z.enum(["openrouter", "openai_compatible"]);
 
 const scopeSchema = z.enum(["global", "agent"]);
 
@@ -177,7 +177,7 @@ router.patch(
     const parsed =
       providerId === "openrouter"
         ? openRouterConfigSchema.parse(req.body)
-        : customOpenAiConfigSchema.parse(req.body);
+        : openAiCompatibleConfigSchema.parse(req.body);
 
     const saved = await upsertProviderConfig(providerId, parsed);
     return { data: saved };

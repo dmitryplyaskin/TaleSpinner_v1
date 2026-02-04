@@ -54,7 +54,7 @@ export const llmGenerations = sqliteTable(
 );
 
 export const llmProviders = sqliteTable("llm_providers", {
-  id: text("id").primaryKey(), // openrouter | custom_openai
+  id: text("id").primaryKey(), // openrouter | openai_compatible
   name: text("name").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
