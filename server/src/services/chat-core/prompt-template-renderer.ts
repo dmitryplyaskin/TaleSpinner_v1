@@ -55,6 +55,7 @@ export async function renderLiquidTemplate(params: {
   templateText: string;
   context: PromptTemplateRenderContext;
   options?: {
+    strictVariables?: boolean;
     /**
      * Multi-pass rendering enables "templates inside values".
      * Example: if `user.contentTypeDefault` contains `{{ user.name }}` and
@@ -69,12 +70,15 @@ export async function renderLiquidTemplate(params: {
     maxOutputChars?: number;
   };
 }): Promise<string> {
+  const renderEngine = params.options?.strictVariables
+    ? new Liquid({ cache: true, strictFilters: false, strictVariables: true })
+    : engine;
   const maxPasses = params.options?.maxPasses ?? DEFAULT_MAX_PASSES;
   const maxOutputChars = params.options?.maxOutputChars ?? DEFAULT_MAX_OUTPUT_CHARS;
 
   // Pass 1: render the original template (syntax has typically been validated earlier).
   let current = normalizeToString(
-    await engine.parseAndRender(params.templateText, params.context)
+    await renderEngine.parseAndRender(params.templateText, params.context)
   );
 
   // Additional passes: render again only if the output still looks like a template.
@@ -86,7 +90,7 @@ export async function renderLiquidTemplate(params: {
 
     try {
       const next = normalizeToString(
-        await engine.parseAndRender(current, params.context)
+        await renderEngine.parseAndRender(current, params.context)
       );
       if (next === current) break;
       current = next;

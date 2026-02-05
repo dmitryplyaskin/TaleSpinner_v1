@@ -196,6 +196,7 @@ router.post(
         historyLimit: 50,
         excludeMessageIds: [msg.id],
         activeProfileSpec: null,
+        trigger: "regenerate",
       });
 
       const runtime = await getRuntimeInfo({ ownerId });
@@ -244,9 +245,11 @@ router.post(
         entityProfileId: chat.entityProfileId,
         systemPrompt,
         promptMessages: builtPrompt.llmMessages,
+        promptDraftMessages: builtPrompt.draft.messages,
         assistantMessageId: msg.id,
         variantId: variant.id,
         settings: body.settings,
+        trigger: "regenerate",
         abortController: runAbortController,
       })) {
         if (evt.type === "llm.stream.delta") {

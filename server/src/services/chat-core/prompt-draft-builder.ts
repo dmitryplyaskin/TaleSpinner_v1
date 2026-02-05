@@ -1,9 +1,14 @@
 import crypto from "crypto";
 
 import type { GenerateMessage } from "@shared/types/generate";
+import type { OperationTrigger } from "@shared/types/operation-profiles";
 
 import { listMessagesForPrompt } from "./chats-repository";
 import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
+import { getOperationProfileSettings } from "../operations/operation-profile-settings-repository";
+import { getOperationProfileById } from "../operations/operation-profiles-repository";
+import { applyTemplateOperationsToPromptDraft } from "../operations/template-operations-runtime";
+import { buildPromptTemplateRenderContext } from "./prompt-template-context";
 
 type PromptDraftRole = "system" | "developer" | "user" | "assistant";
 
@@ -135,6 +140,7 @@ export async function buildPromptDraft(params: {
    * for prompt inclusions (PipelineProfile order -> step order -> tag -> version).
    */
   activeProfileSpec?: unknown;
+  trigger?: OperationTrigger;
 }): Promise<BuiltPromptDraft> {
   const historyLimit = params.historyLimit ?? 50;
   const exclude = params.excludeMessageIds ?? [];
@@ -173,6 +179,33 @@ export async function buildPromptDraft(params: {
       ...history.map((m) => ({ role: m.role, content: m.content })),
     ],
   };
+
+  const trigger = params.trigger ?? "generate";
+
+  const settings = await getOperationProfileSettings();
+  if (settings.activeProfileId) {
+    const profile = await getOperationProfileById(settings.activeProfileId);
+    if (profile && profile.enabled) {
+      const templateContext = await buildPromptTemplateRenderContext({
+        ownerId: params.ownerId,
+        chatId: params.chatId,
+        branchId: params.branchId,
+        historyLimit,
+        excludeMessageIds: params.excludeMessageIds,
+        excludeEntryIds: params.excludeEntryIds,
+      });
+
+      const applied = await applyTemplateOperationsToPromptDraft({
+        runId: `op-prof-${params.chatId}-${Date.now()}`,
+        profile,
+        trigger,
+        draftMessages: draft.messages,
+        templateContext,
+      });
+
+      draft.messages = applied.messages;
+    }
+  }
 
   const llmMessages = draftToLlmMessages(draft);
   const promptHash = hashPromptMessages(llmMessages);
