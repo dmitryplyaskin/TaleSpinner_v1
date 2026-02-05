@@ -18,7 +18,7 @@ type Props = {
 	onLabelPointerUp: (e: React.PointerEvent, groupId: string) => void;
 };
 
-export const GroupOverlays: React.FC<Props> = ({
+const GroupOverlaysImpl: React.FC<Props> = ({
 	groups,
 	selectedGroupId,
 	groupBgAlpha,
@@ -87,4 +87,7 @@ export const GroupOverlays: React.FC<Props> = ({
 		</ViewportPortal>
 	);
 };
+
+export const GroupOverlays = React.memo(GroupOverlaysImpl);
+GroupOverlays.displayName = 'GroupOverlays';
 

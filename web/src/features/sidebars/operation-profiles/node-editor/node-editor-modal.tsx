@@ -121,9 +121,11 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
 	const [groupEditor, setGroupEditor] = useState<GroupEditorDraft | null>(null);
 	const [viewState, setViewState] = useState<NodeEditorViewState>('graph');
+	const [isInspectorVisible, setIsInspectorVisible] = useState(true);
 
 	const connectingSourceIdRef = useRef<string | null>(null);
 	const didConnectRef = useRef(false);
+	const prevNodeIdsKeyRef = useRef<string>('');
 	const flowWrapperRef = useRef<HTMLDivElement | null>(null);
 	const nodesRef = useRef<Array<Node<OperationFlowNodeData>>>([]);
 	const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<OperationFlowNodeData>>([]);
@@ -139,6 +141,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setGroupEditor(null);
 		setIsLayoutDirty(false);
 		setViewState('graph');
+		setIsInspectorVisible(true);
 
 		const meta = readNodeEditorMeta(profile.meta);
 		const resetEdges = buildEdges(initial.operations as Array<{ opId: string; config?: { dependsOn?: string[] } }>);
@@ -208,6 +211,11 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		});
 		setNodes(initialNodes);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [opened, profile.profileId]);
+
+	useEffect(() => {
+		if (!opened) return;
+		setIsInspectorVisible(true);
 	}, [opened, profile.profileId]);
 
 	// Keep node data in sync with form, but preserve positions while dragging.
@@ -351,6 +359,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setIsLayoutDirty(true);
 		setSelectedOpId(next.opId);
 		if (isCompactLayout) setViewState('inspector');
+		else setIsInspectorVisible(true);
 	};
 
 	const deleteSelectedNodes = useCallback(() => {
@@ -415,20 +424,22 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		[groups],
 	);
 
+	const nodesById = useMemo(() => {
+		const out = new Map<string, Node<OperationFlowNodeData>>();
+		for (const node of nodes) out.set(String(node.id), node);
+		return out;
+	}, [nodes]);
+
 	const computeGroupBounds = useCallback(
 		(nodeIds: string[]) => {
-			const ids = new Set(nodeIds);
-			const live = (flow?.getNodes?.() ?? []).filter((n) => ids.has(String(n.id)));
-			const liveBounds = computeBoundsFromNodes(live);
-			if (liveBounds) return liveBounds;
-
-			// Fallback to known node positions (fixed size approximations).
-			const fallback = nodes
-				.filter((n) => ids.has(String(n.id)))
-				.map((n) => ({ ...n, width: 260, height: 140 }));
-			return computeBoundsFromNodes(fallback);
+			const live: Array<Node<OperationFlowNodeData>> = [];
+			for (const nodeId of nodeIds) {
+				const node = nodesById.get(nodeId);
+				if (node) live.push(node);
+			}
+			return computeBoundsFromNodes(live);
 		},
-		[flow, nodes],
+		[nodesById],
 	);
 
 	const openGroupEditor = useCallback(
@@ -459,6 +470,9 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	useEffect(() => {
 		// Important: avoid pruning while nodes are still initializing (prevents mount-time loops).
 		if (nodes.length === 0) return;
+		const nodeIdsKey = nodes.map((n) => String(n.id)).join('\u001f');
+		if (prevNodeIdsKeyRef.current === nodeIdsKey) return;
+		prevNodeIdsKeyRef.current = nodeIdsKey;
 
 		const existing = new Set(nodes.map((n) => String(n.id)));
 
@@ -569,6 +583,8 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		]);
 		setSelectedOpId(next.opId);
 		setIsLayoutDirty(true);
+		if (isCompactLayout) setViewState('inspector');
+		else setIsInspectorVisible(true);
 	};
 
 	const onEdgesChange = (changes: EdgeChange[]) => {
@@ -608,6 +624,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		(_: unknown, node: Node) => {
 			setSelectedOpId(String(node.id));
 			if (isCompactLayout) setViewState('inspector');
+			else setIsInspectorVisible(true);
 		},
 		[isCompactLayout],
 	);
@@ -636,6 +653,9 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setIsLayoutDirty(true);
 	};
 
+	const showGraphPanel = !isCompactLayout || viewState === 'graph';
+	const showInspectorPanel = isCompactLayout ? viewState === 'inspector' : isInspectorVisible;
+
 	return (
 		<Modal
 			opened={opened}
@@ -651,7 +671,16 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		>
 			<FormProvider {...methods}>
 				<Stack gap="sm" style={{ flex: 1, minHeight: 0 }} className="opNodeShell">
-					<NodeEditorHeader profileName={profile.name} isDirty={isDirty} onAutoLayout={autoLayout} onSave={onSave} onClose={onClose} />
+					<NodeEditorHeader
+						profileName={profile.name}
+						isDirty={isDirty}
+						onAutoLayout={autoLayout}
+						onSave={onSave}
+						onClose={onClose}
+						isInspectorVisible={isInspectorVisible}
+						onToggleInspector={() => setIsInspectorVisible((prev) => !prev)}
+						showInspectorToggle={!isCompactLayout}
+					/>
 
 					{jsonError && (
 						<Alert color="red" title="JSON error">
@@ -673,7 +702,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 					)}
 
 					<Group gap={0} wrap="nowrap" align="stretch" style={{ flex: 1, minHeight: 0 }}>
-						{(!isCompactLayout || viewState === 'graph') && (
+						{showGraphPanel && (
 							<div ref={flowWrapperRef} className="opProfileNodeEditorFlow opNodePanel" style={{ flex: 1, minHeight: 0 }}>
 								<ReactFlowProvider>
 									<ReactFlow
@@ -766,7 +795,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 							</div>
 						)}
 
-						{(!isCompactLayout || viewState === 'inspector') && (
+						{showInspectorPanel && (
 							<>
 								{!isCompactLayout && <Divider orientation="vertical" mx="md" />}
 
@@ -816,7 +845,6 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				<GroupEditorModal
 					draft={groupEditor}
 					onClose={() => setGroupEditor(null)}
-					onChange={(next) => setGroupEditor(next)}
 					onDelete={(groupId) => {
 						setGroups((prev) => {
 							if (!prev[groupId]) return prev;

@@ -1,6 +1,6 @@
 import { Badge, Button, Group, Stack, Text } from '@mantine/core';
 import React from 'react';
-import { LuLayoutDashboard, LuSave, LuX } from 'react-icons/lu';
+import { LuLayoutDashboard, LuPanelRightClose, LuPanelRightOpen, LuSave, LuX } from 'react-icons/lu';
 
 type Props = {
 	profileName: string;
@@ -8,9 +8,21 @@ type Props = {
 	onAutoLayout: () => void;
 	onSave: () => void;
 	onClose: () => void;
+	isInspectorVisible?: boolean;
+	onToggleInspector?: () => void;
+	showInspectorToggle?: boolean;
 };
 
-export const NodeEditorHeader: React.FC<Props> = ({ profileName, isDirty, onAutoLayout, onSave, onClose }) => {
+export const NodeEditorHeader: React.FC<Props> = ({
+	profileName,
+	isDirty,
+	onAutoLayout,
+	onSave,
+	onClose,
+	isInspectorVisible,
+	onToggleInspector,
+	showInspectorToggle = false,
+}) => {
 	return (
 		<Group justify="space-between" wrap="wrap" className="opNodeHeader">
 			<Stack gap={2}>
@@ -27,6 +39,11 @@ export const NodeEditorHeader: React.FC<Props> = ({ profileName, isDirty, onAuto
 			</Stack>
 
 			<Group gap="xs" wrap="nowrap">
+				{showInspectorToggle && (
+					<Button variant="default" leftSection={isInspectorVisible ? <LuPanelRightClose /> : <LuPanelRightOpen />} onClick={onToggleInspector}>
+						{isInspectorVisible ? 'Hide Operation' : 'Show Operation'}
+					</Button>
+				)}
 				<Button variant="light" leftSection={<LuLayoutDashboard />} onClick={onAutoLayout}>
 					Auto layout
 				</Button>
