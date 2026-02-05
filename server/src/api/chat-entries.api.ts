@@ -214,6 +214,7 @@ router.post(
         historyLimit: 50,
         excludeEntryIds: [assistant.entry.entryId],
         activeProfileSpec: null,
+        trigger: "generate",
       });
 
       // --- Create generation record (legacy FK targets) and start streaming.
@@ -265,10 +266,12 @@ router.post(
         entityProfileId: chat.entityProfileId,
         systemPrompt,
         promptMessages: builtPrompt.llmMessages,
+        promptDraftMessages: builtPrompt.draft.messages,
         userMessageId: created.entry.entryId,
         assistantMessageId: legacyAssistant.assistantMessageId,
         variantId: legacyAssistant.variantId,
         settings: body.settings,
+        trigger: "generate",
         abortController: runAbortController,
         persistMode: "entry_parts",
         assistantMainPartId: assistantMainPart.partId,
@@ -412,6 +415,7 @@ router.post(
         historyLimit: 50,
         excludeEntryIds: [entry.entryId],
         activeProfileSpec: null,
+        trigger: "regenerate",
       });
 
       const runtime = await getRuntimeInfo({ ownerId });
@@ -458,9 +462,11 @@ router.post(
         entityProfileId: chat.entityProfileId,
         systemPrompt,
         promptMessages: builtPrompt.llmMessages,
+        promptDraftMessages: builtPrompt.draft.messages,
         assistantMessageId: legacyMessageId,
         variantId: legacyVariant.id,
         settings: body.settings,
+        trigger: "regenerate",
         abortController: runAbortController,
         persistMode: "entry_parts",
         assistantMainPartId: assistantMainPart.partId,

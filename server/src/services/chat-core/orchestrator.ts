@@ -14,8 +14,13 @@ import { finishGeneration } from "./generations-repository";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
 import { pickPromptTemplateForChat } from "./prompt-templates-repository";
 import { getSelectedUserPerson } from "./user-persons-repository";
+import { getOperationProfileSettings } from "../operations/operation-profile-settings-repository";
+import { getOperationProfileById } from "../operations/operation-profiles-repository";
+import { buildPromptTemplateRenderContext } from "./prompt-template-context";
+import { applyTemplateOperationsAfterMainLlm } from "../operations/template-operations-runtime";
 
 import type { GenerateMessage } from "@shared/types/generate";
+import type { OperationTrigger } from "@shared/types/operation-profiles";
 
 export type OrchestratorEvent =
   | { type: "llm.stream.delta"; data: { content: string } }
@@ -38,6 +43,8 @@ export async function* runChatGeneration(params: {
    * Must not include `developer` role (map it to `system` before calling).
    */
   promptMessages?: GenerateMessage[];
+  promptDraftMessages?: Array<{ role: "system" | "developer" | "user" | "assistant"; content: string }>;
+  trigger?: OperationTrigger;
   /**
    * Optional correlation id for the current user message.
    * Regenerate flow does not have a user message; do not pass empty strings.
@@ -191,6 +198,43 @@ export async function* runChatGeneration(params: {
       if (chunk.content) {
         assistantText += chunk.content;
         yield { type: "llm.stream.delta", data: { content: chunk.content } };
+      }
+    }
+
+    if (finishedStatus === "done") {
+      const trigger = params.trigger ?? "generate";
+      const settings = await getOperationProfileSettings();
+      if (settings.activeProfileId) {
+        const profile = await getOperationProfileById(settings.activeProfileId);
+        if (profile && profile.enabled) {
+          const templateContext = await buildPromptTemplateRenderContext({
+            ownerId: params.ownerId,
+            chatId: params.chatId,
+            branchId: params.branchId,
+            historyLimit: DEFAULT_HISTORY_LIMIT,
+            excludeMessageIds: [params.assistantMessageId],
+          });
+
+          const afterResult = await applyTemplateOperationsAfterMainLlm({
+            runId: `op-prof-${params.chatId}-${params.generationId}`,
+            profile,
+            trigger,
+            draftMessages:
+              params.promptDraftMessages ??
+              (prompt ?? []).map((m) => ({
+                role: (m.role === "system" ? "system" : m.role) as
+                  | "system"
+                  | "developer"
+                  | "user"
+                  | "assistant",
+                content: m.content,
+              })),
+            assistantText,
+            templateContext,
+          });
+
+          assistantText = afterResult.assistantText;
+        }
       }
     }
   } catch (error) {
