@@ -1,43 +1,38 @@
-import { Stack, Text } from '@mantine/core';
 import React from 'react';
 
-import { FormCheckbox, FormTextarea } from '@ui/form-components';
+import { ComputeKindSection } from './kind-params/compute-kind-section';
+import { LegacyKindSection } from './kind-params/legacy-kind-section';
+import { LlmKindSection } from './kind-params/llm-kind-section';
+import { RagKindSection } from './kind-params/rag-kind-section';
+import { TemplateKindSection } from './kind-params/template-kind-section';
+import { ToolKindSection } from './kind-params/tool-kind-section';
+import { TransformKindSection } from './kind-params/transform-kind-section';
+
+import type { OperationKind } from '@shared/types/operation-profiles';
 
 type Props = {
 	index: number;
-	kind: 'template' | 'other';
+	kind: OperationKind;
 };
 
 export const ParamsSection: React.FC<Props> = ({ index, kind }) => {
-	if (kind === 'template') {
-		return (
-			<Stack gap="xs">
-				<Text fw={600}>Template</Text>
-				<FormCheckbox
-					name={`operations.${index}.config.params.strictVariables`}
-					label="Strict variables"
-					infoTip="When enabled, the template may only use allowed/known variables (strict validation)."
-				/>
-				<FormTextarea
-					name={`operations.${index}.config.params.template`}
-					label="Template"
-					infoTip="Operation template text (kind=template)."
-					textareaProps={{ minRows: 4, autosize: true }}
-				/>
-			</Stack>
-		);
+	switch (kind) {
+		case 'template':
+			return <TemplateKindSection index={index} />;
+		case 'llm':
+			return <LlmKindSection index={index} />;
+		case 'rag':
+			return <RagKindSection index={index} />;
+		case 'tool':
+			return <ToolKindSection index={index} />;
+		case 'compute':
+			return <ComputeKindSection index={index} />;
+		case 'transform':
+			return <TransformKindSection index={index} />;
+		case 'legacy':
+			return <LegacyKindSection index={index} />;
+		default:
+			return null;
 	}
-
-	return (
-		<Stack gap="xs">
-			<Text fw={600}>Params</Text>
-			<FormTextarea
-				name={`operations.${index}.config.params.paramsJson`}
-				label="Advanced JSON params"
-				infoTip="Temporary editor for non-template kinds. Keep it valid JSON object syntax."
-				textareaProps={{ minRows: 6, autosize: true }}
-			/>
-		</Stack>
-	);
 };
 

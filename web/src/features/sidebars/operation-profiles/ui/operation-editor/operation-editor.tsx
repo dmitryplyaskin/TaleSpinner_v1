@@ -3,7 +3,6 @@ import React, { memo } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { LuTrash2 } from 'react-icons/lu';
 
-
 import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
@@ -12,6 +11,8 @@ import { makeDefaultArtifactOutput, type FormOtherKindParams, type FormTemplateP
 import { OperationSectionsAccordion } from './operation-sections-accordion';
 
 import type { OperationKind } from '@shared/types/operation-profiles';
+
+const ACTION_TOOLTIP_SETTINGS = { withinPortal: true, zIndex: 3400 };
 
 type Props = {
 	index: number;
@@ -71,9 +72,9 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 	const safeOpId = typeof opId === 'string' ? opId : '';
 
 	return (
-		<Card withBorder>
+		<Card withBorder className="op-operationCard">
 			<Stack gap="md">
-				<div className="op-editorHeader">
+				<div className="op-editorHeader op-operationHeader">
 					<Group gap="xs" wrap="wrap">
 						<Text fw={700}>{title ?? 'Operation'}</Text>
 						{status && (
@@ -85,14 +86,14 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 						)}
 					</Group>
 
-					<Group gap="xs" wrap="nowrap">
+					<Group gap="xs" wrap="nowrap" className="op-operationActions">
 						{onSave && (
-							<Button size="xs" onClick={onSave} disabled={!canSave}>
+							<Button size="sm" onClick={onSave} disabled={!canSave}>
 								Save
 							</Button>
 						)}
 						{onDiscard && (
-							<Button size="xs" variant="default" onClick={onDiscard} disabled={!canDiscard}>
+							<Button size="sm" variant="default" onClick={onDiscard} disabled={!canDiscard}>
 								Discard
 							</Button>
 						)}
@@ -102,14 +103,16 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 								tooltip="Delete operation"
 								icon={<LuTrash2 />}
 								colorPalette="red"
+								size="input-sm"
 								variant="ghost"
+								tooltipSettings={ACTION_TOOLTIP_SETTINGS}
 								onClick={onRemove}
 							/>
 						)}
 					</Group>
 				</div>
 
-				<Group justify="space-between" wrap="nowrap" align="flex-end">
+				<Group justify="space-between" wrap="wrap" align="flex-end" className="op-operationIdentityRow">
 					<FormInput name={`operations.${index}.name`} label="Operation name" inputProps={{ style: { flex: 1 } }} />
 					<Select
 						{...kindField}
@@ -139,12 +142,12 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 							setValue(`operations.${index}.config.params`, nextParams, { shouldDirty: true });
 						}}
 						comboboxProps={{ withinPortal: false }}
-						description="Kind controls available params fields."
-						style={{ width: 180 }}
+						description="Controls the kind-specific section shown below."
+						style={{ width: 210 }}
 					/>
 				</Group>
 
-				<Text size="xs" c="dimmed">
+				<Text size="xs" c="dimmed" className="op-opIdText">
 					opId: {safeOpId || '—'}
 				</Text>
 

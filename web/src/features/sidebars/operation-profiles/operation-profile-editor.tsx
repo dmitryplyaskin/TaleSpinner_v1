@@ -1,14 +1,13 @@
 import { Alert, Button, Card, Collapse, Group, Stack, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useUnit } from 'effector-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { LuChevronDown, LuChevronUp, LuPlus, LuRotateCcw, LuSave, LuUndo2 } from 'react-icons/lu';
+import { LuChevronDown, LuChevronUp, LuPlus } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
 import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './form/operation-profile-form-mapping';
 import { OperationEditor } from './ui/operation-editor/operation-editor';
@@ -33,9 +32,18 @@ function isOperationKind(value: unknown): value is OperationKind {
 type Props = {
 	profile: OperationProfileDto;
 	preferSplitLayout: boolean;
+	onToolbarStateChange?: (state: OperationProfileToolbarState | null) => void;
 };
 
-export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLayout }) => {
+export type OperationProfileToolbarState = {
+	canSave: boolean;
+	canDiscard: boolean;
+	onSave: () => void;
+	onDiscard: () => void;
+	onResetSessionId: () => void;
+};
+
+export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLayout, onToolbarStateChange }) => {
 	const doUpdate = useUnit(updateOperationProfileFx);
 	const isMobile = useMediaQuery('(max-width: 767px)');
 	const useSplitLayout = preferSplitLayout && !isMobile;
@@ -103,7 +111,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 	const selectedItem = selectedIndex === null ? null : items.find((item) => item.index === selectedIndex) ?? null;
 	const selectedOpId = selectedItem?.opId ?? null;
 
-	const onSave = methods.handleSubmit((values) => {
+	const submitValues = useCallback((values: OperationProfileFormValues) => {
 		setJsonError(null);
 		try {
 			const payload = fromOperationProfileForm(values, { validateJson: true });
@@ -111,13 +119,39 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 		} catch (error) {
 			setJsonError(error instanceof Error ? error.message : String(error));
 		}
-	});
+	}, [doUpdate, profile.profileId]);
 
-	const onDiscard = () => {
+	const onSave = useMemo(() => methods.handleSubmit(submitValues), [methods, submitValues]);
+
+	const onDiscard = useCallback(() => {
 		setJsonError(null);
 		reset(initial);
 		setEditingOpId(initial.operations[0]?.opId ?? null);
-	};
+	}, [initial, reset]);
+
+	const onResetSessionId = useCallback(() => {
+		setValue('operationProfileSessionId', uuidv4(), { shouldDirty: true });
+	}, [setValue]);
+
+	const toolbarState = useMemo<OperationProfileToolbarState>(() => {
+		return {
+			canSave: formState.isDirty,
+			canDiscard: formState.isDirty,
+			onSave,
+			onDiscard,
+			onResetSessionId,
+		};
+	}, [formState.isDirty, onDiscard, onResetSessionId, onSave]);
+
+	useEffect(() => {
+		onToolbarStateChange?.(toolbarState);
+	}, [onToolbarStateChange, toolbarState]);
+
+	useEffect(() => {
+		return () => {
+			onToolbarStateChange?.(null);
+		};
+	}, [onToolbarStateChange]);
 
 	const addOperation = () => {
 		const next = makeDefaultOperation();
@@ -155,10 +189,6 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 				kind: item.kind,
 				isDirty: formState.isDirty,
 			}}
-			canSave={formState.isDirty}
-			canDiscard={formState.isDirty}
-			onSave={onSave}
-			onDiscard={onDiscard}
 			onRemove={() => removeOperationAt(item.index, item.opId)}
 		/>
 	);
@@ -166,37 +196,6 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 	return (
 		<FormProvider {...methods}>
 			<Stack gap="md">
-				<Card withBorder className="op-editorCard">
-					<div className="op-editorHeader op-stickyHeader">
-						<Stack gap={2}>
-							<Text fw={800}>Profile controls</Text>
-						</Stack>
-
-						<Group gap="xs" wrap="nowrap">
-							<Button leftSection={<LuSave />} disabled={!formState.isDirty} onClick={onSave}>
-								Save
-							</Button>
-							<Button variant="default" leftSection={<LuUndo2 />} disabled={!formState.isDirty} onClick={onDiscard}>
-								Discard
-							</Button>
-							<IconButtonWithTooltip
-								aria-label="Reset operation profile session id"
-								tooltip="Reset session id"
-								icon={<LuRotateCcw />}
-								variant="ghost"
-								onClick={() => setValue('operationProfileSessionId', uuidv4(), { shouldDirty: true })}
-							/>
-						</Group>
-					</div>
-
-					<div className="op-statusStrip" aria-label="Operation stats">
-						<div className="op-statusPill">Ops: {stats.total}</div>
-						<div className="op-statusPill">Enabled: {stats.enabled}</div>
-						<div className="op-statusPill">Required: {stats.required}</div>
-						<div className="op-statusPill">With deps: {stats.withDeps}</div>
-					</div>
-				</Card>
-
 				<Card withBorder className="op-editorCard">
 					<Group
 						justify="space-between"
@@ -273,7 +272,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 						</div>
 
 						<div className="op-inspectorPane">
-							<div className="op-editorHeader op-stickyHeader">
+							<div className="op-editorHeader op-stickyHeader op-inspectorHeader">
 								<Stack gap={2}>
 									<Text fw={700}>Operation inspector</Text>
 									<Text className="op-listHint">

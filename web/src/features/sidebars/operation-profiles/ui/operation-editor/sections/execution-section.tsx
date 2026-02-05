@@ -1,4 +1,4 @@
-import { Group, Stack, Text } from '@mantine/core';
+import { Group, Stack } from '@mantine/core';
 import React from 'react';
 import { useWatch } from 'react-hook-form';
 
@@ -33,8 +33,6 @@ export const ExecutionSection: React.FC<Props> = ({ index }) => {
 
 	return (
 		<Stack gap="xs">
-			<Text fw={600}>Execution</Text>
-
 			<Group grow wrap="wrap">
 				<FormSelect
 					name={`operations.${index}.config.hooks.0`}

@@ -105,8 +105,6 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 
 	return (
 		<Stack gap="xs">
-			<Text fw={600}>Effects / Output</Text>
-
 			<Select
 				{...outputTypeField}
 				label="Effect type"

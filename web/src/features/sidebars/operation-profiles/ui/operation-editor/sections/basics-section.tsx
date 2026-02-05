@@ -1,4 +1,4 @@
-import { Group, Stack, Text } from '@mantine/core';
+import { Group, Stack } from '@mantine/core';
 import React from 'react';
 
 import { FormCheckbox, FormTextarea } from '@ui/form-components';
@@ -13,8 +13,6 @@ type Props = {
 export const BasicsSection: React.FC<Props> = ({ index }) => {
 	return (
 		<Stack gap="xs">
-			<Text fw={600}>Basics</Text>
-
 			<FormTextarea
 				name={`operations.${index}.description`}
 				label="Description"

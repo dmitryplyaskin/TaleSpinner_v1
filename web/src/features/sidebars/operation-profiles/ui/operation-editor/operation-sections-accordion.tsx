@@ -1,7 +1,6 @@
 import { Accordion, Group, Text } from '@mantine/core';
 import React, { useMemo, useState } from 'react';
 
-
 import { BasicsSection } from './sections/basics-section';
 import { ExecutionSection } from './sections/execution-section';
 import { OutputSection } from './sections/output-section';
@@ -14,12 +13,22 @@ type Props = {
 	kind: OperationKind;
 };
 
-type SectionId = 'basics' | 'execution' | 'params' | 'output';
+type SectionId = 'basics' | 'kind' | 'execution' | 'output';
 
-const DEFAULT_OPEN: SectionId[] = ['basics', 'execution'];
+const DEFAULT_OPEN: SectionId[] = ['basics', 'kind', 'execution'];
+
+const KIND_TITLE_MAP: Record<OperationKind, string> = {
+	template: 'Template',
+	llm: 'LLM',
+	rag: 'RAG',
+	tool: 'Tool',
+	compute: 'Compute',
+	transform: 'Transform',
+	legacy: 'Legacy',
+};
 
 function isSectionId(v: unknown): v is SectionId {
-	return v === 'basics' || v === 'execution' || v === 'params' || v === 'output';
+	return v === 'basics' || v === 'kind' || v === 'execution' || v === 'output';
 }
 
 export const OperationSectionsAccordion: React.FC<Props> = ({ index, kind }) => {
@@ -42,21 +51,19 @@ export const OperationSectionsAccordion: React.FC<Props> = ({ index, kind }) => 
 				<Accordion.Panel>{isOpen('basics') && <BasicsSection index={index} />}</Accordion.Panel>
 			</Accordion.Item>
 
+			<Accordion.Item value="kind">
+				<Accordion.Control>
+					<Group gap={8} wrap="nowrap">
+						<Text inherit>{KIND_TITLE_MAP[kind]}</Text>
+						<span className="op-advancedBadge">Kind-specific</span>
+					</Group>
+				</Accordion.Control>
+				<Accordion.Panel>{isOpen('kind') && <ParamsSection index={index} kind={kind} />}</Accordion.Panel>
+			</Accordion.Item>
+
 			<Accordion.Item value="execution">
 				<Accordion.Control>Execution</Accordion.Control>
 				<Accordion.Panel>{isOpen('execution') && <ExecutionSection index={index} />}</Accordion.Panel>
-			</Accordion.Item>
-
-			<Accordion.Item value="params">
-				<Accordion.Control>
-					<Group gap={8} wrap="nowrap">
-						<Text inherit>Template / Params</Text>
-						<span className="op-advancedBadge">Advanced</span>
-					</Group>
-				</Accordion.Control>
-				<Accordion.Panel>
-					{isOpen('params') && <ParamsSection index={index} kind={kind === 'template' ? 'template' : 'other'} />}
-				</Accordion.Panel>
 			</Accordion.Item>
 
 			<Accordion.Item value="output">

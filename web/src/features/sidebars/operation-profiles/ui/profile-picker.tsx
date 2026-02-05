@@ -1,4 +1,4 @@
-import { Select, Stack, Text } from '@mantine/core';
+import { Select } from '@mantine/core';
 import React, { useMemo } from 'react';
 
 type ProfileOptionSource = {
@@ -22,17 +22,15 @@ export const ProfilePicker: React.FC<Props> = ({ profiles, value, onChange }) =>
 	}, [profiles]);
 
 	return (
-		<Stack gap={4} style={{ flex: 1, minWidth: 280 }}>
-			<Text className="op-commandTitle">Current profile</Text>
-			<Text className="op-commandHint">Select the profile used for editing and runtime execution.</Text>
-			<Select
-				data={options}
-				value={value ?? ''}
-				onChange={(v) => onChange(v && v !== '' ? v : null)}
-				comboboxProps={{ withinPortal: false }}
-				searchable
-				placeholder="Select profile"
-			/>
-		</Stack>
+		<Select
+			data={options}
+			value={value ?? ''}
+			onChange={(v) => onChange(v && v !== '' ? v : null)}
+			comboboxProps={{ withinPortal: false }}
+			searchable
+			placeholder="Select profile"
+			aria-label="Current profile"
+			className="op-profilePicker"
+		/>
 	);
 };

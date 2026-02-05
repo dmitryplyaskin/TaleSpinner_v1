@@ -1,25 +1,23 @@
 .op-ui {
 	--op-surface: #ffffff;
-	--op-surface-muted: #f8fbff;
-	--op-border: #d9e3f0;
-	--op-border-strong: #bdd1eb;
-	--op-muted: #5f6f86;
-	--op-accent: #2f74d0;
-	--op-accent-soft: #ebf4ff;
+	--op-surface-muted: #f7f9fc;
+	--op-border: #dbe3ee;
+	--op-border-strong: #c5d1e2;
+	--op-muted: #596b85;
+	--op-accent: #2d6cb0;
+	--op-accent-soft: #edf5ff;
 	--op-success: #15803d;
 	--op-warn: #d97706;
 	--op-danger: #dc2626;
-	--op-shadow: 0 12px 28px rgba(24, 43, 70, 0.08);
-	--op-radius-lg: 14px;
+	--op-shadow: 0 8px 18px rgba(18, 36, 60, 0.06);
+	--op-radius-lg: 12px;
 	--op-radius-md: 10px;
 	--op-space-xs: 8px;
 	--op-space-sm: 12px;
 	--op-space-md: 16px;
 	--op-space-lg: 20px;
 	--op-space-xl: 24px;
-	background:
-		radial-gradient(1200px 600px at 80% -10%, rgba(114, 177, 255, 0.18), transparent 55%),
-		linear-gradient(180deg, #f2f7ff 0%, #f7fbff 100%);
+	background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
 	border-radius: var(--op-radius-lg);
 	padding: var(--op-space-md);
 	max-width: 1320px;
@@ -35,39 +33,63 @@
 	padding: var(--op-space-md);
 }
 
-.op-ui .op-commandTitle {
-	margin: 0;
-	font-size: 14px;
-	font-weight: 700;
-	color: #11243f;
+.op-ui .op-commandRow {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--op-space-sm);
 }
 
-.op-ui .op-commandHint {
-	font-size: 12px;
-	line-height: 1.35;
-	color: var(--op-muted);
+.op-ui .op-commandRowPrimary {
+	flex-wrap: nowrap;
+}
+
+.op-ui .op-commandRowSecondary {
+	justify-content: space-between;
+	flex-wrap: nowrap;
+}
+
+.op-ui .op-profilePicker {
+	flex: 1;
+	min-width: 320px;
+}
+
+.op-ui .op-profileActions {
+	flex-shrink: 0;
+}
+
+.op-ui .op-editorToolbarActions {
+	margin-left: auto;
 }
 
 .op-ui .op-nodeButton {
-	min-width: 180px;
+	min-width: 200px;
 }
 
-.op-ui .op-statusStrip {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: var(--op-space-xs);
+.op-ui.op-ui--drawer .op-commandRowPrimary {
+	flex-wrap: wrap;
+	row-gap: var(--op-space-xs);
 }
 
-.op-ui .op-statusPill {
-	background: var(--op-surface-muted);
-	border: 1px solid var(--op-border);
-	border-radius: 999px;
-	padding: 7px 12px;
-	font-size: 12px;
-	font-weight: 600;
-	color: #183055;
-	display: flex;
-	justify-content: center;
+.op-ui.op-ui--drawer .op-commandRowSecondary {
+	flex-wrap: wrap;
+	row-gap: var(--op-space-xs);
+}
+
+.op-ui.op-ui--drawer .op-profilePicker {
+	min-width: 220px;
+	flex: 1 1 240px;
+}
+
+.op-ui.op-ui--drawer .op-profileActions {
+	margin-left: auto;
+}
+
+.op-ui.op-ui--drawer .op-nodeButton {
+	min-width: 160px;
+}
+
+.op-ui.op-ui--drawer .op-editorToolbarActions {
+	margin-left: auto;
 }
 
 .op-ui .op-editorCard {
@@ -93,6 +115,10 @@
 	z-index: 5;
 	padding-bottom: var(--op-space-sm);
 	border-bottom: 1px solid var(--op-border);
+}
+
+.op-ui .op-inspectorHeader {
+	margin-bottom: var(--op-space-sm);
 }
 
 .op-ui .op-sectionToggle {
@@ -129,6 +155,42 @@
 .op-ui .op-listHint {
 	font-size: 12px;
 	color: var(--op-muted);
+}
+
+.op-ui .op-operationCard {
+	background: var(--op-surface);
+	border-color: var(--op-border);
+}
+
+.op-ui .op-operationHeader {
+	align-items: flex-start;
+}
+
+.op-ui .op-operationActions,
+.op-ui .op-editorToolbarActions,
+.op-ui .op-profileActions {
+	gap: var(--op-space-xs);
+}
+
+.op-ui .op-operationActions .mantine-Button-root,
+.op-ui .op-editorToolbarActions .mantine-Button-root {
+	min-height: 36px;
+}
+
+.op-ui .op-operationActions .mantine-ActionIcon-root,
+.op-ui .op-editorToolbarActions .mantine-ActionIcon-root,
+.op-ui .op-profileActions .mantine-ActionIcon-root {
+	width: 36px;
+	height: 36px;
+}
+
+.op-ui .op-operationIdentityRow .mantine-InputWrapper-root {
+	flex: 1;
+	min-width: 260px;
+}
+
+.op-ui .op-opIdText {
+	word-break: break-all;
 }
 
 .op-ui .op-listRow {
@@ -181,10 +243,6 @@
 }
 
 @media (max-width: 1199px) {
-	.op-ui .op-statusStrip {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
 	.op-ui .op-workspace {
 		grid-template-columns: 1fr;
 	}
@@ -200,6 +258,30 @@
 	.op-ui .op-inspectorPane,
 	.op-ui .op-editorCard {
 		padding: var(--op-space-sm);
+	}
+
+	.op-ui .op-commandRowPrimary {
+		flex-wrap: wrap;
+	}
+
+	.op-ui .op-profilePicker {
+		min-width: 0;
+		width: 100%;
+	}
+
+	.op-ui .op-profileActions {
+		width: 100%;
+		justify-content: flex-end;
+	}
+
+	.op-ui .op-commandRowSecondary {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.op-ui .op-editorToolbarActions {
+		margin-left: 0;
+		justify-content: flex-end;
 	}
 
 	.op-ui .op-nodeButton {
