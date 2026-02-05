@@ -13,7 +13,7 @@ import { createGeneration, updateGenerationPromptData } from "../services/chat-c
 import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
-import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
+import { pickPromptTemplateForChat } from "../services/chat-core/prompt-templates-repository";
 import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
 import {
   createVariantForRegenerate,
@@ -185,11 +185,7 @@ router.post(
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
-          pickActivePromptTemplate({
-            ownerId,
-            chatId: params.id,
-            entityProfileId: chat.entityProfileId,
-          }),
+          pickPromptTemplateForChat({ ownerId, chatId: params.id }),
           buildPromptTemplateRenderContext({
             ownerId,
             chatId: params.id,
@@ -387,11 +383,7 @@ router.post(
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
-          pickActivePromptTemplate({
-            ownerId,
-            chatId: entry.chatId,
-            entityProfileId: chat.entityProfileId,
-          }),
+          pickPromptTemplateForChat({ ownerId, chatId: entry.chatId }),
           buildPromptTemplateRenderContext({
             ownerId,
             chatId: entry.chatId,

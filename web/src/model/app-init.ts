@@ -13,7 +13,7 @@ import { userPersonsModel } from './user-persons';
 export const appStarted = createEvent();
 
 export const appInitFx = createEffect(async (): Promise<void> => {
-	// Prompt templates depend on selected chat/profile; we still trigger an initial refresh.
+	// Prompt templates are global; load once on app start.
 	promptTemplatesInitRequested();
 
 	await Promise.all([

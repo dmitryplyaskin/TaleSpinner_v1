@@ -1,14 +1,9 @@
 import { apiJson } from './api-json';
 
-export type PromptTemplateScope = 'global' | 'entity_profile' | 'chat';
-
 export type PromptTemplateDto = {
 	id: string;
 	ownerId: string;
 	name: string;
-	enabled: boolean;
-	scope: PromptTemplateScope;
-	scopeId: string | null;
 	engine: 'liquidjs';
 	templateText: string;
 	meta: unknown | null;
@@ -16,21 +11,15 @@ export type PromptTemplateDto = {
 	updatedAt: string;
 };
 
-export async function listPromptTemplates(params: {
-	scope: PromptTemplateScope;
-	scopeId?: string;
-}): Promise<PromptTemplateDto[]> {
+export async function listPromptTemplates(params?: { ownerId?: string }): Promise<PromptTemplateDto[]> {
 	const query = new URLSearchParams();
-	query.set('scope', params.scope);
-	if (typeof params.scopeId === 'string') query.set('scopeId', params.scopeId);
-	return apiJson<PromptTemplateDto[]>(`/prompt-templates?${query.toString()}`);
+	if (typeof params?.ownerId === 'string') query.set('ownerId', params.ownerId);
+	const suffix = query.size > 0 ? `?${query.toString()}` : '';
+	return apiJson<PromptTemplateDto[]>(`/prompt-templates${suffix}`);
 }
 
 export async function createPromptTemplate(params: {
 	name: string;
-	enabled?: boolean;
-	scope: PromptTemplateScope;
-	scopeId?: string;
 	engine?: 'liquidjs';
 	templateText: string;
 	meta?: unknown;
@@ -41,9 +30,6 @@ export async function createPromptTemplate(params: {
 		body: JSON.stringify({
 			ownerId: params.ownerId,
 			name: params.name,
-			enabled: params.enabled ?? true,
-			scope: params.scope,
-			scopeId: params.scope === 'global' ? undefined : params.scopeId,
 			engine: params.engine ?? 'liquidjs',
 			templateText: params.templateText,
 			meta: params.meta,
@@ -54,9 +40,6 @@ export async function createPromptTemplate(params: {
 export async function updatePromptTemplate(params: {
 	id: string;
 	name?: string;
-	enabled?: boolean;
-	scope?: PromptTemplateScope;
-	scopeId?: string | null;
 	engine?: 'liquidjs';
 	templateText?: string;
 	meta?: unknown;
@@ -65,9 +48,6 @@ export async function updatePromptTemplate(params: {
 		method: 'PUT',
 		body: JSON.stringify({
 			name: params.name,
-			enabled: params.enabled,
-			scope: params.scope,
-			scopeId: typeof params.scopeId === 'undefined' ? undefined : params.scopeId,
 			engine: params.engine,
 			templateText: params.templateText,
 			meta: params.meta,

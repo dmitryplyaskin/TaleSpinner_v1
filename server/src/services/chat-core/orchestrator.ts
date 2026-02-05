@@ -12,7 +12,7 @@ import { getEntityProfileById } from "./entity-profiles-repository";
 import { registerGeneration, unregisterGeneration } from "./generation-runtime";
 import { finishGeneration } from "./generations-repository";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
-import { pickActivePromptTemplate } from "./prompt-templates-repository";
+import { pickPromptTemplateForChat } from "./prompt-templates-repository";
 import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { GenerateMessage } from "@shared/types/generate";
@@ -123,10 +123,9 @@ export async function* runChatGeneration(params: {
           const [chat, entityProfile, template, userPerson] = await Promise.all([
             getChatById(params.chatId),
             getEntityProfileById(params.entityProfileId),
-            pickActivePromptTemplate({
+            pickPromptTemplateForChat({
               ownerId: params.ownerId ?? "global",
               chatId: params.chatId,
-              entityProfileId: params.entityProfileId,
             }),
             getSelectedUserPerson({ ownerId: params.ownerId ?? "global" }),
           ]);

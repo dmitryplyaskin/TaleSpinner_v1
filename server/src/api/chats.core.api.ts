@@ -12,6 +12,7 @@ import {
   chatIdParamsSchema,
   createBranchBodySchema,
   createMessageBodySchema,
+  idSchema,
   listMessagesQuerySchema,
 } from "../chat-core/schemas";
 import { initDb } from "../db/client";
@@ -24,6 +25,7 @@ import {
   getChatById,
   listChatBranches,
   listChatMessages,
+  setChatPromptTemplate,
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
@@ -39,7 +41,7 @@ import {
 } from "../services/chat-core/message-variants-repository";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
-import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
+import { getPromptTemplateById, pickPromptTemplateForChat } from "../services/chat-core/prompt-templates-repository";
 
 const router = express.Router();
 const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
@@ -52,6 +54,38 @@ router.get(
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
     return { data: chat };
+  })
+);
+
+const setPromptTemplateBodySchema = z.object({
+  promptTemplateId: idSchema.nullable(),
+});
+
+router.put(
+  "/chats/:id/prompt-template",
+  validate({ params: chatIdParamsSchema, body: setPromptTemplateBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = setPromptTemplateBodySchema.parse(req.body);
+
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    if (body.promptTemplateId) {
+      const tpl = await getPromptTemplateById(body.promptTemplateId);
+      if (!tpl || tpl.ownerId !== chat.ownerId) {
+        throw new HttpError(404, "PromptTemplate не найден", "NOT_FOUND");
+      }
+    }
+
+    const updated = await setChatPromptTemplate({
+      ownerId: chat.ownerId,
+      chatId: chat.id,
+      promptTemplateId: body.promptTemplateId,
+    });
+    if (!updated) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    return { data: updated };
   })
 );
 
@@ -324,11 +358,7 @@ router.post(
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
-          pickActivePromptTemplate({
-            ownerId,
-            chatId: params.id,
-            entityProfileId: chat.entityProfileId,
-          }),
+          pickPromptTemplateForChat({ ownerId, chatId: params.id }),
           buildPromptTemplateRenderContext({
             ownerId,
             chatId: params.id,

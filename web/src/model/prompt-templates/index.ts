@@ -2,26 +2,17 @@ import { combine, createEffect, createEvent, createStore, sample } from 'effecto
 
 import { toaster } from '@ui/toaster';
 
-import type { PromptTemplateDto, PromptTemplateScope } from '../../api/prompt-templates';
+import type { PromptTemplateDto } from '../../api/prompt-templates';
 import {
 	createPromptTemplate,
 	deletePromptTemplate,
 	listPromptTemplates,
 	updatePromptTemplate,
 } from '../../api/prompt-templates';
-import { $currentChat, $currentEntityProfile, setOpenedChat, selectEntityProfile } from '../chat-core';
+import { $currentChat, setChatPromptTemplateRequested, setOpenedChat } from '../chat-core';
 
-export const setPromptTemplateScope = createEvent<PromptTemplateScope>();
-export const $promptTemplateScope = createStore<PromptTemplateScope>('chat').on(setPromptTemplateScope, (_, s) => s);
-
-const $scopeId = combine($promptTemplateScope, $currentEntityProfile, $currentChat, (scope, profile, chat) => {
-	if (scope === 'global') return null;
-	if (scope === 'entity_profile') return profile?.id ?? null;
-	return chat?.id ?? null;
-});
-
-export const loadPromptTemplatesFx = createEffect(async (params: { scope: PromptTemplateScope; scopeId: string | null }) => {
-	return listPromptTemplates({ scope: params.scope, scopeId: params.scopeId ?? undefined });
+export const loadPromptTemplatesFx = createEffect(async () => {
+	return listPromptTemplates();
 });
 
 export const $promptTemplates = createStore<PromptTemplateDto[]>([]).on(loadPromptTemplatesFx.doneData, (_, items) => items);
@@ -37,43 +28,93 @@ export const $selectedPromptTemplate = combine($promptTemplates, $selectedPrompt
 	return items.find((t) => t.id === id) ?? null;
 });
 
+export const promptTemplateSelected = createEvent<string>();
+
 const refreshRequested = createEvent();
 
 sample({
-	clock: [refreshRequested, setPromptTemplateScope, setOpenedChat, selectEntityProfile],
-	source: { scope: $promptTemplateScope, scopeId: $scopeId },
-	filter: ({ scope, scopeId }) => scope === 'global' || Boolean(scopeId),
-	fn: ({ scope, scopeId }) => ({ scope, scopeId }),
+	clock: refreshRequested,
 	target: loadPromptTemplatesFx,
 });
 
-// Pick first template when list changes.
+// Sync selection from current chat on chat open.
 sample({
-	clock: loadPromptTemplatesFx.doneData,
-	source: $selectedPromptTemplateId,
-	filter: (selectedId, items) => !selectedId || !items.some((t) => t.id === selectedId),
-	fn: (_, items) => items[0]?.id ?? null,
+	clock: setOpenedChat,
+	fn: ({ chat }) => chat.promptTemplateId,
 	target: setSelectedPromptTemplateId,
 });
 
+// Pick a valid template when list or chat changes.
+sample({
+	clock: loadPromptTemplatesFx.doneData,
+	source: { selectedId: $selectedPromptTemplateId, chat: $currentChat },
+	fn: ({ selectedId, chat }, items) => {
+		if (items.length === 0) return null;
+		const ids = new Set(items.map((t) => t.id));
+
+		const chatId = chat?.promptTemplateId ?? null;
+		if (chatId && ids.has(chatId)) return chatId;
+		if (selectedId && ids.has(selectedId)) return selectedId;
+		return items[0]?.id ?? null;
+	},
+	target: setSelectedPromptTemplateId,
+});
+
+// If the chat points to a missing template (e.g. it was deleted), move it to the first available template.
+sample({
+	clock: loadPromptTemplatesFx.doneData,
+	source: $currentChat,
+	filter: (chat, items) => Boolean(chat?.id) && Boolean(chat?.promptTemplateId) && !items.some((t) => t.id === chat?.promptTemplateId),
+	fn: (_chat, items) => ({ promptTemplateId: items[0]?.id ?? null }),
+	target: setChatPromptTemplateRequested,
+});
+
+// If the chat has no prompt template, auto-assign the first available template.
+sample({
+	clock: [setOpenedChat, loadPromptTemplatesFx.doneData],
+	source: { chat: $currentChat, templates: $promptTemplates },
+	filter: ({ chat, templates }) => Boolean(chat?.id) && !chat?.promptTemplateId && templates.length > 0,
+	fn: ({ templates }) => templates[0].id,
+	target: setSelectedPromptTemplateId,
+});
+
+sample({
+	clock: [setOpenedChat, loadPromptTemplatesFx.doneData],
+	source: { chat: $currentChat, templates: $promptTemplates },
+	filter: ({ chat, templates }) => Boolean(chat?.id) && !chat?.promptTemplateId && templates.length > 0,
+	fn: ({ templates }) => ({ promptTemplateId: templates[0].id }),
+	target: setChatPromptTemplateRequested,
+});
+
+sample({
+	clock: promptTemplateSelected,
+	fn: (id) => id,
+	target: setSelectedPromptTemplateId,
+});
+
+sample({
+	clock: promptTemplateSelected,
+	source: $currentChat,
+	filter: (chat, id) => Boolean(chat?.id) && chat?.promptTemplateId !== id,
+	fn: (_chat, id) => ({ promptTemplateId: id }),
+	target: setChatPromptTemplateRequested,
+});
+
 export const createPromptTemplateFx = createEffect(
-	async (params: { name: string; templateText: string; enabled: boolean; scope: PromptTemplateScope; scopeId: string | null }) => {
+	async (params: { name: string; templateText: string; meta?: unknown }) => {
 		return createPromptTemplate({
 			name: params.name,
 			templateText: params.templateText,
-			enabled: params.enabled,
-			scope: params.scope,
-			scopeId: params.scopeId ?? undefined,
+			meta: params.meta,
 		});
 	},
 );
 
 export const updatePromptTemplateFx = createEffect(
-	async (params: { id: string; name: string; templateText: string; enabled: boolean }) => {
+	async (params: { id: string; name: string; templateText: string }) => {
 		return updatePromptTemplate({
 			id: params.id,
 			name: params.name,
-			enabled: params.enabled,
 			templateText: params.templateText,
 		});
 	},
@@ -82,20 +123,38 @@ export const updatePromptTemplateFx = createEffect(
 export const deletePromptTemplateFx = createEffect(async (params: { id: string }) => deletePromptTemplate(params.id));
 
 export const createPromptTemplateRequested = createEvent();
-export const updatePromptTemplateRequested = createEvent<{ id: string; name: string; templateText: string; enabled: boolean }>();
+export const duplicatePromptTemplateRequested = createEvent<{ id: string }>();
+export const importPromptTemplateRequested = createEvent<{ name: string; templateText: string; meta?: unknown }>();
+export const updatePromptTemplateRequested = createEvent<{ id: string; name: string; templateText: string }>();
 export const deletePromptTemplateRequested = createEvent<{ id: string }>();
 
 sample({
 	clock: createPromptTemplateRequested,
-	source: { scope: $promptTemplateScope, scopeId: $scopeId },
-	filter: ({ scope, scopeId }) => scope === 'global' || Boolean(scopeId),
-	fn: ({ scope, scopeId }) => ({
+	fn: () => ({
 		name: 'New template',
 		templateText: '{{char.name}}',
-		enabled: true,
-		scope,
-		scopeId,
 	}),
+	target: createPromptTemplateFx,
+});
+
+sample({
+	clock: duplicatePromptTemplateRequested,
+	source: $promptTemplates,
+	filter: (items, payload) => items.some((t) => t.id === payload.id),
+	fn: (items, payload) => {
+		const tpl = items.find((t) => t.id === payload.id)!;
+		return {
+			name: `${tpl.name} (copy)`,
+			templateText: tpl.templateText,
+			meta: { duplicatedFromId: tpl.id, source: 'duplicate' },
+		};
+	},
+	target: createPromptTemplateFx,
+});
+
+sample({
+	clock: importPromptTemplateRequested,
+	fn: (payload) => payload,
 	target: createPromptTemplateFx,
 });
 
@@ -113,6 +172,12 @@ sample({
 	clock: createPromptTemplateFx.doneData,
 	fn: (created) => created.id,
 	target: setSelectedPromptTemplateId,
+});
+
+sample({
+	clock: createPromptTemplateFx.doneData,
+	fn: (created) => ({ promptTemplateId: created.id }),
+	target: setChatPromptTemplateRequested,
 });
 
 sample({
@@ -141,7 +206,6 @@ deletePromptTemplateFx.failData.watch((error) => {
 	});
 });
 
-// Initial load on app start: the chat-core init opens a profile/chat; we rely on refreshRequested
-// being triggered by those events. Expose a manual trigger as well.
+// Initial load on app start. Expose a manual trigger as well.
 export const promptTemplatesInitRequested = refreshRequested;
 

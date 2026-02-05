@@ -19,8 +19,10 @@ import {
   updatePromptTemplate,
 } from "../services/chat-core/prompt-templates-repository";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
-import { validateLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
-import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
+import {
+  renderLiquidTemplate,
+  validateLiquidTemplate,
+} from "../services/chat-core/prompt-template-renderer";
 
 const router = express.Router();
 
@@ -38,14 +40,9 @@ router.get(
   "/prompt-templates",
   validate({ query: listPromptTemplatesQuerySchema }),
   asyncHandler(async (req: Request) => {
-    const query = req.query as unknown as {
-      scope: "global" | "entity_profile" | "chat";
-      scopeId?: string;
-    };
+    const query = listPromptTemplatesQuerySchema.parse(req.query);
     const templates = await listPromptTemplates({
-      ownerId: "global",
-      scope: query.scope,
-      scopeId: query.scopeId,
+      ownerId: query.ownerId ?? "global",
     });
     return { data: templates };
   })
@@ -100,9 +97,6 @@ router.post(
     const created = await createPromptTemplate({
       ownerId: req.body.ownerId,
       name: req.body.name,
-      enabled: req.body.enabled,
-      scope: req.body.scope,
-      scopeId: req.body.scopeId,
       engine: req.body.engine,
       templateText: req.body.templateText,
       meta: req.body.meta,
@@ -131,10 +125,6 @@ router.put(
     const updated = await updatePromptTemplate({
       id: params.id,
       name: req.body.name,
-      enabled: req.body.enabled,
-      scope: req.body.scope,
-      scopeId:
-        typeof req.body.scopeId === "undefined" ? undefined : req.body.scopeId,
       engine: req.body.engine,
       templateText: req.body.templateText,
       meta: typeof req.body.meta === "undefined" ? undefined : req.body.meta,

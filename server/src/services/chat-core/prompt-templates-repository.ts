@@ -1,19 +1,14 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
-import { promptTemplates } from "../../db/schema";
-
-export type PromptTemplateScope = "global" | "entity_profile" | "chat";
+import { chats, promptTemplates } from "../../db/schema";
 
 export type PromptTemplateDto = {
   id: string;
   ownerId: string;
   name: string;
-  enabled: boolean;
-  scope: PromptTemplateScope;
-  scopeId: string | null;
   engine: "liquidjs";
   templateText: string;
   meta: unknown | null;
@@ -26,9 +21,6 @@ function rowToDto(row: typeof promptTemplates.$inferSelect): PromptTemplateDto {
     id: row.id,
     ownerId: row.ownerId,
     name: row.name,
-    enabled: row.enabled,
-    scope: row.scope,
-    scopeId: row.scopeId ?? null,
     engine: row.engine as "liquidjs",
     templateText: row.templateText,
     meta: safeJsonParse(row.metaJson, null),
@@ -39,42 +31,15 @@ function rowToDto(row: typeof promptTemplates.$inferSelect): PromptTemplateDto {
 
 export async function listPromptTemplates(params: {
   ownerId?: string;
-  scope: PromptTemplateScope;
-  scopeId?: string;
 }): Promise<PromptTemplateDto[]> {
   const db = await initDb();
-  const scopeId = params.scopeId;
-  if (params.scope === "global") {
-    const rows = await db
-      .select()
-      .from(promptTemplates)
-      .where(
-        and(
-          eq(promptTemplates.ownerId, params.ownerId ?? "global"),
-          eq(promptTemplates.scope, "global"),
-          isNull(promptTemplates.scopeId)
-        )
-      )
-      .orderBy(desc(promptTemplates.updatedAt));
-    return rows.map(rowToDto);
-  }
-
-  if (!scopeId) return [];
-
+  const ownerId = params.ownerId ?? "global";
   const rows = await db
     .select()
     .from(promptTemplates)
-    .where(
-      and(
-        eq(promptTemplates.ownerId, params.ownerId ?? "global"),
-        eq(promptTemplates.scope, params.scope),
-        eq(promptTemplates.scopeId, scopeId)
-      )
-    )
+    .where(eq(promptTemplates.ownerId, ownerId))
     .orderBy(desc(promptTemplates.updatedAt));
   return rows.map(rowToDto);
-
-
 }
 
 export async function getPromptTemplateById(
@@ -92,9 +57,6 @@ export async function createPromptTemplate(params: {
   id?: string;
   ownerId?: string;
   name: string;
-  enabled?: boolean;
-  scope: PromptTemplateScope;
-  scopeId?: string | null;
   engine?: "liquidjs";
   templateText: string;
   meta?: unknown;
@@ -107,9 +69,6 @@ export async function createPromptTemplate(params: {
     id,
     ownerId: params.ownerId ?? "global",
     name: params.name,
-    enabled: params.enabled ?? true,
-    scope: params.scope,
-    scopeId: params.scope === "global" ? null : params.scopeId ?? null,
     engine: params.engine ?? "liquidjs",
     templateText: params.templateText,
     metaJson:
@@ -126,9 +85,6 @@ export async function createPromptTemplate(params: {
       id,
       ownerId: params.ownerId ?? "global",
       name: params.name,
-      enabled: params.enabled ?? true,
-      scope: params.scope,
-      scopeId: params.scope === "global" ? null : params.scopeId ?? null,
       engine: params.engine ?? "liquidjs",
       templateText: params.templateText,
       meta: params.meta ?? null,
@@ -142,9 +98,6 @@ export async function createPromptTemplate(params: {
 export async function updatePromptTemplate(params: {
   id: string;
   name?: string;
-  enabled?: boolean;
-  scope?: PromptTemplateScope;
-  scopeId?: string | null;
   engine?: "liquidjs";
   templateText?: string;
   meta?: unknown;
@@ -152,22 +105,13 @@ export async function updatePromptTemplate(params: {
   const db = await initDb();
   const ts = new Date();
 
-  const current = await getPromptTemplateById(params.id);
-  if (!current) return null;
-
-  const finalScope: PromptTemplateScope = params.scope ?? current.scope;
+  if (!(await getPromptTemplateById(params.id))) return null;
 
   const set: Partial<typeof promptTemplates.$inferInsert> = { updatedAt: ts };
   if (typeof params.name === "string") set.name = params.name;
-  if (typeof params.enabled === "boolean") set.enabled = params.enabled;
-  if (typeof params.scope === "string") set.scope = params.scope;
   if (typeof params.engine === "string") set.engine = params.engine;
   if (typeof params.templateText === "string")
     set.templateText = params.templateText;
-
-  if (typeof params.scopeId !== "undefined") {
-    set.scopeId = finalScope === "global" ? null : params.scopeId;
-  }
 
   if (typeof params.meta !== "undefined") {
     set.metaJson = safeJsonStringify(params.meta);
@@ -185,57 +129,27 @@ export async function deletePromptTemplate(id: string): Promise<void> {
   await db.delete(promptTemplates).where(eq(promptTemplates.id, id));
 }
 
-export async function pickActivePromptTemplate(params: {
+export async function pickPromptTemplateForChat(params: {
   ownerId?: string;
   chatId: string;
-  entityProfileId: string;
 }): Promise<PromptTemplateDto | null> {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
 
-  const chatScoped = await db
+  const chatRows = await db
+    .select({ promptTemplateId: chats.promptTemplateId })
+    .from(chats)
+    .where(and(eq(chats.ownerId, ownerId), eq(chats.id, params.chatId)))
+    .limit(1);
+  const promptTemplateId = chatRows[0]?.promptTemplateId ?? null;
+  if (!promptTemplateId) return null;
+
+  const rows = await db
     .select()
     .from(promptTemplates)
     .where(
-      and(
-        eq(promptTemplates.ownerId, ownerId),
-        eq(promptTemplates.enabled, true),
-        eq(promptTemplates.scope, "chat"),
-        eq(promptTemplates.scopeId, params.chatId)
-      )
+      and(eq(promptTemplates.ownerId, ownerId), eq(promptTemplates.id, promptTemplateId))
     )
-    .orderBy(desc(promptTemplates.updatedAt))
     .limit(1);
-  if (chatScoped[0]) return rowToDto(chatScoped[0]);
-
-  const profileScoped = await db
-    .select()
-    .from(promptTemplates)
-    .where(
-      and(
-        eq(promptTemplates.ownerId, ownerId),
-        eq(promptTemplates.enabled, true),
-        eq(promptTemplates.scope, "entity_profile"),
-        eq(promptTemplates.scopeId, params.entityProfileId)
-      )
-    )
-    .orderBy(desc(promptTemplates.updatedAt))
-    .limit(1);
-  if (profileScoped[0]) return rowToDto(profileScoped[0]);
-
-  const globalScoped = await db
-    .select()
-    .from(promptTemplates)
-    .where(
-      and(
-        eq(promptTemplates.ownerId, ownerId),
-        eq(promptTemplates.enabled, true),
-        eq(promptTemplates.scope, "global"),
-        isNull(promptTemplates.scopeId)
-      )
-    )
-    .orderBy(desc(promptTemplates.updatedAt))
-    .limit(1);
-
-  return globalScoped[0] ? rowToDto(globalScoped[0]) : null;
+  return rows[0] ? rowToDto(rows[0]) : null;
 }

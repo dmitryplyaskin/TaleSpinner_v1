@@ -32,7 +32,7 @@ import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchest
 import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
 import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
-import { pickActivePromptTemplate } from "../services/chat-core/prompt-templates-repository";
+import { pickPromptTemplateForChat } from "../services/chat-core/prompt-templates-repository";
 
 const router = express.Router();
 const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
@@ -167,11 +167,7 @@ router.post(
       let systemPrompt = DEFAULT_SYSTEM_PROMPT;
       try {
         const [template, context] = await Promise.all([
-          pickActivePromptTemplate({
-            ownerId,
-            chatId: msg.chatId,
-            entityProfileId: chat.entityProfileId,
-          }),
+          pickPromptTemplateForChat({ ownerId, chatId: msg.chatId }),
           buildPromptTemplateRenderContext({
             ownerId,
             chatId: msg.chatId,

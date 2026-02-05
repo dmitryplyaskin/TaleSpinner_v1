@@ -30,6 +30,7 @@ import {
 	listEntityProfiles,
 	listMessageVariants,
 	selectMessageVariant,
+	setChatPromptTemplate,
 	streamChatMessage,
 	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
@@ -120,6 +121,36 @@ sample({
 	clock: openEntityProfileFx.doneData,
 	fn: ({ chat, branchId }) => ({ chat, branchId }),
 	target: setOpenedChat,
+});
+
+// ---- Prompt template selection (per-chat)
+
+export const setChatPromptTemplateRequested = createEvent<{ promptTemplateId: string | null }>();
+
+export const setChatPromptTemplateFx = createEffect(
+	async (params: { chatId: string; promptTemplateId: string | null }): Promise<ChatDto> => {
+		return setChatPromptTemplate({ chatId: params.chatId, promptTemplateId: params.promptTemplateId });
+	},
+);
+
+sample({
+	clock: setChatPromptTemplateRequested,
+	source: $currentChat,
+	filter: (chat): chat is ChatDto => Boolean(chat?.id),
+	fn: (chat, payload) => ({ chatId: chat!.id, promptTemplateId: payload.promptTemplateId }),
+	target: setChatPromptTemplateFx,
+});
+
+$currentChat.on(setChatPromptTemplateFx.doneData, (_, chat) => chat);
+$chatsForCurrentProfile.on(setChatPromptTemplateFx.doneData, (items, updated) =>
+	items.map((c) => (c.id === updated.id ? updated : c)),
+);
+
+setChatPromptTemplateFx.failData.watch((error) => {
+	toaster.error({
+		title: 'Не удалось выбрать шаблон',
+		description: error instanceof Error ? error.message : String(error),
+	});
 });
 
 // ---- Multi-chat UX (v1): list/create/open/delete chats within current EntityProfile

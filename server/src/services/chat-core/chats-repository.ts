@@ -8,6 +8,7 @@ import {
   chatMessages,
   chats,
   messageVariants,
+  promptTemplates,
 } from "../../db/schema";
 
 let _lastTsMs = 0;
@@ -23,6 +24,7 @@ export type ChatDto = {
   entityProfileId: string;
   title: string;
   activeBranchId: string | null;
+  promptTemplateId: string | null;
   status: "active" | "archived" | "deleted";
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +41,7 @@ function chatRowToDto(row: typeof chats.$inferSelect): ChatDto {
     entityProfileId: row.entityProfileId,
     title: row.title,
     activeBranchId: row.activeBranchId ?? null,
+    promptTemplateId: row.promptTemplateId ?? null,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -156,17 +159,27 @@ export async function createChat(params: {
   meta?: unknown;
 }): Promise<{ chat: ChatDto; mainBranch: ChatBranchDto }> {
   const db = await initDb();
+  const ownerId = params.ownerId ?? "global";
   const ts = new Date();
   const chatId = uuidv4();
   const mainBranchId = uuidv4();
 
+  const templateRows = await db
+    .select({ id: promptTemplates.id })
+    .from(promptTemplates)
+    .where(eq(promptTemplates.ownerId, ownerId))
+    .orderBy(desc(promptTemplates.updatedAt))
+    .limit(1);
+  const defaultPromptTemplateId = templateRows[0]?.id ?? null;
+
   // Keep this simple and reliable for now (atomicity can be added later via proper tx API).
   await db.insert(chats).values({
     id: chatId,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     entityProfileId: params.entityProfileId,
     title: params.title,
     activeBranchId: null,
+    promptTemplateId: defaultPromptTemplateId,
     status: "active",
     createdAt: ts,
     updatedAt: ts,
@@ -184,7 +197,7 @@ export async function createChat(params: {
 
   await db.insert(chatBranches).values({
     id: mainBranchId,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     chatId: chatId,
     title: "main",
     createdAt: ts,
@@ -209,6 +222,21 @@ export async function createChat(params: {
   }
 
   return { chat: createdChat, mainBranch };
+}
+
+export async function setChatPromptTemplate(params: {
+  ownerId?: string;
+  chatId: string;
+  promptTemplateId: string | null;
+}): Promise<ChatDto | null> {
+  const db = await initDb();
+  const ownerId = params.ownerId ?? "global";
+  const ts = new Date();
+  await db
+    .update(chats)
+    .set({ promptTemplateId: params.promptTemplateId, updatedAt: ts })
+    .where(and(eq(chats.ownerId, ownerId), eq(chats.id, params.chatId)));
+  return getChatById(params.chatId);
 }
 
 export async function softDeleteChat(id: string): Promise<ChatDto | null> {

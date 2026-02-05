@@ -1,4 +1,4 @@
-import { Button, Group, Stack, Switch, Text, Textarea } from '@mantine/core';
+import { Button, Group, Stack, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -14,7 +14,6 @@ import { prerenderPromptTemplate } from '../../../api/prompt-templates';
 
 type FormValues = {
 	name: string;
-	enabled: boolean;
 	templateText: string;
 };
 
@@ -29,7 +28,6 @@ export const PromptTemplateEditor = () => {
 	const methods = useForm<FormValues>({
 		defaultValues: {
 			name: tpl?.name ?? '',
-			enabled: tpl?.enabled ?? true,
 			templateText: tpl?.templateText ?? '',
 		},
 	});
@@ -37,7 +35,6 @@ export const PromptTemplateEditor = () => {
 	useEffect(() => {
 		methods.reset({
 			name: tpl?.name ?? '',
-			enabled: tpl?.enabled ?? true,
 			templateText: tpl?.templateText ?? '',
 		});
 		setPreview('');
@@ -50,7 +47,6 @@ export const PromptTemplateEditor = () => {
 		updatePromptTemplateRequested({
 			id: tpl.id,
 			name: data.name,
-			enabled: data.enabled,
 			templateText: data.templateText,
 		});
 	};
@@ -79,12 +75,6 @@ export const PromptTemplateEditor = () => {
 		<FormProvider {...methods}>
 			<Stack gap="md" mt="md">
 				<FormInput name="name" label="Название" placeholder="Введите название" />
-
-				<Switch
-					label="Enabled"
-					checked={methods.watch('enabled')}
-					onChange={(e) => methods.setValue('enabled', e.currentTarget.checked, { shouldDirty: true })}
-				/>
 
 				<Textarea
 					label="Template (LiquidJS)"

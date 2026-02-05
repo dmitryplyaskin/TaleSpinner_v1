@@ -68,6 +68,7 @@ export type ChatDto = {
 	entityProfileId: string;
 	title: string;
 	activeBranchId: string | null;
+	promptTemplateId: string | null;
 	status: 'active' | 'archived' | 'deleted';
 	createdAt: string;
 	updatedAt: string;
@@ -177,6 +178,16 @@ export async function deleteChat(chatId: string): Promise<ChatDto> {
 
 export async function getChatById(chatId: string): Promise<ChatDto> {
 	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`);
+}
+
+export async function setChatPromptTemplate(params: {
+	chatId: string;
+	promptTemplateId: string | null;
+}): Promise<ChatDto> {
+	return apiJson<ChatDto>(`/chats/${encodeURIComponent(params.chatId)}/prompt-template`, {
+		method: 'PUT',
+		body: JSON.stringify({ promptTemplateId: params.promptTemplateId }),
+	});
 }
 
 export async function listChatBranches(chatId: string): Promise<ChatBranchDto[]> {
