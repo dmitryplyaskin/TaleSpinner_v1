@@ -126,7 +126,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					}
 				}}
 				comboboxProps={{ withinPortal: false }}
-				description="Template result will be applied as an effect output (see spec)."
+				description="Select how rendered output should be applied during run commit."
 			/>
 
 			{normalizedType === 'artifacts' && (
@@ -135,12 +135,12 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						<FormInput
 							name={`operations.${index}.config.params.output.writeArtifact.tag`}
 							label="Artifact tag"
-							infoTip="Tag name without `art.` prefix. Within a profile, a tag can only be written by one operation."
+							infoTip="Use tag without the art. prefix. Each tag should have a single writer in one profile."
 						/>
 						<FormSelect
 							name={`operations.${index}.config.params.output.writeArtifact.persistence`}
 							label="Persistence"
-							infoTip="persisted — saved between turns; run_only — only within the current Run."
+							infoTip="persisted survives turns; run_only exists only during current run."
 							selectProps={{ options: persistenceOptions, comboboxProps: { withinPortal: false } }}
 						/>
 					</Group>
@@ -148,13 +148,13 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						<FormSelect
 							name={`operations.${index}.config.params.output.writeArtifact.usage`}
 							label="Usage"
-							infoTip="How the artifact is used: prompt only, UI only, both, or internal."
+							infoTip="Choose if artifact is used by prompt, UI, both, or internal processing only."
 							selectProps={{ options: usageOptions, comboboxProps: { withinPortal: false } }}
 						/>
 						<FormInput
 							name={`operations.${index}.config.params.output.writeArtifact.semantics`}
 							label="Semantics"
-							infoTip='Semantic meaning: "state", "log/feed", "lore/memory", "intermediate", or a custom string.'
+							infoTip='Semantic label for consumers, for example "state" or "log/feed".'
 						/>
 					</Group>
 				</Stack>
@@ -165,7 +165,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					<Select
 						{...promptTimeKindField}
 						label="Prompt-time effect"
-						description="Applied only in before_main_llm and affects the effective prompt of the main LLM call."
+						description="Applied in before_main_llm to modify effective prompt for main LLM."
 						data={promptTimeKindOptions}
 						value={promptKind}
 						onChange={(next) => {
@@ -201,7 +201,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 							<FormSelect
 								name={`operations.${index}.config.params.output.promptTime.mode`}
 								label="Mode"
-								infoTip="prepend: payload + system; append: system + payload; replace: system := payload."
+								infoTip="prepend => payload + system; append => system + payload; replace => system = payload."
 								selectProps={{ options: systemUpdateModeOptions, comboboxProps: { withinPortal: false } }}
 							/>
 							<FormInput
@@ -217,7 +217,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 							<FormSelect
 								name={`operations.${index}.config.params.output.promptTime.role`}
 								label="Role"
-								infoTip="Role of the synthetic message inserted into the effective prompt."
+								infoTip="Role used for the synthetic prompt message."
 								selectProps={{ options: promptTimeRoleOptions, comboboxProps: { withinPortal: false } }}
 							/>
 							<FormInput
@@ -238,7 +238,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					)}
 
 					<Text size="xs" c="dimmed">
-						Effect content comes from template output (string).
+						Effect payload source is template output text.
 					</Text>
 				</Stack>
 			)}
@@ -248,7 +248,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					<FormSelect
 						name={`operations.${index}.config.params.output.canonicalization.target`}
 						label="Target"
-						infoTip="before_main_llm: only user; after_main_llm: user or assistant."
+						infoTip="before_main_llm allows only user target; after_main_llm allows user or assistant."
 						selectProps={{
 							options: [
 								{ value: 'user', label: 'user' },
@@ -258,7 +258,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						}}
 					/>
 					<Text size="xs" c="dimmed">
-						Minimal mode for now: replace_text (overwrite selected turn part with template result).
+						Current mode is replace_text: selected turn part is overwritten by template output.
 					</Text>
 				</Stack>
 			)}

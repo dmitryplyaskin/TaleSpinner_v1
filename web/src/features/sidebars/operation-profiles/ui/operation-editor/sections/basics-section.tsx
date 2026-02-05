@@ -4,7 +4,7 @@ import React from 'react';
 import { FormCheckbox, FormTextarea } from '@ui/form-components';
 
 const RequiredInfoTip =
-	'If required=true, operation must finish with status="done". Otherwise the Run will not pass the before_main_llm barrier, or will be marked as failed for after_main_llm.';
+	'Required operations must finish as "done". If they fail, the run will fail for the corresponding hook.';
 
 type Props = {
 	index: number;
@@ -18,7 +18,7 @@ export const BasicsSection: React.FC<Props> = ({ index }) => {
 			<FormTextarea
 				name={`operations.${index}.description`}
 				label="Description"
-				infoTip="Short operation description. Shown in nodes and can be used for profile documentation."
+				infoTip="Short description shown in list, node labels, and profile docs."
 				textareaProps={{ minRows: 2, autosize: true }}
 			/>
 
@@ -26,7 +26,7 @@ export const BasicsSection: React.FC<Props> = ({ index }) => {
 				<FormCheckbox
 					name={`operations.${index}.config.enabled`}
 					label="Enabled"
-					infoTip='If disabled, operation is treated as skipped and will not commit any effects.'
+					infoTip="Disabled operations are skipped and do not commit effects."
 				/>
 				<FormCheckbox name={`operations.${index}.config.required`} label="Required" infoTip={RequiredInfoTip} />
 			</Group>

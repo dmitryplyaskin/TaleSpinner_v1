@@ -1,16 +1,8 @@
 import '@xyflow/react/dist/style.css';
 import './node-editor-modal.css';
 
-import { Alert, Button, Divider, Group, Modal, ScrollArea, Select, Stack, Text } from '@mantine/core';
-import { useUnit } from 'effector-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { LuPlus, LuTrash2 } from 'react-icons/lu';
-import { v4 as uuidv4 } from 'uuid';
-
-import type { OperationProfileDto } from '../../../../api/chat-core';
-
-import { updateOperationProfileFx } from '@model/operation-profiles';
+import { Alert, Button, Divider, Group, Modal, ScrollArea, SegmentedControl, Select, Stack, Text } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
 	Background,
 	ConnectionLineType,
@@ -27,9 +19,17 @@ import {
 	type ReactFlowInstance,
 	useNodesState,
 } from '@xyflow/react';
+import { useUnit } from 'effector-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { LuPlus, LuTrash2 } from 'react-icons/lu';
+import { v4 as uuidv4 } from 'uuid';
+
+import { updateOperationProfileFx } from '@model/operation-profiles';
 
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from '../form/operation-profile-form-mapping';
 import { OperationEditor } from '../ui/operation-editor/operation-editor';
+
 import { OperationFlowNode, type OperationFlowNodeData } from './flow/operation-flow-node';
 import { useGroupLabelDrag } from './hooks/use-group-label-drag';
 import { computeSimpleLayout, readNodeEditorMeta, writeNodeEditorMeta } from './meta/node-editor-meta';
@@ -38,6 +38,9 @@ import { GroupOverlays, type EditorGroup } from './ui/group-overlays';
 import { NodeEditorHeader } from './ui/node-editor-header';
 import { computeBoundsFromNodes } from './utils/bounds';
 import { DEFAULT_GROUP_COLOR_HEX, normalizeCssColorToOpaqueRgbString } from './utils/color';
+
+import type { OperationProfileDto } from '../../../../api/chat-core';
+import type { NodeEditorViewState } from '../ui/types';
 
 type Props = {
 	opened: boolean;
@@ -100,10 +103,11 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
 
 export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClose, profile }) => {
 	const doUpdate = useUnit(updateOperationProfileFx);
+	const isCompactLayout = useMediaQuery('(max-width: 1024px)');
 
 	const initial = useMemo(() => toOperationProfileForm(profile), [profile]);
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
-	const { control, formState, setValue } = methods;
+	const { control, formState, setValue, reset: resetForm } = methods;
 
 	const { append, replace } = useFieldArray({ name: 'operations', control, keyName: '_key' });
 	const operations = useWatch({ control, name: 'operations' }) as OperationProfileFormValues['operations'] | undefined;
@@ -116,15 +120,17 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	const [isLayoutDirty, setIsLayoutDirty] = useState(false);
 	const [flow, setFlow] = useState<ReactFlowInstance | null>(null);
 	const [groupEditor, setGroupEditor] = useState<GroupEditorDraft | null>(null);
+	const [viewState, setViewState] = useState<NodeEditorViewState>('graph');
 
 	const connectingSourceIdRef = useRef<string | null>(null);
 	const didConnectRef = useRef(false);
 	const flowWrapperRef = useRef<HTMLDivElement | null>(null);
 	const nodesRef = useRef<Array<Node<OperationFlowNodeData>>>([]);
+	const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<OperationFlowNodeData>>([]);
 
-	useEffect(() => {
+	const resetToInitialState = useCallback(() => {
 		setJsonError(null);
-		methods.reset(initial);
+		resetForm(initial);
 		setSelectedOpId(null);
 		setSelectedNodeIds([]);
 		const metaGroups = readNodeEditorMeta(profile.meta)?.groups ?? {};
@@ -132,7 +138,34 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setSelectedGroupId(null);
 		setGroupEditor(null);
 		setIsLayoutDirty(false);
-	}, [initial, profile.meta]);
+		setViewState('graph');
+
+		const meta = readNodeEditorMeta(profile.meta);
+		const resetEdges = buildEdges(initial.operations as Array<{ opId: string; config?: { dependsOn?: string[] } }>);
+		const fallbackPositions = computeSimpleLayout(extractOpIds(initial), edgesToDeps(resetEdges));
+		const nextNodes: Array<Node<OperationFlowNodeData>> = initial.operations.map((op) => {
+			const pos = meta?.nodes?.[op.opId] ?? fallbackPositions[op.opId] ?? { x: 0, y: 0 };
+			return {
+				id: op.opId,
+				type: 'operation',
+				position: pos,
+				zIndex: 100,
+				data: {
+					opId: op.opId,
+					name: op.name,
+					description: op.description,
+					kind: op.kind,
+					isEnabled: Boolean(op.config.enabled),
+					isRequired: Boolean(op.config.required),
+				},
+			};
+		});
+		setNodes(nextNodes);
+	}, [initial, profile.meta, resetForm, setNodes]);
+
+	useEffect(() => {
+		resetToInitialState();
+	}, [resetToInitialState]);
 
 	const nodeTypes = useMemo(() => ({ operation: OperationFlowNode }), []);
 
@@ -143,12 +176,10 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		return true;
 	}, []);
 
-	const safeOperations = Array.isArray(operations) ? operations : [];
+	const safeOperations = useMemo(() => (Array.isArray(operations) ? operations : []), [operations]);
 	const opIndexById = useMemo(() => new Map(safeOperations.map((op, idx) => [op.opId, idx])), [safeOperations]);
 
 	const edges = useMemo(() => buildEdges(safeOperations), [safeOperations]);
-
-	const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node<OperationFlowNodeData>>([]);
 	useEffect(() => {
 		nodesRef.current = nodes;
 	}, [nodes]);
@@ -319,6 +350,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		]);
 		setIsLayoutDirty(true);
 		setSelectedOpId(next.opId);
+		if (isCompactLayout) setViewState('inspector');
 	};
 
 	const deleteSelectedNodes = useCallback(() => {
@@ -572,14 +604,19 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		[areStringArraysEqual],
 	);
 
-	const onNodeClick = useCallback((_: unknown, node: Node) => {
-		setSelectedOpId(String(node.id));
-	}, []);
+	const onNodeClick = useCallback(
+		(_: unknown, node: Node) => {
+			setSelectedOpId(String(node.id));
+			if (isCompactLayout) setViewState('inspector');
+		},
+		[isCompactLayout],
+	);
 
 	const onPaneClick = useCallback(() => {
 		setSelectedOpId(null);
 		setSelectedNodeIds((prev) => (prev.length === 0 ? prev : []));
-	}, []);
+		if (isCompactLayout) setViewState('graph');
+	}, [isCompactLayout]);
 
 	const onNodeDragStop = (_: unknown, node: Node) => {
 		setNodes((prev) => prev.map((n) => (String(n.id) === String(node.id) ? { ...n, position: node.position } : n)));
@@ -613,7 +650,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 			}}
 		>
 			<FormProvider {...methods}>
-				<Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
+				<Stack gap="sm" style={{ flex: 1, minHeight: 0 }} className="opNodeShell">
 					<NodeEditorHeader profileName={profile.name} isDirty={isDirty} onAutoLayout={autoLayout} onSave={onSave} onClose={onClose} />
 
 					{jsonError && (
@@ -622,107 +659,157 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 						</Alert>
 					)}
 
-					<Divider />
+					{isCompactLayout && (
+						<SegmentedControl
+							className="opNodeMobileSegment"
+							fullWidth
+							value={viewState}
+							onChange={(next) => setViewState(next as NodeEditorViewState)}
+							data={[
+								{ value: 'graph', label: 'Graph' },
+								{ value: 'inspector', label: 'Inspector' },
+							]}
+						/>
+					)}
 
 					<Group gap={0} wrap="nowrap" align="stretch" style={{ flex: 1, minHeight: 0 }}>
-						<div ref={flowWrapperRef} className="opProfileNodeEditorFlow" style={{ flex: 1, minHeight: 0 }}>
-							<ReactFlowProvider>
-								<ReactFlow
-									nodes={nodes}
-									edges={edges}
-									nodeTypes={nodeTypes}
-									connectionLineType={ConnectionLineType.SmoothStep}
-									onInit={setFlow}
-									onConnect={onConnect}
-									onConnectStart={onConnectStart}
-									onConnectEnd={onConnectEnd}
-									onEdgesChange={onEdgesChange}
-									onNodesChange={onNodesChange}
-									onNodeDragStop={onNodeDragStop}
-									selectionOnDrag
-									selectionKeyCode={['Shift']}
-									multiSelectionKeyCode={['Control', 'Meta', 'Shift']}
-									deleteKeyCode={null}
-									onSelectionChange={onSelectionChange as any}
-									onNodeClick={onNodeClick}
-									onPaneClick={onPaneClick}
-								>
-									<Background />
-									<Controls />
-									<GroupOverlays
-										groups={groups}
-										selectedGroupId={selectedGroupId}
-										groupBgAlpha={GROUP_BG_ALPHA}
-										computeBounds={computeGroupBounds}
-										onLabelPointerDown={groupLabelDrag.onPointerDown}
-										onLabelPointerMove={groupLabelDrag.onPointerMove}
-										onLabelPointerUp={groupLabelDrag.onPointerUp}
-									/>
-									<Panel position="top-left">
-										<Stack gap={6}>
-											<Group gap="xs" wrap="nowrap">
-												<Button size="xs" leftSection={<LuPlus />} onClick={addOperation}>
-													Add
-												</Button>
-												<Button
-													size="xs"
-													color="red"
-													variant="light"
-													leftSection={<LuTrash2 />}
-													disabled={selectedNodeIds.length === 0 && !selectedOpId}
-													onClick={deleteSelectedNodes}
-												>
-													Delete
-												</Button>
-												<Button size="xs" variant="light" disabled={selectedNodeIds.length < 2} onClick={createGroupFromSelection}>
-													Group
-												</Button>
+						{(!isCompactLayout || viewState === 'graph') && (
+							<div ref={flowWrapperRef} className="opProfileNodeEditorFlow opNodePanel" style={{ flex: 1, minHeight: 0 }}>
+								<ReactFlowProvider>
+									<ReactFlow
+										nodes={nodes}
+										edges={edges}
+										nodeTypes={nodeTypes}
+										connectionLineType={ConnectionLineType.SmoothStep}
+										onInit={setFlow}
+										onConnect={onConnect}
+										onConnectStart={onConnectStart}
+										onConnectEnd={onConnectEnd}
+										onEdgesChange={onEdgesChange}
+										onNodesChange={onNodesChange}
+										onNodeDragStop={onNodeDragStop}
+										selectionOnDrag
+										selectionKeyCode={['Shift']}
+										multiSelectionKeyCode={['Control', 'Meta', 'Shift']}
+										deleteKeyCode={null}
+										onSelectionChange={onSelectionChange as any}
+										onNodeClick={onNodeClick}
+										onPaneClick={onPaneClick}
+									>
+										<Background />
+										<Controls />
+										<GroupOverlays
+											groups={groups}
+											selectedGroupId={selectedGroupId}
+											groupBgAlpha={GROUP_BG_ALPHA}
+											computeBounds={computeGroupBounds}
+											onLabelPointerDown={groupLabelDrag.onPointerDown}
+											onLabelPointerMove={groupLabelDrag.onPointerMove}
+											onLabelPointerUp={groupLabelDrag.onPointerUp}
+										/>
+										<Panel position="top-left">
+											<Stack gap={6} className="opNodeToolbar">
+												<Group gap="xs" wrap="nowrap">
+													<Button size="xs" leftSection={<LuPlus />} onClick={addOperation}>
+														Add
+													</Button>
+													<Button
+														size="xs"
+														color="red"
+														variant="light"
+														leftSection={<LuTrash2 />}
+														disabled={selectedNodeIds.length === 0 && !selectedOpId}
+														onClick={() => {
+															if (!window.confirm('Delete selected operations?')) return;
+															deleteSelectedNodes();
+														}}
+													>
+														Delete
+													</Button>
+													<Button
+														size="xs"
+														variant="light"
+														disabled={selectedNodeIds.length < 2}
+														onClick={createGroupFromSelection}
+													>
+														Group
+													</Button>
+												</Group>
+
+												<Group gap="xs" wrap="nowrap">
+													<Select
+														size="xs"
+														placeholder="Groups"
+														data={groupSelectData}
+														value={selectedGroupId ?? ''}
+														onChange={(value) => setSelectedGroupId(value && value !== '' ? value : null)}
+														comboboxProps={{ withinPortal: false }}
+														style={{ minWidth: 200 }}
+													/>
+													<Button
+														size="xs"
+														variant="default"
+														disabled={!selectedGroupId}
+														onClick={() => {
+															if (!selectedGroupId) return;
+															if (!window.confirm('Ungroup selected set?')) return;
+															ungroupSelected();
+														}}
+													>
+														Ungroup
+													</Button>
+												</Group>
+											</Stack>
+										</Panel>
+									</ReactFlow>
+								</ReactFlowProvider>
+							</div>
+						)}
+
+						{(!isCompactLayout || viewState === 'inspector') && (
+							<>
+								{!isCompactLayout && <Divider orientation="vertical" mx="md" />}
+
+								<ScrollArea className="opNodePanel" style={{ width: isCompactLayout ? '100%' : 480, height: '100%' }} p="md">
+									<Stack gap="md" className="opNodeInspector">
+										<div className="opNodeInspectorHeader">
+											<Group justify="space-between" wrap="nowrap">
+												<Text fw={800}>Operation</Text>
+												<Text size="xs" c="dimmed">
+													{selectedIndex === null ? '—' : `#${selectedIndex + 1}`}
+												</Text>
 											</Group>
+										</div>
 
-											<Group gap="xs" wrap="nowrap">
-												<Select
-													size="xs"
-													placeholder="Groups"
-													data={groupSelectData}
-													value={selectedGroupId ?? ''}
-													onChange={(v) => setSelectedGroupId(v && v !== '' ? v : null)}
-													comboboxProps={{ withinPortal: false }}
-													style={{ minWidth: 200 }}
-												/>
-												<Button size="xs" variant="default" disabled={!selectedGroupId} onClick={ungroupSelected}>
-													Ungroup
-												</Button>
-											</Group>
-										</Stack>
-									</Panel>
-								</ReactFlow>
-							</ReactFlowProvider>
-						</div>
-
-						<Divider orientation="vertical" />
-
-						<ScrollArea style={{ width: 480, height: '100%' }} p="md">
-							<Stack gap="md">
-								<Group justify="space-between" wrap="nowrap">
-									<Text fw={800}>Operation</Text>
-									<Text size="xs" c="dimmed">
-										{selectedIndex === null ? '—' : `#${selectedIndex + 1}`}
-									</Text>
-								</Group>
-
-								{selectedIndex === null ? (
-									<Text size="sm" c="dimmed">
-										Выберите ноду, чтобы редактировать операцию.
-									</Text>
-								) : (
-									<OperationEditor
-										key={selectedOpId ?? String(selectedIndex)}
-										index={selectedIndex}
-										onRemove={() => deleteSelectedNodes()}
-									/>
-								)}
-							</Stack>
-						</ScrollArea>
+										{selectedIndex === null ? (
+											<Text size="sm" c="dimmed">
+												Select a node to edit operation details.
+											</Text>
+										) : (
+											<OperationEditor
+												key={selectedOpId ?? String(selectedIndex)}
+												index={selectedIndex}
+												status={{
+													index: selectedIndex + 1,
+													kind: safeOperations[selectedIndex]?.kind ?? 'template',
+													isDirty,
+												}}
+												canSave={isDirty}
+												canDiscard={isDirty}
+												onSave={onSave}
+												onDiscard={() => {
+													resetToInitialState();
+												}}
+												onRemove={() => {
+													if (!window.confirm('Delete selected operations?')) return;
+													deleteSelectedNodes();
+												}}
+											/>
+										)}
+									</Stack>
+								</ScrollArea>
+							</>
+						)}
 					</Group>
 				</Stack>
 
@@ -762,4 +849,3 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		</Modal>
 	);
 };
-

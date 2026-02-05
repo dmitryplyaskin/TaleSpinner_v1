@@ -1,12 +1,13 @@
-import { Accordion } from '@mantine/core';
+import { Accordion, Group, Text } from '@mantine/core';
 import React, { useMemo, useState } from 'react';
 
-import type { OperationKind } from '@shared/types/operation-profiles';
 
 import { BasicsSection } from './sections/basics-section';
 import { ExecutionSection } from './sections/execution-section';
 import { OutputSection } from './sections/output-section';
 import { ParamsSection } from './sections/params-section';
+
+import type { OperationKind } from '@shared/types/operation-profiles';
 
 type Props = {
 	index: number;
@@ -47,14 +48,24 @@ export const OperationSectionsAccordion: React.FC<Props> = ({ index, kind }) => 
 			</Accordion.Item>
 
 			<Accordion.Item value="params">
-				<Accordion.Control>Template / Params</Accordion.Control>
+				<Accordion.Control>
+					<Group gap={8} wrap="nowrap">
+						<Text inherit>Template / Params</Text>
+						<span className="op-advancedBadge">Advanced</span>
+					</Group>
+				</Accordion.Control>
 				<Accordion.Panel>
 					{isOpen('params') && <ParamsSection index={index} kind={kind === 'template' ? 'template' : 'other'} />}
 				</Accordion.Panel>
 			</Accordion.Item>
 
 			<Accordion.Item value="output">
-				<Accordion.Control>Effects / Output</Accordion.Control>
+				<Accordion.Control>
+					<Group gap={8} wrap="nowrap">
+						<Text inherit>Effects / Output</Text>
+						<span className="op-advancedBadge">Advanced</span>
+					</Group>
+				</Accordion.Control>
 				<Accordion.Panel>{isOpen('output') && <OutputSection index={index} />}</Accordion.Panel>
 			</Accordion.Item>
 		</Accordion>

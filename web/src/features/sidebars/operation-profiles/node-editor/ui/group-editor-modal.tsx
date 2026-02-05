@@ -56,7 +56,14 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onChange, on
 					</div>
 
 					<Group justify="space-between" wrap="nowrap" mt="xs">
-						<Button color="red" variant="light" onClick={() => onDelete(draft.groupId)}>
+						<Button
+							color="red"
+							variant="light"
+							onClick={() => {
+								if (!window.confirm('Delete this group?')) return;
+								onDelete(draft.groupId);
+							}}
+						>
 							Delete group
 						</Button>
 

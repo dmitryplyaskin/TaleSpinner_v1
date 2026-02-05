@@ -1,0 +1,209 @@
+.op-ui {
+	--op-surface: #ffffff;
+	--op-surface-muted: #f8fbff;
+	--op-border: #d9e3f0;
+	--op-border-strong: #bdd1eb;
+	--op-muted: #5f6f86;
+	--op-accent: #2f74d0;
+	--op-accent-soft: #ebf4ff;
+	--op-success: #15803d;
+	--op-warn: #d97706;
+	--op-danger: #dc2626;
+	--op-shadow: 0 12px 28px rgba(24, 43, 70, 0.08);
+	--op-radius-lg: 14px;
+	--op-radius-md: 10px;
+	--op-space-xs: 8px;
+	--op-space-sm: 12px;
+	--op-space-md: 16px;
+	--op-space-lg: 20px;
+	--op-space-xl: 24px;
+	background:
+		radial-gradient(1200px 600px at 80% -10%, rgba(114, 177, 255, 0.18), transparent 55%),
+		linear-gradient(180deg, #f2f7ff 0%, #f7fbff 100%);
+	border-radius: var(--op-radius-lg);
+	padding: var(--op-space-md);
+	max-width: 1320px;
+	width: 100%;
+	margin: 0 auto;
+}
+
+.op-ui .op-command {
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	box-shadow: var(--op-shadow);
+	border-radius: var(--op-radius-lg);
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-commandTitle {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: #11243f;
+}
+
+.op-ui .op-commandHint {
+	font-size: 12px;
+	line-height: 1.35;
+	color: var(--op-muted);
+}
+
+.op-ui .op-nodeButton {
+	min-width: 180px;
+}
+
+.op-ui .op-statusStrip {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--op-space-xs);
+}
+
+.op-ui .op-statusPill {
+	background: var(--op-surface-muted);
+	border: 1px solid var(--op-border);
+	border-radius: 999px;
+	padding: 7px 12px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #183055;
+	display: flex;
+	justify-content: center;
+}
+
+.op-ui .op-editorCard {
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	border-radius: var(--op-radius-lg);
+	box-shadow: var(--op-shadow);
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-editorHeader {
+	display: flex;
+	gap: var(--op-space-sm);
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.op-ui .op-stickyHeader {
+	position: sticky;
+	top: 0;
+	background: var(--op-surface);
+	z-index: 5;
+	padding-bottom: var(--op-space-sm);
+	border-bottom: 1px solid var(--op-border);
+}
+
+.op-ui .op-sectionToggle {
+	cursor: pointer;
+	user-select: none;
+}
+
+.op-ui .op-workspace {
+	display: grid;
+	grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+	gap: var(--op-space-md);
+	align-items: start;
+}
+
+.op-ui .op-listPane,
+.op-ui .op-inspectorPane {
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	border-radius: var(--op-radius-lg);
+	box-shadow: var(--op-shadow);
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-listHeader {
+	position: sticky;
+	top: 0;
+	background: var(--op-surface);
+	z-index: 4;
+	padding-bottom: var(--op-space-sm);
+	border-bottom: 1px solid var(--op-border);
+	margin-bottom: var(--op-space-sm);
+}
+
+.op-ui .op-listHint {
+	font-size: 12px;
+	color: var(--op-muted);
+}
+
+.op-ui .op-listRow {
+	border-radius: var(--op-radius-md);
+	border: 1px solid var(--op-border);
+	background: #fdfefe;
+	transition: border-color 120ms ease, transform 120ms ease, background-color 120ms ease;
+}
+
+.op-ui .op-listRow:hover {
+	border-color: var(--op-border-strong);
+	transform: translateY(-1px);
+}
+
+.op-ui .op-listRow[data-selected='true'] {
+	border-color: var(--op-accent);
+	background: var(--op-accent-soft);
+}
+
+.op-ui .op-rowMeta {
+	color: var(--op-muted);
+	font-size: 12px;
+}
+
+.op-ui .op-mobileSegment {
+	margin-bottom: var(--op-space-sm);
+}
+
+.op-ui .op-inlineEditor {
+	margin-top: var(--op-space-xs);
+	margin-bottom: var(--op-space-md);
+}
+
+.op-ui .op-advancedBadge {
+	border-radius: 999px;
+	border: 1px solid var(--op-border);
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--op-muted);
+}
+
+.op-ui .op-warnText {
+	color: var(--op-warn);
+}
+
+.op-ui .op-focusRing:focus-visible {
+	outline: 2px solid var(--op-accent);
+	outline-offset: 2px;
+}
+
+@media (max-width: 1199px) {
+	.op-ui .op-statusStrip {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.op-ui .op-workspace {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 767px) {
+	.op-ui {
+		padding: var(--op-space-sm);
+	}
+
+	.op-ui .op-command,
+	.op-ui .op-listPane,
+	.op-ui .op-inspectorPane,
+	.op-ui .op-editorCard {
+		padding: var(--op-space-sm);
+	}
+
+	.op-ui .op-nodeButton {
+		min-width: 0;
+		width: 100%;
+	}
+}

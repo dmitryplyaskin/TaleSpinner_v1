@@ -1,37 +1,194 @@
-import { Stack, TextInput } from '@mantine/core';
-import React, { useMemo, useState } from 'react';
-import { LuSearch } from 'react-icons/lu';
+import { Button, Group, Select, Stack, Text, TextInput } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
+import React, { type ReactNode, useMemo, useState } from 'react';
+import { LuPlus, LuSearch } from 'react-icons/lu';
 
 import { OperationRow } from './operation-row';
 
+import type { OperationFilterState, OperationListItemVm, OperationStatsVm } from './types';
+
 type Props = {
-	items: Array<{ opId: string; index: number }>;
+	items: OperationListItemVm[];
 	selectedOpId: string | null;
+	stats: OperationStatsVm;
 	onSelect: (opId: string) => void;
+	onQuickAdd: () => void;
+	onMoveSelection: (direction: 'prev' | 'next') => void;
+	onFocusEditor?: () => void;
+	renderInlineEditor?: (item: OperationListItemVm) => ReactNode;
 };
 
-export const OperationList: React.FC<Props> = ({ items, selectedOpId, onSelect }) => {
-	const [query, setQuery] = useState('');
-	const normalizedQuery = useMemo(() => query.trim().toLowerCase(), [query]);
+const DEFAULT_FILTERS: OperationFilterState = {
+	query: '',
+	kind: 'all',
+	enabled: 'all',
+	required: 'all',
+};
+
+function matchesEnabledFilter(item: OperationListItemVm, filter: OperationFilterState['enabled']): boolean {
+	if (filter === 'all') return true;
+	if (filter === 'enabled') return item.enabled;
+	return !item.enabled;
+}
+
+function matchesRequiredFilter(item: OperationListItemVm, filter: OperationFilterState['required']): boolean {
+	if (filter === 'all') return true;
+	if (filter === 'required') return item.required;
+	return !item.required;
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+	if (target.isContentEditable) return true;
+	const tag = target.tagName.toLowerCase();
+	return tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+export const OperationList: React.FC<Props> = ({
+	items,
+	selectedOpId,
+	stats,
+	onSelect,
+	onQuickAdd,
+	onMoveSelection,
+	onFocusEditor,
+	renderInlineEditor,
+}) => {
+	const [filters, setFilters] = useState<OperationFilterState>(DEFAULT_FILTERS);
+	const [debouncedQuery] = useDebouncedValue(filters.query.trim().toLowerCase(), 180);
+
+	const kindOptions = useMemo(() => {
+		const set = new Set(items.map((item) => item.kind));
+		return [
+			{ value: 'all', label: 'All kinds' },
+			...Array.from(set).sort().map((value) => ({ value, label: value })),
+		];
+	}, [items]);
+
+	const filteredItems = useMemo(() => {
+		return items.filter((item) => {
+			if (filters.kind !== 'all' && item.kind !== filters.kind) return false;
+			if (!matchesEnabledFilter(item, filters.enabled)) return false;
+			if (!matchesRequiredFilter(item, filters.required)) return false;
+
+			if (!debouncedQuery) return true;
+			const haystack = `${item.name}\n${item.opId}\n${item.kind}`.toLowerCase();
+			return haystack.includes(debouncedQuery);
+		});
+	}, [debouncedQuery, filters.enabled, filters.kind, filters.required, items]);
 
 	return (
-		<Stack gap="xs">
+		<Stack
+			gap="xs"
+			role="listbox"
+			tabIndex={0}
+			className="op-focusRing"
+			onKeyDown={(event) => {
+				if (isTextEditingTarget(event.target)) return;
+				if (event.key === 'ArrowUp') {
+					event.preventDefault();
+					onMoveSelection('prev');
+				}
+				if (event.key === 'ArrowDown') {
+					event.preventDefault();
+					onMoveSelection('next');
+				}
+				if (event.key === 'Enter') {
+					event.preventDefault();
+					onFocusEditor?.();
+				}
+			}}
+		>
+			<div className="op-listHeader">
+				<Group justify="space-between" align="center" wrap="nowrap">
+					<Stack gap={2}>
+						<Text fw={700}>Operations</Text>
+						<Text className="op-listHint">
+							{filteredItems.length} visible of {stats.total}
+						</Text>
+					</Stack>
+
+					<Button size="xs" leftSection={<LuPlus />} onClick={onQuickAdd}>
+						Add
+					</Button>
+				</Group>
+			</div>
+
 			<TextInput
-				value={query}
-				onChange={(e) => setQuery(e.currentTarget.value)}
-				placeholder="Search operations..."
+				value={filters.query}
+				onChange={(event) => setFilters((prev) => ({ ...prev, query: event.currentTarget.value }))}
+				placeholder="Search by name, id, or kind"
 				leftSection={<LuSearch />}
+				aria-label="Search operations"
 			/>
-			{items.map((item) => (
-				<OperationRow
-					key={item.opId}
-					index={item.index}
-					opId={item.opId}
-					selected={selectedOpId === item.opId}
-					onSelect={onSelect}
-					query={normalizedQuery}
+
+			<Group grow wrap="wrap">
+				<Select
+					data={kindOptions}
+					value={filters.kind}
+					onChange={(next) =>
+						setFilters((prev) => ({
+							...prev,
+							kind: next === 'all' || next === null ? 'all' : (next as OperationFilterState['kind']),
+						}))
+					}
+					comboboxProps={{ withinPortal: false }}
+					aria-label="Filter by operation kind"
 				/>
-			))}
+				<Select
+					data={[
+						{ value: 'all', label: 'All states' },
+						{ value: 'enabled', label: 'Enabled only' },
+						{ value: 'disabled', label: 'Disabled only' },
+					]}
+					value={filters.enabled}
+					onChange={(next) =>
+						setFilters((prev) => ({
+							...prev,
+							enabled:
+								next === 'enabled' || next === 'disabled' || next === 'all'
+									? next
+									: DEFAULT_FILTERS.enabled,
+						}))
+					}
+					comboboxProps={{ withinPortal: false }}
+					aria-label="Filter by enabled state"
+				/>
+				<Select
+					data={[
+						{ value: 'all', label: 'All required states' },
+						{ value: 'required', label: 'Required only' },
+						{ value: 'optional', label: 'Optional only' },
+					]}
+					value={filters.required}
+					onChange={(next) =>
+						setFilters((prev) => ({
+							...prev,
+							required:
+								next === 'required' || next === 'optional' || next === 'all'
+									? next
+									: DEFAULT_FILTERS.required,
+						}))
+					}
+					comboboxProps={{ withinPortal: false }}
+					aria-label="Filter by required state"
+				/>
+			</Group>
+
+			{filteredItems.length === 0 ? (
+				<Text size="sm" c="dimmed">
+					No operations match the current filters.
+				</Text>
+			) : (
+				filteredItems.map((item) => (
+					<React.Fragment key={item.opId}>
+						<OperationRow item={item} selected={selectedOpId === item.opId} onSelect={onSelect} />
+						{selectedOpId === item.opId && renderInlineEditor && (
+							<div className="op-inlineEditor">{renderInlineEditor(item)}</div>
+						)}
+					</React.Fragment>
+				))
+			)}
 		</Stack>
 	);
 };

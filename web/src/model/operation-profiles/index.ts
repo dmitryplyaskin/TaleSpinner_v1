@@ -1,6 +1,8 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 import { v4 as uuidv4 } from 'uuid';
 
+import { toaster } from '@ui/toaster';
+
 import {
 	createOperationProfile,
 	deleteOperationProfile,
@@ -13,8 +15,8 @@ import {
 	type OperationProfileSettingsDto,
 	type OperationProfileDto,
 } from '../../api/chat-core';
+
 import type { OperationProfileExport, OperationProfileUpsertInput } from '@shared/types/operation-profiles';
-import { toaster } from '@ui/toaster';
 
 export const loadOperationProfilesFx = createEffect(async (): Promise<OperationProfileDto[]> => {
 	return listOperationProfiles();
@@ -105,22 +107,22 @@ sample({
 });
 
 createOperationProfileFx.doneData.watch((p) => {
-	toaster.success({ title: 'OperationProfile создан', description: `${p.name} (v${p.version})` });
+	toaster.success({ title: 'Operation profile created', description: `${p.name} (v${p.version})` });
 });
 createOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Не удалось создать OperationProfile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: 'Failed to create operation profile', description: e instanceof Error ? e.message : String(e) });
 });
 updateOperationProfileFx.doneData.watch((p) => {
-	toaster.success({ title: 'OperationProfile сохранён', description: `${p.name} (v${p.version})` });
+	toaster.success({ title: 'Operation profile saved', description: `${p.name} (v${p.version})` });
 });
 updateOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Не удалось сохранить OperationProfile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: 'Failed to save operation profile', description: e instanceof Error ? e.message : String(e) });
 });
 deleteOperationProfileFx.doneData.watch(() => {
-	toaster.success({ title: 'OperationProfile удалён' });
+	toaster.success({ title: 'Operation profile deleted' });
 });
 deleteOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Не удалось удалить OperationProfile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: 'Failed to delete operation profile', description: e instanceof Error ? e.message : String(e) });
 });
 
 // ---- Import / export
@@ -147,9 +149,8 @@ sample({
 });
 
 importOperationProfilesFx.doneData.watch((p) => {
-	toaster.success({ title: 'Импорт OperationProfile', description: `Импортировано: ${p.created.length}` });
+	toaster.success({ title: 'Operation profile import', description: `Imported: ${p.created.length}` });
 });
 importOperationProfilesFx.failData.watch((e) => {
-	toaster.error({ title: 'Не удалось импортировать', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: 'Failed to import operation profiles', description: e instanceof Error ? e.message : String(e) });
 });
-

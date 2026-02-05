@@ -32,33 +32,33 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
-		<Group justify="space-between" wrap="nowrap" align="flex-end">
-			<Text fw={700}>Profile actions</Text>
+		<Group justify="space-between" wrap="wrap" align="flex-end" gap="xs">
+			<Text className="op-commandTitle">Quick actions</Text>
 			<Group gap="xs" wrap="nowrap">
-				<IconButtonWithTooltip aria-label="Create profile" tooltip="Создать профиль" icon={<LuPlus />} onClick={onCreate} />
+				<IconButtonWithTooltip aria-label="Create profile" tooltip="Create profile" icon={<LuPlus />} onClick={onCreate} />
 				<IconButtonWithTooltip
 					aria-label="Duplicate profile"
-					tooltip="Дублировать профиль"
+					tooltip="Duplicate profile"
 					icon={<LuCopyPlus />}
 					disabled={!selected?.profileId}
 					onClick={() => selected?.profileId && onDuplicate(selected.profileId)}
 				/>
 				<IconButtonWithTooltip
 					aria-label="Delete profile"
-					tooltip="Удалить профиль"
+					tooltip="Delete profile"
 					icon={<LuTrash2 />}
 					colorPalette="red"
 					disabled={!selected?.profileId}
 					onClick={() => {
 						if (!selected?.profileId) return;
-						if (!window.confirm('Удалить OperationProfile?')) return;
+						if (!window.confirm('Delete this operation profile?')) return;
 						onDelete(selected.profileId);
 					}}
 				/>
 
 				<IconButtonWithTooltip
 					aria-label="Export profile"
-					tooltip="Экспорт"
+					tooltip="Export profile"
 					icon={<LuDownload />}
 					variant="ghost"
 					disabled={!selected?.profileId}
@@ -69,7 +69,7 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 							downloadJson(`operation-profile-${selected.name}.json`, exported);
 						} catch (e) {
 							toaster.error({
-								title: 'Ошибка экспорта',
+								title: 'Export failed',
 								description: e instanceof Error ? e.message : String(e),
 							});
 						}
@@ -92,7 +92,7 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 								await onImport(parsed);
 							} catch (err) {
 								toaster.error({
-									title: 'Ошибка импорта',
+									title: 'Import failed',
 									description: err instanceof Error ? err.message : String(err),
 								});
 							} finally {
@@ -105,7 +105,7 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 
 				<IconButtonWithTooltip
 					aria-label="Import profiles"
-					tooltip="Импорт"
+					tooltip="Import profiles"
 					icon={<LuUpload />}
 					variant="ghost"
 					onClick={() => {
@@ -116,4 +116,3 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 		</Group>
 	);
 };
-

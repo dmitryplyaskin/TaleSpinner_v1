@@ -14,8 +14,31 @@ export type OperationFlowNodeData = {
 const NODE_WIDTH = 260;
 const HANDLE_STYLE: React.CSSProperties = { width: 10, height: 10, border: '2px solid var(--mantine-color-blue-6)' };
 
+function getKindColor(kind: string): string {
+	switch (kind) {
+		case 'template':
+			return 'blue';
+		case 'llm':
+			return 'teal';
+		case 'rag':
+			return 'grape';
+		case 'tool':
+			return 'orange';
+		case 'compute':
+			return 'cyan';
+		case 'transform':
+			return 'indigo';
+		case 'legacy':
+			return 'gray';
+		default:
+			return 'blue';
+	}
+}
+
 export const OperationFlowNode: React.FC<NodeProps> = memo(({ data, selected }) => {
 	const d = data as OperationFlowNodeData;
+	const kindColor = getKindColor(d.kind);
+
 	return (
 		<Paper
 			withBorder
@@ -39,7 +62,7 @@ export const OperationFlowNode: React.FC<NodeProps> = memo(({ data, selected }) 
 					<Text fw={700} size="sm" lineClamp={1} style={{ minWidth: 0 }}>
 						{d.name}
 					</Text>
-					<Badge size="sm" variant="light">
+					<Badge size="sm" color={kindColor} variant="light">
 						{d.kind}
 					</Badge>
 				</Group>
@@ -70,4 +93,3 @@ export const OperationFlowNode: React.FC<NodeProps> = memo(({ data, selected }) 
 });
 
 OperationFlowNode.displayName = 'OperationFlowNode';
-

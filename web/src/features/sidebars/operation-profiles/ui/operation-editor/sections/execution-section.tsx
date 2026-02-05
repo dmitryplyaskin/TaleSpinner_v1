@@ -17,10 +17,10 @@ const triggerOptions = [
 ];
 
 const DependsOnInfoTip =
-	'Operation will not start until all dependsOn operations finish with status "done". If a dependency finishes as error/aborted/skipped, this operation cannot start.';
+	'Operation waits for all dependencies to finish as "done". Any failed or skipped dependency blocks start.';
 
 const OrderInfoTip =
-	'Commit order: first dependencies, then smaller order first; tie-breaker is operationId. Even with concurrent execute, commit stays deterministic.';
+	'Commit ordering is deterministic: dependencies first, then lower order, then operation id tie-break.';
 
 type Props = {
 	index: number;
@@ -39,7 +39,7 @@ export const ExecutionSection: React.FC<Props> = ({ index }) => {
 				<FormSelect
 					name={`operations.${index}.config.hooks.0`}
 					label="Hook"
-					infoTip="before_main_llm runs before main LLM; after_main_llm runs after."
+					infoTip="Choose whether the operation runs before or after the main LLM call."
 					selectProps={{
 						options: hookOptions,
 						comboboxProps: { withinPortal: false },
@@ -48,7 +48,7 @@ export const ExecutionSection: React.FC<Props> = ({ index }) => {
 				<FormMultiSelect
 					name={`operations.${index}.config.triggers`}
 					label="Triggers"
-					infoTip="generate — new turn; regenerate — new assistant variant for the current turn."
+					infoTip="generate starts on a new turn; regenerate starts for a new assistant variant."
 					multiSelectProps={{
 						options: triggerOptions,
 						comboboxProps: { withinPortal: false },
@@ -65,7 +65,7 @@ export const ExecutionSection: React.FC<Props> = ({ index }) => {
 				/>
 				<FormMultiSelect
 					name={`operations.${index}.config.dependsOn`}
-					label="Depends on (dependsOn)"
+					label="Depends on"
 					infoTip={DependsOnInfoTip}
 					multiSelectProps={{
 						options: depOptions.filter((o) => o.value !== selfId),

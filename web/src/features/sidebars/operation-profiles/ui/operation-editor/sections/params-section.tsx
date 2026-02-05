@@ -33,8 +33,8 @@ export const ParamsSection: React.FC<Props> = ({ index, kind }) => {
 			<Text fw={600}>Params</Text>
 			<FormTextarea
 				name={`operations.${index}.config.params.paramsJson`}
-				label="params (JSON)"
-				infoTip="Draft UI: for non-template operations, params are edited as a JSON object. Will be replaced by typed forms per kind."
+				label="Advanced JSON params"
+				infoTip="Temporary editor for non-template kinds. Keep it valid JSON object syntax."
 				textareaProps={{ minRows: 6, autosize: true }}
 			/>
 		</Stack>

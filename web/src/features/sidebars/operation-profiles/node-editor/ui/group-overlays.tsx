@@ -1,9 +1,10 @@
 import { Badge } from '@mantine/core';
-import React from 'react';
 import { ViewportPortal } from '@xyflow/react';
+import React from 'react';
+
+import { DEFAULT_GROUP_COLOR_HEX, getGroupColors } from '../utils/color';
 
 import type { NodeBounds } from '../utils/bounds';
-import { DEFAULT_GROUP_COLOR_HEX, getGroupColors } from '../utils/color';
 
 export type EditorGroup = { name: string; nodeIds: string[]; bg?: string };
 
@@ -48,9 +49,10 @@ export const GroupOverlays: React.FC<Props> = ({
 								width: bounds.width + pad * 2,
 								height: bounds.height + pad * 2,
 								borderRadius: 14,
-								border: isActive ? '2px solid rgba(76,110,245,0.85)' : '2px dashed rgba(0,0,0,0.25)',
+								border: isActive ? '2px solid rgba(47,116,208,0.9)' : '1px dashed rgba(26,53,89,0.28)',
 								background: colors.bg,
 								pointerEvents: 'none',
+								boxShadow: isActive ? '0 8px 20px rgba(47,116,208,0.16)' : 'none',
 								zIndex: 10,
 							}}
 						/>
@@ -66,7 +68,12 @@ export const GroupOverlays: React.FC<Props> = ({
 							<Badge
 								variant="filled"
 								radius="sm"
-								style={{ cursor: 'pointer', userSelect: 'none', background: colors.base }}
+								style={{
+									cursor: 'pointer',
+									userSelect: 'none',
+									background: colors.base,
+									boxShadow: '0 6px 14px rgba(19, 33, 54, 0.24)',
+								}}
 								onPointerDown={(e) => onLabelPointerDown(e, groupId)}
 								onPointerMove={(e) => onLabelPointerMove(e)}
 								onPointerUp={(e) => onLabelPointerUp(e, groupId)}
