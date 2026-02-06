@@ -3,6 +3,7 @@ import { getProviderConfig, getRuntime } from "../../llm/llm-repository";
 import { createGeneration } from "../../chat-core/generations-repository";
 import { getOperationProfileSettings } from "../../operations/operation-profile-settings-repository";
 import { getOperationProfileById } from "../../operations/operation-profiles-repository";
+import { stripChatGenerationDebugSettings } from "../debug";
 
 import type { OperationProfile } from "@shared/types/operation-profiles";
 
@@ -63,7 +64,7 @@ export async function resolveRunContext(params: {
     variantId: params.request.persistenceTarget.variantId,
     providerId: runtime.activeProviderId,
     model,
-    settings: params.request.settings ?? {},
+    settings: stripChatGenerationDebugSettings(params.request.settings),
   });
 
   const startedAt = Date.now();

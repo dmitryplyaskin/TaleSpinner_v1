@@ -5,6 +5,9 @@ import type { SseEnvelope } from './chat-core';
 
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
+const CHAT_GENERATION_DEBUG_STORAGE_KEY = 'chat_generation_debug';
+const CHAT_GENERATION_DEBUG_SETTINGS_KEY = '__chatGenerationDebug';
+
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${BASE_URL}${path}`, {
 		...init,
@@ -30,6 +33,28 @@ function makeRequestId(): string {
 	return typeof crypto !== 'undefined' && 'randomUUID' in crypto
 		? crypto.randomUUID()
 		: `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isChatGenerationDebugEnabledClient(): boolean {
+	if (typeof window === 'undefined') return false;
+	const win = window as Window & { __chatGenerationDebug?: boolean };
+	if (typeof win.__chatGenerationDebug === 'boolean') return win.__chatGenerationDebug;
+	try {
+		const raw = window.localStorage.getItem(CHAT_GENERATION_DEBUG_STORAGE_KEY);
+		if (raw === '1' || raw === 'true') return true;
+		if (raw === '0' || raw === 'false') return false;
+	} catch {
+		// ignore storage access errors
+	}
+	return import.meta.env.DEV;
+}
+
+function withChatGenerationDebugSettings(settings: Record<string, unknown> | undefined): Record<string, unknown> {
+	const next = { ...(settings ?? {}) };
+	if (isChatGenerationDebugEnabledClient()) {
+		next[CHAT_GENERATION_DEBUG_SETTINGS_KEY] = true;
+	}
+	return next;
 }
 
 export type ChatEntryWithVariantDto = {
@@ -75,7 +100,7 @@ export async function* streamChatEntry(params: {
 			branchId: params.branchId,
 			role: params.role,
 			content: params.content,
-			settings: params.settings ?? {},
+			settings: withChatGenerationDebugSettings(params.settings),
 			requestId,
 		}),
 		signal: params.signal,
@@ -144,7 +169,7 @@ export async function* streamRegenerateEntry(params: {
 		},
 		body: JSON.stringify({
 			ownerId: params.ownerId,
-			settings: params.settings ?? {},
+			settings: withChatGenerationDebugSettings(params.settings),
 			requestId,
 		}),
 		signal: params.signal,

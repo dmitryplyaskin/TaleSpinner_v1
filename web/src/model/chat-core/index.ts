@@ -34,6 +34,7 @@ import {
 	streamChatMessage,
 	streamRegenerateMessageVariant,
 } from '../../api/chat-core';
+import { logChatGenerationSseEvent } from '../chat-generation-debug';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -468,6 +469,7 @@ export const runStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof s
 		settings: {},
 		signal: prep.controller.signal,
 	})) {
+		logChatGenerationSseEvent({ scope: 'chat-core', envelope: env });
 		handleSseEnvelope(env);
 
 		if (env.type === 'llm.stream.done') {
@@ -667,6 +669,7 @@ export const runRegenerateStreamFx = createEffect(
 			settings: {},
 			signal: prep.controller.signal,
 		})) {
+			logChatGenerationSseEvent({ scope: 'chat-core', envelope: env });
 			handleSseEnvelope(env);
 			if (env.type === 'llm.stream.done') break;
 		}

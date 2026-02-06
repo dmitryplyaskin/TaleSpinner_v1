@@ -7,6 +7,7 @@ import type { SseEnvelope } from '../../api/chat-core';
 import { abortGeneration } from '../../api/chat-core';
 import type { ChatEntryWithVariantDto } from '../../api/chat-entry-parts';
 import { listChatEntries, listEntryVariants, selectEntryVariant, streamChatEntry, streamRegenerateEntry } from '../../api/chat-entry-parts';
+import { logChatGenerationSseEvent } from '../chat-generation-debug';
 import { $currentBranchId, $currentChat, setOpenedChat } from '../chat-core';
 
 function nowIso(): string {
@@ -197,6 +198,7 @@ export const runSendStreamFx = createEffect(async (prep: LocalPrep): Promise<voi
 		settings: {},
 		signal: prep.controller.signal,
 	})) {
+		logChatGenerationSseEvent({ scope: 'entry-parts', envelope: env });
 		handleSseEnvelope(env);
 		if (env.type === 'llm.stream.done') break;
 	}
@@ -413,6 +415,7 @@ export const runRegenerateStreamFx = createEffect(async (prep: Awaited<ReturnTyp
 		settings: {},
 		signal: prep.controller.signal,
 	})) {
+		logChatGenerationSseEvent({ scope: 'entry-parts', envelope: env });
 		handleSseEnvelope(env);
 		if (env.type === 'llm.stream.done') break;
 	}
@@ -435,4 +438,3 @@ runSendStreamFx.failData.watch((error) => {
 runRegenerateStreamFx.failData.watch((error) => {
 	toaster.error({ title: 'Ошибка регенерации', description: error instanceof Error ? error.message : String(error) });
 });
-

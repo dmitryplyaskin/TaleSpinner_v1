@@ -5,13 +5,16 @@ import { updateGenerationPromptData } from "../chat-core/generations-repository"
 import { ProfileSessionArtifactStore } from "./artifacts/profile-session-artifact-store";
 import { RunArtifactStore } from "./artifacts/run-artifact-store";
 import type {
+  ArtifactValue,
   PromptDraftMessage,
   PromptSnapshotV1,
   RunEvent,
+  RunDebugStateSnapshotStage,
   RunRequest,
   RunResult,
   RunState,
 } from "./contracts";
+import { isChatGenerationDebugEnabled } from "./debug";
 import { runMainLlmPhase } from "./main-llm/run-main-llm-phase";
 import { commitEffectsPhase } from "./operations/commit-effects-phase";
 import { executeOperationsPhase } from "./operations/execute-operations-phase";
@@ -81,6 +84,40 @@ function mergeArtifacts(
   );
 }
 
+function mergeArtifactsForDebug(
+  persisted: RunState["persistedArtifactsSnapshot"],
+  runOnly: RunState["runArtifacts"]
+): Record<string, ArtifactValue> {
+  const merged: Record<string, ArtifactValue> = {};
+  for (const [tag, value] of Object.entries(persisted)) {
+    merged[tag] = {
+      usage: value.usage,
+      semantics: value.semantics,
+      persistence: value.persistence,
+      value: value.value,
+      history: [...value.history],
+    };
+  }
+  for (const [tag, value] of Object.entries(runOnly)) {
+    merged[tag] = {
+      usage: value.usage,
+      semantics: value.semantics,
+      persistence: value.persistence,
+      value: value.value,
+      history: [...value.history],
+    };
+  }
+  return merged;
+}
+
+function clonePromptDraftMessages(messages: PromptDraftMessage[]): PromptDraftMessage[] {
+  return messages.map((m) => ({ role: m.role, content: m.content }));
+}
+
+function cloneLlmMessages(messages: GenerateMessage[]): GenerateMessage[] {
+  return messages.map((m) => ({ role: m.role, content: m.content }));
+}
+
 export async function* runChatGenerationV3(
   request: RunRequest
 ): AsyncGenerator<RunEvent> {
@@ -91,6 +128,7 @@ export async function* runChatGenerationV3(
   let context: Awaited<ReturnType<typeof resolveRunContext>>["context"] | null = null;
   let runState: RunState | null = null;
   let finalized = false;
+  const debugEnabled = isChatGenerationDebugEnabled(request.settings);
 
   const emit = (type: RunEvent["type"], data: any): void => {
     if (!runId) return;
@@ -118,6 +156,17 @@ export async function* runChatGenerationV3(
       startedAt,
       finishedAt: Date.now(),
       message,
+    });
+  };
+
+  const emitStateSnapshot = (stage: RunDebugStateSnapshotStage): void => {
+    if (!debugEnabled || !runState) return;
+    emit("run.debug.state_snapshot", {
+      stage,
+      basePromptDraft: clonePromptDraftMessages(runState.basePromptDraft),
+      effectivePromptDraft: clonePromptDraftMessages(runState.effectivePromptDraft),
+      assistantText: runState.assistantText,
+      artifacts: mergeArtifactsForDebug(runState.persistedArtifactsSnapshot, runState.runArtifacts),
     });
   };
 
@@ -181,6 +230,7 @@ export async function* runChatGenerationV3(
     });
     runState.basePromptDraft = basePrompt.prompt.draftMessages.map((m) => ({ ...m }));
     runState.effectivePromptDraft = basePrompt.prompt.draftMessages.map((m) => ({ ...m }));
+    emitStateSnapshot("post_build_base_prompt");
     markPhase("build_base_prompt", "done", buildStartedAt);
     yield* flushEvents();
 
@@ -204,6 +254,9 @@ export async function* runChatGenerationV3(
       abortSignal: abortController.signal,
       onOperationStarted: (data) => emit("operation.started", data),
       onOperationFinished: (data) => emit("operation.finished", data),
+      onTemplateDebug: debugEnabled
+        ? (data) => emit("operation.debug.template", data)
+        : undefined,
     });
     markPhase("execute_before_operations", "done", execBeforeStartedAt);
     yield* flushEvents();
@@ -224,6 +277,7 @@ export async function* runChatGenerationV3(
       onCommitEvent: (evt) => emit(evt.type, evt.data),
     });
     runState.commitReportsByHook.before_main_llm = commitBefore.report;
+    emitStateSnapshot("post_commit_before");
     markPhase(
       "commit_before_effects",
       commitBefore.requiredError ? "failed" : "done",
@@ -267,6 +321,15 @@ export async function* runChatGenerationV3(
         promptSnapshot: runState.promptSnapshot,
       });
 
+      if (debugEnabled && runState.promptHash) {
+        emit("run.debug.main_llm_input", {
+          promptHash: runState.promptHash,
+          basePromptDraft: clonePromptDraftMessages(runState.basePromptDraft),
+          effectivePromptDraft: clonePromptDraftMessages(runState.effectivePromptDraft),
+          llmMessages: cloneLlmMessages(runState.llmMessages),
+        });
+      }
+
       // main llm
       emit("run.phase_changed", { phase: "run_main_llm" });
       emit("main_llm.started", {
@@ -291,6 +354,7 @@ export async function* runChatGenerationV3(
         mainStartedAt,
         main.message
       );
+      emitStateSnapshot("post_main_llm");
       yield* flushEvents();
 
       if (main.status === "aborted") {
@@ -320,6 +384,9 @@ export async function* runChatGenerationV3(
           abortSignal: abortController.signal,
           onOperationStarted: (data) => emit("operation.started", data),
           onOperationFinished: (data) => emit("operation.finished", data),
+          onTemplateDebug: debugEnabled
+            ? (data) => emit("operation.debug.template", data)
+            : undefined,
         });
         markPhase("execute_after_operations", "done", executeAfterStartedAt);
         yield* flushEvents();
@@ -340,6 +407,7 @@ export async function* runChatGenerationV3(
           onCommitEvent: (evt) => emit(evt.type, evt.data),
         });
         runState.commitReportsByHook.after_main_llm = commitAfter.report;
+        emitStateSnapshot("post_commit_after");
         markPhase(
           "commit_after_effects",
           commitAfter.requiredError ? "failed" : "done",

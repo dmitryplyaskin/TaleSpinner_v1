@@ -258,6 +258,31 @@ export type ChatStreamDelta = { content: string };
 export type ChatStreamError = { message: string };
 export type ChatStreamDone = { status: 'done' | 'aborted' | 'error' };
 
+const CHAT_GENERATION_DEBUG_STORAGE_KEY = 'chat_generation_debug';
+const CHAT_GENERATION_DEBUG_SETTINGS_KEY = '__chatGenerationDebug';
+
+function isChatGenerationDebugEnabledClient(): boolean {
+	if (typeof window === 'undefined') return false;
+	const win = window as Window & { __chatGenerationDebug?: boolean };
+	if (typeof win.__chatGenerationDebug === 'boolean') return win.__chatGenerationDebug;
+	try {
+		const raw = window.localStorage.getItem(CHAT_GENERATION_DEBUG_STORAGE_KEY);
+		if (raw === '1' || raw === 'true') return true;
+		if (raw === '0' || raw === 'false') return false;
+	} catch {
+		// ignore storage access errors
+	}
+	return import.meta.env.DEV;
+}
+
+function withChatGenerationDebugSettings(settings: Record<string, unknown> | undefined): Record<string, unknown> {
+	const next = { ...(settings ?? {}) };
+	if (isChatGenerationDebugEnabledClient()) {
+		next[CHAT_GENERATION_DEBUG_SETTINGS_KEY] = true;
+	}
+	return next;
+}
+
 function makeRequestId(): string {
 	return typeof crypto !== 'undefined' && 'randomUUID' in crypto
 		? crypto.randomUUID()
@@ -288,7 +313,7 @@ export async function* streamChatMessage(params: {
 			branchId: params.branchId,
 			role: params.role,
 			promptText: params.promptText,
-			settings: params.settings ?? {},
+			settings: withChatGenerationDebugSettings(params.settings),
 			requestId,
 		}),
 		signal: params.signal,
@@ -414,7 +439,7 @@ export async function* streamRegenerateMessageVariant(params: {
 		},
 		body: JSON.stringify({
 			ownerId: params.ownerId,
-			settings: params.settings ?? {},
+			settings: withChatGenerationDebugSettings(params.settings),
 			requestId,
 		}),
 		signal: params.signal,

@@ -1,6 +1,7 @@
 import { updatePartPayloadText } from "../../chat-entry-parts/parts-repository";
 import { updateAssistantText } from "../../chat-core/chats-repository";
 import { streamGlobalChat } from "../../llm/llm-service";
+import { stripChatGenerationDebugSettings } from "../debug";
 
 import type { RunRequest, RunState } from "../contracts";
 
@@ -44,7 +45,7 @@ export async function runMainLlmPhase(params: {
   try {
     const messageStream = streamGlobalChat({
       messages: params.runState.llmMessages,
-      settings: params.request.settings ?? {},
+      settings: stripChatGenerationDebugSettings(params.request.settings),
       scopeId: params.ownerId,
       abortController: params.abortController,
     });

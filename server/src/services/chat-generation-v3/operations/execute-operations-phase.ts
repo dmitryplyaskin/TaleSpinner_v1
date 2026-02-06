@@ -156,6 +156,34 @@ function buildTemplateContext(base: PromptTemplateRenderContext, state: PreviewS
   };
 }
 
+function buildLiquidContextSnapshot(params: {
+  base: PromptTemplateRenderContext;
+  state: PreviewState;
+}): {
+  char: unknown;
+  user: unknown;
+  chat: unknown;
+  rag: unknown;
+  now: string;
+  messages: Array<{ role: PromptDraftMessage["role"]; content: string }>;
+  art: Record<string, { value: string; history: string[] }>;
+} {
+  return {
+    char: params.base.char ?? {},
+    user: params.base.user ?? {},
+    chat: params.base.chat ?? {},
+    rag: params.base.rag ?? {},
+    now: params.base.now,
+    messages: params.state.messages.map((m) => ({ role: m.role, content: m.content })),
+    art: Object.fromEntries(
+      Object.entries(params.state.artifacts).map(([tag, value]) => [
+        tag,
+        { value: value.value, history: [...value.history] },
+      ])
+    ),
+  };
+}
+
 function mapTaskResult(params: {
   hook: OperationHook;
   task: TaskResult;
@@ -250,6 +278,23 @@ export async function executeOperationsPhase(params: {
     skipReason?: string;
     error?: { code: string; message: string };
   }) => void;
+  onTemplateDebug?: (data: {
+    hook: OperationHook;
+    opId: string;
+    name: string;
+    template: string;
+    rendered: string;
+    effect: RuntimeEffect;
+    liquidContext: {
+      char: unknown;
+      user: unknown;
+      chat: unknown;
+      rag: unknown;
+      now: string;
+      messages: Array<{ role: PromptDraftMessage["role"]; content: string }>;
+      art: Record<string, { value: string; history: string[] }>;
+    };
+  }) => void;
 }): Promise<OperationExecutionResult[]> {
   const filtered = params.operations.filter((op) => {
     if (!op.config.enabled) return true;
@@ -288,10 +333,11 @@ export async function executeOperationsPhase(params: {
         dependsOn: op.config.dependsOn,
         run: async () => {
           const depPreview = replayDependencyEffects(baseState, op.config.dependsOn ?? [], effectsByOpId);
+          const liquidContext = buildTemplateContext(params.templateContext, depPreview);
           const rendered = normalizeText(
             await renderLiquidTemplate({
               templateText: op.config.params.template,
-              context: buildTemplateContext(params.templateContext, depPreview),
+              context: liquidContext,
               options: { strictVariables: Boolean(op.config.params.strictVariables) },
             })
           );
@@ -299,6 +345,18 @@ export async function executeOperationsPhase(params: {
             opId: op.opId,
             output: op.config.params.output,
             rendered,
+          });
+          params.onTemplateDebug?.({
+            hook: params.hook,
+            opId: op.opId,
+            name: op.name,
+            template: op.config.params.template,
+            rendered,
+            effect,
+            liquidContext: buildLiquidContextSnapshot({
+              base: liquidContext,
+              state: depPreview,
+            }),
           });
           const effects: RuntimeEffect[] = [effect];
           effectsByOpId.set(op.opId, effects);

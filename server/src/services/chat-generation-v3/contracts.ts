@@ -233,6 +233,12 @@ export type RunResult = {
   errorMessage: string | null;
 };
 
+export type RunDebugStateSnapshotStage =
+  | "post_build_base_prompt"
+  | "post_commit_before"
+  | "post_main_llm"
+  | "post_commit_after";
+
 export type RunEvent =
   | {
       runId: string;
@@ -306,6 +312,51 @@ export type RunEvent =
         status: "done" | "failed" | "aborted" | "error";
         failedType: "before_barrier" | "main_llm" | "after_main_llm" | null;
         message?: string;
+      };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "run.debug.main_llm_input";
+      data: {
+        promptHash: string;
+        basePromptDraft: PromptDraftMessage[];
+        effectivePromptDraft: PromptDraftMessage[];
+        llmMessages: GenerateMessage[];
+      };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "run.debug.state_snapshot";
+      data: {
+        stage: RunDebugStateSnapshotStage;
+        basePromptDraft: PromptDraftMessage[];
+        effectivePromptDraft: PromptDraftMessage[];
+        assistantText: string;
+        artifacts: Record<string, ArtifactValue>;
+      };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "operation.debug.template";
+      data: {
+        hook: OperationHook;
+        opId: string;
+        name: string;
+        template: string;
+        rendered: string;
+        effect: RuntimeEffect;
+        liquidContext: {
+          char: unknown;
+          user: unknown;
+          chat: unknown;
+          rag: unknown;
+          now: string;
+          messages: Array<{ role: PromptDraftRole; content: string }>;
+          art: Record<string, { value: string; history: string[] }>;
+        };
       };
     };
 
