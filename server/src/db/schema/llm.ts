@@ -36,6 +36,8 @@ export const llmGenerations = sqliteTable(
 
     promptHash: text("prompt_hash"),
     promptSnapshotJson: text("prompt_snapshot_json"),
+    phaseReportJson: text("phase_report_json"),
+    commitReportJson: text("commit_report_json"),
     promptTokens: integer("prompt_tokens"),
     completionTokens: integer("completion_tokens"),
     error: text("error"),

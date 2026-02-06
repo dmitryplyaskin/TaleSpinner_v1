@@ -41,6 +41,8 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
     finishedAt: null,
     promptHash: null,
     promptSnapshotJson: null,
+    phaseReportJson: null,
+    commitReportJson: null,
     promptTokens: null,
     completionTokens: null,
     error: null,
@@ -132,6 +134,38 @@ export async function updateGenerationPromptData(params: {
         ? null
         : safeJsonStringifyForLog(params.promptSnapshot, { maxChars: 60_000, fallback: "{}" });
   }
+  if (Object.keys(set).length === 0) return;
+  await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
+}
+
+export async function updateGenerationRunReports(params: {
+  id: string;
+  phaseReport?: unknown | null;
+  commitReport?: unknown | null;
+}): Promise<void> {
+  const db = await initDb();
+  const set: Partial<typeof llmGenerations.$inferInsert> = {};
+
+  if (typeof params.phaseReport !== "undefined") {
+    set.phaseReportJson =
+      params.phaseReport === null
+        ? null
+        : safeJsonStringifyForLog(params.phaseReport, {
+            maxChars: 120_000,
+            fallback: "[]",
+          });
+  }
+
+  if (typeof params.commitReport !== "undefined") {
+    set.commitReportJson =
+      params.commitReport === null
+        ? null
+        : safeJsonStringifyForLog(params.commitReport, {
+            maxChars: 120_000,
+            fallback: "[]",
+          });
+  }
+
   if (Object.keys(set).length === 0) return;
   await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
 }

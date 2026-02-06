@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // ---- Executable Operations (OperationProfile storage)
 
@@ -43,6 +43,41 @@ export const operationProfileSettings = sqliteTable(
   (t) => ({
     activeProfileIdIdx: index("operation_profile_settings_active_profile_id_idx").on(
       t.activeProfileId
+    ),
+  })
+);
+
+export const operationProfileSessionArtifacts = sqliteTable(
+  "operation_profile_session_artifacts",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    sessionKey: text("session_key").notNull(),
+    chatId: text("chat_id").notNull(),
+    branchId: text("branch_id").notNull(),
+    profileId: text("profile_id"),
+    profileVersion: integer("profile_version"),
+    operationProfileSessionId: text("operation_profile_session_id"),
+    tag: text("tag").notNull(),
+    usage: text("usage").notNull(),
+    semantics: text("semantics").notNull(),
+    valueJson: text("value_json").notNull(),
+    historyJson: text("history_json"),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({
+    sessionTagUnique: uniqueIndex("op_profile_session_artifacts_session_tag_uq").on(
+      t.sessionKey,
+      t.tag
+    ),
+    ownerUpdatedAtIdx: index("op_profile_session_artifacts_owner_updated_at_idx").on(
+      t.ownerId,
+      t.updatedAt
+    ),
+    chatBranchUpdatedAtIdx: index("op_profile_session_artifacts_chat_branch_updated_at_idx").on(
+      t.chatId,
+      t.branchId,
+      t.updatedAt
     ),
   })
 );

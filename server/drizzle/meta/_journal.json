@@ -71,6 +71,13 @@
       "when": 1770304733897,
       "tag": "0013_prompt_templates_library",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1770390000000,
+      "tag": "0014_chat_generation_v3",
+      "breakpoints": true
     }
   ]
 }

@@ -187,7 +187,7 @@ Main orchestrator принимает решения о continuation/fail тол�
 
 Снижение:
 - миграция по этапам;
-- feature-flag для V2 entrypoint;
+- V2 entrypoint включается напрямую как основной путь;
 - контракты и тесты до и после каждого этапа.
 
 ## 11) Открытые решения
@@ -204,4 +204,3 @@ Main orchestrator принимает решения о continuation/fail тол�
 - `server/src/services/operations/template-operations-runtime.ts`
 - `server/src/services/operations/operation-profile-validator.ts`
 - `shared/types/operation-profiles.ts`
-

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
+import { validateLiquidTemplate } from "../chat-core/prompt-template-renderer";
 
 import type {
   ArtifactPersistence,
@@ -218,6 +219,7 @@ function detectDependencyCycle(ops: OperationInProfile[]): boolean {
 }
 
 function validateCrossRules(input: ValidatedOperationProfileInput): void {
+  const opsById = new Map<string, OperationInProfile>();
   const opIds = new Set<string>();
   for (const op of input.operations) {
     if (opIds.has(op.opId)) {
@@ -226,6 +228,7 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
       });
     }
     opIds.add(op.opId);
+    opsById.set(op.opId, op);
   }
 
   for (const op of input.operations) {
@@ -241,6 +244,60 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
           opId: op.opId,
           dependsOn: dep,
         });
+      }
+
+      const depOp = opsById.get(dep);
+      if (depOp) {
+        const depHooks = new Set(depOp.config.hooks);
+        const isSubset = op.config.hooks.every((hook) => depHooks.has(hook));
+        if (!isSubset) {
+          throw new HttpError(
+            400,
+            "Cross-hook dependsOn is not allowed: op.hooks must be a subset of dependency hooks",
+            "VALIDATION_ERROR",
+            {
+              opId: op.opId,
+              dependsOn: dep,
+            }
+          );
+        }
+      }
+    }
+
+    const params: any = op.config.params as any;
+    const output = params?.output;
+    if (output?.type === "prompt_time" && !op.config.hooks.includes("before_main_llm")) {
+      throw new HttpError(
+        400,
+        "prompt_time output requires before_main_llm hook",
+        "VALIDATION_ERROR",
+        { opId: op.opId }
+      );
+    }
+
+    if (
+      output?.type === "turn_canonicalization" &&
+      output?.canonicalization?.target === "assistant" &&
+      !op.config.hooks.includes("after_main_llm")
+    ) {
+      throw new HttpError(
+        400,
+        "turn_canonicalization target=assistant requires after_main_llm hook",
+        "VALIDATION_ERROR",
+        { opId: op.opId }
+      );
+    }
+
+    if (op.kind === "template") {
+      try {
+        validateLiquidTemplate(op.config.params.template);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+          "VALIDATION_ERROR",
+          { opId: op.opId }
+        );
       }
     }
   }

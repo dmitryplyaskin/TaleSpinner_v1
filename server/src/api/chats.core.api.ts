@@ -29,22 +29,14 @@ import {
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
-import {
-  createGeneration,
-  updateGenerationPromptData,
-} from "../services/chat-core/generations-repository";
-import { getRuntimeInfo, runChatGeneration } from "../services/chat-core/orchestrator";
-import { buildPromptDraft } from "../services/chat-core/prompt-draft-builder";
+import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
 import {
   createMessageTransformVariant,
   createRawUserInputVariant,
 } from "../services/chat-core/message-variants-repository";
-import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
-import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
-import { getPromptTemplateById, pickPromptTemplateForChat } from "../services/chat-core/prompt-templates-repository";
+import { getPromptTemplateById } from "../services/chat-core/prompt-templates-repository";
 
 const router = express.Router();
-const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 
 router.get(
   "/chats/:id",
@@ -355,105 +347,99 @@ router.post(
         void transformedVariant;
       }
 
-      let systemPrompt = DEFAULT_SYSTEM_PROMPT;
-      try {
-        const [template, context] = await Promise.all([
-          pickPromptTemplateForChat({ ownerId, chatId: params.id }),
-          buildPromptTemplateRenderContext({
-            ownerId,
-            chatId: params.id,
-            branchId,
-            historyLimit: 50,
-            excludeMessageIds: [assistant.assistantMessageId],
-          }),
-        ]);
-
-        if (template) {
-          const rendered = await renderLiquidTemplate({
-            templateText: template.templateText,
-            context,
-          });
-          const normalized = rendered.trim();
-          if (normalized) systemPrompt = normalized;
-        }
-      } catch {
-        // Keep fallback prompt on any template/render failure.
-      }
-
-      const builtPrompt = await buildPromptDraft({
-        ownerId,
-        chatId: params.id,
-        branchId,
-        systemPrompt,
-        historyLimit: 50,
-        excludeMessageIds: [assistant.assistantMessageId],
-        activeProfileSpec: null,
-        trigger: "generate",
-      });
-
-      const runtime = await getRuntimeInfo({ ownerId });
-
-      const createdGen = await createGeneration({
-        ownerId,
-        chatId: params.id,
-        branchId,
-        messageId: assistant.assistantMessageId,
-        variantId: assistant.variantId,
-        providerId: runtime.providerId,
-        model: runtime.model,
-        settings: body.settings,
-      });
-      generationId = createdGen.id;
-
-      await updateGenerationPromptData({
-        id: generationId,
-        promptHash: builtPrompt.promptHash,
-        promptSnapshot: builtPrompt.promptSnapshot,
-      });
-
       shouldAbortOnClose = true;
       if (reqClosed) {
         runAbortController.abort();
         if (generationId) abortGeneration(generationId);
       }
 
-      const env = {
+      const envBase = {
         chatId: params.id,
         branchId,
-        generationId,
         userMessageId: userMessage.id,
         assistantMessageId: assistant.assistantMessageId,
         assistantVariantId: assistant.variantId,
         variantId: assistant.variantId,
       };
 
-      sse.send("llm.stream.meta", env);
-
-      for await (const evt of runChatGeneration({
+      for await (const evt of runChatGenerationV3({
         ownerId,
-        generationId,
         chatId: params.id,
         branchId,
         entityProfileId: chat.entityProfileId,
-        systemPrompt,
-        promptMessages: builtPrompt.llmMessages,
-        promptDraftMessages: builtPrompt.draft.messages,
-        userMessageId: userMessage.id,
-        assistantMessageId: assistant.assistantMessageId,
-        variantId: assistant.variantId,
-        settings: body.settings,
         trigger: "generate",
+        settings: body.settings,
         abortController: runAbortController,
+        persistenceTarget: {
+          mode: "legacy",
+          assistantMessageId: assistant.assistantMessageId,
+          variantId: assistant.variantId,
+        },
+        userTurnTarget:
+          body.role === "user"
+            ? { mode: "legacy", userMessageId: userMessage.id }
+            : undefined,
       })) {
-        if (evt.type === "llm.stream.delta") {
-          sse.send("llm.stream.delta", { ...env, ...evt.data });
+        if (evt.type === "run.started") {
+          generationId = evt.data.generationId;
+          if (reqClosed) {
+            runAbortController.abort();
+            abortGeneration(generationId);
+          }
+          sse.send("llm.stream.meta", { ...envBase, generationId });
+        }
+
+        const eventGenerationId =
+          generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
+        const eventEnvelope = {
+          ...envBase,
+          generationId: eventGenerationId,
+          runId: evt.runId,
+          seq: evt.seq,
+          ...evt.data,
+        };
+        sse.send(evt.type, eventEnvelope);
+
+        if (evt.type === "main_llm.delta") {
+          sse.send("llm.stream.delta", {
+            ...envBase,
+            generationId: eventGenerationId,
+            content: evt.data.content,
+          });
           continue;
         }
-        if (evt.type === "llm.stream.error") {
-          sse.send("llm.stream.error", { ...env, code: "generation_error", ...evt.data });
+
+        if (evt.type === "main_llm.finished" && evt.data.status === "error") {
+          sse.send("llm.stream.error", {
+            ...envBase,
+            generationId: eventGenerationId,
+            code: "generation_error",
+            message: evt.data.message ?? "generation_error",
+          });
           continue;
         }
-        sse.send("llm.stream.done", { ...env, ...evt.data });
+
+        if (evt.type === "run.finished") {
+          sse.send("llm.stream.done", {
+            ...envBase,
+            generationId: eventGenerationId,
+            status:
+              evt.data.status === "done"
+                ? "done"
+                : evt.data.status === "aborted"
+                  ? "aborted"
+                  : "error",
+          });
+          if (evt.data.status !== "done" && evt.data.message) {
+            sse.send("llm.stream.error", {
+              ...envBase,
+              generationId: eventGenerationId,
+              code: "generation_error",
+              message: evt.data.message,
+            });
+          }
+          break;
+        }
       }
 
     } catch (error) {

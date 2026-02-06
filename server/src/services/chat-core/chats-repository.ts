@@ -609,6 +609,36 @@ export async function updateAssistantText(params: {
     .where(eq(chatMessages.id, params.assistantMessageId));
 }
 
+export async function updateMessagePromptText(params: {
+  messageId: string;
+  text: string;
+}): Promise<void> {
+  const db = await initDb();
+  const rows = await db
+    .select({
+      id: chatMessages.id,
+      activeVariantId: chatMessages.activeVariantId,
+    })
+    .from(chatMessages)
+    .where(eq(chatMessages.id, params.messageId))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return;
+
+  if (row.activeVariantId) {
+    await db
+      .update(messageVariants)
+      .set({ promptText: params.text })
+      .where(eq(messageVariants.id, row.activeVariantId));
+  }
+
+  await db
+    .update(chatMessages)
+    .set({ promptText: params.text })
+    .where(eq(chatMessages.id, params.messageId));
+}
+
 export async function updateAssistantBlocks(params: {
   assistantMessageId: string;
   variantId: string;
