@@ -37,7 +37,11 @@ function hashPromptMessages(messages: GenerateMessage[]): string {
 
 function buildRedactedSnapshot(
   messages: GenerateMessage[],
-  params: { historyLimit: number; historyReturnedCount: number }
+  params: {
+    historyLimit: number;
+    historyReturnedCount: number;
+    worldInfoMeta?: PromptSnapshotV1["meta"]["worldInfo"];
+  }
 ): PromptSnapshotV1 {
   const MAX_MSG_CHARS = 4_000;
   const MAX_TOTAL_CHARS = 50_000;
@@ -68,6 +72,7 @@ function buildRedactedSnapshot(
     meta: {
       historyLimit: params.historyLimit,
       historyReturnedCount: params.historyReturnedCount,
+      worldInfo: params.worldInfoMeta,
     },
   };
 }
@@ -222,6 +227,7 @@ export async function* runChatGenerationV3(
       entityProfileId: context.entityProfileId,
       historyLimit: context.historyLimit,
       trigger: context.trigger,
+      scanSeed: context.generationId,
       excludeMessageIds: [request.persistenceTarget.assistantMessageId],
       excludeEntryIds:
         request.persistenceTarget.mode === "entry_parts"
@@ -313,6 +319,7 @@ export async function* runChatGenerationV3(
       runState.promptSnapshot = buildRedactedSnapshot(runState.llmMessages, {
         historyLimit: context.historyLimit,
         historyReturnedCount: basePrompt.prompt.historyReturnedCount,
+        worldInfoMeta: basePrompt.prompt.promptSnapshot.meta.worldInfo,
       });
 
       await updateGenerationPromptData({

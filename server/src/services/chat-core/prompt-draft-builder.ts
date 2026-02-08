@@ -30,6 +30,12 @@ export type PromptSnapshotV1 = {
   meta: {
     historyLimit: number;
     historyReturnedCount: number;
+    worldInfo?: {
+      activatedCount: number;
+      beforeChars: number;
+      afterChars: number;
+      warnings: string[];
+    };
   };
 };
 
@@ -53,10 +59,6 @@ export type BuiltPromptDraft = {
     writerStepName: string | null;
   }>;
 };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
 
 function normalizeDraftMessage(msg: PromptDraftMessage): PromptDraftMessage | null {
   const content = typeof msg.content === "string" ? msg.content : "";
@@ -85,6 +87,7 @@ function hashPromptMessages(messages: GenerateMessage[]): string {
 function buildRedactedSnapshot(messages: GenerateMessage[], params: {
   historyLimit: number;
   historyReturnedCount: number;
+  worldInfoMeta?: PromptSnapshotV1["meta"]["worldInfo"];
 }): PromptSnapshotV1 {
   const MAX_MSG_CHARS = 4_000;
   const MAX_TOTAL_CHARS = 50_000;
@@ -119,6 +122,7 @@ function buildRedactedSnapshot(messages: GenerateMessage[], params: {
     meta: {
       historyLimit: params.historyLimit,
       historyReturnedCount: params.historyReturnedCount,
+      worldInfo: params.worldInfoMeta,
     },
   };
 }
@@ -131,6 +135,9 @@ export async function buildPromptDraft(params: {
   historyLimit?: number;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
+  preHistorySystemMessages?: string[];
+  postHistorySystemMessages?: string[];
+  worldInfoMeta?: PromptSnapshotV1["meta"]["worldInfo"];
   /**
    * Optional active PipelineProfile spec (v1) to provide deterministic ordering
    * for prompt inclusions (PipelineProfile order -> step order -> tag -> version).
@@ -172,7 +179,15 @@ export async function buildPromptDraft(params: {
   const draft: PromptDraft = {
     messages: [
       { role: "system", content: systemPrompt },
+      ...(params.preHistorySystemMessages ?? []).map((content) => ({
+        role: "system" as const,
+        content,
+      })),
       ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...(params.postHistorySystemMessages ?? []).map((content) => ({
+        role: "system" as const,
+        content,
+      })),
     ],
   };
 
@@ -194,6 +209,7 @@ export async function buildPromptDraft(params: {
   const promptSnapshot = buildRedactedSnapshot(llmMessages, {
     historyLimit,
     historyReturnedCount: history.length,
+    worldInfoMeta: params.worldInfoMeta,
   });
 
   return { draft, llmMessages, trimming, promptHash, promptSnapshot, artifactInclusions: [] };

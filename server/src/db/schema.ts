@@ -5,4 +5,5 @@ export * from "./schema/operation-profiles";
 export * from "./schema/llm";
 export * from "./schema/ui";
 export * from "./schema/user-persons";
+export * from "./schema/world-info";
 

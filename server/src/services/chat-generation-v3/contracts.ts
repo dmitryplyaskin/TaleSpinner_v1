@@ -24,6 +24,12 @@ export type PromptSnapshotV1 = {
   meta: {
     historyLimit: number;
     historyReturnedCount: number;
+    worldInfo?: {
+      activatedCount: number;
+      beforeChars: number;
+      afterChars: number;
+      warnings: string[];
+    };
   };
 };
 

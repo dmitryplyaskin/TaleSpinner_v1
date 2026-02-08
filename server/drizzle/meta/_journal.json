@@ -78,6 +78,13 @@
       "when": 1770390000000,
       "tag": "0014_chat_generation_v3",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1770500000000,
+      "tag": "0015_world_info_v1",
+      "breakpoints": true
     }
   ]
 }

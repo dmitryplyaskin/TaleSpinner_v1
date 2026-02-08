@@ -331,7 +331,22 @@ export class LlmGateway {
   }
 
   stream(req: LlmGatewayRequest): AsyncGenerator<LlmGatewayStreamEvent> {
-    const self = this;
+    const logger = this.logger;
+    const plugins = this.plugins;
+    const buildInitialCtx = (parsed: LlmGatewayRequest) => this.buildInitialCtx(parsed);
+    const getActivePlugins = (ctx: {
+      providerId: string;
+      model: string;
+      features: Record<string, unknown>;
+    }) => this.getActivePlugins(ctx);
+    const warnUnknownFeatures = (params: {
+      features: Record<string, unknown>;
+      knownPluginIds: Set<string>;
+    }) => this.warnUnknownFeatures(params);
+    const parsePluginFeature = (plugin: LlmGatewayPlugin, features: Record<string, unknown>) =>
+      this.parsePluginFeature(plugin, features);
+    const getProviderOrThrow = (providerId: string) => this.getProviderOrThrow(providerId);
+
     async function* run(): AsyncGenerator<LlmGatewayStreamEvent> {
       const parsed = requestSchema.parse(req) as unknown as LlmGatewayRequest;
 
@@ -339,7 +354,7 @@ export class LlmGateway {
         const AbortSignalCtor: typeof AbortSignal | undefined =
           typeof AbortSignal === "undefined" ? undefined : AbortSignal;
         if (AbortSignalCtor && !(parsed.abortSignal instanceof AbortSignalCtor)) {
-          self.logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
+          logger.warn("llm-gateway abortSignal is not an AbortSignal; ignoring");
           parsed.abortSignal = undefined;
         }
       }
@@ -349,15 +364,15 @@ export class LlmGateway {
         return;
       }
 
-      const initial = self.buildInitialCtx(parsed);
-      const activePlugins = self.getActivePlugins(initial);
+      const initial = buildInitialCtx(parsed);
+      const activePlugins = getActivePlugins(initial);
 
       let warnings: string[] = [];
       warnings = mergeWarnings(
         warnings,
-        self.warnUnknownFeatures({
+        warnUnknownFeatures({
           features: initial.features,
-          knownPluginIds: new Set(self.plugins.map((p) => p.id)),
+          knownPluginIds: new Set(plugins.map((p) => p.id)),
         })
       );
 
@@ -365,7 +380,7 @@ export class LlmGateway {
       let messages = initial.messages;
       for (const plugin of activePlugins) {
         if (!plugin.normalizeMessages) continue;
-        const feature = self.parsePluginFeature(plugin, initial.features);
+        const feature = parsePluginFeature(plugin, initial.features);
         const ctx: LlmGatewayPluginExecutionContext = {
           providerId: initial.providerId,
           model: initial.model,
@@ -375,7 +390,7 @@ export class LlmGateway {
           headers: initial.headers,
           payload: { ...initial.payload, messages },
           features: initial.features,
-          logger: self.logger,
+          logger,
           abortSignal: initial.abortSignal,
         };
         const out = plugin.normalizeMessages(ctx, feature);
@@ -388,7 +403,7 @@ export class LlmGateway {
       let payload = { ...initial.payload, messages };
       for (const plugin of activePlugins) {
         if (!plugin.mutateRequest) continue;
-        const feature = self.parsePluginFeature(plugin, initial.features);
+        const feature = parsePluginFeature(plugin, initial.features);
         const ctx: LlmGatewayPluginExecutionContext = {
           providerId: initial.providerId,
           model: initial.model,
@@ -398,7 +413,7 @@ export class LlmGateway {
           headers,
           payload,
           features: initial.features,
-          logger: self.logger,
+          logger,
           abortSignal: initial.abortSignal,
         };
         const out = plugin.mutateRequest(ctx, feature);
@@ -407,7 +422,7 @@ export class LlmGateway {
         warnings = mergeWarnings(warnings, out.warnings);
       }
 
-      const provider = self.getProviderOrThrow(initial.providerId);
+      const provider = getProviderOrThrow(initial.providerId);
       const providerReq: LlmGatewayProviderRequest = {
         provider: parsed.provider,
         model: parsed.model,
@@ -426,14 +441,14 @@ export class LlmGateway {
         headers,
         payload,
         features: initial.features,
-        logger: self.logger,
+        logger,
         abortSignal: initial.abortSignal,
       };
 
       let stream = provider.stream(providerReq);
       for (const plugin of activePlugins) {
         if (!plugin.wrapStream) continue;
-        const feature = self.parsePluginFeature(plugin, initial.features);
+        const feature = parsePluginFeature(plugin, initial.features);
         stream = plugin.wrapStream(stream, baseCtx, feature);
       }
 

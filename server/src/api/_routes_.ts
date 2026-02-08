@@ -12,6 +12,7 @@ import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import samplersRoutes from "./samplers.api";
 import userPersonsCoreRoutes from "./user-persons.core.api";
+import worldInfoCoreRoutes from "./world-info.core.api";
 
 export const routes = [
   entityProfilesCoreRoutes,
@@ -28,4 +29,5 @@ export const routes = [
   fileRoutes,
   instructionsRoutes,
   promptTemplatesCoreRoutes,
+  worldInfoCoreRoutes,
 ];

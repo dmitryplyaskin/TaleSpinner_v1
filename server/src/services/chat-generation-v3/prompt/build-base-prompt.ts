@@ -2,6 +2,7 @@ import { buildPromptDraft } from "../../chat-core/prompt-draft-builder";
 import { buildPromptTemplateRenderContext } from "../../chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
 import { pickPromptTemplateForChat } from "../../chat-core/prompt-templates-repository";
+import { resolveWorldInfoRuntime } from "../../world-info/world-info-runtime";
 
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
@@ -16,6 +17,7 @@ export async function buildBasePrompt(params: {
   entityProfileId: string;
   historyLimit: number;
   trigger: OperationTrigger;
+  scanSeed?: string;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
 }): Promise<{ prompt: PromptBuildOutput; templateContext: Awaited<ReturnType<typeof buildPromptTemplateRenderContext>> }> {
@@ -28,6 +30,36 @@ export async function buildBasePrompt(params: {
     excludeMessageIds: params.excludeMessageIds,
     excludeEntryIds: params.excludeEntryIds,
   });
+
+  let worldInfoBefore = "";
+  let worldInfoAfter = "";
+  let worldInfoWarnings: string[] = [];
+  try {
+    const resolved = await resolveWorldInfoRuntime({
+      ownerId: params.ownerId,
+      chatId: params.chatId,
+      branchId: params.branchId,
+      entityProfileId: params.entityProfileId,
+      trigger: params.trigger,
+      history: templateContext.messages,
+      scanSeed:
+        params.scanSeed ??
+        `${params.ownerId}:${params.chatId}:${params.branchId}:${params.trigger}:${Date.now()}`,
+      dryRun: false,
+    });
+    worldInfoBefore = resolved.worldInfoBefore;
+    worldInfoAfter = resolved.worldInfoAfter;
+    worldInfoWarnings = resolved.debug.warnings;
+  } catch {
+    // Keep generation flow resilient when WI is unavailable.
+  }
+
+  templateContext.wiBefore = worldInfoBefore;
+  templateContext.wiAfter = worldInfoAfter;
+  templateContext.loreBefore = worldInfoBefore;
+  templateContext.loreAfter = worldInfoAfter;
+  templateContext.anchorBefore = worldInfoBefore;
+  templateContext.anchorAfter = worldInfoAfter;
 
   let systemPrompt = DEFAULT_SYSTEM_PROMPT;
   try {
@@ -56,6 +88,14 @@ export async function buildBasePrompt(params: {
     excludeMessageIds: params.excludeMessageIds,
     excludeEntryIds: params.excludeEntryIds,
     trigger: params.trigger,
+    preHistorySystemMessages: worldInfoBefore ? [worldInfoBefore] : [],
+    postHistorySystemMessages: worldInfoAfter ? [worldInfoAfter] : [],
+    worldInfoMeta: {
+      activatedCount: Number(Boolean(worldInfoBefore)) + Number(Boolean(worldInfoAfter)),
+      beforeChars: worldInfoBefore.length,
+      afterChars: worldInfoAfter.length,
+      warnings: worldInfoWarnings,
+    },
     activeProfileSpec: null,
   });
 

@@ -25,7 +25,17 @@ function asString(val: unknown): string {
   return "";
 }
 
-function enrichTemplateContext(base: PromptTemplateRenderContext): PromptTemplateRenderContext {
+function enrichTemplateContext(
+  base: PromptTemplateRenderContext,
+  worldInfo?: {
+    anchorBefore?: string;
+    anchorAfter?: string;
+    wiBefore?: string;
+    wiAfter?: string;
+    loreBefore?: string;
+    loreAfter?: string;
+  }
+): PromptTemplateRenderContext {
   const charObj = isRecord(base.char) ? base.char : {};
   const userObj = isRecord(base.user) ? base.user : {};
 
@@ -47,13 +57,12 @@ function enrichTemplateContext(base: PromptTemplateRenderContext): PromptTemplat
   // We don't have a 1:1 "persona description" field yet; `prefix` is the closest concept.
   base.persona = asString(userObj.prefix);
 
-  // World Info / anchors are not implemented yet in TaleSpinner v1 -> keep empty strings.
-  base.anchorBefore = "";
-  base.anchorAfter = "";
-  base.wiBefore = "";
-  base.wiAfter = "";
-  base.loreBefore = "";
-  base.loreAfter = "";
+  base.anchorBefore = worldInfo?.anchorBefore ?? "";
+  base.anchorAfter = worldInfo?.anchorAfter ?? "";
+  base.wiBefore = worldInfo?.wiBefore ?? "";
+  base.wiAfter = worldInfo?.wiAfter ?? "";
+  base.loreBefore = worldInfo?.loreBefore ?? "";
+  base.loreAfter = worldInfo?.loreAfter ?? "";
 
   // Example messages: we store CC field as `mes_example`.
   base.mesExamplesRaw = asString(charObj.mes_example);
@@ -72,6 +81,14 @@ export async function buildPromptTemplateRenderContext(params: {
   historyLimit?: number;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
+  worldInfo?: {
+    anchorBefore?: string;
+    anchorAfter?: string;
+    wiBefore?: string;
+    wiAfter?: string;
+    loreBefore?: string;
+    loreAfter?: string;
+  };
 }): Promise<PromptTemplateRenderContext> {
   const ownerId = params.ownerId ?? "global";
 
@@ -97,7 +114,7 @@ export async function buildPromptTemplateRenderContext(params: {
       const entityProfile = await getEntityProfileById(params.entityProfileId);
       base.char = entityProfile?.spec ?? {};
     }
-    return enrichTemplateContext(base);
+    return enrichTemplateContext(base, params.worldInfo);
   }
 
   const chat = await getChatById(params.chatId);
@@ -154,6 +171,6 @@ export async function buildPromptTemplateRenderContext(params: {
     rag: {},
     art: {},
     now: new Date().toISOString(),
-  });
+  }, params.worldInfo);
 }
 
