@@ -11,6 +11,7 @@ export type SidebarName =
 	| 'operationProfiles'
 	| 'instructions'
 	| 'templates'
+	| 'worldInfo'
 	| 'appSettings';
 
 export type SidebarSetting = {
@@ -49,6 +50,10 @@ export const defaultSidebars: SidebarSettings = {
 	},
 	templates: {
 		...defaultSidebarSetting,
+	},
+	worldInfo: {
+		...defaultSidebarSetting,
+		size: 'xl',
 	},
 	appSettings: {
 		...defaultSidebarSetting,

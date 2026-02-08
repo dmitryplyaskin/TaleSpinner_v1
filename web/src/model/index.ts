@@ -10,3 +10,4 @@ export * from './app-settings';
 export * from './chat-core';
 export * from './prompt-templates';
 export * from './operation-profiles';
+export * from './world-info';

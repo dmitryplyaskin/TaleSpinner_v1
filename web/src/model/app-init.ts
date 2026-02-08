@@ -4,17 +4,19 @@ import { fetchAppSettingsFx } from './app-settings';
 import { loadEntityProfilesFx } from './chat-core';
 import { instructionsModel } from './instructions';
 import { fetchSettingsFx as fetchLlmSettingsFx } from './llm-settings';
+import { promptTemplatesInitRequested } from './prompt-templates';
 import { llmProviderModel } from './provider';
 import { samplersModel } from './samplers';
 import { getSettingsFx as fetchSidebarsFx } from './sidebars';
-import { promptTemplatesInitRequested } from './prompt-templates';
 import { userPersonsModel } from './user-persons';
+import { worldInfoInitRequested } from './world-info';
 
 export const appStarted = createEvent();
 
 export const appInitFx = createEffect(async (): Promise<void> => {
 	// Prompt templates are global; load once on app start.
 	promptTemplatesInitRequested();
+	worldInfoInitRequested();
 
 	await Promise.all([
 		// UI state

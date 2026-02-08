@@ -9,6 +9,11 @@
   - интеграция в generation pipeline (`wiBefore/wiAfter` в prompt);
   - `PromptSnapshotV1.meta.worldInfo`.
 - Добавлены unit-тесты по ключевым WI модулям.
+- Начат frontend UI через sidebar:
+  - API client `web/src/api/world-info.ts`;
+  - модель `web/src/model/world-info/index.ts`;
+  - sidebar `web/src/features/sidebars/world-info/index.tsx`;
+  - подключение кнопки/дровера в `left-bar` и `connect-sidebars`.
 
 ## Ключевые файлы
 
@@ -42,11 +47,12 @@
 - e2e проверить `generate/regenerate` с фактическим попаданием `wiBefore/wiAfter` в llm messages.
 
 3. API документация:
-- короткий README по `/api/world-info/*` (пример запросов/ответов, ограничения payload).
+- [x] короткий README по `/api/world-info/*`:
+  - `server/src/api/world-info.api.md`
 
 4. Поздние этапы (из roadmap):
 - `atDepth/outlet` инъекции в prompt draft;
-- UI для World Info;
+- UI для World Info (начат MVP sidebar; нужен дальнейший polish и разбивка редактора на подкомпоненты);
 - observability/метрики.
 
 ## Текущее состояние рабочего дерева
@@ -55,7 +61,7 @@
 Перед продолжением рекомендуется:
 
 1. Сделать отдельный commit текущего WI-среза.
-2. Следующим commit’ом добавить integration tests + API README.
+2. Следующим commit’ом добавить integration tests (API + generation) и продолжить UI-полировку.
 
 ## Быстрый старт следующей сессии
 
@@ -68,4 +74,4 @@
 - `yarn --cwd server typecheck`
 - `yarn --cwd server test`
 
-3. Начать с integration tests (API + generation).
+3. Продолжить с integration tests (API + generation) и расширения World Info sidebar.

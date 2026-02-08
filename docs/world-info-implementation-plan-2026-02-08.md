@@ -15,6 +15,7 @@ _Дата: 2026-02-08 (draft)_
   - добавлен `server/src/api/world-info.core.api.ts`;
   - route подключен в `server/src/api/_routes_.ts`;
   - подняты endpoints books/settings/bindings/import/export/resolve.
+  - добавлен короткий API reference: `server/src/api/world-info.api.md`.
 - Сервисы World Info:
   - добавлены модули `server/src/services/world-info/*`:
     - `world-info-types.ts`
@@ -37,6 +38,11 @@ _Дата: 2026-02-08 (draft)_
 - Тесты:
   - добавлены unit-тесты для matcher/groups/scanner/timed/converters;
   - добавлен тест prompt integration: `server/src/services/chat-generation-v3/prompt/build-base-prompt.test.ts`.
+- Frontend (старт этапа UI):
+  - добавлен API client: `web/src/api/world-info.ts`;
+  - добавлена модель: `web/src/model/world-info/index.ts`;
+  - добавлен sidebar MVP: `web/src/features/sidebars/world-info/index.tsx`;
+  - подключен в `left-bar`/`connect-sidebars`/`model/sidebars`.
 - Валидация запуска:
   - `yarn --cwd server typecheck` проходит;
   - `yarn --cwd server test` проходит.
@@ -47,11 +53,9 @@ _Дата: 2026-02-08 (draft)_
   - CRUD + bindings + resolve через реальные HTTP endpoints.
 - Integration tests уровня генерации:
   - проверить end-to-end, что `generate/regenerate` стабильно включают `wiBefore/wiAfter` в llm messages (не только unit-моком).
-- Документация API:
-  - добавить короткий README в `server/src/api` по `world-info` endpoint-ам.
 - Этап 6/7 из roadmap пока не выполнены:
   - `atDepth/outlet` инъекции в prompt draft;
-  - UI экран/редактор;
+  - UI экран/редактор (MVP sidebar сделан; требуется дальнейшая декомпозиция и UX-полировка);
   - расширенная observability/метрики.
 
 ### Важно для следующей сессии
@@ -714,7 +718,8 @@ Dry-run:
 - [x] Интеграция в `prompt-draft-builder.ts`
 - [x] Unit tests для scanner/matcher/groups/timed
 - [ ] Integration tests API + prompt injection
-- [ ] Документация API (короткий README в `server/src/api`)
+- [x] Документация API (короткий README в `server/src/api`)
+- [ ] Frontend UI: расширение World Info sidebar до production-ready редактора
 
 ## 15) Минимальный набор задач для первого PR (рекомендуемый)
 

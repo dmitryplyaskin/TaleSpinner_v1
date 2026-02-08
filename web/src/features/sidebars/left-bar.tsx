@@ -1,6 +1,6 @@
 import { Box, Stack } from '@mantine/core';
 import { type IconType } from 'react-icons';
-import { LuIdCard, LuSettings, LuSquareUser, LuFileText, LuFileCode2, LuSettings2, LuWorkflow } from 'react-icons/lu';
+import { LuBookOpen, LuFileCode2, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuWorkflow } from 'react-icons/lu';
 
 import { toggleSidebarOpen } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -45,6 +45,12 @@ const sidebarButtons: SidebarButton[] = [
 		tooltip: 'Templates',
 		icon: LuFileCode2,
 		ariaLabel: 'Open templates',
+	},
+	{
+		name: 'worldInfo',
+		tooltip: 'World Info',
+		icon: LuBookOpen,
+		ariaLabel: 'Open world info',
 	},
 	{
 		name: 'operationProfiles',
