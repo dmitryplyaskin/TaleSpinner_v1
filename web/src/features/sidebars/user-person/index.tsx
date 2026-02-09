@@ -54,7 +54,7 @@ export const UserPersonSidebar: React.FC = () => {
 				</Flex>
 
 				<Box>
-					<SortFilterControls model={userPersonsModel} nameFilterPlaceholder="Поиск персоны по имени..." />
+					<SortFilterControls model={userPersonsModel} nameFilterPlaceholder={t('userPersons.placeholders.searchByName')} />
 				</Box>
 
 				{persons.length > 0 ? (

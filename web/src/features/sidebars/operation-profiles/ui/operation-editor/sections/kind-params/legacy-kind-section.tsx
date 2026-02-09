@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -12,11 +13,12 @@ const LEGACY_PLACEHOLDER = `{
 }`;
 
 export const LegacyKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="Legacy"
-			description="Use this section for compatibility payloads required by legacy executors."
+			kindLabel={t('operationProfiles.kind.legacy')}
+			description={t('operationProfiles.kindSection.legacy.description')}
 			placeholder={LEGACY_PLACEHOLDER}
 		/>
 	);

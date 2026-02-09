@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -14,11 +15,12 @@ const TRANSFORM_PLACEHOLDER = `{
 }`;
 
 export const TransformKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="Transform"
-			description="Describe post-processing steps for operation outputs."
+			kindLabel={t('operationProfiles.kind.transform')}
+			description={t('operationProfiles.kindSection.transform.description')}
 			placeholder={TRANSFORM_PLACEHOLDER}
 		/>
 	);

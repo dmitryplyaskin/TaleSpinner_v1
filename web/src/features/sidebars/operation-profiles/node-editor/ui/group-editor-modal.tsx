@@ -1,5 +1,6 @@
 import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_GROUP_COLOR_HEX, normalizeCssColorToHex } from '../utils/color';
 
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, onSave }) => {
+	const { t } = useTranslation();
 	const opened = Boolean(draft);
 	const [localDraft, setLocalDraft] = useState<GroupEditorDraft | null>(draft);
 
@@ -26,23 +28,23 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, on
 	}, [localDraft]);
 
 	return (
-		<Modal opened={opened} onClose={onClose} title="Edit group" centered zIndex={5000}>
+		<Modal opened={opened} onClose={onClose} title={t('operationProfiles.groupEditor.title')} centered zIndex={5000}>
 			{localDraft && (
 				<Stack gap="sm">
 					<TextInput
-						label="Name"
+						label={t('operationProfiles.groupEditor.name')}
 						value={localDraft.name}
 						onChange={(e) => {
 							const nextName = e.currentTarget.value;
 							setLocalDraft((prev) => (prev ? { ...prev, name: nextName } : prev));
 						}}
-						placeholder="Group name"
+						placeholder={t('operationProfiles.groupEditor.namePlaceholder')}
 						autoFocus
 					/>
 
 					<div>
 						<Text size="sm" fw={600} style={{ marginBottom: 6 }}>
-							Background
+							{t('operationProfiles.groupEditor.background')}
 						</Text>
 						<Group gap="xs" wrap="nowrap">
 							<input
@@ -61,11 +63,11 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, on
 									const nextBg = e.currentTarget.value;
 									setLocalDraft((prev) => (prev ? { ...prev, bg: nextBg } : prev));
 								}}
-								placeholder="CSS color (alpha will be ignored)"
+								placeholder={t('operationProfiles.groupEditor.backgroundPlaceholder')}
 							/>
 						</Group>
 						<Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
-							Transparency is fixed to match default groups; your input controls only the base color.
+							{t('operationProfiles.groupEditor.backgroundHint')}
 						</Text>
 					</div>
 
@@ -74,19 +76,19 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, on
 							color="red"
 							variant="light"
 							onClick={() => {
-								if (!window.confirm('Delete this group?')) return;
+								if (!window.confirm(t('operationProfiles.confirm.deleteGroup'))) return;
 								onDelete(localDraft.groupId);
 							}}
 						>
-							Delete group
+							{t('operationProfiles.groupEditor.delete')}
 						</Button>
 
 						<Group gap="xs" wrap="nowrap">
 							<Button variant="default" onClick={onClose}>
-								Cancel
+								{t('common.cancel')}
 							</Button>
 							<Button onClick={() => onSave(localDraft)} disabled={!localDraft.name.trim()}>
-								Save
+								{t('common.save')}
 							</Button>
 						</Group>
 					</Group>

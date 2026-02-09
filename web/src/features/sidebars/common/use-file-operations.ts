@@ -1,5 +1,6 @@
 import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 
 import { toaster } from '@ui/toaster';
@@ -19,13 +20,14 @@ export const useFileOperations = <SettingsType extends CommonModelSettingsType, 
 	settings,
 	name,
 }: UseFileOperationsProps<SettingsType, ItemType>) => {
+	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleExport = () => {
 		if (!settings.selectedId) {
 			toaster.error({
-				title: 'Ошибка экспорта',
-				description: 'Выберите элемент для экспорта',
+				title: t('files.toasts.exportErrorTitle'),
+				description: t('files.toasts.selectForExport'),
 			});
 			return;
 		}
@@ -64,8 +66,8 @@ export const useFileOperations = <SettingsType extends CommonModelSettingsType, 
 
 				if (!importedData[name]) {
 					toaster.error({
-						title: 'Ошибка импорта',
-						description: `Файл не содержит данных для ${name}`,
+						title: t('files.toasts.importErrorTitle'),
+						description: t('files.toasts.missingDataForEntity', { name }),
 					});
 					return;
 				}
@@ -75,13 +77,13 @@ export const useFileOperations = <SettingsType extends CommonModelSettingsType, 
 				model.createItemFx(importedItem);
 
 				toaster.success({
-					title: 'Импорт успешен',
-					description: `${importedItem.name} успешно импортирован`,
+					title: t('files.toasts.importSuccessTitle'),
+					description: t('files.toasts.importSuccessDescription', { name: importedItem.name }),
 				});
 			} catch {
 				toaster.error({
-					title: 'Ошибка импорта',
-					description: 'Не удалось прочитать файл',
+					title: t('files.toasts.importErrorTitle'),
+					description: t('files.toasts.readError'),
 				});
 			}
 

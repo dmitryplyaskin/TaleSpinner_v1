@@ -3,54 +3,57 @@ import { type AppSettings } from '@shared/types/app-settings';
 import { useUnit } from 'effector-react';
 import React, { useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { $appSettings, fetchAppSettingsFx, updateAppSettings } from '@model/app-settings';
 import { Drawer } from '@ui/drawer';
 import { FormCheckbox, FormSelect } from '@ui/form-components';
 
-
-const languageOptions = [
-	{ value: 'ru', label: 'Русский' },
-	{ value: 'en', label: 'English' },
-];
-
 export const AppSettingsSidebar: React.FC = () => {
+	const { t } = useTranslation();
 	const appSettings = useUnit($appSettings);
+	const languageOptions = [
+		{ value: 'ru', label: t('appSettings.languages.ru') },
+		{ value: 'en', label: t('appSettings.languages.en') },
+	];
 
 	const methods = useForm<AppSettings>({
 		defaultValues: appSettings,
 	});
 
 	useEffect(() => {
-		methods.watch((data) => {
+		const subscription = methods.watch((data) => {
 			updateAppSettings(data);
 		});
+		return () => {
+			subscription.unsubscribe();
+		};
 	}, [methods]);
 
 	useEffect(() => {
-		const unsubscribe = fetchAppSettingsFx.done.watch((data) => {
-			methods.reset(data.result);
+		const unsubscribe = fetchAppSettingsFx.doneData.watch((data) => {
+			methods.reset(data);
 		});
 
 		return () => {
 			unsubscribe();
 		};
-	}, []);
+	}, [methods]);
 
 	return (
-		<Drawer name="appSettings" title="Настройки приложения">
+		<Drawer name="appSettings" title={t('appSettings.title')}>
 			<FormProvider {...methods}>
 				<Stack gap="lg">
 					<Box>
 						<Title order={4} mb="md">
-							Основные настройки
+							{t('appSettings.sections.general')}
 						</Title>
 
 						<Stack gap="md">
 							{/* Language selector */}
 							<FormSelect
 								name="language"
-								label="Язык"
+								label={t('appSettings.language.label')}
 								selectProps={{
 									options: languageOptions,
 									menuPlacement: 'auto',
@@ -59,14 +62,14 @@ export const AppSettingsSidebar: React.FC = () => {
 
 							<FormCheckbox
 								name="openLastChat"
-								label="Открывать последний чат"
-								infoTip="При запуске приложения автоматически открывать последний активный чат"
+								label={t('appSettings.openLastChat.label')}
+								infoTip={t('appSettings.openLastChat.info')}
 							/>
 
 							<FormCheckbox
 								name="autoSelectCurrentPersona"
-								label="Автовыбор персоны"
-								infoTip="Автоматически выбирать актуальную персону в текущем чате"
+								label={t('appSettings.autoSelectCurrentPersona.label')}
+								infoTip={t('appSettings.autoSelectCurrentPersona.info')}
 							/>
 						</Stack>
 					</Box>

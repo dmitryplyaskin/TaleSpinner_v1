@@ -1,6 +1,7 @@
 import { Button, Divider, Flex, PasswordInput, Stack, Text, TextInput } from "@mantine/core";
 import { useUnit } from "effector-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { llmProviderModel } from "@model/provider";
 import { Dialog } from "@ui/dialog";
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) => {
+  const { t } = useTranslation();
   const [
     isOpen,
     setOpen,
@@ -101,12 +103,12 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
     <Dialog
       open={isOpen}
       onOpenChange={handleOpenChange}
-      title="Token manager"
+      title={t("tokenManager.title")}
       size="lg"
       footer={
         <Flex justify="flex-end" gap={2}>
           <Button variant="subtle" onClick={() => handleOpenChange(false)}>
-            Закрыть
+            {t("common.close")}
           </Button>
         </Flex>
       }
@@ -115,43 +117,41 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
       closeOnInteractOutside
     >
       <Stack gap="sm">
-        <Text fw={600}>Добавить токен</Text>
+        <Text fw={600}>{t("tokenManager.addToken")}</Text>
         <Stack gap="xs">
-          <TextInput placeholder="Name" value={newName} onChange={(e) => setNewName(e.currentTarget.value)} />
-          <PasswordInput placeholder="Token" value={newToken} onChange={(e) => setNewToken(e.currentTarget.value)} />
+          <TextInput placeholder={t("tokenManager.fields.name")} value={newName} onChange={(e) => setNewName(e.currentTarget.value)} />
+          <PasswordInput placeholder={t("tokenManager.fields.token")} value={newToken} onChange={(e) => setNewToken(e.currentTarget.value)} />
           <Flex justify="flex-end">
             <Button onClick={submitCreate} disabled={!newName.trim() || !newToken.trim()}>
-              Добавить
+              {t("common.add")}
             </Button>
           </Flex>
         </Stack>
 
         <Divider />
 
-        <Text fw={600}>
-          Токены для `{providerId}`
-        </Text>
+        <Text fw={600}>{t("tokenManager.tokensFor", { providerId })}</Text>
 
         {tokens.length === 0 ? (
-          <Text c="dimmed">Нет токенов. Добавьте первый токен выше.</Text>
+          <Text c="dimmed">{t("tokenManager.empty")}</Text>
         ) : (
           <Stack gap="xs">
-            {tokens.map((t) => (
-              <Flex key={t.id} gap={2} align="center" justify="space-between">
+            {tokens.map((token) => (
+              <Flex key={token.id} gap={2} align="center" justify="space-between">
                 <Stack gap={0} style={{ minWidth: 0 }}>
                   <Text fw={500}>
-                    {t.name} {t.id === activeTokenId ? "(active)" : ""}
+                    {token.name} {token.id === activeTokenId ? t("tokenManager.activeSuffix") : ""}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    {t.tokenHint}
+                    {token.tokenHint}
                   </Text>
                 </Stack>
                 <Flex gap={2}>
-                  <Button size="sm" variant="outline" onClick={() => startEdit(t.id)}>
-                    Edit
+                  <Button size="sm" variant="outline" onClick={() => startEdit(token.id)}>
+                    {t("common.edit")}
                   </Button>
-                  <Button size="sm" variant="outline" color="red" onClick={() => submitDelete(t.id)}>
-                    Delete
+                  <Button size="sm" variant="outline" color="red" onClick={() => submitDelete(token.id)}>
+                    {t("common.delete")}
                   </Button>
                 </Flex>
               </Flex>
@@ -161,19 +161,19 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
 
         {editing && (
           <Stack gap="xs" mt="md" p="md" style={{ border: "1px solid var(--mantine-color-gray-3)", borderRadius: 8 }}>
-            <Text fw={600}>Редактировать токен</Text>
-            <TextInput value={editName} onChange={(e) => setEditName(e.currentTarget.value)} placeholder="Name" />
+            <Text fw={600}>{t("tokenManager.editToken")}</Text>
+            <TextInput value={editName} onChange={(e) => setEditName(e.currentTarget.value)} placeholder={t("tokenManager.fields.name")} />
             <PasswordInput
               value={editToken}
               onChange={(e) => setEditToken(e.currentTarget.value)}
-              placeholder={`New token (leave empty to keep ${editing.tokenHint})`}
+              placeholder={t("tokenManager.fields.newTokenPlaceholder", { hint: editing.tokenHint })}
             />
             <Flex justify="flex-end" gap={2}>
               <Button variant="subtle" onClick={() => setEditingId(null)}>
-                Отмена
+                {t("common.cancel")}
               </Button>
               <Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
-                Сохранить
+                {t("common.save")}
               </Button>
             </Flex>
           </Stack>

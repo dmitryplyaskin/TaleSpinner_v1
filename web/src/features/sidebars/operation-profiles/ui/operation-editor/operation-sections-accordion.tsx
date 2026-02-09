@@ -1,5 +1,6 @@
 import { Accordion, Group, Text } from '@mantine/core';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { BasicsSection } from './sections/basics-section';
 import { ExecutionSection } from './sections/execution-section';
@@ -17,21 +18,12 @@ type SectionId = 'basics' | 'kind' | 'execution' | 'output';
 
 const DEFAULT_OPEN: SectionId[] = ['basics', 'kind', 'execution'];
 
-const KIND_TITLE_MAP: Record<OperationKind, string> = {
-	template: 'Template',
-	llm: 'LLM',
-	rag: 'RAG',
-	tool: 'Tool',
-	compute: 'Compute',
-	transform: 'Transform',
-	legacy: 'Legacy',
-};
-
 function isSectionId(v: unknown): v is SectionId {
 	return v === 'basics' || v === 'kind' || v === 'execution' || v === 'output';
 }
 
 export const OperationSectionsAccordion: React.FC<Props> = ({ index, kind }) => {
+	const { t } = useTranslation();
 	const [open, setOpen] = useState<SectionId[]>(DEFAULT_OPEN);
 
 	const isOpen = useMemo(() => {
@@ -47,30 +39,30 @@ export const OperationSectionsAccordion: React.FC<Props> = ({ index, kind }) => 
 			variant="contained"
 		>
 			<Accordion.Item value="basics">
-				<Accordion.Control>Basics</Accordion.Control>
+				<Accordion.Control>{t('operationProfiles.sections.basics')}</Accordion.Control>
 				<Accordion.Panel>{isOpen('basics') && <BasicsSection index={index} />}</Accordion.Panel>
 			</Accordion.Item>
 
 			<Accordion.Item value="kind">
 				<Accordion.Control>
 					<Group gap={8} wrap="nowrap">
-						<Text inherit>{KIND_TITLE_MAP[kind]}</Text>
-						<span className="op-advancedBadge">Kind-specific</span>
+						<Text inherit>{t(`operationProfiles.kind.${kind}`)}</Text>
+						<span className="op-advancedBadge">{t('operationProfiles.sections.kindSpecific')}</span>
 					</Group>
 				</Accordion.Control>
 				<Accordion.Panel>{isOpen('kind') && <ParamsSection index={index} kind={kind} />}</Accordion.Panel>
 			</Accordion.Item>
 
 			<Accordion.Item value="execution">
-				<Accordion.Control>Execution</Accordion.Control>
+				<Accordion.Control>{t('operationProfiles.sections.execution')}</Accordion.Control>
 				<Accordion.Panel>{isOpen('execution') && <ExecutionSection index={index} />}</Accordion.Panel>
 			</Accordion.Item>
 
 			<Accordion.Item value="output">
 				<Accordion.Control>
 					<Group gap={8} wrap="nowrap">
-						<Text inherit>Effects / Output</Text>
-						<span className="op-advancedBadge">Advanced</span>
+						<Text inherit>{t('operationProfiles.sections.effectsOutput')}</Text>
+						<span className="op-advancedBadge">{t('operationProfiles.sections.advanced')}</span>
 					</Group>
 				</Accordion.Control>
 				<Accordion.Panel>{isOpen('output') && <OutputSection index={index} />}</Accordion.Panel>

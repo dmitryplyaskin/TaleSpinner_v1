@@ -3,6 +3,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { LuChevronDown, LuChevronUp, LuPlus } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -44,6 +45,7 @@ export type OperationProfileToolbarState = {
 };
 
 export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLayout, onToolbarStateChange }) => {
+	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationProfileFx);
 	const isMobile = useMediaQuery('(max-width: 767px)');
 	const useSplitLayout = preferSplitLayout && !isMobile;
@@ -79,7 +81,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 				return {
 					opId: f.opId,
 					index: idx,
-					name: typeof watched?.name === 'string' && watched.name.trim() ? watched.name.trim() : 'Untitled operation',
+					name: typeof watched?.name === 'string' && watched.name.trim() ? watched.name.trim() : t('operationProfiles.defaults.untitledOperation'),
 					kind: isOperationKind(rawKind) ? rawKind : 'template',
 					enabled: Boolean(watched?.config?.enabled),
 					required: Boolean(watched?.config?.required),
@@ -87,7 +89,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 				};
 			})
 			.filter((item): item is OperationListItemVm => item !== null);
-	}, [fields, watchedOperations]);
+	}, [fields, t, watchedOperations]);
 
 	const stats = useMemo<OperationStatsVm>(() => {
 		return {
@@ -170,7 +172,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 	};
 
 	const removeOperationAt = (targetIndex: number, targetOpId: string) => {
-		if (!window.confirm('Delete selected operation?')) return;
+		if (!window.confirm(t('operationProfiles.confirm.deleteOperation'))) return;
 		const currentPosition = items.findIndex((item) => item.opId === targetOpId);
 		const next =
 			items[currentPosition + 1]?.opId ??
@@ -206,20 +208,20 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 					>
 						<Group gap="xs" wrap="nowrap">
 							{isProfileOpen ? <LuChevronDown /> : <LuChevronUp />}
-							<Text fw={700}>Profile settings</Text>
+							<Text fw={700}>{t('operationProfiles.profileSettings.title')}</Text>
 						</Group>
 					</Group>
 
 					<Collapse in={isProfileOpen}>
 						<Stack gap="xs" pt="md">
-							<FormInput name="name" label="Profile name" inputProps={{ style: { flex: 1 } }} />
-							<FormInput name="description" label="Description" />
+							<FormInput name="name" label={t('operationProfiles.profileSettings.profileName')} inputProps={{ style: { flex: 1 } }} />
+							<FormInput name="description" label={t('operationProfiles.sectionsLabels.description')} />
 
 							<Group gap="md" wrap="wrap">
-								<FormSwitch name="enabled" label="Profile enabled" />
+								<FormSwitch name="enabled" label={t('operationProfiles.profileSettings.profileEnabled')} />
 								<FormSelect
 									name="executionMode"
-									label="Execution mode"
+									label={t('operationProfiles.profileSettings.executionMode')}
 									selectProps={{
 										comboboxProps: { withinPortal: false },
 										style: { width: 220 },
@@ -233,15 +235,15 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 
 							<FormInput
 								name="operationProfileSessionId"
-								label="Operation profile session id"
-								infoTip="Reset this id when you need a fresh validation and change-grouping scope."
+								label={t('operationProfiles.profileSettings.sessionId')}
+								infoTip={t('operationProfiles.profileSettings.sessionIdInfo')}
 							/>
 						</Stack>
 					</Collapse>
 				</Card>
 
 				{jsonError && (
-					<Alert color="red" title="Invalid JSON payload">
+					<Alert color="red" title={t('operationProfiles.profileSettings.invalidJson')}>
 						{jsonError}
 					</Alert>
 				)}
@@ -249,12 +251,12 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 				{items.length === 0 ? (
 					<Card withBorder className="op-editorCard">
 						<Stack align="flex-start" gap="sm">
-							<Text fw={700}>Operations</Text>
+							<Text fw={700}>{t('operationProfiles.operations.title')}</Text>
 							<Text size="sm" c="dimmed">
-								No operations yet. Add one to start editing.
+								{t('operationProfiles.operations.empty')}
 							</Text>
 							<Button leftSection={<LuPlus />} onClick={addOperation}>
-								Add operation
+								{t('operationProfiles.actions.addOperation')}
 							</Button>
 						</Stack>
 					</Card>
@@ -274,9 +276,9 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 						<div className="op-inspectorPane">
 							<div className="op-editorHeader op-stickyHeader op-inspectorHeader">
 								<Stack gap={2}>
-									<Text fw={700}>Operation inspector</Text>
+									<Text fw={700}>{t('operationProfiles.inspector.title')}</Text>
 									<Text className="op-listHint">
-										{selectedIndex === null ? 'No operation selected' : `Operation #${selectedIndex + 1}`}
+										{selectedIndex === null ? t('operationProfiles.inspector.noneSelected') : t('operationProfiles.inspector.operationNumber', { number: selectedIndex + 1 })}
 									</Text>
 								</Stack>
 							</div>
@@ -285,7 +287,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 								renderOperationEditor(selectedItem)
 							) : (
 								<Text size="sm" c="dimmed">
-									Select an operation from the list to start editing.
+									{t('operationProfiles.inspector.selectFromList')}
 								</Text>
 							)}
 						</div>

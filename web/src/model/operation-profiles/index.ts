@@ -2,6 +2,7 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 import { v4 as uuidv4 } from 'uuid';
 
 import { toaster } from '@ui/toaster';
+import i18n from '../../i18n';
 
 import {
 	createOperationProfile,
@@ -69,7 +70,7 @@ sample({
 	fn: (profiles, payload): OperationProfileUpsertInput => {
 		const src = profiles.find((p) => p.profileId === payload.sourceProfileId)!;
 		return {
-			name: `${src.name} (copy)`,
+			name: i18n.t('operationProfiles.defaults.copyName', { name: src.name }),
 			description: src.description,
 			enabled: src.enabled,
 			executionMode: src.executionMode,
@@ -107,22 +108,22 @@ sample({
 });
 
 createOperationProfileFx.doneData.watch((p) => {
-	toaster.success({ title: 'Operation profile created', description: `${p.name} (v${p.version})` });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.created'), description: `${p.name} (v${p.version})` });
 });
 createOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Failed to create operation profile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: i18n.t('operationProfiles.toasts.createError'), description: e instanceof Error ? e.message : String(e) });
 });
 updateOperationProfileFx.doneData.watch((p) => {
-	toaster.success({ title: 'Operation profile saved', description: `${p.name} (v${p.version})` });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.saved'), description: `${p.name} (v${p.version})` });
 });
 updateOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Failed to save operation profile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: i18n.t('operationProfiles.toasts.saveError'), description: e instanceof Error ? e.message : String(e) });
 });
 deleteOperationProfileFx.doneData.watch(() => {
-	toaster.success({ title: 'Operation profile deleted' });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.deleted') });
 });
 deleteOperationProfileFx.failData.watch((e) => {
-	toaster.error({ title: 'Failed to delete operation profile', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: i18n.t('operationProfiles.toasts.deleteError'), description: e instanceof Error ? e.message : String(e) });
 });
 
 // ---- Import / export
@@ -149,8 +150,8 @@ sample({
 });
 
 importOperationProfilesFx.doneData.watch((p) => {
-	toaster.success({ title: 'Operation profile import', description: `Imported: ${p.created.length}` });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.importTitle'), description: i18n.t('operationProfiles.toasts.importedCount', { count: p.created.length }) });
 });
 importOperationProfilesFx.failData.watch((e) => {
-	toaster.error({ title: 'Failed to import operation profiles', description: e instanceof Error ? e.message : String(e) });
+	toaster.error({ title: i18n.t('operationProfiles.toasts.importError'), description: e instanceof Error ? e.message : String(e) });
 });

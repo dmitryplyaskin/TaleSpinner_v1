@@ -2,6 +2,7 @@ import { type InstructionType, type InstructionSettingsType } from '@shared/type
 import { v4 as uuidv4 } from 'uuid';
 
 import { createModel } from '@model/_fabric_';
+import i18n from '../../i18n';
 
 export const instructionsModel = createModel<InstructionSettingsType, InstructionType>({
 	settings: {
@@ -15,7 +16,7 @@ export const instructionsModel = createModel<InstructionSettingsType, Instructio
 
 export const createEmptyInstruction = (): InstructionType => ({
 	id: uuidv4(),
-	name: 'Новая инструкция',
+	name: i18n.t('instructions.defaults.newInstruction'),
 	instruction: '',
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),

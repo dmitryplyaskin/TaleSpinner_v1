@@ -1,6 +1,7 @@
 import { Autocomplete, Button, Group, Input, Select, Stack, Text, TextInput } from "@mantine/core";
 import { useUnit } from "effector-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { llmProviderModel } from "@model/provider";
 
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
+  const { t } = useTranslation();
   const [
     providers,
     runtimeByKey,
@@ -163,7 +165,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
 
   return (
     <Stack gap="lg">
-      <Input.Wrapper label="API provider">
+      <Input.Wrapper label={t("provider.providerLabel")}>
         <Select
           data={providerOptions}
           value={activeProviderId}
@@ -171,7 +173,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
             const providerId = (value ?? "openrouter") as LlmProviderId;
             selectProvider({ scope, scopeId, providerId });
           }}
-          placeholder="Select provider..."
+          placeholder={t("provider.placeholders.selectProvider")}
           searchable
           comboboxProps={{ withinPortal: false }}
         />
@@ -179,9 +181,9 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
 
       <Stack gap="xs">
         <Group justify="space-between">
-          <Text fw={600}>Tokens</Text>
+          <Text fw={600}>{t("provider.tokens.title")}</Text>
           <Button size="xs" variant="outline" onClick={() => openTokenManager(true)}>
-            Manage tokens
+            {t("provider.tokens.manage")}
           </Button>
         </Group>
 
@@ -189,7 +191,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
           data={tokenOptions}
           value={activeTokenId}
           onChange={(value) => selectToken({ scope, scopeId, tokenId: value ?? null })}
-          placeholder={tokens.length ? "Select token..." : "No tokens"}
+          placeholder={tokens.length ? t("provider.placeholders.selectToken") : t("provider.placeholders.noTokens")}
           clearable
           searchable
           comboboxProps={{ withinPortal: false }}
@@ -198,11 +200,11 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
       </Stack>
 
       <Stack gap="sm">
-        <Text fw={600}>Provider config</Text>
+        <Text fw={600}>{t("provider.config.title")}</Text>
 
         {activeProviderId === "openai_compatible" && (
           <TextInput
-            label="Base URL"
+            label={t("provider.config.baseUrl")}
             value={String(configDraft.baseUrl ?? "")}
             onChange={(e) => setConfigDraft((s) => ({ ...s, baseUrl: e.currentTarget.value }))}
             placeholder="http://localhost:1234/v1"
@@ -210,7 +212,7 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
         )}
 
         <TextInput
-          label="Default model (optional)"
+          label={t("provider.config.defaultModel")}
           value={String(configDraft.defaultModel ?? "")}
           onChange={(e) => setConfigDraft((s) => ({ ...s, defaultModel: e.currentTarget.value }))}
           placeholder="gpt-4o-mini"
@@ -218,16 +220,16 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
 
         <Group justify="flex-end">
           <Button size="xs" variant="outline" onClick={saveConfig}>
-            Save config
+            {t("provider.config.save")}
           </Button>
         </Group>
       </Stack>
 
       <Stack gap="xs">
         <Group justify="space-between">
-          <Text fw={600}>Model</Text>
+          <Text fw={600}>{t("provider.model.title")}</Text>
           <Button size="xs" variant="outline" onClick={loadModels} disabled={!canLoadModels}>
-            Load models
+            {t("provider.model.load")}
           </Button>
         </Group>
 
@@ -249,13 +251,13 @@ export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
             const modelId = resolveModelIdFromAutocompleteValue(modelInput);
             selectModel({ scope, scopeId, model: modelId || null });
           }}
-          placeholder={canLoadModels ? "Select model..." : "Select token first"}
+          placeholder={canLoadModels ? t("provider.placeholders.selectModel") : t("provider.placeholders.selectTokenFirst")}
           disabled={!canLoadModels}
           comboboxProps={{ withinPortal: false }}
         />
 
         <Text size="sm" c="dimmed">
-          Если модель не выбрана, будет использоваться `defaultModel` провайдера (если задан) или дефолт провайдера.
+          {t("provider.model.helpText")}
         </Text>
       </Stack>
     </Stack>

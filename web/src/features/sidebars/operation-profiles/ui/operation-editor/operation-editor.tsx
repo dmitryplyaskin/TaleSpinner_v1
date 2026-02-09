@@ -1,6 +1,7 @@
 import { Badge, Button, Card, Group, Select, Stack, Text } from '@mantine/core';
 import React, { memo } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { LuTrash2 } from 'react-icons/lu';
 
 import { FormInput } from '@ui/form-components';
@@ -57,6 +58,7 @@ function makeSafeOutput(output: unknown) {
 }
 
 export const OperationEditor: React.FC<Props> = memo(({ index, title, status, canSave, canDiscard, onSave, onDiscard, onRemove }) => {
+	const { t } = useTranslation();
 	const opId = useWatch({ name: `operations.${index}.opId` }) as unknown;
 	const output = useWatch({ name: `operations.${index}.config.params.output` }) as unknown;
 	const { setValue, control } = useFormContext();
@@ -76,12 +78,12 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 			<Stack gap="md">
 				<div className="op-editorHeader op-operationHeader">
 					<Group gap="xs" wrap="wrap">
-						<Text fw={700}>{title ?? 'Operation'}</Text>
+						<Text fw={700}>{title ?? t('operationProfiles.operationEditor.title')}</Text>
 						{status && (
 							<>
 								<Badge variant="light">#{status.index}</Badge>
 								<Badge variant="outline">{status.kind}</Badge>
-								{status.isDirty && <Badge color="yellow">Unsaved</Badge>}
+								{status.isDirty && <Badge color="yellow">{t('operationProfiles.operationEditor.unsaved')}</Badge>}
 							</>
 						)}
 					</Group>
@@ -89,18 +91,18 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 					<Group gap="xs" wrap="nowrap" className="op-operationActions">
 						{onSave && (
 							<Button size="sm" onClick={onSave} disabled={!canSave}>
-								Save
+								{t('common.save')}
 							</Button>
 						)}
 						{onDiscard && (
 							<Button size="sm" variant="default" onClick={onDiscard} disabled={!canDiscard}>
-								Discard
+								{t('operationProfiles.actions.discard')}
 							</Button>
 						)}
 						{onRemove && (
 							<IconButtonWithTooltip
-								aria-label="Delete operation"
-								tooltip="Delete operation"
+								aria-label={t('operationProfiles.actions.deleteOperation')}
+								tooltip={t('operationProfiles.actions.deleteOperation')}
 								icon={<LuTrash2 />}
 								colorPalette="red"
 								size="input-sm"
@@ -113,10 +115,10 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 				</div>
 
 				<Group justify="space-between" wrap="wrap" align="flex-end" className="op-operationIdentityRow">
-					<FormInput name={`operations.${index}.name`} label="Operation name" inputProps={{ style: { flex: 1 } }} />
+					<FormInput name={`operations.${index}.name`} label={t('operationProfiles.fields.operationName')} inputProps={{ style: { flex: 1 } }} />
 					<Select
 						{...kindField}
-						label="Kind"
+						label={t('operationProfiles.fields.kind')}
 						data={kindOptions}
 						value={normalizedKind}
 						onChange={(next) => {
@@ -142,13 +144,13 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 							setValue(`operations.${index}.config.params`, nextParams, { shouldDirty: true });
 						}}
 						comboboxProps={{ withinPortal: false }}
-						description="Controls the kind-specific section shown below."
+						description={t('operationProfiles.fields.kindDescription')}
 						style={{ width: 210 }}
 					/>
 				</Group>
 
 				<Text size="xs" c="dimmed" className="op-opIdText">
-					opId: {safeOpId || '—'}
+					{t('operationProfiles.fields.opId', { value: safeOpId || '—' })}
 				</Text>
 
 				<OperationSectionsAccordion index={index} kind={normalizedKind} />

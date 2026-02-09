@@ -1,5 +1,6 @@
 import { Stack, Text } from '@mantine/core';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { FormTextarea } from '@ui/form-components';
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export const JsonKindParamsSection: React.FC<Props> = ({ index, kindLabel, description, placeholder }) => {
+	const { t } = useTranslation();
 	return (
 		<Stack gap="xs">
 			<Text size="sm" c="dimmed">
@@ -18,8 +20,8 @@ export const JsonKindParamsSection: React.FC<Props> = ({ index, kindLabel, descr
 			</Text>
 			<FormTextarea
 				name={`operations.${index}.config.params.paramsJson`}
-				label={`${kindLabel} params (JSON)`}
-				infoTip="Kind params are saved as a JSON object in config.params.params."
+				label={t('operationProfiles.kindSection.jsonParamsLabel', { kindLabel })}
+				infoTip={t('operationProfiles.kindSection.jsonParamsInfo')}
 				textareaProps={{ minRows: 8, autosize: true, placeholder }}
 			/>
 		</Stack>

@@ -1,6 +1,7 @@
 import { Button, Group, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuGitFork, LuRotateCcw, LuSave, LuUndo2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,6 +30,7 @@ import { ProfilePicker } from './ui/profile-picker';
 const TOOLBAR_TOOLTIP_SETTINGS = { withinPortal: true, zIndex: 3400 };
 
 export const OperationProfilesSidebar: React.FC = () => {
+	const { t } = useTranslation();
 	const profiles = useUnit($operationProfiles);
 	const settings = useUnit($operationProfileSettings);
 	const sidebars = useUnit($sidebars);
@@ -57,7 +59,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 	const uiClassName = preferSplitLayout ? 'op-ui' : 'op-ui op-ui--drawer';
 
 	return (
-		<Drawer name="operationProfiles" title="Operations">
+		<Drawer name="operationProfiles" title={t('operationProfiles.sidebar.title')}>
 			<Stack gap="md" className={uiClassName}>
 				<Stack gap="sm" className="op-command">
 					<div className="op-commandRow op-commandRowPrimary">
@@ -66,7 +68,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 							selected={selected ? { profileId: selected.profileId, name: selected.name } : null}
 							onCreate={() =>
 								doCreate({
-									name: 'New profile',
+									name: t('operationProfiles.defaults.newProfile'),
 									description: undefined,
 									enabled: true,
 									executionMode: 'concurrent',
@@ -91,15 +93,15 @@ export const OperationProfilesSidebar: React.FC = () => {
 							className="op-nodeButton"
 							disabled={!selected}
 							onClick={() => setIsNodeEditorOpen(true)}
-							title="Open full-screen node editor"
+							title={t('operationProfiles.actions.openNodeEditor')}
 						>
-							Open Node Editor
+							{t('operationProfiles.actions.openNodeEditor')}
 						</Button>
 
 						{selected && toolbarState && (
 							<Group gap="xs" wrap="nowrap" className="op-editorToolbarActions">
 								<Button size="sm" leftSection={<LuSave />} disabled={!toolbarState.canSave} onClick={toolbarState.onSave}>
-									Save
+									{t('common.save')}
 								</Button>
 								<Button
 									size="sm"
@@ -108,11 +110,11 @@ export const OperationProfilesSidebar: React.FC = () => {
 									disabled={!toolbarState.canDiscard}
 									onClick={toolbarState.onDiscard}
 								>
-									Discard
+									{t('operationProfiles.actions.discard')}
 								</Button>
 								<IconButtonWithTooltip
-									aria-label="Reset operation profile session id"
-									tooltip="Reset session id"
+									aria-label={t('operationProfiles.actions.resetSessionId')}
+									tooltip={t('operationProfiles.actions.resetSessionId')}
 									icon={<LuRotateCcw />}
 									size="input-sm"
 									variant="ghost"
@@ -126,7 +128,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 
 				{!selected ? (
 					<Text size="sm" c="dimmed">
-						Select a profile to edit operations.
+						{t('operationProfiles.empty.selectProfile')}
 					</Text>
 				) : (
 					<OperationProfileEditor profile={selected} preferSplitLayout={preferSplitLayout} onToolbarStateChange={setToolbarState} />

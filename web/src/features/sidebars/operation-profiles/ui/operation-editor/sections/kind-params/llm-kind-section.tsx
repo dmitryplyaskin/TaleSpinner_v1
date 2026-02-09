@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -13,11 +14,12 @@ const LLM_PLACEHOLDER = `{
 }`;
 
 export const LlmKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="LLM"
-			description="Configure direct model-call options for this operation."
+			kindLabel={t('operationProfiles.kind.llm')}
+			description={t('operationProfiles.kindSection.llm.description')}
 			placeholder={LLM_PLACEHOLDER}
 		/>
 	);

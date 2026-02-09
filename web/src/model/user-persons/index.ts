@@ -4,36 +4,37 @@ import { v4 as uuidv4 } from 'uuid';
 import { createModel } from '@model/_fabric_';
 import { createStringSortFunction, createStringFilterFunction } from '@model/_fabric_/sort-filter-helpers';
 import { type SortOption, type FilterOption } from '@model/_fabric_/sort-filter-model';
+import i18n from '../../i18n';
 
 // Определяем опции сортировки
 const sortOptions: SortOption<UserPersonType>[] = [
 	{
 		type: 'A-Z',
-		label: 'По алфавиту (А-Я)',
+		label: 'sortFilter.sort.alphaAsc',
 		targetValue: 'name',
 		sortFunction: createStringSortFunction('name', true),
 	},
 	{
 		type: 'Z-A',
-		label: 'По алфавиту (Я-А)',
+		label: 'sortFilter.sort.alphaDesc',
 		targetValue: 'name',
 		sortFunction: createStringSortFunction('name', false),
 	},
 	{
-		type: 'Сначала новые',
-		label: 'Сначала новые',
+		type: 'newest',
+		label: 'sortFilter.sort.newest',
 		targetValue: 'createdAt',
 		sortFunction: (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	},
 	{
-		type: 'Сначала старые',
-		label: 'Сначала старые',
+		type: 'oldest',
+		label: 'sortFilter.sort.oldest',
 		targetValue: 'createdAt',
 		sortFunction: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 	},
 	{
-		type: 'Последние изменённые',
-		label: 'Последние изменённые',
+		type: 'latest',
+		label: 'sortFilter.sort.latest',
 		targetValue: 'updatedAt',
 		sortFunction: (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
 	},
@@ -43,7 +44,7 @@ const sortOptions: SortOption<UserPersonType>[] = [
 const filterOptions: FilterOption<UserPersonType>[] = [
 	{
 		type: 'byName',
-		label: 'По имени',
+		label: 'sortFilter.filters.byName',
 		targetValue: 'name',
 		filterFunction: createStringFilterFunction('name'),
 	},
@@ -65,7 +66,7 @@ export const userPersonsModel = createModel<UserPersonSettingsType, UserPersonTy
 
 export const createEmptyUserPerson = (): UserPersonType => ({
 	id: uuidv4(),
-	name: 'Новый пользователь',
+	name: i18n.t('userPersons.defaults.newPerson'),
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	type: 'default',

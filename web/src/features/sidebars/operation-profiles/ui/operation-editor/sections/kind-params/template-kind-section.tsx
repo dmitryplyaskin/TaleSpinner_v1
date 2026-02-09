@@ -1,5 +1,6 @@
 import { Stack, Text } from '@mantine/core';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { FormCheckbox, FormTextarea } from '@ui/form-components';
 
@@ -8,20 +9,21 @@ type Props = {
 };
 
 export const TemplateKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<Stack gap="xs">
 			<Text size="sm" c="dimmed">
-				Template operations render text using available variables and pass the result to output effects.
+				{t('operationProfiles.kindSection.template.description')}
 			</Text>
 			<FormCheckbox
 				name={`operations.${index}.config.params.strictVariables`}
-				label="Strict variables"
-				infoTip="When enabled, the template may use only declared variables."
+				label={t('operationProfiles.kindSection.template.strictVariables')}
+				infoTip={t('operationProfiles.kindSection.template.strictVariablesInfo')}
 			/>
 			<FormTextarea
 				name={`operations.${index}.config.params.template`}
-				label="Template text"
-				infoTip="Body of the operation template."
+				label={t('operationProfiles.kindSection.template.templateText')}
+				infoTip={t('operationProfiles.kindSection.template.templateTextInfo')}
 				textareaProps={{ minRows: 5, autosize: true, placeholder: '{{user_input}}' }}
 			/>
 		</Stack>

@@ -2,6 +2,7 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 
 import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 import { toaster } from '@ui/toaster';
+import i18n from '../../i18n';
 
 import type { SseEnvelope } from '../../api/chat-core';
 import { abortGeneration } from '../../api/chat-core';
@@ -22,7 +23,7 @@ export const $entries = createStore<ChatEntryWithVariantDto[]>([]).on(loadEntrie
 export const $currentTurn = createStore<number>(0).on(loadEntriesFx.doneData, (_, res) => res.currentTurn);
 
 loadEntriesFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось загрузить чат', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.loadChatError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 // Reload entries when we open a chat (chat-core still owns chat/branch selection).
@@ -428,13 +429,13 @@ sample({ clock: prepareRegenerateFx.doneData, target: runRegenerateStreamFx });
 $isChatStreaming.on(runRegenerateStreamFx, () => true).on(runRegenerateStreamFx.finally, () => false);
 
 prepareSendFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось отправить сообщение', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.sendMessageError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 runSendStreamFx.failData.watch((error) => {
-	toaster.error({ title: 'Ошибка стрима', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.streamError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 runRegenerateStreamFx.failData.watch((error) => {
-	toaster.error({ title: 'Ошибка регенерации', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.regenerateError'), description: error instanceof Error ? error.message : String(error) });
 });

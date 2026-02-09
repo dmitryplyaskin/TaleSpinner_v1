@@ -1,4 +1,5 @@
 import { Avatar, Card, Group, Stack, Text } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import { LuTrash2 } from 'react-icons/lu';
 
 import { deleteEntityProfileRequested, selectEntityProfile } from '@model/chat-core';
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export const AgentCard: React.FC<Props> = ({ data }) => {
+	const { t } = useTranslation();
 	const handleSelect = () => {
 		selectEntityProfile(data);
 	};
@@ -29,19 +31,19 @@ export const AgentCard: React.FC<Props> = ({ data }) => {
 					</Text>
 
 					<Text c="dimmed" size="xs" lineClamp={2}>
-						Kind: {data.kind}
+						{t('agentCards.kindLabel', { kind: data.kind })}
 					</Text>
 				</Stack>
 				<IconButtonWithTooltip
-					tooltip="Удалить"
+					tooltip={t('common.delete')}
 					variant="ghost"
 					size="sm"
 					colorPalette="red"
-					aria-label="Delete"
+					aria-label={t('common.delete')}
 					onClick={(e) => {
 						e.preventDefault();
 						e.stopPropagation();
-						if (!window.confirm(`Удалить профиль "${data.name}"?`)) return;
+						if (!window.confirm(t('agentCards.confirm.deleteProfile', { name: data.name }))) return;
 						deleteEntityProfileRequested({ id: data.id });
 					}}
 					icon={<LuTrash2 />}

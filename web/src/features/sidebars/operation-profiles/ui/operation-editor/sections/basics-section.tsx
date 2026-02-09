@@ -1,32 +1,35 @@
 import { Group, Stack } from '@mantine/core';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { FormCheckbox, FormTextarea } from '@ui/form-components';
-
-const RequiredInfoTip =
-	'Required operations must finish as "done". If they fail, the run will fail for the corresponding hook.';
 
 type Props = {
 	index: number;
 };
 
 export const BasicsSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<Stack gap="xs">
 			<FormTextarea
 				name={`operations.${index}.description`}
-				label="Description"
-				infoTip="Short description shown in list, node labels, and profile docs."
+				label={t('operationProfiles.sectionsLabels.description')}
+				infoTip={t('operationProfiles.tooltips.description')}
 				textareaProps={{ minRows: 2, autosize: true }}
 			/>
 
 			<Group grow wrap="wrap">
 				<FormCheckbox
 					name={`operations.${index}.config.enabled`}
-					label="Enabled"
-					infoTip="Disabled operations are skipped and do not commit effects."
+					label={t('operationProfiles.sectionsLabels.enabled')}
+					infoTip={t('operationProfiles.tooltips.enabled')}
 				/>
-				<FormCheckbox name={`operations.${index}.config.required`} label="Required" infoTip={RequiredInfoTip} />
+				<FormCheckbox
+					name={`operations.${index}.config.required`}
+					label={t('operationProfiles.sectionsLabels.required')}
+					infoTip={t('operationProfiles.tooltips.required')}
+				/>
 			</Group>
 		</Stack>
 	);

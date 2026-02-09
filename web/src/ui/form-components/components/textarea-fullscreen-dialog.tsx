@@ -1,4 +1,5 @@
 import { Button, Tabs, Textarea, type TextareaProps } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
 import { Dialog } from '@ui/dialog';
 import { RenderMd } from '@ui/render-md';
@@ -18,22 +19,23 @@ export const TextareaFullscreenDialog: React.FC<TextareaFullscreenDialogProps> =
 	onChange,
 	textareaProps,
 }) => {
+	const { t } = useTranslation();
 	return (
 		<Dialog
 			open={open}
 			onOpenChange={onOpenChange}
-			title="Редактирование"
+			title={t('dialogs.textarea.title')}
 			size="cover"
 			footer={
 				<Button variant="subtle" onClick={() => onOpenChange(false)}>
-					Закрыть
+					{t('common.close')}
 				</Button>
 			}
 		>
 			<Tabs defaultValue="edit" variant="outline">
 				<Tabs.List>
-					<Tabs.Tab value="edit">Редактировать</Tabs.Tab>
-					<Tabs.Tab value="preview">Предпросмотр</Tabs.Tab>
+					<Tabs.Tab value="edit">{t('dialogs.textarea.tabs.edit')}</Tabs.Tab>
+					<Tabs.Tab value="preview">{t('dialogs.textarea.tabs.preview')}</Tabs.Tab>
 				</Tabs.List>
 
 				<Tabs.Panel value="edit" pt="md">

@@ -2,6 +2,7 @@ import { Button, Group, Stack, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { $currentBranchId, $currentChat, $currentEntityProfile } from '@model/chat-core';
 import {
@@ -18,6 +19,7 @@ type FormValues = {
 };
 
 export const PromptTemplateEditor = () => {
+	const { t } = useTranslation();
 	const tpl = useUnit($selectedPromptTemplate);
 	const [chat, branchId, profile] = useUnit([$currentChat, $currentBranchId, $currentEntityProfile]);
 
@@ -74,11 +76,11 @@ export const PromptTemplateEditor = () => {
 	return (
 		<FormProvider {...methods}>
 			<Stack gap="md" mt="md">
-				<FormInput name="name" label="Название" placeholder="Введите название" />
+				<FormInput name="name" label={t('templates.fields.name')} placeholder={t('templates.placeholders.name')} />
 
 				<Textarea
-					label="Template (LiquidJS)"
-					description="Синтаксис проверяется на бэкенде при сохранении."
+					label={t('templates.fields.templateText')}
+					description={t('templates.fields.templateTextDescription')}
 					value={methods.watch('templateText')}
 					onChange={(e) => methods.setValue('templateText', e.currentTarget.value, { shouldDirty: true })}
 					minRows={14}
@@ -94,8 +96,8 @@ export const PromptTemplateEditor = () => {
 
 				{preview.length > 0 && (
 					<Textarea
-						label="Пререндер"
-						description="Результат рендера Liquid на бэкенде (без генерации LLM)."
+						label={t('templates.fields.prerender')}
+						description={t('templates.fields.prerenderDescription')}
 						value={preview}
 						readOnly
 						minRows={10}
@@ -106,9 +108,9 @@ export const PromptTemplateEditor = () => {
 
 				<Group justify="flex-end">
 					<Button variant="light" loading={previewLoading} onClick={onPrerender}>
-						Пререндер
+						{t('templates.actions.prerender')}
 					</Button>
-					<Button onClick={methods.handleSubmit(onSubmit)}>Сохранить</Button>
+					<Button onClick={methods.handleSubmit(onSubmit)}>{t('common.save')}</Button>
 				</Group>
 			</Stack>
 		</FormProvider>

@@ -27,6 +27,27 @@ export interface SortFilterSettings {
 	activeFilters: FilterState[];
 }
 
+const LEGACY_SORT_TYPE_ALIASES: Record<string, string> = {
+	'Сначала новые': 'newest',
+	Newest: 'newest',
+	'Сначала старые': 'oldest',
+	Oldest: 'oldest',
+	'Последние': 'latest',
+	'Последние изменённые': 'latest',
+	Latest: 'latest',
+	'Избранные': 'favorites',
+	'Больше всего чатов': 'mostChats',
+	'Меньше всего чатов': 'fewestChats',
+	'Больше всего токенов': 'mostTokens',
+	'Меньше всего токенов': 'fewestTokens',
+	'Случайно': 'random',
+};
+
+function normalizeSortType(sortType: string | null): string | null {
+	if (!sortType) return null;
+	return LEGACY_SORT_TYPE_ALIASES[sortType] ?? sortType;
+}
+
 export interface SortFilterModel<ItemType extends CommonModelItemType> {
 	// Сторы
 	$sortOptions: Store<SortOption<ItemType>[]>;
@@ -81,7 +102,7 @@ export const createSortFilterModel = <
 	$sortFilterSettings
 		.on(setSort, (state, sortType) => ({
 			...state,
-			currentSortType: sortType,
+			currentSortType: normalizeSortType(sortType),
 		}))
 		.on(addFilter, (state, filter) => {
 			// Если фильтр с таким типом уже существует, заменяем его
@@ -183,7 +204,7 @@ export const createSortFilterModel = <
 			if (!firstSettingsInit) {
 				firstSettingsInit = true;
 				if (data.sortType) {
-					setSort(data.sortType);
+					setSort(normalizeSortType(data.sortType));
 				}
 			}
 		});

@@ -118,7 +118,7 @@ export const WorldInfoSidebar = () => {
 	const handleSaveBook = () => {
 		if (!selectedBook) return;
 		if (!draftName.trim()) {
-			toaster.error({ title: 'Название книги обязательно' });
+			toaster.error({ title: t('worldInfo.toasts.bookNameRequired') });
 			return;
 		}
 
@@ -127,7 +127,7 @@ export const WorldInfoSidebar = () => {
 			parsedData = JSON.parse(draftData);
 		} catch (error) {
 			toaster.error({
-				title: 'Некорректный JSON книги',
+				title: t('worldInfo.toasts.invalidBookJson'),
 				description: error instanceof Error ? error.message : String(error),
 			});
 			return;
@@ -175,7 +175,7 @@ export const WorldInfoSidebar = () => {
 			URL.revokeObjectURL(url);
 		} catch (error) {
 			toaster.error({
-				title: 'Не удалось экспортировать книгу',
+				title: t('worldInfo.toasts.exportFailed'),
 				description: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -213,13 +213,13 @@ export const WorldInfoSidebar = () => {
 						<IconButtonWithTooltip
 							tooltip={t('common.create')}
 							icon={<LuPlus />}
-							aria-label="Create world info book"
+							aria-label={t('worldInfo.actions.createBook')}
 							onClick={() => worldInfoBookCreateRequested()}
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('common.duplicate')}
 							icon={<LuCopy />}
-							aria-label="Duplicate world info book"
+							aria-label={t('worldInfo.actions.duplicateBook')}
 							disabled={!selectedId}
 							onClick={() => {
 								if (!selectedId) return;
@@ -229,20 +229,20 @@ export const WorldInfoSidebar = () => {
 						<IconButtonWithTooltip
 							tooltip={t('common.import')}
 							icon={<LuUpload />}
-							aria-label="Import world info book"
+							aria-label={t('worldInfo.actions.importBook')}
 							onClick={() => fileInputRef.current?.click()}
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('common.export')}
 							icon={<LuDownload />}
-							aria-label="Export world info book"
+							aria-label={t('worldInfo.actions.exportBook')}
 							disabled={!selectedId}
 							onClick={() => void handleExport()}
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('common.refresh')}
 							icon={<LuRefreshCw />}
-							aria-label="Refresh world info"
+							aria-label={t('worldInfo.actions.refresh')}
 							onClick={() => {
 								void loadWorldInfoBooksFx();
 								void loadWorldInfoSettingsFx();
@@ -254,13 +254,13 @@ export const WorldInfoSidebar = () => {
 						<IconButtonWithTooltip
 							tooltip={t('common.delete')}
 							icon={<LuTrash2 />}
-							aria-label="Delete world info book"
+							aria-label={t('worldInfo.actions.deleteBook')}
 							color="red"
 							variant="outline"
 							disabled={!selectedId}
 							onClick={() => {
 								if (!selectedId) return;
-								if (!window.confirm('Удалить выбранную World Info книгу?')) return;
+								if (!window.confirm(t('worldInfo.confirm.deleteBook'))) return;
 								worldInfoBookDeleteRequested({ id: selectedId });
 							}}
 						/>
@@ -273,15 +273,15 @@ export const WorldInfoSidebar = () => {
 					</Text>
 				) : (
 					<Stack gap="sm">
-						<TextInput label="Название" value={draftName} onChange={(e) => setDraftName(e.currentTarget.value)} />
-						<TextInput label="Slug" value={draftSlug} onChange={(e) => setDraftSlug(e.currentTarget.value)} />
+						<TextInput label={t('worldInfo.fields.name')} value={draftName} onChange={(e) => setDraftName(e.currentTarget.value)} />
+						<TextInput label={t('worldInfo.fields.slug')} value={draftSlug} onChange={(e) => setDraftSlug(e.currentTarget.value)} />
 						<TextInput
-							label="Описание"
+							label={t('worldInfo.fields.description')}
 							value={draftDescription}
 							onChange={(e) => setDraftDescription(e.currentTarget.value)}
 						/>
 						<Textarea
-							label="Book data JSON"
+							label={t('worldInfo.fields.bookDataJson')}
 							value={draftData}
 							onChange={(e) => setDraftData(e.currentTarget.value)}
 							minRows={14}
@@ -289,7 +289,11 @@ export const WorldInfoSidebar = () => {
 						/>
 
 						<Switch
-							label={currentChat ? `Привязать к чату: ${currentChat.title}` : 'Нет активного чата для привязки'}
+							label={
+								currentChat
+									? t('worldInfo.fields.bindToChat', { chatTitle: currentChat.title })
+									: t('worldInfo.fields.noActiveChat')
+							}
 							checked={isBoundToCurrentChat}
 							disabled={!currentChat}
 							onChange={(e) =>
@@ -301,23 +305,23 @@ export const WorldInfoSidebar = () => {
 						/>
 
 						<Button onClick={handleSaveBook} loading={isSaveBookPending} disabled={isBusy}>
-							Сохранить книгу
+							{t('worldInfo.actions.saveBook')}
 						</Button>
 					</Stack>
 				)}
 
 				<Accordion variant="separated">
 					<Accordion.Item value="world-info-settings">
-						<Accordion.Control>World Info Settings</Accordion.Control>
+						<Accordion.Control>{t('worldInfo.settings.title')}</Accordion.Control>
 						<Accordion.Panel>
 							{!settingsDraft ? (
 								<Text size="sm" c="dimmed">
-									Настройки не загружены.
+									{t('worldInfo.settings.notLoaded')}
 								</Text>
 							) : (
 								<Stack gap="sm">
 									<NumberInput
-										label="Scan depth"
+										label={t('worldInfo.settings.scanDepth')}
 										min={0}
 										value={settingsDraft.scanDepth ?? 0}
 										onChange={(value) =>
@@ -328,7 +332,7 @@ export const WorldInfoSidebar = () => {
 										}
 									/>
 									<NumberInput
-										label="Budget percent"
+										label={t('worldInfo.settings.budgetPercent')}
 										min={1}
 										max={100}
 										value={settingsDraft.budgetPercent ?? 25}
@@ -340,7 +344,7 @@ export const WorldInfoSidebar = () => {
 										}
 									/>
 									<NumberInput
-										label="Budget cap tokens"
+										label={t('worldInfo.settings.budgetCapTokens')}
 										min={0}
 										value={settingsDraft.budgetCapTokens ?? 0}
 										onChange={(value) =>
@@ -351,7 +355,7 @@ export const WorldInfoSidebar = () => {
 										}
 									/>
 									<NumberInput
-										label="Context window tokens"
+										label={t('worldInfo.settings.contextWindowTokens')}
 										min={1}
 										value={settingsDraft.contextWindowTokens ?? 8192}
 										onChange={(value) =>
@@ -362,42 +366,42 @@ export const WorldInfoSidebar = () => {
 										}
 									/>
 									<Switch
-										label="Recursive"
+										label={t('worldInfo.settings.recursive')}
 										checked={Boolean(settingsDraft.recursive)}
 										onChange={(e) =>
 											setSettingsDraft((prev) => ({ ...(prev ?? {}), recursive: e.currentTarget.checked }))
 										}
 									/>
 									<Switch
-										label="Include names"
+										label={t('worldInfo.settings.includeNames')}
 										checked={Boolean(settingsDraft.includeNames)}
 										onChange={(e) =>
 											setSettingsDraft((prev) => ({ ...(prev ?? {}), includeNames: e.currentTarget.checked }))
 										}
 									/>
 									<Switch
-										label="Case sensitive"
+										label={t('worldInfo.settings.caseSensitive')}
 										checked={Boolean(settingsDraft.caseSensitive)}
 										onChange={(e) =>
 											setSettingsDraft((prev) => ({ ...(prev ?? {}), caseSensitive: e.currentTarget.checked }))
 										}
 									/>
 									<Switch
-										label="Match whole words"
+										label={t('worldInfo.settings.matchWholeWords')}
 										checked={Boolean(settingsDraft.matchWholeWords)}
 										onChange={(e) =>
 											setSettingsDraft((prev) => ({ ...(prev ?? {}), matchWholeWords: e.currentTarget.checked }))
 										}
 									/>
 									<Switch
-										label="Use group scoring"
+										label={t('worldInfo.settings.useGroupScoring')}
 										checked={Boolean(settingsDraft.useGroupScoring)}
 										onChange={(e) =>
 											setSettingsDraft((prev) => ({ ...(prev ?? {}), useGroupScoring: e.currentTarget.checked }))
 										}
 									/>
 									<Button onClick={handleSaveSettings} loading={isSaveSettingsPending} disabled={isBusy}>
-										Сохранить настройки
+										{t('worldInfo.actions.saveSettings')}
 									</Button>
 								</Stack>
 							)}

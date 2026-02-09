@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -15,11 +16,12 @@ const COMPUTE_PLACEHOLDER = `{
 }`;
 
 export const ComputeKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="Compute"
-			description="Configure deterministic computations or transformations over structured inputs."
+			kindLabel={t('operationProfiles.kind.compute')}
+			description={t('operationProfiles.kindSection.compute.description')}
 			placeholder={COMPUTE_PLACEHOLDER}
 		/>
 	);

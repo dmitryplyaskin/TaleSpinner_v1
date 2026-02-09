@@ -9,13 +9,13 @@ import appSettingsService from "../services/app-settings.service";
 
 const router = express.Router();
 
-const appSettingsPatchSchema = z
+export const appSettingsPatchSchema = z
   .object({
-    language: z.string().min(1).optional(),
+    language: z.enum(["ru", "en"]).optional(),
     openLastChat: z.boolean().optional(),
     autoSelectCurrentPersona: z.boolean().optional(),
   })
-  .passthrough();
+  .strict();
 
 router.get(
   "/",

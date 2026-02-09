@@ -1,10 +1,13 @@
 import { createStore, createEvent, createEffect, sample } from "effector";
+import { type TFunction } from "i18next";
 import { debounce } from "patronum/debounce";
 
 import { apiJson } from "../api/api-json";
 
 export interface LLMSettingField {
   key: string;
+  labelKey: string;
+  tooltipKey: string;
   label: string;
   type: "range" | "number" | "text";
   tooltip: string;
@@ -31,13 +34,12 @@ export const defaultSettings: LLMSettingsState = {
   presencePenalty: 0,
 };
 
-export const llmSettingsFields: LLMSettingField[] = [
+const llmSettingsFieldDefinitions: Array<Omit<LLMSettingField, "label" | "tooltip">> = [
   {
     key: "temperature",
-    label: "Температура",
+    labelKey: "llmSettings.fields.temperature.label",
     type: "range",
-    tooltip:
-      "Контролирует случайность ответов. Более высокие значения делают вывод более случайным.",
+    tooltipKey: "llmSettings.fields.temperature.tooltip",
     width: 1,
     defaultValue: 0.7,
     min: 0,
@@ -46,9 +48,9 @@ export const llmSettingsFields: LLMSettingField[] = [
   },
   {
     key: "maxTokens",
-    label: "Максимум токенов",
+    labelKey: "llmSettings.fields.maxTokens.label",
     type: "range",
-    tooltip: "Максимальное количество токенов в ответе модели.",
+    tooltipKey: "llmSettings.fields.maxTokens.tooltip",
     width: 2,
     defaultValue: 2000,
     min: 0,
@@ -57,10 +59,9 @@ export const llmSettingsFields: LLMSettingField[] = [
   },
   {
     key: "topP",
-    label: "Top P",
+    labelKey: "llmSettings.fields.topP.label",
     type: "range",
-    tooltip:
-      "Контролирует разнообразие через nucleus sampling. Меньшие значения делают вывод более сфокусированным.",
+    tooltipKey: "llmSettings.fields.topP.tooltip",
     width: 1,
     defaultValue: 1,
     min: 0,
@@ -69,9 +70,9 @@ export const llmSettingsFields: LLMSettingField[] = [
   },
   {
     key: "frequencyPenalty",
-    label: "Штраф частоты",
+    labelKey: "llmSettings.fields.frequencyPenalty.label",
     type: "range",
-    tooltip: "Снижает вероятность повторения одних и тех же фраз.",
+    tooltipKey: "llmSettings.fields.frequencyPenalty.tooltip",
     width: 1,
     defaultValue: 0,
     min: -2,
@@ -80,9 +81,9 @@ export const llmSettingsFields: LLMSettingField[] = [
   },
   {
     key: "presencePenalty",
-    label: "Штраф присутствия",
+    labelKey: "llmSettings.fields.presencePenalty.label",
     type: "range",
-    tooltip: "Поощряет модель говорить о новых темах.",
+    tooltipKey: "llmSettings.fields.presencePenalty.tooltip",
     width: 1,
     defaultValue: 0,
     min: -2,
@@ -90,6 +91,13 @@ export const llmSettingsFields: LLMSettingField[] = [
     step: 0.1,
   },
 ];
+
+export const getLlmSettingsFields = (t: TFunction): LLMSettingField[] =>
+  llmSettingsFieldDefinitions.map((field) => ({
+    ...field,
+    label: t(field.labelKey),
+    tooltip: t(field.tooltipKey),
+  }));
 
 // Events
 export const updateLLMSettings = createEvent<Partial<LLMSettingsState>>();

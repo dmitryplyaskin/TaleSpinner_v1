@@ -22,6 +22,7 @@ import {
 import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -102,6 +103,7 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
 }
 
 export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClose, profile }) => {
+	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationProfileFx);
 	const isCompactLayout = useMediaQuery('(max-width: 1024px)');
 
@@ -398,8 +400,8 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	const createGroupFromSelection = useCallback(() => {
 		const ids = [...new Set(selectedNodeIds)].filter(Boolean);
 		if (ids.length < 2) return;
-		const suggestedName = `Group ${Object.keys(groups).length + 1}`;
-		const name = window.prompt('Group name', suggestedName);
+		const suggestedName = t('operationProfiles.nodeEditor.groupNameDefault', { index: Object.keys(groups).length + 1 });
+		const name = window.prompt(t('operationProfiles.nodeEditor.groupNamePrompt'), suggestedName);
 		if (!name || !name.trim()) return;
 		const groupId = uuidv4();
 		setGroups((prev) => ({ ...prev, [groupId]: { name: name.trim(), nodeIds: ids } }));
@@ -683,7 +685,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 					/>
 
 					{jsonError && (
-						<Alert color="red" title="JSON error">
+						<Alert color="red" title={t('operationProfiles.nodeEditor.jsonError')}>
 							{jsonError}
 						</Alert>
 					)}
@@ -695,8 +697,8 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 							value={viewState}
 							onChange={(next) => setViewState(next as NodeEditorViewState)}
 							data={[
-								{ value: 'graph', label: 'Graph' },
-								{ value: 'inspector', label: 'Inspector' },
+								{ value: 'graph', label: t('operationProfiles.nodeEditor.graphTab') },
+								{ value: 'inspector', label: t('operationProfiles.nodeEditor.inspectorTab') },
 							]}
 						/>
 					)}
@@ -740,7 +742,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 											<Stack gap={6} className="opNodeToolbar">
 												<Group gap="xs" wrap="nowrap">
 													<Button size="xs" leftSection={<LuPlus />} onClick={addOperation}>
-														Add
+														{t('common.add')}
 													</Button>
 													<Button
 														size="xs"
@@ -749,11 +751,11 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 														leftSection={<LuTrash2 />}
 														disabled={selectedNodeIds.length === 0 && !selectedOpId}
 														onClick={() => {
-															if (!window.confirm('Delete selected operations?')) return;
+															if (!window.confirm(t('operationProfiles.confirm.deleteSelectedOperations'))) return;
 															deleteSelectedNodes();
 														}}
 													>
-														Delete
+														{t('common.delete')}
 													</Button>
 													<Button
 														size="xs"
@@ -761,14 +763,14 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 														disabled={selectedNodeIds.length < 2}
 														onClick={createGroupFromSelection}
 													>
-														Group
+														{t('operationProfiles.actions.group')}
 													</Button>
 												</Group>
 
 												<Group gap="xs" wrap="nowrap">
 													<Select
 														size="xs"
-														placeholder="Groups"
+														placeholder={t('operationProfiles.nodeEditor.groupsPlaceholder')}
 														data={groupSelectData}
 														value={selectedGroupId ?? ''}
 														onChange={(value) => setSelectedGroupId(value && value !== '' ? value : null)}
@@ -781,11 +783,11 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 														disabled={!selectedGroupId}
 														onClick={() => {
 															if (!selectedGroupId) return;
-															if (!window.confirm('Ungroup selected set?')) return;
+															if (!window.confirm(t('operationProfiles.confirm.ungroupSelected'))) return;
 															ungroupSelected();
 														}}
 													>
-														Ungroup
+														{t('operationProfiles.actions.ungroup')}
 													</Button>
 												</Group>
 											</Stack>
@@ -803,7 +805,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 									<Stack gap="md" className="opNodeInspector">
 										<div className="opNodeInspectorHeader">
 											<Group justify="space-between" wrap="nowrap">
-												<Text fw={800}>Operation</Text>
+												<Text fw={800}>{t('operationProfiles.operationEditor.title')}</Text>
 												<Text size="xs" c="dimmed">
 													{selectedIndex === null ? '—' : `#${selectedIndex + 1}`}
 												</Text>
@@ -812,7 +814,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 
 										{selectedIndex === null ? (
 											<Text size="sm" c="dimmed">
-												Select a node to edit operation details.
+												{t('operationProfiles.nodeEditor.selectNode')}
 											</Text>
 										) : (
 											<OperationEditor
@@ -830,7 +832,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 													resetToInitialState();
 												}}
 												onRemove={() => {
-													if (!window.confirm('Delete selected operations?')) return;
+													if (!window.confirm(t('operationProfiles.confirm.deleteSelectedOperations'))) return;
 													deleteSelectedNodes();
 												}}
 											/>

@@ -4,6 +4,7 @@ import { debounce } from 'patronum/debounce';
 import { v4 as uuidv4 } from 'uuid';
 
 import { asyncHandler } from '@model/utils/async-handler';
+import i18n from '../../i18n';
 
 import { BASE_URL } from '../../const';
 
@@ -92,7 +93,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const deleteItemFx = createEffect<string, { data: ItemType } | undefined>((id) =>
 		asyncHandler(async () => {
-			if (!window.confirm(`Вы уверены, что хотите удалить этот ${fabricName}?`)) {
+			if (!window.confirm(i18n.t('common.confirmDeleteEntity', { name: fabricName }))) {
 				return;
 			}
 			const response = await fetch(`${BASE_URL}${itemsParams.route}/${id}`, {
@@ -112,7 +113,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 			const newItem = {
 				...item,
 				id: uuidv4(),
-				name: `${item.name} (copy)`,
+				name: i18n.t('common.copyName', { name: item.name }),
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 			};

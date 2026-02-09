@@ -1,18 +1,17 @@
 import { type AppSettings } from "@shared/types/app-settings";
 
-import { ConfigService } from "@core/services/config-service";
+import {
+  getAppSettings,
+  updateAppSettings,
+} from "./app-settings/app-settings-repository";
 
-class AppSettingsService extends ConfigService<AppSettings> {
-  constructor() {
-    super("app-settings.json", { logger: console });
+class AppSettingsService {
+  async getConfig(): Promise<AppSettings> {
+    return getAppSettings();
   }
 
-  protected getDefaultConfig(): AppSettings {
-    return {
-      language: "ru",
-      openLastChat: false,
-      autoSelectCurrentPersona: false,
-    };
+  async updateConfig(updates: Partial<AppSettings>): Promise<AppSettings> {
+    return updateAppSettings(updates);
   }
 }
 

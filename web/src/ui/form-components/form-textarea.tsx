@@ -1,6 +1,7 @@
 import { Group, Input, Textarea, type InputWrapperProps, type TextareaProps } from '@mantine/core';
 import { useState } from 'react';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { LuExpand } from 'react-icons/lu';
 
 import { InfoTip } from '@ui/info-tip';
@@ -28,6 +29,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 	containerProps,
 	infoTip,
 }) => {
+	const { t } = useTranslation();
 	const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 	const { control } = useFormContext();
 	const {
@@ -44,11 +46,11 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 		<Group gap={6} wrap="nowrap">
 			{label}
 			<IconButtonWithTooltip
-				aria-label="Открыть в полном экране"
+				aria-label={t('dialogs.textarea.openFullscreen')}
 				icon={<LuExpand />}
 				size="sm"
 				variant="outline"
-				tooltip="Открыть в полном экране"
+				tooltip={t('dialogs.textarea.openFullscreen')}
 				onClick={() => setIsFullscreenOpen(true)}
 			/>
 			{infoTip && <InfoTip content={infoTip} />}

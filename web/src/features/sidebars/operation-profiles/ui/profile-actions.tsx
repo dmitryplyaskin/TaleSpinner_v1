@@ -1,5 +1,6 @@
 import { Group } from '@mantine/core';
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuCopyPlus, LuDownload, LuPlus, LuTrash2, LuUpload } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -30,21 +31,22 @@ type Props = {
 };
 
 export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicate, onDelete, onExport, onImport }) => {
+	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
 		<Group gap="xs" wrap="nowrap" className="op-profileActions">
 			<IconButtonWithTooltip
-				aria-label="Create profile"
-				tooltip="Create profile"
+				aria-label={t('operationProfiles.actions.createProfile')}
+				tooltip={t('operationProfiles.actions.createProfile')}
 				icon={<LuPlus />}
 				size="input-sm"
 				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
 				onClick={onCreate}
 			/>
 			<IconButtonWithTooltip
-				aria-label="Duplicate profile"
-				tooltip="Duplicate profile"
+				aria-label={t('operationProfiles.actions.duplicateProfile')}
+				tooltip={t('operationProfiles.actions.duplicateProfile')}
 				icon={<LuCopyPlus />}
 				size="input-sm"
 				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
@@ -52,8 +54,8 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 				onClick={() => selected?.profileId && onDuplicate(selected.profileId)}
 			/>
 			<IconButtonWithTooltip
-				aria-label="Delete profile"
-				tooltip="Delete profile"
+				aria-label={t('operationProfiles.actions.deleteProfile')}
+				tooltip={t('operationProfiles.actions.deleteProfile')}
 				icon={<LuTrash2 />}
 				size="input-sm"
 				colorPalette="red"
@@ -61,14 +63,14 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 				disabled={!selected?.profileId}
 				onClick={() => {
 					if (!selected?.profileId) return;
-					if (!window.confirm('Delete this operation profile?')) return;
+					if (!window.confirm(t('operationProfiles.confirm.deleteProfile'))) return;
 					onDelete(selected.profileId);
 				}}
 			/>
 
 			<IconButtonWithTooltip
-				aria-label="Export profile"
-				tooltip="Export profile"
+				aria-label={t('operationProfiles.actions.exportProfile')}
+				tooltip={t('operationProfiles.actions.exportProfile')}
 				icon={<LuDownload />}
 				size="input-sm"
 				variant="ghost"
@@ -81,7 +83,7 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 						downloadJson(`operation-profile-${selected.name}.json`, exported);
 					} catch (e) {
 						toaster.error({
-							title: 'Export failed',
+							title: t('operationProfiles.toasts.exportError'),
 							description: e instanceof Error ? e.message : String(e),
 						});
 					}
@@ -104,7 +106,7 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 							await onImport(parsed);
 						} catch (err) {
 							toaster.error({
-								title: 'Import failed',
+								title: t('operationProfiles.toasts.importError'),
 								description: err instanceof Error ? err.message : String(err),
 							});
 						} finally {
@@ -116,8 +118,8 @@ export const ProfileActions: React.FC<Props> = ({ selected, onCreate, onDuplicat
 			/>
 
 			<IconButtonWithTooltip
-				aria-label="Import profiles"
-				tooltip="Import profiles"
+				aria-label={t('operationProfiles.actions.importProfiles')}
+				tooltip={t('operationProfiles.actions.importProfiles')}
 				icon={<LuUpload />}
 				size="input-sm"
 				variant="ghost"

@@ -1,6 +1,7 @@
 import { Avatar, Group, Paper, Stack, Text } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
 
 import { userPersonsModel } from '@model/user-persons';
@@ -13,6 +14,7 @@ interface UserPersonCardProps {
 }
 
 export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
+	const { t } = useTranslation();
 	const [isEditing, setIsEditing] = useState(false);
 
 	const handleEdit = () => {
@@ -45,20 +47,20 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 				</Group>
 				<Group gap="xs" wrap="nowrap">
 					<IconButtonWithTooltip
-						tooltip="Редактировать"
+						tooltip={t('common.edit')}
 						variant="ghost"
 						size="sm"
 						colorPalette="blue"
-						aria-label="Edit"
+						aria-label={t('common.edit')}
 						onClick={handleEdit}
 						icon={<LuPencil />}
 					/>
 					<IconButtonWithTooltip
-						tooltip="Удалить"
+						tooltip={t('common.delete')}
 						variant="ghost"
 						size="sm"
 						colorPalette="red"
-						aria-label="Delete"
+						aria-label={t('common.delete')}
 						onClick={handleDelete}
 						icon={<LuTrash2 />}
 					/>

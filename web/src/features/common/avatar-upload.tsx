@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Avatar, type AvatarProps } from '@mantine/core';
 
@@ -65,6 +66,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 	size,
 	...avatarProps
 }) => {
+	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,8 +75,8 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 		const file = e.target.files[0];
 		if (!file.type.startsWith('image/')) {
 			toaster.error({
-				title: 'Ошибка',
-				description: 'Пожалуйста, загрузите изображение',
+				title: t('avatar.toasts.errorTitle'),
+				description: t('avatar.toasts.uploadImageOnly'),
 			});
 			return;
 		}
@@ -92,7 +94,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 			});
 
 			if (!response.ok) {
-				throw new Error('Ошибка загрузки файла');
+				throw new Error(t('avatar.toasts.uploadFileError'));
 			}
 
 			const result = await response.json();
@@ -104,16 +106,16 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 				}
 
 				toaster.success({
-					title: 'Успешно',
-					description: 'Аватар загружен',
+					title: t('avatar.toasts.successTitle'),
+					description: t('avatar.toasts.avatarUploaded'),
 				});
 			}
 		} catch (error) {
 			toaster.error({
-				title: 'Ошибка',
-				description: 'Не удалось загрузить аватар',
+				title: t('avatar.toasts.errorTitle'),
+				description: t('avatar.toasts.avatarUploadFailed'),
 			});
-			console.error('Ошибка загрузки аватара:', error);
+			console.error('Avatar upload error:', error);
 		}
 	};
 

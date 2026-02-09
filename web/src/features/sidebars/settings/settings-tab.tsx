@@ -3,12 +3,13 @@ import { type SamplerItemSettingsType, type SamplersItemType } from '@shared/typ
 import { useUnit } from 'effector-react';
 import React, { useEffect } from 'react';
 import { FormProvider, useController, useForm, type UseFormReturn } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
 
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
-import { llmSettingsFields, type LLMSettingField } from '../../../model/llm-settings';
+import { getLlmSettingsFields, type LLMSettingField } from '../../../model/llm-settings';
 
 
 
@@ -22,8 +23,10 @@ export interface LLMSettings {
 }
 
 export const SamplerSettingsTab: React.FC = () => {
+	const { t } = useTranslation();
 	const settings = useUnit(samplersModel.$settings);
 	const items = useUnit(samplersModel.$items);
+	const llmSettingsFields = getLlmSettingsFields(t);
 
 	const methods = useForm<SamplerItemSettingsType>({
 		defaultValues: items.find((instr) => instr.id === settings.selectedId)?.settings,
@@ -66,27 +69,27 @@ export const SamplerSettingsTab: React.FC = () => {
 					data={options}
 					value={settings?.selectedId ?? null}
 					onChange={(selectedId) => samplersModel.updateSettingsFx({ ...settings, selectedId: selectedId ?? null })}
-					placeholder="Выберите алгоритм"
+					placeholder={t('llmSettings.selectSampler')}
 					comboboxProps={{ withinPortal: false }}
 					style={{ flex: 1 }}
 				/>
 				<Flex gap="xs">
 					<IconButtonWithTooltip
-						tooltip="Сохранить шаблон"
+						tooltip={t('llmSettings.actions.save')}
 						icon={<LuSave />}
-						aria-label="Save template"
+						aria-label={t('llmSettings.actions.save')}
 						onClick={handleSave}
 					/>
 					<IconButtonWithTooltip
-						tooltip="Создать шаблон"
+						tooltip={t('llmSettings.actions.create')}
 						icon={<LuPlus />}
-						aria-label="Create template"
+						aria-label={t('llmSettings.actions.create')}
 						onClick={() => samplersModel.createItemFx(createEmptySampler(methods.getValues()))}
 					/>
 					<IconButtonWithTooltip
-						tooltip="Дублировать шаблон"
+						tooltip={t('llmSettings.actions.duplicate')}
 						icon={<LuCopy />}
-						aria-label="Duplicate template"
+						aria-label={t('llmSettings.actions.duplicate')}
 						disabled={!settings.selectedId}
 						onClick={() =>
 							samplersModel.duplicateItemFx(items.find((instr) => instr.id === settings.selectedId) as SamplersItemType)
@@ -94,9 +97,9 @@ export const SamplerSettingsTab: React.FC = () => {
 					/>
 
 					<IconButtonWithTooltip
-						tooltip="Удалить шаблон"
+						tooltip={t('llmSettings.actions.delete')}
 						icon={<LuTrash2 />}
-						aria-label="Delete template"
+						aria-label={t('llmSettings.actions.delete')}
 						disabled={!settings.selectedId}
 						onClick={() => samplersModel.deleteItemFx(settings.selectedId as string)}
 					/>
@@ -120,6 +123,7 @@ type ItemProps = {
 };
 
 const Item: React.FC<ItemProps> = ({ field, methods }) => {
+	const { t } = useTranslation();
 	const formField = useController({
 		name: field.key,
 		control: methods.control,
@@ -133,7 +137,7 @@ const Item: React.FC<ItemProps> = ({ field, methods }) => {
 						{field.label}
 					</Text>
 					<Tooltip label={field.tooltip} position="bottom" withArrow>
-						<ActionIcon variant="subtle" aria-label="Info">
+						<ActionIcon variant="subtle" aria-label={t('common.info')}>
 							<LuInfo />
 						</ActionIcon>
 					</Tooltip>

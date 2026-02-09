@@ -1,6 +1,7 @@
 import { Button, Group, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import React, { type ReactNode, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuPlus, LuSearch } from 'react-icons/lu';
 
 import { OperationRow } from './operation-row';
@@ -54,16 +55,17 @@ export const OperationList: React.FC<Props> = ({
 	onFocusEditor,
 	renderInlineEditor,
 }) => {
+	const { t } = useTranslation();
 	const [filters, setFilters] = useState<OperationFilterState>(DEFAULT_FILTERS);
 	const [debouncedQuery] = useDebouncedValue(filters.query.trim().toLowerCase(), 180);
 
 	const kindOptions = useMemo(() => {
 		const set = new Set(items.map((item) => item.kind));
 		return [
-			{ value: 'all', label: 'All kinds' },
+			{ value: 'all', label: t('operationProfiles.filters.allKinds') },
 			...Array.from(set).sort().map((value) => ({ value, label: value })),
 		];
-	}, [items]);
+	}, [items, t]);
 
 	const filteredItems = useMemo(() => {
 		return items.filter((item) => {
@@ -102,14 +104,14 @@ export const OperationList: React.FC<Props> = ({
 			<div className="op-listHeader">
 				<Group justify="space-between" align="center" wrap="nowrap">
 					<Stack gap={2}>
-						<Text fw={700}>Operations</Text>
+						<Text fw={700}>{t('operationProfiles.operations.title')}</Text>
 						<Text className="op-listHint">
-							{filteredItems.length} visible of {stats.total}
+							{t('operationProfiles.operations.visibleOfTotal', { visible: filteredItems.length, total: stats.total })}
 						</Text>
 					</Stack>
 
 					<Button size="xs" leftSection={<LuPlus />} onClick={onQuickAdd}>
-						Add
+						{t('common.add')}
 					</Button>
 				</Group>
 			</div>
@@ -117,9 +119,9 @@ export const OperationList: React.FC<Props> = ({
 			<TextInput
 				value={filters.query}
 				onChange={(event) => setFilters((prev) => ({ ...prev, query: event.currentTarget.value }))}
-				placeholder="Search by name, id, or kind"
+				placeholder={t('operationProfiles.filters.searchPlaceholder')}
 				leftSection={<LuSearch />}
-				aria-label="Search operations"
+				aria-label={t('operationProfiles.filters.searchAria')}
 			/>
 
 			<Group grow wrap="wrap">
@@ -133,13 +135,13 @@ export const OperationList: React.FC<Props> = ({
 						}))
 					}
 					comboboxProps={{ withinPortal: false }}
-					aria-label="Filter by operation kind"
+					aria-label={t('operationProfiles.filters.byKindAria')}
 				/>
 				<Select
 					data={[
-						{ value: 'all', label: 'All states' },
-						{ value: 'enabled', label: 'Enabled only' },
-						{ value: 'disabled', label: 'Disabled only' },
+						{ value: 'all', label: t('operationProfiles.filters.allStates') },
+						{ value: 'enabled', label: t('operationProfiles.filters.enabledOnly') },
+						{ value: 'disabled', label: t('operationProfiles.filters.disabledOnly') },
 					]}
 					value={filters.enabled}
 					onChange={(next) =>
@@ -152,13 +154,13 @@ export const OperationList: React.FC<Props> = ({
 						}))
 					}
 					comboboxProps={{ withinPortal: false }}
-					aria-label="Filter by enabled state"
+					aria-label={t('operationProfiles.filters.byEnabledAria')}
 				/>
 				<Select
 					data={[
-						{ value: 'all', label: 'All required states' },
-						{ value: 'required', label: 'Required only' },
-						{ value: 'optional', label: 'Optional only' },
+						{ value: 'all', label: t('operationProfiles.filters.allRequiredStates') },
+						{ value: 'required', label: t('operationProfiles.filters.requiredOnly') },
+						{ value: 'optional', label: t('operationProfiles.filters.optionalOnly') },
 					]}
 					value={filters.required}
 					onChange={(next) =>
@@ -171,13 +173,13 @@ export const OperationList: React.FC<Props> = ({
 						}))
 					}
 					comboboxProps={{ withinPortal: false }}
-					aria-label="Filter by required state"
+					aria-label={t('operationProfiles.filters.byRequiredAria')}
 				/>
 			</Group>
 
 			{filteredItems.length === 0 ? (
 				<Text size="sm" c="dimmed">
-					No operations match the current filters.
+					{t('operationProfiles.filters.noMatches')}
 				</Text>
 			) : (
 				filteredItems.map((item) => (

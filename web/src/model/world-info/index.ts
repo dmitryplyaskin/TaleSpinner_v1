@@ -18,6 +18,7 @@ import {
 	type WorldInfoBookSummaryDto,
 	type WorldInfoSettingsDto,
 } from '../../api/world-info';
+import i18n from '../../i18n';
 import { toaster } from '../../ui/toaster';
 import { $currentChat, setOpenedChat } from '../chat-core';
 
@@ -73,7 +74,7 @@ export const loadWorldInfoChatBindingsFx = createEffect(async (params: { chatId:
 export const createWorldInfoBookFx = createEffect(async (): Promise<WorldInfoBookDto> => {
 	return createWorldInfoBook({
 		ownerId: DEFAULT_OWNER_ID,
-		name: 'New World Info Book',
+		name: i18n.t('worldInfo.defaults.newBook'),
 		data: DEFAULT_BOOK_DATA,
 	});
 });
@@ -290,60 +291,60 @@ sample({
 });
 
 createWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось создать World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.createErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 duplicateWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось дублировать World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.duplicateErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 deleteWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось удалить World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.deleteErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 saveWorldInfoBookFx.doneData.watch(() => {
-	toaster.success({ title: 'World Info сохранен' });
+	toaster.success({ title: i18n.t('worldInfo.toasts.bookSaved') });
 });
 
 saveWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось сохранить книгу', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.saveBookErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 saveWorldInfoSettingsFx.doneData.watch(() => {
-	toaster.success({ title: 'Настройки World Info сохранены' });
+	toaster.success({ title: i18n.t('worldInfo.toasts.settingsSaved') });
 });
 
 saveWorldInfoSettingsFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось сохранить настройки', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.saveSettingsErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 setWorldInfoBookBoundToCurrentChatFx.doneData.watch(() => {
-	toaster.success({ title: 'Привязка к чату обновлена' });
+	toaster.success({ title: i18n.t('worldInfo.toasts.bindingUpdated') });
 });
 
 setWorldInfoBookBoundToCurrentChatFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось обновить привязку', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.bindingUpdateErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 importWorldInfoBookFx.doneData.watch((result) => {
 	const warningSuffix = result.warnings.length > 0 ? ` (${result.warnings.join('; ')})` : '';
-	toaster.success({ title: `Импортирован ${result.book.name}${warningSuffix}` });
+	toaster.success({ title: i18n.t('worldInfo.toasts.importedBook', { name: result.book.name, warningSuffix }) });
 });
 
 importWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось импортировать книгу', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.importErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 loadWorldInfoBooksFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось загрузить список World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.loadBooksErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 loadWorldInfoSettingsFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось загрузить настройки World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.loadSettingsErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 loadWorldInfoBookFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось загрузить книгу World Info', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('worldInfo.toasts.loadBookErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const worldInfoInitRequested = worldInfoRefreshRequested;

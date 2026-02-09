@@ -1,6 +1,7 @@
 import { combine, createEffect, createEvent, createStore, sample } from 'effector';
 
 import { toaster } from '@ui/toaster';
+import i18n from '../../i18n';
 
 import type { PromptTemplateDto } from '../../api/prompt-templates';
 import {
@@ -131,7 +132,7 @@ export const deletePromptTemplateRequested = createEvent<{ id: string }>();
 sample({
 	clock: createPromptTemplateRequested,
 	fn: () => ({
-		name: 'New template',
+		name: i18n.t('templates.defaults.newTemplate'),
 		templateText: '{{char.name}}',
 	}),
 	target: createPromptTemplateFx,
@@ -187,21 +188,21 @@ sample({
 
 createPromptTemplateFx.failData.watch((error) => {
 	toaster.error({
-		title: 'Не удалось создать шаблон',
+		title: i18n.t('templates.toasts.createErrorTitle'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });
 
 updatePromptTemplateFx.failData.watch((error) => {
 	toaster.error({
-		title: 'Не удалось сохранить шаблон',
+		title: i18n.t('templates.toasts.saveErrorTitle'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });
 
 deletePromptTemplateFx.failData.watch((error) => {
 	toaster.error({
-		title: 'Не удалось удалить шаблон',
+		title: i18n.t('templates.toasts.deleteErrorTitle'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });

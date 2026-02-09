@@ -1,6 +1,7 @@
 import { Button, Group, Paper, Stack, TextInput, Textarea } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { userPersonsModel } from '@model/user-persons';
 
@@ -12,6 +13,7 @@ interface UserPersonEditorProps {
 }
 
 export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClose }) => {
+	const { t } = useTranslation();
 	const [personData, setPersonData] = useState<UserPersonType>(data);
 
 	const handleSave = () => {
@@ -46,7 +48,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 					/>
 
 					<TextInput
-						label="Имя персоны"
+						label={t('userPersons.fields.name')}
 						value={personData.name}
 						onChange={(e) => setPersonData({ ...personData, name: e.currentTarget.value })}
 						style={{ flex: 1 }}
@@ -54,13 +56,13 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 				</Group>
 
 				<TextInput
-					label="Префикс"
+					label={t('userPersons.fields.prefix')}
 					value={personData.prefix || ''}
 					onChange={(e) => setPersonData({ ...personData, prefix: e.currentTarget.value })}
 				/>
 
 				<Textarea
-					label="Описание"
+					label={t('userPersons.fields.description')}
 					value={personData.contentTypeDefault || ''}
 					autosize
 					minRows={6}
@@ -75,10 +77,10 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ data, onClos
 
 				<Group justify="flex-end" gap="sm">
 					<Button variant="subtle" onClick={onClose}>
-						Отмена
+						{t('common.cancel')}
 					</Button>
 					<Button onClick={handleSave}>
-						Сохранить
+						{t('common.save')}
 					</Button>
 				</Group>
 			</Stack>

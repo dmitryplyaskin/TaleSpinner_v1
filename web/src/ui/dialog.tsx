@@ -1,5 +1,6 @@
 import { Button, Group, Modal, Stack } from '@mantine/core';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface DialogProps {
 	open: boolean;
@@ -24,6 +25,7 @@ export const Dialog = ({
 	closeOnInteractOutside,
 	closeOnEscape,
 }: DialogProps) => {
+	const { t } = useTranslation();
 	if (!open) return null;
 
 	const fullScreen = size === 'cover';
@@ -51,10 +53,10 @@ export const Dialog = ({
 			) : (
 				<Group justify="flex-end" mt="md">
 					<Button variant="subtle" onClick={() => onOpenChange(false)}>
-						Отмена
+						{t('common.cancel')}
 					</Button>
 					<Button type="submit" form="dialog-form">
-						Сохранить
+						{t('common.save')}
 					</Button>
 				</Group>
 			)}

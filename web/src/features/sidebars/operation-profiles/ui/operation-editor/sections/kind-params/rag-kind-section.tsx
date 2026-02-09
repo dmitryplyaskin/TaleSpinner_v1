@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -13,11 +14,12 @@ const RAG_PLACEHOLDER = `{
 }`;
 
 export const RagKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="RAG"
-			description="Configure retrieval source and ranking parameters for context assembly."
+			kindLabel={t('operationProfiles.kind.rag')}
+			description={t('operationProfiles.kindSection.rag.description')}
 			placeholder={RAG_PLACEHOLDER}
 		/>
 	);

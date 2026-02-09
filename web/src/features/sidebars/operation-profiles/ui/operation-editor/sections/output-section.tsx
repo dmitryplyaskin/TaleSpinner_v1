@@ -1,6 +1,7 @@
 import { Group, Select, Stack, Text } from '@mantine/core';
 import React from 'react';
 import { useController, useFormContext } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { FormInput, FormNumberInput, FormSelect } from '@ui/form-components';
 
@@ -9,9 +10,9 @@ import { makeDefaultArtifactOutput } from '../../../form/operation-profile-form-
 type OutputType = 'artifacts' | 'prompt_time' | 'turn_canonicalization';
 
 const outputTypeOptions = [
-	{ value: 'artifacts', label: 'Artifacts' },
-	{ value: 'prompt_time', label: 'Prompt-time effects' },
-	{ value: 'turn_canonicalization', label: 'Turn canonicalization effects' },
+	{ value: 'artifacts', label: 'operationProfiles.outputType.artifacts' },
+	{ value: 'prompt_time', label: 'operationProfiles.outputType.promptTime' },
+	{ value: 'turn_canonicalization', label: 'operationProfiles.outputType.turnCanonicalization' },
 ];
 
 const persistenceOptions = [
@@ -34,9 +35,9 @@ const promptTimeRoleOptions = [
 ];
 
 const promptTimeKindOptions = [
-	{ value: 'append_after_last_user', label: 'prompt.append_after_last_user' },
-	{ value: 'system_update', label: 'prompt.system_update' },
-	{ value: 'insert_at_depth', label: 'prompt.insert_at_depth' },
+	{ value: 'append_after_last_user', label: 'operationProfiles.promptTimeKind.appendAfterLastUser' },
+	{ value: 'system_update', label: 'operationProfiles.promptTimeKind.systemUpdate' },
+	{ value: 'insert_at_depth', label: 'operationProfiles.promptTimeKind.insertAtDepth' },
 ];
 
 const systemUpdateModeOptions = [
@@ -75,6 +76,7 @@ type Props = {
 };
 
 export const OutputSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	const { control, setValue } = useFormContext();
 
 	const {
@@ -107,8 +109,8 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 		<Stack gap="xs">
 			<Select
 				{...outputTypeField}
-				label="Effect type"
-				data={outputTypeOptions}
+				label={t('operationProfiles.sectionsLabels.effectType')}
+				data={outputTypeOptions.map((o) => ({ ...o, label: t(o.label) }))}
 				value={normalizedType}
 				onChange={(next) => {
 					const nextType: OutputType = (next as OutputType) ?? 'artifacts';
@@ -124,7 +126,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					}
 				}}
 				comboboxProps={{ withinPortal: false }}
-				description="Select how rendered output should be applied during run commit."
+				description={t('operationProfiles.tooltips.effectType')}
 			/>
 
 			{normalizedType === 'artifacts' && (
@@ -132,27 +134,27 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					<Group grow wrap="wrap">
 						<FormInput
 							name={`operations.${index}.config.params.output.writeArtifact.tag`}
-							label="Artifact tag"
-							infoTip="Use tag without the art. prefix. Each tag should have a single writer in one profile."
+							label={t('operationProfiles.sectionsLabels.artifactTag')}
+							infoTip={t('operationProfiles.tooltips.artifactTag')}
 						/>
 						<FormSelect
 							name={`operations.${index}.config.params.output.writeArtifact.persistence`}
-							label="Persistence"
-							infoTip="persisted survives turns; run_only exists only during current run."
+							label={t('operationProfiles.sectionsLabels.persistence')}
+							infoTip={t('operationProfiles.tooltips.persistence')}
 							selectProps={{ options: persistenceOptions, comboboxProps: { withinPortal: false } }}
 						/>
 					</Group>
 					<Group grow wrap="wrap">
 						<FormSelect
 							name={`operations.${index}.config.params.output.writeArtifact.usage`}
-							label="Usage"
-							infoTip="Choose if artifact is used by prompt, UI, both, or internal processing only."
+							label={t('operationProfiles.sectionsLabels.usage')}
+							infoTip={t('operationProfiles.tooltips.usage')}
 							selectProps={{ options: usageOptions, comboboxProps: { withinPortal: false } }}
 						/>
 						<FormInput
 							name={`operations.${index}.config.params.output.writeArtifact.semantics`}
-							label="Semantics"
-							infoTip='Semantic label for consumers, for example "state" or "log/feed".'
+							label={t('operationProfiles.sectionsLabels.semantics')}
+							infoTip={t('operationProfiles.tooltips.semantics')}
 						/>
 					</Group>
 				</Stack>
@@ -162,9 +164,9 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 				<Stack gap="xs">
 					<Select
 						{...promptTimeKindField}
-						label="Prompt-time effect"
-						description="Applied in before_main_llm to modify effective prompt for main LLM."
-						data={promptTimeKindOptions}
+						label={t('operationProfiles.sectionsLabels.promptTimeEffect')}
+						description={t('operationProfiles.tooltips.promptTimeEffect')}
+						data={promptTimeKindOptions.map((o) => ({ ...o, label: t(o.label) }))}
 						value={promptKind}
 						onChange={(next) => {
 							const nextKind = (next as typeof promptTimeKindOptions[number]['value']) ?? 'append_after_last_user';
@@ -198,14 +200,14 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						<Group grow wrap="wrap">
 							<FormSelect
 								name={`operations.${index}.config.params.output.promptTime.mode`}
-								label="Mode"
-								infoTip="prepend => payload + system; append => system + payload; replace => system = payload."
+								label={t('operationProfiles.sectionsLabels.mode')}
+								infoTip={t('operationProfiles.tooltips.mode')}
 								selectProps={{ options: systemUpdateModeOptions, comboboxProps: { withinPortal: false } }}
 							/>
 							<FormInput
 								name={`operations.${index}.config.params.output.promptTime.source`}
-								label="Source (optional)"
-								infoTip="Optional source label for debugging/explainability."
+								label={t('operationProfiles.sectionsLabels.sourceOptional')}
+								infoTip={t('operationProfiles.tooltips.sourceOptional')}
 							/>
 						</Group>
 					)}
@@ -214,14 +216,14 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						<Group grow wrap="wrap">
 							<FormSelect
 								name={`operations.${index}.config.params.output.promptTime.role`}
-								label="Role"
-								infoTip="Role used for the synthetic prompt message."
+								label={t('operationProfiles.sectionsLabels.role')}
+								infoTip={t('operationProfiles.tooltips.role')}
 								selectProps={{ options: promptTimeRoleOptions, comboboxProps: { withinPortal: false } }}
 							/>
 							<FormInput
 								name={`operations.${index}.config.params.output.promptTime.source`}
-								label="Source (optional)"
-								infoTip="Optional source label for debugging/explainability."
+								label={t('operationProfiles.sectionsLabels.sourceOptional')}
+								infoTip={t('operationProfiles.tooltips.sourceOptional')}
 							/>
 						</Group>
 					)}
@@ -229,14 +231,14 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 					{promptKind === 'insert_at_depth' && (
 						<FormNumberInput
 							name={`operations.${index}.config.params.output.promptTime.depthFromEnd`}
-							label="depthFromEnd"
-							infoTip="0 — insert at the very end; -N — insert at depth (closer to the end)."
+							label={t('operationProfiles.sectionsLabels.depthFromEnd')}
+							infoTip={t('operationProfiles.tooltips.depthFromEnd')}
 							numberInputProps={{ step: 1 }}
 						/>
 					)}
 
 					<Text size="xs" c="dimmed">
-						Effect payload source is template output text.
+						{t('operationProfiles.outputNotes.promptTimePayloadSource')}
 					</Text>
 				</Stack>
 			)}
@@ -245,8 +247,8 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 				<Stack gap="xs">
 					<FormSelect
 						name={`operations.${index}.config.params.output.canonicalization.target`}
-						label="Target"
-						infoTip="before_main_llm allows only user target; after_main_llm allows user or assistant."
+						label={t('operationProfiles.sectionsLabels.target')}
+						infoTip={t('operationProfiles.tooltips.target')}
 						selectProps={{
 							options: [
 								{ value: 'user', label: 'user' },
@@ -256,7 +258,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 						}}
 					/>
 					<Text size="xs" c="dimmed">
-						Current mode is replace_text: selected turn part is overwritten by template output.
+						{t('operationProfiles.outputNotes.turnCanonicalization')}
 					</Text>
 				</Stack>
 			)}

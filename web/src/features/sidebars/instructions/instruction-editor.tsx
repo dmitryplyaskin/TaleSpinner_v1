@@ -3,12 +3,14 @@ import { type InstructionType } from '@shared/types/instructions';
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { createEmptyInstruction , instructionsModel } from '@model/instructions';
 import { FormInput } from '@ui/form-components';
 import { FormTextarea } from '@ui/form-components/form-textarea';
 
 export const InstructionEditor: React.FC = () => {
+	const { t } = useTranslation();
 	const selectedInstruction = useUnit(instructionsModel.$selectedItem);
 
 	const methods = useForm<InstructionType>({
@@ -32,18 +34,18 @@ export const InstructionEditor: React.FC = () => {
 	return (
 		<FormProvider {...methods}>
 			<Stack gap="md" mt="md">
-				<FormInput name="name" label="Название" placeholder="Введите название инструкции" />
+				<FormInput name="name" label={t('instructions.fields.name')} placeholder={t('instructions.placeholders.name')} />
 
 				<FormTextarea
 					name="instruction"
-					label="Инструкция"
-					placeholder="Введите текст инструкции"
+					label={t('instructions.fields.instruction')}
+					placeholder={t('instructions.placeholders.instruction')}
 					textareaProps={{
 						styles: { input: { minHeight: 300 } },
 					}}
 				/>
 				<Group justify="flex-end">
-					<Button onClick={handleSubmit(onSubmit)}>Сохранить</Button>
+					<Button onClick={handleSubmit(onSubmit)}>{t('common.save')}</Button>
 				</Group>
 			</Stack>
 		</FormProvider>

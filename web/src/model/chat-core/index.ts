@@ -1,6 +1,7 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
 import { toaster } from '@ui/toaster';
+import i18n from '../../i18n';
 
 import type {
 	ChatDto,
@@ -95,7 +96,7 @@ export const openEntityProfileFx = createEffect(
 			}
 		}
 
-		const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: 'New chat' });
+		const created = await createChatForEntityProfile({ entityProfileId: profile.id, title: i18n.t('chat.defaults.newChat') });
 		const chat = created.chat;
 		const branchId = chat.activeBranchId ?? created.mainBranch.id;
 		return { chats: [...chats, chat], chat, branchId };
@@ -103,7 +104,7 @@ export const openEntityProfileFx = createEffect(
 );
 
 openEntityProfileFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось открыть чат', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.openChatError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const $currentChat = createStore<ChatDto | null>(null);
@@ -149,7 +150,7 @@ $chatsForCurrentProfile.on(setChatPromptTemplateFx.doneData, (items, updated) =>
 
 setChatPromptTemplateFx.failData.watch((error) => {
 	toaster.error({
-		title: 'Не удалось выбрать шаблон',
+		title: i18n.t('chat.toasts.selectTemplateError'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });
@@ -161,7 +162,7 @@ export const openChatRequested = createEvent<{ chatId: string }>();
 export const openChatFx = createEffect(async (params: { chatId: string }): Promise<{ chat: ChatDto; branchId: string }> => {
 	const chat = await getChatById(params.chatId);
 	const branchId = chat.activeBranchId;
-	if (!branchId) throw new Error('branchId обязателен (нет activeBranchId)');
+	if (!branchId) throw new Error(i18n.t('chat.errors.branchIdRequired'));
 	return { chat, branchId };
 });
 
@@ -179,7 +180,7 @@ export const createChatRequested = createEvent<{ title?: string }>();
 
 export const createChatFx = createEffect(
 	async (params: { entityProfileId: string; title?: string }): Promise<CreateChatResponse> => {
-		return createChatForEntityProfile({ entityProfileId: params.entityProfileId, title: params.title ?? 'New chat' });
+		return createChatForEntityProfile({ entityProfileId: params.entityProfileId, title: params.title ?? i18n.t('chat.defaults.newChat') });
 	},
 );
 
@@ -224,7 +225,7 @@ sample({
 });
 
 deleteChatFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось удалить чат', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.deleteChatError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const loadMessagesFx = createEffect(
@@ -272,7 +273,7 @@ sample({
 });
 
 activateBranchFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось активировать ветку', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.activateBranchError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const createBranchRequested = createEvent<{ title?: string }>();
@@ -323,7 +324,7 @@ sample({
 });
 
 createBranchFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось создать ветку', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.createBranchError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const loadVariantsFx = createEffect(async (params: { messageId: string }) => {
@@ -708,11 +709,11 @@ sample({
 });
 
 deleteMessageFx.doneData.watch(() => {
-	toaster.success({ title: 'Сообщение удалено' });
+	toaster.success({ title: i18n.t('chat.toasts.messageDeleted') });
 });
 
 deleteMessageFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось удалить сообщение', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.deleteMessageError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const manualEditMessageRequested = createEvent<{ messageId: string; promptText: string }>();
@@ -743,11 +744,11 @@ sample({
 });
 
 manualEditMessageFx.doneData.watch(() => {
-	toaster.success({ title: 'Вариант сохранён' });
+	toaster.success({ title: i18n.t('chat.toasts.variantSaved') });
 });
 
 manualEditMessageFx.failData.watch((error) => {
-	toaster.error({ title: 'Не удалось сохранить правку', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.saveEditError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 // Auto refresh profiles list after creating one
@@ -763,17 +764,17 @@ sample({
 
 importEntityProfilesFx.doneData.watch((res) => {
 	res.failed.forEach(({ originalName, error }) => {
-		toaster.error({ title: `Ошибка импорта ${originalName}`, description: error });
+		toaster.error({ title: i18n.t('chat.toasts.importItemError', { name: originalName }), description: error });
 	});
 	if (res.created.length > 0) {
-		toaster.success({ title: 'Импорт завершён', description: res.message });
+		toaster.success({ title: i18n.t('chat.toasts.importCompleted'), description: res.message });
 	} else {
-		toaster.error({ title: 'Импорт не удался', description: res.message });
+		toaster.error({ title: i18n.t('chat.toasts.importFailed'), description: res.message });
 	}
 });
 
 importEntityProfilesFx.failData.watch((error) => {
-	toaster.error({ title: 'Импорт не удался', description: error instanceof Error ? error.message : String(error) });
+	toaster.error({ title: i18n.t('chat.toasts.importFailed'), description: error instanceof Error ? error.message : String(error) });
 });
 
 sample({
@@ -822,12 +823,12 @@ sample({
 });
 
 deleteEntityProfileFx.doneData.watch(() => {
-	toaster.success({ title: 'Профиль удалён' });
+	toaster.success({ title: i18n.t('chat.toasts.profileDeleted') });
 });
 
 deleteEntityProfileFx.failData.watch((error) => {
 	toaster.error({
-		title: 'Не удалось удалить профиль',
+		title: i18n.t('chat.toasts.deleteProfileError'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });

@@ -1,5 +1,6 @@
 import { Group, Select } from '@mantine/core';
 import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
+import { useTranslation } from 'react-i18next';
 import { LuPlus, LuCopy, LuTrash2, LuUpload, LuDownload } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -37,6 +38,7 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 	name,
 	labels,
 }: SidebarHeaderProps<SettingsType, ItemType>) => {
+	const { t } = useTranslation();
 	const options = items.map((item) => ({
 		label: item.name,
 		value: item.id,
@@ -82,11 +84,16 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 						disabled={!settings.selectedId}
 						onClick={() => model.deleteItemFx(settings.selectedId as string)}
 					/>
-					<IconButtonWithTooltip tooltip="Импортировать" icon={<LuUpload />} aria-label="Import" onClick={handleImport} />
 					<IconButtonWithTooltip
-						tooltip="Экспортировать"
+						tooltip={t('common.import')}
+						icon={<LuUpload />}
+						aria-label={t('common.import')}
+						onClick={handleImport}
+					/>
+					<IconButtonWithTooltip
+						tooltip={t('common.export')}
 						icon={<LuDownload />}
-						aria-label="Export"
+						aria-label={t('common.export')}
 						disabled={!settings.selectedId}
 						onClick={handleExport}
 					/>

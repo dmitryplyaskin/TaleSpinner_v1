@@ -30,7 +30,7 @@ export const TemplateSidebar = () => {
 
 	const doExport = () => {
 		if (!selectedTemplate) {
-			toaster.error({ title: 'Экспорт невозможен', description: 'Выберите шаблон для экспорта' });
+			toaster.error({ title: t('templates.toasts.exportNotPossibleTitle'), description: t('templates.toasts.selectForExport') });
 			return;
 		}
 
@@ -67,22 +67,22 @@ export const TemplateSidebar = () => {
 				const json = JSON.parse(content) as any;
 
 				const template = json?.template ?? json?.promptTemplate ?? json;
-				const name = typeof template?.name === 'string' ? template.name : 'Imported template';
+				const name = typeof template?.name === 'string' ? template.name : t('templates.defaults.importedTemplate');
 				const templateText =
 					typeof template?.templateText === 'string' ? template.templateText : typeof template?.template === 'string' ? template.template : '';
 				const meta = typeof template?.meta === 'undefined' ? undefined : template.meta;
 
 				if (!templateText.trim()) {
-					toaster.error({ title: 'Ошибка импорта', description: 'Файл не содержит templateText' });
+					toaster.error({ title: t('templates.toasts.importErrorTitle'), description: t('templates.toasts.importMissingTemplateText') });
 					return;
 				}
 
 				onImport({ name, templateText, meta });
-				toaster.success({ title: 'Импорт успешен', description: name });
+				toaster.success({ title: t('templates.toasts.importSuccessTitle'), description: name });
 			} catch (error) {
 				toaster.error({
-					title: 'Ошибка импорта',
-					description: error instanceof Error ? error.message : 'Не удалось прочитать файл',
+					title: t('templates.toasts.importErrorTitle'),
+					description: error instanceof Error ? error.message : t('templates.toasts.importReadError'),
 				});
 			} finally {
 				if (fileInputRef.current) fileInputRef.current.value = '';
@@ -148,7 +148,7 @@ export const TemplateSidebar = () => {
 							disabled={!selectedId}
 							onClick={() => {
 								if (!selectedId) return;
-								if (!window.confirm('Удалить шаблон?')) return;
+								if (!window.confirm(t('templates.confirm.deleteTemplate'))) return;
 								deletePromptTemplateRequested({ id: selectedId });
 							}}
 						/>

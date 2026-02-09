@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { JsonKindParamsSection } from './json-kind-params-section';
 
@@ -13,11 +14,12 @@ const TOOL_PLACEHOLDER = `{
 }`;
 
 export const ToolKindSection: React.FC<Props> = ({ index }) => {
+	const { t } = useTranslation();
 	return (
 		<JsonKindParamsSection
 			index={index}
-			kindLabel="Tool"
-			description="Define tool call name, arguments, and runtime limits."
+			kindLabel={t('operationProfiles.kind.tool')}
+			description={t('operationProfiles.kindSection.tool.description')}
 			placeholder={TOOL_PLACEHOLDER}
 		/>
 	);
