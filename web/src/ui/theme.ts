@@ -1,5 +1,7 @@
 import { createTheme } from '@mantine/core';
 
+import { Z_INDEX } from './z-index';
+
 export const appTheme = createTheme({
 	primaryColor: 'cyan',
 	defaultRadius: 'md',
@@ -43,12 +45,32 @@ export const appTheme = createTheme({
 				radius: 'md',
 				shadow: 'lg',
 				padding: 'md',
+				zIndex: Z_INDEX.overlay.modal,
 			},
 		},
 		Drawer: {
 			defaultProps: {
 				radius: 'md',
 				padding: 0,
+				zIndex: Z_INDEX.overlay.drawer,
+			},
+		},
+		Tooltip: {
+			defaultProps: {
+				withinPortal: true,
+				zIndex: Z_INDEX.overlay.popup,
+			},
+		},
+		Popover: {
+			defaultProps: {
+				withinPortal: true,
+				zIndex: Z_INDEX.overlay.popup,
+			},
+		},
+		Menu: {
+			defaultProps: {
+				withinPortal: true,
+				zIndex: Z_INDEX.overlay.popup,
 			},
 		},
 		TextInput: {

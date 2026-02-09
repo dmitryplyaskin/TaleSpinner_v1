@@ -2,6 +2,7 @@ import { Box, Flex } from '@mantine/core';
 import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { Z_INDEX } from '@ui/z-index';
 
 type ActionBarProps = {
 	isEditing: boolean;
@@ -32,7 +33,7 @@ export const ActionBar = ({
 				top: placement === 'absolute' ? coordinates.top : undefined,
 				right: placement === 'absolute' ? coordinates.right : undefined,
 				alignSelf: placement === 'absolute' ? 'flex-start' : undefined,
-				zIndex: placement === 'absolute' ? 2 : undefined,
+				zIndex: placement === 'absolute' ? Z_INDEX.local.messageActionBar : undefined,
 			}}
 		>
 			{isEditing ? (

@@ -2,6 +2,8 @@ import { Badge } from '@mantine/core';
 import { ViewportPortal } from '@xyflow/react';
 import React from 'react';
 
+import { Z_INDEX } from '@ui/z-index';
+
 import { DEFAULT_GROUP_COLOR_HEX, getGroupColors } from '../utils/color';
 
 import type { NodeBounds } from '../utils/bounds';
@@ -53,7 +55,7 @@ const GroupOverlaysImpl: React.FC<Props> = ({
 								background: colors.bg,
 								pointerEvents: 'none',
 								boxShadow: isActive ? '0 8px 20px rgba(47,116,208,0.16)' : 'none',
-								zIndex: 10,
+								zIndex: Z_INDEX.flow.groupOverlay,
 							}}
 						/>
 						<div
@@ -62,7 +64,7 @@ const GroupOverlaysImpl: React.FC<Props> = ({
 								left: bounds.x - pad,
 								top: bounds.y - pad - badgeH - gap,
 								pointerEvents: 'auto',
-								zIndex: 2000,
+								zIndex: Z_INDEX.flow.groupLabel,
 							}}
 						>
 							<Badge

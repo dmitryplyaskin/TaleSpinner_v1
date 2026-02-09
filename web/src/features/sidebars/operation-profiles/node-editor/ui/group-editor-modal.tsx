@@ -2,6 +2,8 @@ import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Z_INDEX } from '@ui/z-index';
+
 import { DEFAULT_GROUP_COLOR_HEX, normalizeCssColorToHex } from '../utils/color';
 
 export type GroupEditorDraft = { groupId: string; name: string; bg: string };
@@ -28,7 +30,7 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, on
 	}, [localDraft]);
 
 	return (
-		<Modal opened={opened} onClose={onClose} title={t('operationProfiles.groupEditor.title')} centered zIndex={5000}>
+		<Modal opened={opened} onClose={onClose} title={t('operationProfiles.groupEditor.title')} centered zIndex={Z_INDEX.overlay.modalChild}>
 			{localDraft && (
 				<Stack gap="sm">
 					<TextInput

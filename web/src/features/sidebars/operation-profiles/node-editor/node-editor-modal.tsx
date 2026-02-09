@@ -27,6 +27,7 @@ import { LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
+import { Z_INDEX } from '@ui/z-index';
 
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from '../form/operation-profile-form-mapping';
 import { OperationEditor } from '../ui/operation-editor/operation-editor';
@@ -154,7 +155,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				id: op.opId,
 				type: 'operation',
 				position: pos,
-				zIndex: 100,
+				zIndex: Z_INDEX.flow.node,
 				data: {
 					opId: op.opId,
 					name: op.name,
@@ -200,7 +201,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				id: op.opId,
 				type: 'operation',
 				position: pos,
-				zIndex: 100,
+				zIndex: Z_INDEX.flow.node,
 				data: {
 					opId: op.opId,
 					name: op.name,
@@ -246,7 +247,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 					id: op.opId,
 					type: 'operation',
 					position: existing?.position ?? fallbackPositions[op.opId] ?? { x: 0, y: 0 },
-					zIndex: existing?.zIndex ?? 100,
+					zIndex: existing?.zIndex ?? Z_INDEX.flow.node,
 					data: nextData,
 				} satisfies Node<OperationFlowNodeData>;
 			});
@@ -347,7 +348,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				id: next.opId,
 				type: 'operation',
 				position,
-				zIndex: 100,
+				zIndex: Z_INDEX.flow.node,
 				data: {
 					opId: next.opId,
 					name: next.name,
@@ -572,7 +573,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				id: next.opId,
 				type: 'operation',
 				position: { x: pos.x, y: pos.y },
-				zIndex: 100,
+				zIndex: Z_INDEX.flow.node,
 				data: {
 					opId: next.opId,
 					name: next.name,
@@ -664,7 +665,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 			onClose={onClose}
 			fullScreen
 			withCloseButton={false}
-			zIndex={4000}
+			zIndex={Z_INDEX.overlay.modal}
 			padding={0}
 			styles={{
 				content: { height: '100dvh' },

@@ -3,6 +3,7 @@ import { useStoreMap } from 'effector-react';
 import { useTranslation } from 'react-i18next';
 
 import { $sidebars, changeSidebarSettings, type SidebarName, toggleSidebarOpen } from '@model/sidebars';
+import { Z_INDEX } from '@ui/z-index';
 
 import { SidebarShell } from './sidebar-shell';
 
@@ -87,7 +88,7 @@ export const Drawer = ({ name, title, children, fullscreenContentMaxWidth = 1440
 				withinPortal={!contained}
 				withCloseButton={false}
 				padding={0}
-				zIndex={3000}
+				zIndex={Z_INDEX.overlay.drawer}
 				classNames={{
 					content: 'ts-sidebar-modal-content',
 					body: 'ts-sidebar-modal-body',
@@ -112,7 +113,7 @@ export const Drawer = ({ name, title, children, fullscreenContentMaxWidth = 1440
 			withOverlay={!contained}
 			withinPortal={!contained}
 			withCloseButton={false}
-			zIndex={3000}
+			zIndex={Z_INDEX.overlay.drawer}
 			classNames={{ content: 'ts-sidebar-drawer-content', body: 'ts-sidebar-drawer-body' }}
 		>
 			{shell}

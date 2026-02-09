@@ -20,6 +20,7 @@ import {
 import { $sidebars } from '@model/sidebars';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 import { OperationProfileNodeEditorModal } from './node-editor/node-editor-modal';
 import { OperationProfileEditor, type OperationProfileToolbarState } from './operation-profile-editor';
@@ -27,7 +28,7 @@ import './operation-profiles.css';
 import { ProfileActions } from './ui/profile-actions';
 import { ProfilePicker } from './ui/profile-picker';
 
-const TOOLBAR_TOOLTIP_SETTINGS = { withinPortal: true, zIndex: 3400 };
+const TOOLBAR_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
 export const OperationProfilesSidebar: React.FC = () => {
 	const { t } = useTranslation();

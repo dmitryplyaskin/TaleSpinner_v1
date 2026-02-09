@@ -5,9 +5,10 @@ import { LuCopyPlus, LuDownload, LuPlus, LuTrash2, LuUpload } from 'react-icons/
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
+import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 type SelectedProfile = { profileId: string; name: string } | null;
-const QUICK_ACTION_TOOLTIP_SETTINGS = { withinPortal: true, zIndex: 3400 };
+const QUICK_ACTION_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
 function downloadJson(filename: string, data: unknown) {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

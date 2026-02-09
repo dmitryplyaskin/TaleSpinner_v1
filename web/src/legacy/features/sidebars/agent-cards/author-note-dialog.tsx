@@ -4,6 +4,7 @@ import { LuInfo } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { RenderMd } from '@ui/render-md';
+import { Z_INDEX } from '@ui/z-index';
 
 export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: string; avatar?: string }) => {
 	const [opened, setOpened] = useState(false);
@@ -30,7 +31,7 @@ export const AuthorNoteDialog = ({ note, name, avatar }: { note?: string; name: 
 					</Group>
 				}
 				size="lg"
-				zIndex={3200}
+				zIndex={Z_INDEX.overlay.modal}
 				withinPortal
 			>
 				<Tabs defaultValue="markdown" variant="outline">

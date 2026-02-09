@@ -1,6 +1,8 @@
 import { ActionIcon, Tooltip, type ActionIconProps, type ElementProps, type TooltipProps } from '@mantine/core';
 import { cloneElement, type ReactElement, type ReactNode } from 'react';
 
+import { TOOLTIP_PORTAL_SETTINGS } from './z-index';
+
 type ChakraCompatVariant = 'ghost' | 'outline' | 'solid' | 'subtle';
 
 type Props = Omit<ActionIconProps, 'children'> &
@@ -82,9 +84,10 @@ export const IconButtonWithTooltip = ({
 }: Props) => {
 	const ariaLabel = buttonProps['aria-label'] || 'icon-button';
 	const normalizedIcon = cloneElement(icon, { size: icon.props.size ?? resolveIconSize(size, iconSize) });
+	const resolvedTooltipSettings = { ...TOOLTIP_PORTAL_SETTINGS, ...tooltipSettings };
 
 	return (
-		<Tooltip label={tooltip} openDelay={100} {...tooltipSettings}>
+		<Tooltip label={tooltip} openDelay={100} {...resolvedTooltipSettings}>
 			<ActionIcon
 				{...buttonProps}
 				size={size}

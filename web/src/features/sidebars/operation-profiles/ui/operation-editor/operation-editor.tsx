@@ -6,6 +6,7 @@ import { LuTrash2 } from 'react-icons/lu';
 
 import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 import { makeDefaultArtifactOutput, type FormOtherKindParams, type FormTemplateParams } from '../../form/operation-profile-form-mapping';
 
@@ -13,7 +14,7 @@ import { OperationSectionsAccordion } from './operation-sections-accordion';
 
 import type { OperationKind } from '@shared/types/operation-profiles';
 
-const ACTION_TOOLTIP_SETTINGS = { withinPortal: true, zIndex: 3400 };
+const ACTION_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
 type Props = {
 	index: number;
