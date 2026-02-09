@@ -1,6 +1,6 @@
 import { Box, Button, Collapse, Group, MultiSelect, NumberInput, Pagination, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LuPlus, LuSlidersHorizontal } from 'react-icons/lu';
 
@@ -30,9 +30,105 @@ import type { EntityProfileDto } from '../../../api/chat-core';
 
 type SortType = 'A-Z' | 'Z-A' | 'newest' | 'oldest' | 'latest' | 'favorites' | 'mostTokens' | 'fewestTokens';
 type FavoriteFilterMode = 'all' | 'onlyFavorite' | 'onlyNonFavorite';
+type AgentCardsUiState = {
+	searchValue: string;
+	sortType: SortType;
+	favoriteMode: FavoriteFilterMode;
+	advancedFiltersOpen: boolean;
+	selectedTags: string[];
+	tokenMin: number | null;
+	tokenMax: number | null;
+	pageSize: number;
+};
+
+const AGENT_CARDS_UI_STATE_STORAGE_KEY = 'agent_cards_ui_state_v1';
+const DEFAULT_PAGE_SIZE = 10;
+const VALID_PAGE_SIZES = new Set([5, 10, 25, 50]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSortType(value: unknown): value is SortType {
+	return (
+		value === 'A-Z' ||
+		value === 'Z-A' ||
+		value === 'newest' ||
+		value === 'oldest' ||
+		value === 'latest' ||
+		value === 'favorites' ||
+		value === 'mostTokens' ||
+		value === 'fewestTokens'
+	);
+}
+
+function isFavoriteMode(value: unknown): value is FavoriteFilterMode {
+	return value === 'all' || value === 'onlyFavorite' || value === 'onlyNonFavorite';
+}
+
+function getDefaultAgentCardsUiState(): AgentCardsUiState {
+	return {
+		searchValue: '',
+		sortType: 'latest',
+		favoriteMode: 'all',
+		advancedFiltersOpen: false,
+		selectedTags: [],
+		tokenMin: null,
+		tokenMax: null,
+		pageSize: DEFAULT_PAGE_SIZE,
+	};
+}
+
+function loadAgentCardsUiState(): AgentCardsUiState {
+	const defaults = getDefaultAgentCardsUiState();
+	if (typeof window === 'undefined') return defaults;
+	try {
+		const raw = window.localStorage.getItem(AGENT_CARDS_UI_STATE_STORAGE_KEY);
+		if (!raw) return defaults;
+		const parsed: unknown = JSON.parse(raw);
+		if (!isRecord(parsed)) return defaults;
+
+		const searchValue = typeof parsed.searchValue === 'string' ? parsed.searchValue : defaults.searchValue;
+		const sortType = isSortType(parsed.sortType) ? parsed.sortType : defaults.sortType;
+		const favoriteMode = isFavoriteMode(parsed.favoriteMode) ? parsed.favoriteMode : defaults.favoriteMode;
+		const advancedFiltersOpen = typeof parsed.advancedFiltersOpen === 'boolean' ? parsed.advancedFiltersOpen : defaults.advancedFiltersOpen;
+		const selectedTags = Array.isArray(parsed.selectedTags) ? parsed.selectedTags.filter((value): value is string => typeof value === 'string') : defaults.selectedTags;
+		const tokenMin = typeof parsed.tokenMin === 'number' ? parsed.tokenMin : null;
+		const tokenMax = typeof parsed.tokenMax === 'number' ? parsed.tokenMax : null;
+		const pageSize = typeof parsed.pageSize === 'number' && VALID_PAGE_SIZES.has(parsed.pageSize) ? parsed.pageSize : defaults.pageSize;
+
+		return {
+			searchValue,
+			sortType,
+			favoriteMode,
+			advancedFiltersOpen,
+			selectedTags,
+			tokenMin,
+			tokenMax,
+			pageSize,
+		};
+	} catch {
+		return defaults;
+	}
+}
+
+function saveAgentCardsUiState(state: AgentCardsUiState): void {
+	if (typeof window === 'undefined') return;
+	try {
+		window.localStorage.setItem(AGENT_CARDS_UI_STATE_STORAGE_KEY, JSON.stringify(state));
+	} catch {
+		// ignore storage access errors
+	}
+}
 
 export const AgentCardsSidebar = () => {
 	const { t } = useTranslation();
+	const initialUiStateRef = useRef<AgentCardsUiState | null>(null);
+	if (!initialUiStateRef.current) {
+		initialUiStateRef.current = loadAgentCardsUiState();
+	}
+	const initialUiState = initialUiStateRef.current;
+
 	const [list, currentProfile, updatePendingId, savePending, deletePending, requestUpdate, doUpdateProfile, doDeleteProfile] = useUnit([
 		$entityProfiles,
 		$currentEntityProfile,
@@ -44,14 +140,14 @@ export const AgentCardsSidebar = () => {
 		deleteEntityProfileFx,
 	]);
 
-	const [searchValue, setSearchValue] = useState('');
-	const [sortType, setSortType] = useState<SortType>('latest');
-	const [favoriteMode, setFavoriteMode] = useState<FavoriteFilterMode>('all');
-	const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
-	const [selectedTags, setSelectedTags] = useState<string[]>([]);
-	const [tokenMin, setTokenMin] = useState<number | ''>('');
-	const [tokenMax, setTokenMax] = useState<number | ''>('');
-	const [pageSize, setPageSize] = useState(10);
+	const [searchValue, setSearchValue] = useState(initialUiState.searchValue);
+	const [sortType, setSortType] = useState<SortType>(initialUiState.sortType);
+	const [favoriteMode, setFavoriteMode] = useState<FavoriteFilterMode>(initialUiState.favoriteMode);
+	const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(initialUiState.advancedFiltersOpen);
+	const [selectedTags, setSelectedTags] = useState<string[]>(initialUiState.selectedTags);
+	const [tokenMin, setTokenMin] = useState<number | ''>(initialUiState.tokenMin ?? '');
+	const [tokenMax, setTokenMax] = useState<number | ''>(initialUiState.tokenMax ?? '');
+	const [pageSize, setPageSize] = useState(initialUiState.pageSize);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 	const [profileToDelete, setProfileToDelete] = useState<EntityProfileDto | null>(null);
@@ -144,6 +240,19 @@ export const AgentCardsSidebar = () => {
 	useEffect(() => {
 		if (currentPage > totalPages) setCurrentPage(totalPages);
 	}, [currentPage, totalPages]);
+
+	useEffect(() => {
+		saveAgentCardsUiState({
+			searchValue,
+			sortType,
+			favoriteMode,
+			advancedFiltersOpen,
+			selectedTags,
+			tokenMin: tokenMin === '' ? null : tokenMin,
+			tokenMax: tokenMax === '' ? null : tokenMax,
+			pageSize,
+		});
+	}, [advancedFiltersOpen, favoriteMode, pageSize, searchValue, selectedTags, sortType, tokenMax, tokenMin]);
 
 	const paginated = useMemo(() => {
 		const start = (currentPage - 1) * pageSize;

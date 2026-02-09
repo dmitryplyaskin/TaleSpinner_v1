@@ -28,6 +28,31 @@ import type {
 	ImportEntityProfilesResponse,
 } from '../../api/chat-core';
 
+const CURRENT_ENTITY_PROFILE_STORAGE_KEY = 'chat_core_current_entity_profile_id';
+
+function getStoredCurrentEntityProfileId(): string | null {
+	if (typeof window === 'undefined') return null;
+	try {
+		const raw = window.localStorage.getItem(CURRENT_ENTITY_PROFILE_STORAGE_KEY);
+		return raw && raw.trim().length > 0 ? raw : null;
+	} catch {
+		return null;
+	}
+}
+
+function setStoredCurrentEntityProfileId(value: string | null): void {
+	if (typeof window === 'undefined') return;
+	try {
+		if (!value) {
+			window.localStorage.removeItem(CURRENT_ENTITY_PROFILE_STORAGE_KEY);
+			return;
+		}
+		window.localStorage.setItem(CURRENT_ENTITY_PROFILE_STORAGE_KEY, value);
+	} catch {
+		// ignore storage access errors
+	}
+}
+
 function makeMinimalCharSpecV3(name: string): unknown {
 	return {
 		spec_version: '3',
@@ -56,6 +81,14 @@ export const $currentEntityProfile = createStore<EntityProfileDto | null>(null).
 
 export const clearCurrentEntityProfile = createEvent();
 $currentEntityProfile.on(clearCurrentEntityProfile, () => null);
+
+selectEntityProfile.watch((profile) => {
+	setStoredCurrentEntityProfileId(profile.id);
+});
+
+clearCurrentEntityProfile.watch(() => {
+	setStoredCurrentEntityProfileId(null);
+});
 
 export const createEntityProfileFx = createEffect(async (params: { name: string }): Promise<EntityProfileDto> => {
 	return createEntityProfile({ name: params.name, spec: makeMinimalCharSpecV3(params.name) });
@@ -355,7 +388,14 @@ sample({
 	clock: loadEntityProfilesFx.doneData,
 	source: $currentEntityProfile,
 	filter: (current, profiles) => !current && profiles.length > 0,
-	fn: (_, profiles) => profiles[0],
+	fn: (_, profiles) => {
+		const storedId = getStoredCurrentEntityProfileId();
+		if (storedId) {
+			const storedProfile = profiles.find((profile) => profile.id === storedId);
+			if (storedProfile) return storedProfile;
+		}
+		return profiles[0];
+	},
 	target: selectEntityProfile,
 });
 
