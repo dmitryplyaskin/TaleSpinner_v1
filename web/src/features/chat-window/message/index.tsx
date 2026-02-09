@@ -10,9 +10,10 @@ import {
 	$variantsByEntryId,
 	loadVariantsRequested,
 	manualEditEntryRequested,
+	openDeleteEntryConfirm,
+	openDeleteVariantConfirm,
 	regenerateRequested,
 	selectVariantRequested,
-	softDeleteEntryRequested,
 } from '@model/chat-entry-parts';
 import { toaster } from '@ui/toaster';
 
@@ -53,6 +54,7 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 		data.entry.meta !== null &&
 		Boolean((data.entry.meta as any)?.imported) &&
 		((data.entry.meta as any)?.kind === 'first_mes' || (data.entry.meta as any)?.source === 'entity_profile_import');
+	const canSwipeVariants = isAssistant && isLast;
 
 	const editableMainPart = useMemo(() => {
 		const parts = data.variant?.parts ?? [];
@@ -70,19 +72,27 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 
 	useEffect(() => {
 		if (!isAssistant) return;
-		if (!isLast && !isImportedFirstMessage) return;
+		if (!isLast) return;
 		if (variants.length > 0) return;
 		loadVariantsRequested({ entryId: data.entry.entryId });
-	}, [data.entry.entryId, isAssistant, isImportedFirstMessage, isLast, variants.length]);
+	}, [data.entry.entryId, isAssistant, isLast, variants.length]);
 
 	const currentVariantIndex = useMemo(() => {
 		if (variants.length === 0) return -1;
 		const idx = variants.findIndex((v) => v.variantId === data.entry.activeVariantId);
 		return idx >= 0 ? idx : variants.length - 1;
 	}, [data.entry.activeVariantId, variants]);
+	const activeVariantIndexInList = useMemo(
+		() => variants.findIndex((v) => v.variantId === data.entry.activeVariantId),
+		[data.entry.activeVariantId, variants],
+	);
+	const hasActiveOutsideList =
+		variants.length > 0 && activeVariantIndexInList < 0 && Boolean(data.variant && data.variant.variantId === data.entry.activeVariantId);
+	const displayVariantCount = hasActiveOutsideList ? variants.length + 1 : variants.length > 0 ? variants.length : data.variant ? 1 : 0;
+	const canDeleteVariant = isAssistant && displayVariantCount > 1;
 
 	const swipePrev = () => {
-		if (!isAssistant || isEditing || isStreaming || isOptimistic) return;
+		if (!canSwipeVariants || isEditing || isStreaming || isOptimistic) return;
 		if (variants.length === 0 || currentVariantIndex <= 0) return;
 		const prev = variants[currentVariantIndex - 1];
 		if (!prev) return;
@@ -90,7 +100,7 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	};
 
 	const swipeNextOrRegenerate = () => {
-		if (!isAssistant || isEditing || isStreaming || isOptimistic) return;
+		if (!canSwipeVariants || isEditing || isStreaming || isOptimistic) return;
 		if (variants.length === 0) {
 			if (isLast && !isImportedFirstMessage) {
 				regenerateRequested({ entryId: data.entry.entryId });
@@ -108,6 +118,7 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	};
 
 	const tryApplySwipe = (deltaX: number, deltaY: number) => {
+		if (!canSwipeVariants) return;
 		const absX = Math.abs(deltaX);
 		const absY = Math.abs(deltaY);
 		if (absX < 48 || absX <= absY) return;
@@ -172,9 +183,14 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 		setDraftText('');
 	};
 
-	const handleDelete = () => {
+	const handleRequestDeleteMessage = () => {
 		if (isOptimistic || isStreaming) return;
-		softDeleteEntryRequested({ entryId: data.entry.entryId });
+		openDeleteEntryConfirm({ entryId: data.entry.entryId });
+	};
+
+	const handleRequestDeleteVariant = () => {
+		if (!canDeleteVariant || isOptimistic || isStreaming) return;
+		openDeleteVariantConfirm({ entryId: data.entry.entryId, variantId: data.entry.activeVariantId });
 	};
 
 	return (
@@ -213,15 +229,16 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 								)}
 							</Stack>
 							<Flex gap="xs" align="center">
-								{isAssistant && <VariantControls entry={data} isLast={isLast} />}
 								<ActionBar
 									isEditing={isEditing}
+									canDeleteVariant={canDeleteVariant}
 									onOpenEdit={handleOpenEdit}
 									onCancelEdit={handleCancelEdit}
 									onConfirmEdit={handleConfirmEdit}
-									onDelete={handleDelete}
-									placement="inline"
+									onRequestDeleteMessage={handleRequestDeleteMessage}
+									onRequestDeleteVariant={handleRequestDeleteVariant}
 								/>
+								{isAssistant && <VariantControls entry={data} isLast={isLast} />}
 							</Flex>
 						</Flex>
 

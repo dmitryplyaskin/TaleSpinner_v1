@@ -4,6 +4,7 @@ import { toaster } from '@ui/toaster';
 
 import { abortGeneration } from '../../api/chat-core';
 import {
+	deleteEntryVariant,
 	listChatEntries,
 	listEntryVariants,
 	manualEditEntry,
@@ -443,14 +444,70 @@ sample({
 export const selectVariantRequested = createEvent<{ entryId: string; variantId: string }>();
 export const selectVariantFx = createEffect(async (params: { entryId: string; variantId: string }) => selectEntryVariant(params));
 
+const applyVariantSelectionOptimistic = createEvent<{ entryId: string; variantId: string; variant: Variant | null }>();
+
+$entries.on(applyVariantSelectionOptimistic, (entries, payload) =>
+	entries.map((item) =>
+		item.entry.entryId !== payload.entryId
+			? item
+			: {
+					...item,
+					entry: { ...item.entry, activeVariantId: payload.variantId },
+					variant: payload.variant ?? item.variant,
+				},
+	),
+);
+
+sample({
+	clock: selectVariantRequested,
+	source: $variantsByEntryId,
+	fn: (variantsByEntryId, payload) => ({
+		entryId: payload.entryId,
+		variantId: payload.variantId,
+		variant: (variantsByEntryId[payload.entryId] ?? []).find((v) => v.variantId === payload.variantId) ?? null,
+	}),
+	target: applyVariantSelectionOptimistic,
+});
+
 sample({ clock: selectVariantRequested, target: selectVariantFx });
 
 sample({
-	clock: selectVariantFx.doneData,
+	clock: selectVariantFx.failData,
 	source: { chat: $currentChat, branchId: $currentBranchId },
 	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
 	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
 	target: loadEntriesFx,
+});
+
+selectVariantFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.switchVariantError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+export const deleteVariantRequested = createEvent<{ entryId: string; variantId: string }>();
+export const deleteVariantFx = createEffect(async (params: { entryId: string; variantId: string }) => deleteEntryVariant(params));
+
+sample({ clock: deleteVariantRequested, target: deleteVariantFx });
+
+sample({
+	clock: deleteVariantFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
+sample({
+	clock: deleteVariantFx.doneData,
+	fn: ({ entryId }) => ({ entryId }),
+	target: loadVariantsRequested,
+});
+
+deleteVariantFx.doneData.watch(() => {
+	toaster.success({ title: i18n.t('chat.toasts.variantDeleted') });
+});
+
+deleteVariantFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.deleteVariantError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const manualEditEntryRequested = createEvent<{ entryId: string; content: string; partId?: string }>();
@@ -501,6 +558,45 @@ softDeleteEntryFx.doneData.watch(() => {
 
 softDeleteEntryFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.deleteMessageError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+export type DeleteConfirmState =
+	| { kind: 'entry'; entryId: string }
+	| { kind: 'variant'; entryId: string; variantId: string }
+	| null;
+
+export const openDeleteEntryConfirm = createEvent<{ entryId: string }>();
+export const openDeleteVariantConfirm = createEvent<{ entryId: string; variantId: string }>();
+export const closeDeleteConfirm = createEvent();
+export const confirmDeleteAction = createEvent();
+
+export const $deleteConfirmState = createStore<DeleteConfirmState>(null)
+	.on(openDeleteEntryConfirm, (_prev, payload) => ({ kind: 'entry', ...payload }))
+	.on(openDeleteVariantConfirm, (_prev, payload) => ({ kind: 'variant', ...payload }))
+	.on(closeDeleteConfirm, () => null);
+
+sample({
+	clock: confirmDeleteAction,
+	source: $deleteConfirmState,
+	filter: (state): state is Extract<NonNullable<DeleteConfirmState>, { kind: 'entry' }> => state?.kind === 'entry',
+	fn: (state) => ({ entryId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'entry' }>).entryId }),
+	target: softDeleteEntryRequested,
+});
+
+sample({
+	clock: confirmDeleteAction,
+	source: $deleteConfirmState,
+	filter: (state): state is Extract<NonNullable<DeleteConfirmState>, { kind: 'variant' }> => state?.kind === 'variant',
+	fn: (state) => ({
+		entryId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'variant' }>).entryId,
+		variantId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'variant' }>).variantId,
+	}),
+	target: deleteVariantRequested,
+});
+
+sample({
+	clock: confirmDeleteAction,
+	target: closeDeleteConfirm,
 });
 
 export const regenerateRequested = createEvent<{ entryId: string }>();

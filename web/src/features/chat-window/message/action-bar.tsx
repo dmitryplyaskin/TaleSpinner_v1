@@ -1,84 +1,106 @@
 import { Box, Flex } from '@mantine/core';
-import { LuPen, LuCheck, LuX, LuTrash } from 'react-icons/lu';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { LuCheck, LuEllipsis, LuPen, LuTrash, LuX } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { Z_INDEX } from '@ui/z-index';
 
 type ActionBarProps = {
 	isEditing: boolean;
+	canDeleteVariant: boolean;
 	onOpenEdit: () => void;
 	onCancelEdit: () => void;
 	onConfirmEdit: () => void;
-	onDelete: () => void;
-	placement?: 'absolute' | 'inline';
-	coordinates?: {
-		top: number;
-		right: number;
-	};
+	onRequestDeleteMessage: () => void;
+	onRequestDeleteVariant: () => void;
 };
 
 export const ActionBar = ({
 	isEditing,
+	canDeleteVariant,
 	onOpenEdit,
 	onCancelEdit,
 	onConfirmEdit,
-	onDelete,
-	placement = 'absolute',
-	coordinates = { top: 3, right: 3 },
+	onRequestDeleteMessage,
+	onRequestDeleteVariant,
 }: ActionBarProps) => {
+	const { t } = useTranslation();
+	const [actionsOpen, setActionsOpen] = useState(false);
+
+	useEffect(() => {
+		if (isEditing) setActionsOpen(false);
+	}, [isEditing]);
+
+	const expandedWidth = canDeleteVariant ? 56 : 28;
+
 	return (
-		<Box
-			style={{
-				position: placement === 'absolute' ? 'absolute' : 'static',
-				top: placement === 'absolute' ? coordinates.top : undefined,
-				right: placement === 'absolute' ? coordinates.right : undefined,
-				alignSelf: placement === 'absolute' ? 'flex-start' : undefined,
-				zIndex: placement === 'absolute' ? Z_INDEX.local.messageActionBar : undefined,
-			}}
-		>
+		<Flex gap={6} align="center">
 			{isEditing ? (
 				<Flex gap={4}>
-					<IconButtonWithTooltip
-						size="xs"
-						variant="solid"
-						colorPalette="red"
-						icon={<LuX />}
-						tooltip="Cancel edit"
-						aria-label="Cancel edit"
-						onClick={onCancelEdit}
-					/>
-					<IconButtonWithTooltip
-						size="xs"
-						variant="solid"
-						colorPalette="green"
-						icon={<LuCheck />}
-						tooltip="Confirm edit"
-						aria-label="Confirm edit"
-						onClick={onConfirmEdit}
-					/>
+					<IconButtonWithTooltip size="xs" variant="solid" colorPalette="red" icon={<LuX />} tooltip={t('chat.actions.cancelEdit')} aria-label={t('chat.actions.cancelEdit')} onClick={onCancelEdit} />
+					<IconButtonWithTooltip size="xs" variant="solid" colorPalette="green" icon={<LuCheck />} tooltip={t('chat.actions.confirmEdit')} aria-label={t('chat.actions.confirmEdit')} onClick={onConfirmEdit} />
 				</Flex>
 			) : (
-				<Flex gap={4}>
+				<>
+					<Flex gap={4} align="center" wrap="nowrap">
+						<Box
+							style={{
+								width: actionsOpen ? expandedWidth : 0,
+								overflow: 'hidden',
+								transition: 'width 160ms ease',
+							}}
+						>
+							<Flex gap={4} align="center" wrap="nowrap">
+								{canDeleteVariant && (
+									<IconButtonWithTooltip
+										size="xs"
+										variant="ghost"
+										colorPalette="red"
+										icon={<LuTrash />}
+										tooltip={t('chat.variants.delete')}
+										aria-label={t('chat.variants.delete')}
+										onClick={() => {
+											setActionsOpen(false);
+											onRequestDeleteVariant();
+										}}
+									/>
+								)}
+								<IconButtonWithTooltip
+									size="xs"
+									variant="ghost"
+									colorPalette="red"
+									icon={<LuTrash />}
+									tooltip={t('chat.actions.deleteMessage')}
+									aria-label={t('chat.actions.deleteMessage')}
+									onClick={() => {
+										setActionsOpen(false);
+										onRequestDeleteMessage();
+									}}
+								/>
+							</Flex>
+						</Box>
+						<IconButtonWithTooltip
+							size="xs"
+							variant="ghost"
+							colorPalette="gray"
+							icon={<LuEllipsis />}
+							tooltip={actionsOpen ? t('chat.actions.hideActions') : t('chat.actions.showActions')}
+							aria-label={actionsOpen ? t('chat.actions.hideActions') : t('chat.actions.showActions')}
+							active={actionsOpen}
+							onClick={() => setActionsOpen((prev) => !prev)}
+						/>
+					</Flex>
 					<IconButtonWithTooltip
 						size="xs"
 						variant="ghost"
 						colorPalette="violet"
 						icon={<LuPen />}
-						tooltip="Edit message"
-						aria-label="Edit message"
+						tooltip={t('chat.actions.editMessage')}
+						aria-label={t('chat.actions.editMessage')}
 						onClick={onOpenEdit}
 					/>
-					<IconButtonWithTooltip
-						size="xs"
-						variant="ghost"
-						colorPalette="red"
-						icon={<LuTrash />}
-						tooltip="Delete message"
-						aria-label="Delete message"
-						onClick={onDelete}
-					/>
-				</Flex>
+				</>
 			)}
-		</Box>
+		</Flex>
 	);
 };

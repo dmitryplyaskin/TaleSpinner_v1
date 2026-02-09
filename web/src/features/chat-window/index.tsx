@@ -10,6 +10,7 @@ import BGImages from '../../assets/bg.png';
 
 import { ChatHeader } from './chat-header';
 import { MessageInput } from './input';
+import { MessageActionModals } from './message/message-action-modals';
 import { RenderChat } from './render-chat';
 
 export const ChatWindow: React.FC = () => {
@@ -45,6 +46,7 @@ export const ChatWindow: React.FC = () => {
 					</Box>
 				</Box>
 			</Box>
+			<MessageActionModals />
 		</Box>
 	);
 };

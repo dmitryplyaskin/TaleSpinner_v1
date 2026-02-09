@@ -196,6 +196,42 @@ export async function updatePartPayloadText(params: {
     .where(eq(variantParts.partId, params.partId));
 }
 
+export async function applyManualEditToPart(params: {
+  partId: string;
+  payloadText: string;
+  payloadFormat?: PartPayloadFormat;
+  requestId?: string;
+}): Promise<void> {
+  const db = await initDb();
+  const rows = await db
+    .select({ payloadJson: variantParts.payloadJson })
+    .from(variantParts)
+    .where(eq(variantParts.partId, params.partId))
+    .limit(1);
+
+  const existing = safeJsonParse<StoredPayload>(rows[0]?.payloadJson, {
+    format: "text",
+    value: "",
+  });
+
+  const payload: StoredPayload = {
+    ...existing,
+    format: params.payloadFormat ?? existing.format ?? "markdown",
+    value: params.payloadText,
+  };
+
+  await db
+    .update(variantParts)
+    .set({
+      payloadJson: safeJsonStringify(payload),
+      source: "user",
+      agentId: null,
+      model: null,
+      requestId: params.requestId ?? null,
+    })
+    .where(eq(variantParts.partId, params.partId));
+}
+
 export async function softDeletePart(params: {
   partId: string;
   by: "user" | "agent";

@@ -232,6 +232,13 @@ export async function selectEntryVariant(params: { entryId: string; variantId: s
 	);
 }
 
+export async function deleteEntryVariant(params: { entryId: string; variantId: string }): Promise<{ entryId: string; activeVariantId: string; deletedVariantId: string }> {
+	return apiJson<{ entryId: string; activeVariantId: string; deletedVariantId: string }>(
+		`/entries/${encodeURIComponent(params.entryId)}/variants/${encodeURIComponent(params.variantId)}/soft-delete`,
+		{ method: 'POST' },
+	);
+}
+
 export async function manualEditEntry(params: {
 	entryId: string;
 	partId?: string;

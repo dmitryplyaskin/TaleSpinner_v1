@@ -18,13 +18,14 @@ import {
   softDeleteEntry,
 } from "../services/chat-entry-parts/entries-repository";
 import {
+  applyManualEditToPart,
   createPart,
   softDeletePart,
-  updatePartReplacesPartId,
 } from "../services/chat-entry-parts/parts-repository";
 import { getUiProjection } from "../services/chat-entry-parts/projection";
 import {
   createVariant,
+  deleteVariant,
   getVariantById,
   listEntryVariants,
   selectActiveVariant,
@@ -499,7 +500,6 @@ router.post(
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
     const body = manualEditBodySchema.parse(req.body);
-    const ownerId = body.ownerId ?? "global";
 
     const entry = await getEntryById({ entryId: params.id });
     if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
@@ -534,63 +534,51 @@ router.post(
       targetPartId = fallback.partId;
     }
 
-    const nextVariant = await createVariant({
-      ownerId,
-      entryId: entry.entryId,
-      kind: "manual_edit",
-    });
-
-    const partMap = new Map<string, Part>();
-
-    for (const source of sourceParts) {
-      const isTarget = source.partId === targetPartId;
-      const cloned = await createPart({
-        ownerId,
-        variantId: nextVariant.variantId,
-        channel: source.channel,
-        order: source.order,
-        payload: isTarget ? body.content : source.payload,
-        payloadFormat: source.payloadFormat,
-        schemaId: source.schemaId,
-        label: source.label,
-        visibility: source.visibility,
-        ui: source.ui,
-        prompt: source.prompt,
-        lifespan: source.lifespan,
-        createdTurn: source.createdTurn,
-        source: isTarget ? "user" : source.source,
-        agentId: isTarget ? undefined : source.agentId,
-        model: isTarget ? undefined : source.model,
-        requestId: isTarget ? body.requestId : source.requestId,
-        tags: source.tags,
-      });
-      partMap.set(source.partId, cloned);
+    const targetPart = sourceParts.find((p) => p.partId === targetPartId) ?? null;
+    if (!targetPart) {
+      throw new HttpError(400, "partId не найден в активном варианте", "VALIDATION_ERROR");
     }
 
-    for (const source of sourceParts) {
-      const sourceReplaceId = source.replacesPartId;
-      if (!sourceReplaceId) continue;
-      const cloned = partMap.get(source.partId);
-      if (!cloned) continue;
-      const clonedReplaceTarget = partMap.get(sourceReplaceId);
-      if (!clonedReplaceTarget) continue;
-      await updatePartReplacesPartId({
-        partId: cloned.partId,
-        replacesPartId: clonedReplaceTarget.partId,
-      });
-    }
-
-    await selectActiveVariant({
-      entryId: entry.entryId,
-      variantId: nextVariant.variantId,
+    await applyManualEditToPart({
+      partId: targetPart.partId,
+      payloadText: body.content,
+      payloadFormat: targetPart.payloadFormat,
+      requestId: body.requestId,
     });
 
     return {
       data: {
         entryId: entry.entryId,
-        activeVariantId: nextVariant.variantId,
+        activeVariantId: activeVariant.variantId,
       },
     };
+  })
+);
+
+router.post(
+  "/entries/:id/variants/:variantId/soft-delete",
+  validate({ params: selectVariantParamsSchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string; variantId: string };
+    const entry = await getEntryById({ entryId: params.id });
+    if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
+
+    const variant = await getVariantById({ variantId: params.variantId });
+    if (!variant || variant.entryId !== entry.entryId) {
+      throw new HttpError(404, "Variant не найден", "NOT_FOUND");
+    }
+
+    const variants = await listEntryVariants({ entryId: entry.entryId });
+    if (variants.length <= 1) {
+      throw new HttpError(400, "Нельзя удалить последний вариант", "VALIDATION_ERROR");
+    }
+
+    const deleted = await deleteVariant({
+      entryId: entry.entryId,
+      variantId: params.variantId,
+    });
+
+    return { data: deleted };
   })
 );
 

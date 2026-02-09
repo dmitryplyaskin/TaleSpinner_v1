@@ -1,0 +1,45 @@
+import { Button, Group, Modal, Stack, Text } from '@mantine/core';
+import { useUnit } from 'effector-react';
+import { useTranslation } from 'react-i18next';
+
+import { $deleteConfirmState, closeDeleteConfirm, confirmDeleteAction, deleteVariantFx, softDeleteEntryFx } from '@model/chat-entry-parts';
+
+export const MessageActionModals = () => {
+	const { t } = useTranslation();
+	const [state, close, confirm, deleteEntryPending, deleteVariantPending] = useUnit([
+		$deleteConfirmState,
+		closeDeleteConfirm,
+		confirmDeleteAction,
+		softDeleteEntryFx.pending,
+		deleteVariantFx.pending,
+	]);
+
+	if (!state) return null;
+
+	const isBusy = state.kind === 'entry' ? deleteEntryPending : deleteVariantPending;
+	const title =
+		state.kind === 'entry'
+			? t('chat.confirm.deleteMessageTitle')
+			: t('chat.confirm.deleteVariantTitle');
+	const body =
+		state.kind === 'entry'
+			? t('chat.confirm.deleteMessageBody')
+			: t('chat.confirm.deleteVariantBody');
+
+	return (
+		<Modal opened onClose={() => close()} title={title} centered closeOnClickOutside={!isBusy} closeOnEscape={!isBusy}>
+			<Stack gap="md">
+				<Text size="sm">{body}</Text>
+				<Group justify="flex-end">
+					<Button variant="subtle" onClick={() => close()} disabled={isBusy}>
+						{t('common.cancel')}
+					</Button>
+					<Button color="red" onClick={() => confirm()} loading={isBusy}>
+						{t('common.delete')}
+					</Button>
+				</Group>
+			</Stack>
+		</Modal>
+	);
+};
+

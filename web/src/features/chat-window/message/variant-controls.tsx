@@ -36,11 +36,11 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 
 	useEffect(() => {
 		if (entry.entry.role !== 'assistant') return;
+		if (!isLast) return;
 		if (variants.length > 0) return;
 		if (isLoading) return;
-		if (!isLast && !isImportedFirstMessage) return;
 		loadVariantsRequested({ entryId: entry.entry.entryId });
-	}, [isLast, entry.entry.entryId, entry.entry.role, isImportedFirstMessage, isLoading, variants.length]);
+	}, [isLast, entry.entry.entryId, entry.entry.role, isLoading, variants.length]);
 
 	const currentIndex = useMemo(
 		() => pickActiveIndex(variants, entry.entry.activeVariantId),
@@ -56,7 +56,7 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 		total > 0 && activeIndexInList < 0 && Boolean(entry.variant && entry.variant.variantId === entry.entry.activeVariantId);
 	const displayTotal = hasActiveOutsideList ? total + 1 : total > 0 ? total : fallbackTotal;
 	const displayCurrent = hasActiveOutsideList ? total + 1 : total > 0 ? currentIndex + 1 : fallbackTotal > 0 ? 1 : 0;
-	const shouldShow = entry.entry.role === 'assistant' && (isLast || total > 1 || isImportedFirstMessage);
+	const shouldShow = entry.entry.role === 'assistant' && isLast;
 	if (!shouldShow) return null;
 
 	const isFirst = currentIndex <= 0;
@@ -99,7 +99,6 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 
 	const rightDisabled = total === 0 ? isLoading : isImportedFirstMessage ? isLastVariant : false;
 	const leftDisabled = total > 0 ? (!hasActiveOutsideList && isFirst) : true;
-
 	return (
 		<Paper withBorder radius="md" p={6} style={{ marginLeft: 'auto', borderColor: 'var(--ts-border-soft)', backgroundColor: 'var(--ts-surface-elevated)' }}>
 			<Group gap="xs" align="center">
