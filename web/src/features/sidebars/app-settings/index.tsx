@@ -56,7 +56,8 @@ export const AppSettingsSidebar: React.FC = () => {
 								label={t('appSettings.language.label')}
 								selectProps={{
 									options: languageOptions,
-									menuPlacement: 'auto',
+									allowDeselect: false,
+									comboboxProps: { withinPortal: false },
 								}}
 							/>
 
