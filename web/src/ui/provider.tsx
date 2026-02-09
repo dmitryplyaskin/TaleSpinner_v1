@@ -1,7 +1,11 @@
 import { MantineProvider, localStorageColorSchemeManager } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
+
+import { appTheme } from './theme';
+
 import type { PropsWithChildren } from 'react';
+
 
 const colorSchemeManager = localStorageColorSchemeManager({
 	key: 'talespinner-color-scheme',
@@ -9,7 +13,7 @@ const colorSchemeManager = localStorageColorSchemeManager({
 
 export function Provider({ children }: PropsWithChildren) {
 	return (
-		<MantineProvider defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
+		<MantineProvider theme={appTheme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
 			<ModalsProvider>
 				<Notifications zIndex={4000} position="top-right" />
 				{children}

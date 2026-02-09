@@ -1,6 +1,7 @@
 import { Box, Flex, Group, Select, Stack, Switch } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuPlus } from 'react-icons/lu';
 
 import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
@@ -13,26 +14,26 @@ import { SortFilterControls } from './sort-filter-controls';
 import { UserPersonCard } from './user-person-card';
 
 export const UserPersonSidebar: React.FC = () => {
-	// Используем отфильтрованные и отсортированные элементы с пагинацией
+	const { t } = useTranslation();
 	const persons = useUnit(userPersonsModel.paginationWithSortFilter.$paginatedItems);
 	const [items, settings] = useUnit([userPersonsModel.$items, userPersonsModel.$settings]);
 
 	const options = items.map((p) => ({ value: p.id, label: p.name }));
 
 	return (
-		<Drawer name="userPersons" title="Список персон">
+		<Drawer name="userPersons" title={t('sidebars.userPersonsTitle')}>
 			<Stack gap="md">
-				<Group justify="space-between" align="center" wrap="nowrap">
+				<Group justify="space-between" align="center" wrap="nowrap" className="ts-sidebar-toolbar">
 					<Select
 						data={options}
 						value={settings?.selectedId ?? null}
-						placeholder="Выберите персону"
+						placeholder={t('sidebars.selectPerson')}
 						onChange={(selectedId) => userPersonsModel.updateSettingsFx({ selectedId: selectedId ?? null })}
 						comboboxProps={{ withinPortal: false }}
-						style={{ flex: 1 }}
+						className="ts-sidebar-toolbar__main"
 					/>
 					<Switch
-						label="Enabled"
+						label={t('common.enabled')}
 						checked={Boolean(settings?.enabled)}
 						onChange={(e) => userPersonsModel.updateSettingsFx({ enabled: e.currentTarget.checked })}
 					/>
@@ -40,11 +41,11 @@ export const UserPersonSidebar: React.FC = () => {
 
 				<Flex justify="flex-end">
 					<IconButtonWithTooltip
-						tooltip="Добавить персону"
+						tooltip={t('sidebars.addPerson')}
 						variant="ghost"
 						size="sm"
-						colorPalette="blue"
-						aria-label="Add person"
+						colorPalette="cyan"
+						aria-label={t('sidebars.addPerson')}
 						onClick={() => {
 							userPersonsModel.createItemFx(createEmptyUserPerson());
 						}}
@@ -52,7 +53,6 @@ export const UserPersonSidebar: React.FC = () => {
 					/>
 				</Flex>
 
-				{/* Добавляем элементы управления сортировкой и фильтрацией */}
 				<Box>
 					<SortFilterControls model={userPersonsModel} nameFilterPlaceholder="Поиск персоны по имени..." />
 				</Box>
@@ -64,9 +64,7 @@ export const UserPersonSidebar: React.FC = () => {
 						))}
 					</Stack>
 				) : (
-					<Box style={{ textAlign: 'center', padding: 16, color: 'var(--mantine-color-dimmed)' }}>
-						Персоны не найдены
-					</Box>
+					<Box style={{ textAlign: 'center', padding: 16, color: 'var(--mantine-color-dimmed)' }}>{t('sidebars.personsEmpty')}</Box>
 				)}
 
 				<Pagination model={userPersonsModel} />

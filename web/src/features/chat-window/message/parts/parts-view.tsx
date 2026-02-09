@@ -1,10 +1,12 @@
 import { Box, Collapse, Group, Paper, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 
 import { getUiProjection } from './projection';
 import { renderPart } from './renderers';
+
+import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 
 type Props = {
 	entry: Entry;
@@ -12,7 +14,10 @@ type Props = {
 	currentTurn: number;
 };
 
+const isDevRuntime = import.meta.env.DEV;
+
 export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
+	const { t } = useTranslation();
 	const [debugEnabled, setDebugEnabled] = useState(false);
 	const [inspectorOpen, setInspectorOpen] = useState(false);
 
@@ -29,33 +34,27 @@ export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
 		);
 	};
 
+	if (!isDevRuntime) {
+		return <>{renderList(visible)}</>;
+	}
+
 	return (
 		<Stack gap="sm">
 			{renderList(visible)}
 
 			<Group gap="xs" justify="flex-end">
-				<Text
-					size="xs"
-					c="dimmed"
-					style={{ cursor: 'pointer', userSelect: 'none' }}
-					onClick={() => setDebugEnabled((v) => !v)}
-				>
-					Debug UI: {debugEnabled ? 'on' : 'off'}
+				<Text size="xs" c="dimmed" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setDebugEnabled((v) => !v)}>
+					{t('chat.debug.debugUi')}: {debugEnabled ? t('chat.debug.on') : t('chat.debug.off')}
 				</Text>
-				<Text
-					size="xs"
-					c="dimmed"
-					style={{ cursor: 'pointer', userSelect: 'none' }}
-					onClick={() => setInspectorOpen((v) => !v)}
-				>
-					Inspector: {inspectorOpen ? 'hide' : 'show'}
+				<Text size="xs" c="dimmed" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setInspectorOpen((v) => !v)}>
+					{t('chat.debug.inspector')}: {inspectorOpen ? t('chat.debug.hide') : t('chat.debug.show')}
 				</Text>
 			</Group>
 
 			<Collapse in={inspectorOpen}>
 				<Paper withBorder radius="md" p="sm">
 					<Text size="xs" fw={600} mb="xs">
-						Raw parts
+						{t('chat.debug.rawParts')}
 					</Text>
 					<Stack gap="xs">
 						{allParts.map((p) => (
@@ -74,4 +73,3 @@ export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
 		</Stack>
 	);
 };
-

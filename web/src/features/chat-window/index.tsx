@@ -1,11 +1,12 @@
-import { Box, Container, Flex } from '@mantine/core';
+import { Box } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useRef } from 'react';
 
-import BGImages from '../../assets/bg.png';
-
 import { $currentChat } from '@model/chat-core';
 import { $entries } from '@model/chat-entry-parts';
+
+import BGImages from '../../assets/bg.png';
+
 
 import { ChatHeader } from './chat-header';
 import { MessageInput } from './input';
@@ -23,67 +24,27 @@ export const ChatWindow: React.FC = () => {
 			messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
 		};
 
-		// Two frames to let layout settle (messages + images).
 		requestAnimationFrame(() => {
 			scrollToBottom();
 			requestAnimationFrame(scrollToBottom);
 		});
-	}, [chat?.id, entries.length]);
+	}, [chat, chat?.id, entries.length]);
 
 	return (
-		<Flex
-			direction="column"
-			align="stretch"
-			style={{
-				height: '100%',
-				minHeight: 0,
-				width: '100%',
-				backgroundImage: `url(${BGImages})`,
-				backgroundSize: 'cover',
-				backgroundPosition: 'center',
-			}}
-		>
-			<Container
-				size="xl"
-				py={0}
-				style={{
-					flex: 1,
-					minHeight: 0,
-					width: '100%',
-					display: 'flex',
-					flexDirection: 'column',
-				}}
-			>
-				<Box
-					style={{
-						flex: 1,
-						minHeight: 0,
-						overflowY: 'auto',
-						paddingTop: 0,
-						paddingBottom: 0,
-						backgroundColor: 'rgba(0,0,0,0.08)',
-						backdropFilter: 'blur(4px)',
-						borderRadius: 12,
-						paddingInline: 12,
-					}}
-				>
+		<Box className="ts-chat-window" style={{ backgroundImage: `url(${BGImages})` }}>
+			<Box className="ts-chat-window__inner">
+				<Box className="ts-chat-scroll">
 					<ChatHeader />
-					<Box pt={16}>
-					<RenderChat />
-					<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
+					<Box className="ts-chat-content">
+						<RenderChat />
+						<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
 
-					<Box
-						style={{
-							position: 'sticky',
-							bottom: 0,
-							paddingTop: 12,
-						}}
-					>
-						<MessageInput />
-					</Box>
+						<Box className="ts-chat-composer-wrap">
+							<MessageInput />
+						</Box>
 					</Box>
 				</Box>
-			</Container>
-		</Flex>
+			</Box>
+		</Box>
 	);
 };

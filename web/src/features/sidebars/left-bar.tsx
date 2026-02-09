@@ -1,116 +1,64 @@
-import { Box, Stack } from '@mantine/core';
+import { Box } from '@mantine/core';
+import { useUnit } from 'effector-react';
+import { useTranslation } from 'react-i18next';
 import { type IconType } from 'react-icons';
 import { LuBookOpen, LuFileCode2, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuWorkflow } from 'react-icons/lu';
 
-import { toggleSidebarOpen } from '@model/sidebars';
+import { $sidebars, toggleSidebarOpen, type SidebarName } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-
-
-import type { SidebarName } from '@model/sidebars';
 
 type SidebarButton = {
 	name: SidebarName;
-	tooltip: string;
+	labelKey: string;
 	icon: IconType;
-	ariaLabel: string;
 };
 
 const sidebarButtons: SidebarButton[] = [
-	{
-		name: 'agentCards',
-		tooltip: 'Chat cards',
-		icon: LuIdCard,
-		ariaLabel: 'Open chat cards',
-	},
-	{
-		name: 'settings',
-		tooltip: 'Settings',
-		icon: LuSettings,
-		ariaLabel: 'Open settings',
-	},
-	{
-		name: 'userPersons',
-		tooltip: 'User persons',
-		icon: LuSquareUser,
-		ariaLabel: 'Open user persons',
-	},
-	{
-		name: 'instructions',
-		tooltip: 'Instructions',
-		icon: LuFileText,
-		ariaLabel: 'Open instructions',
-	},
-	{
-		name: 'templates',
-		tooltip: 'Templates',
-		icon: LuFileCode2,
-		ariaLabel: 'Open templates',
-	},
-	{
-		name: 'worldInfo',
-		tooltip: 'World Info',
-		icon: LuBookOpen,
-		ariaLabel: 'Open world info',
-	},
-	{
-		name: 'operationProfiles',
-		tooltip: 'Operations',
-		icon: LuWorkflow,
-		ariaLabel: 'Open operations',
-	},
-] as const;
+	{ name: 'agentCards', labelKey: 'leftRail.agentCards', icon: LuIdCard },
+	{ name: 'settings', labelKey: 'leftRail.settings', icon: LuSettings },
+	{ name: 'userPersons', labelKey: 'leftRail.userPersons', icon: LuSquareUser },
+	{ name: 'instructions', labelKey: 'leftRail.instructions', icon: LuFileText },
+	{ name: 'templates', labelKey: 'leftRail.templates', icon: LuFileCode2 },
+	{ name: 'worldInfo', labelKey: 'leftRail.worldInfo', icon: LuBookOpen },
+	{ name: 'operationProfiles', labelKey: 'leftRail.operationProfiles', icon: LuWorkflow },
+];
 
 const appSettingsButton: SidebarButton = {
 	name: 'appSettings',
-	tooltip: 'Настройки приложения',
+	labelKey: 'leftRail.appSettings',
 	icon: LuSettings2,
-	ariaLabel: 'Open app settings',
 };
 
 export const LeftBar = () => {
-	return (
-		<Box
-			style={{
-				width: 70,
-				position: 'fixed',
-				left: 0,
-				top: 0,
-				height: '100vh',
-				background: 'white',
-				paddingTop: 16,
-				zIndex: 2,
-				display: 'flex',
-				flexDirection: 'column',
-				alignItems: 'center',
-				gap: 16,
-			}}
-		>
-			<Stack gap="md" style={{ flex: 1 }}>
-				{sidebarButtons.map((button) => (
-					<Box key={button.name}>
-						<IconButtonWithTooltip
-							tooltip={button.tooltip}
-							variant="outline"
-							size="lg"
-							colorPalette="purple"
-							aria-label={button.ariaLabel}
-							onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
-							icon={<button.icon />}
-						/>
-					</Box>
-				))}
-			</Stack>
-			<Box pb={16}>
+	const { t } = useTranslation();
+	const sidebars = useUnit($sidebars);
+
+	const renderButton = (button: SidebarButton) => {
+		const section = t(button.labelKey);
+		const isActive = Boolean(sidebars[button.name]?.isOpen);
+
+		return (
+			<Box key={button.name} className="ts-rail-button-wrap" data-active={isActive}>
 				<IconButtonWithTooltip
-					tooltip={appSettingsButton.tooltip}
-					variant="outline"
-					size="lg"
+					tooltip={section}
+					variant="ghost"
+					size="md"
+					radius="sm"
+					iconSize={16}
 					colorPalette="gray"
-					aria-label={appSettingsButton.ariaLabel}
-					onClick={() => toggleSidebarOpen({ name: appSettingsButton.name, isOpen: true })}
-					icon={<appSettingsButton.icon />}
+					active={isActive}
+					aria-label={t('leftRail.open', { section })}
+					onClick={() => toggleSidebarOpen({ name: button.name, isOpen: true })}
+					icon={<button.icon />}
 				/>
 			</Box>
+		);
+	};
+
+	return (
+		<Box className="ts-left-rail">
+			<Box className="ts-left-rail__top">{sidebarButtons.map(renderButton)}</Box>
+			<Box className="ts-left-rail__bottom">{renderButton(appSettingsButton)}</Box>
 		</Box>
 	);
 };

@@ -1,6 +1,7 @@
 import { Box, Button, Flex, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-entry-parts';
 import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
@@ -10,6 +11,7 @@ import { SendActionMenu } from './send-action-menu';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 
 export const MessageInput = () => {
+	const { t } = useTranslation();
 	const isProcessing = useUnit($isChatStreaming);
 	const message = useUnit($userMessage);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -35,14 +37,14 @@ export const MessageInput = () => {
 	};
 
 	return (
-		<Box w="100%" bg="white" p="md" bdrs="sm">
-			<Flex direction="column" gap="md" w="100%">
+		<Box w="100%" className="ts-chat-input">
+			<Flex direction="column" gap="sm" w="100%">
 				<Textarea
 					ref={textareaRef}
 					value={message}
 					onChange={handleInputChange}
 					onKeyDown={handleKeyDown}
-					placeholder="Введите сообщение..."
+					placeholder={t('chat.input.placeholder')}
 					disabled={isProcessing}
 					autosize
 					minRows={1}
@@ -53,14 +55,15 @@ export const MessageInput = () => {
 					styles={{
 						input: {
 							overflow: 'hidden',
+							backgroundColor: 'transparent',
 						},
 					}}
 				/>
 				<Flex justify="flex-end">
 					<Flex gap="xs">
 						<SendActionMenu />
-						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'blue'} style={{ whiteSpace: 'nowrap' }}>
-							{isProcessing ? 'Оборвать' : 'Отправить'}
+						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'cyan'} style={{ whiteSpace: 'nowrap' }}>
+							{isProcessing ? t('chat.input.abort') : t('chat.input.send')}
 						</Button>
 					</Flex>
 				</Flex>

@@ -1,32 +1,32 @@
-import { Drawer } from '@ui/drawer';
-
 import { Group, Select, Stack } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuCopy, LuDownload, LuPlus, LuTrash2, LuUpload } from 'react-icons/lu';
 
 import {
 	$promptTemplates,
 	$selectedPromptTemplateId,
 	createPromptTemplateRequested,
-	duplicatePromptTemplateRequested,
 	deletePromptTemplateRequested,
+	duplicatePromptTemplateRequested,
 	importPromptTemplateRequested,
 	promptTemplateSelected,
 } from '@model/prompt-templates';
-
-import { toaster } from '@ui/toaster';
+import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { toaster } from '@ui/toaster';
 
 import { PromptTemplateEditor } from './prompt-template-editor';
 
 export const TemplateSidebar = () => {
+	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [templates, selectedId] = useUnit([$promptTemplates, $selectedPromptTemplateId]);
 	const onImport = useUnit(importPromptTemplateRequested);
 
-	const options = templates.map((t) => ({ value: t.id, label: t.name }));
-	const selectedTemplate = templates.find((t) => t.id === selectedId) ?? null;
+	const options = templates.map((template) => ({ value: template.id, label: template.name }));
+	const selectedTemplate = templates.find((template) => template.id === selectedId) ?? null;
 
 	const doExport = () => {
 		if (!selectedTemplate) {
@@ -61,15 +61,16 @@ export const TemplateSidebar = () => {
 		if (!file) return;
 
 		const reader = new FileReader();
-		reader.onload = (e) => {
+		reader.onload = (readEvent) => {
 			try {
-				const content = String(e.target?.result ?? '');
+				const content = String(readEvent.target?.result ?? '');
 				const json = JSON.parse(content) as any;
 
-				const tpl = json?.template ?? json?.promptTemplate ?? json;
-				const name = typeof tpl?.name === 'string' ? tpl.name : 'Imported template';
-				const templateText = typeof tpl?.templateText === 'string' ? tpl.templateText : typeof tpl?.template === 'string' ? tpl.template : '';
-				const meta = typeof tpl?.meta === 'undefined' ? undefined : tpl.meta;
+				const template = json?.template ?? json?.promptTemplate ?? json;
+				const name = typeof template?.name === 'string' ? template.name : 'Imported template';
+				const templateText =
+					typeof template?.templateText === 'string' ? template.templateText : typeof template?.template === 'string' ? template.template : '';
+				const meta = typeof template?.meta === 'undefined' ? undefined : template.meta;
 
 				if (!templateText.trim()) {
 					toaster.error({ title: 'Ошибка импорта', description: 'Файл не содержит templateText' });
@@ -78,10 +79,10 @@ export const TemplateSidebar = () => {
 
 				onImport({ name, templateText, meta });
 				toaster.success({ title: 'Импорт успешен', description: name });
-			} catch (err) {
+			} catch (error) {
 				toaster.error({
 					title: 'Ошибка импорта',
-					description: err instanceof Error ? err.message : 'Не удалось прочитать файл',
+					description: error instanceof Error ? error.message : 'Не удалось прочитать файл',
 				});
 			} finally {
 				if (fileInputRef.current) fileInputRef.current.value = '';
@@ -91,11 +92,11 @@ export const TemplateSidebar = () => {
 	};
 
 	return (
-		<Drawer name="templates" title="Prompt templates">
+		<Drawer name="templates" title={t('sidebars.templatesTitle')}>
 			<Stack gap="md">
 				<input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={handleFileChange} />
 
-				<Group gap="sm" wrap="nowrap">
+				<Group gap="sm" wrap="nowrap" className="ts-sidebar-toolbar">
 					<Select
 						data={options}
 						value={selectedId}
@@ -103,22 +104,22 @@ export const TemplateSidebar = () => {
 							if (!id) return;
 							promptTemplateSelected(id);
 						}}
-						placeholder="Выберите шаблон"
+						placeholder={t('sidebars.selectTemplate')}
 						comboboxProps={{ withinPortal: false }}
-						style={{ flex: 1 }}
+						className="ts-sidebar-toolbar__main"
 					/>
 
-					<Group gap="xs" wrap="nowrap">
+					<Group gap="xs" wrap="nowrap" className="ts-sidebar-toolbar__actions">
 						<IconButtonWithTooltip
-							tooltip="Создать"
+							tooltip={t('common.create')}
 							icon={<LuPlus />}
-							aria-label="Create"
+							aria-label={t('common.create')}
 							onClick={() => createPromptTemplateRequested()}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Дублировать"
+							tooltip={t('common.duplicate')}
 							icon={<LuCopy />}
-							aria-label="Duplicate"
+							aria-label={t('common.duplicate')}
 							disabled={!selectedId}
 							onClick={() => {
 								if (!selectedId) return;
@@ -126,22 +127,22 @@ export const TemplateSidebar = () => {
 							}}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Импортировать"
+							tooltip={t('common.import')}
 							icon={<LuUpload />}
-							aria-label="Import"
+							aria-label={t('common.import')}
 							onClick={() => fileInputRef.current?.click()}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Экспортировать"
+							tooltip={t('common.export')}
 							icon={<LuDownload />}
-							aria-label="Export"
+							aria-label={t('common.export')}
 							disabled={!selectedId}
 							onClick={doExport}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Удалить"
+							tooltip={t('common.delete')}
 							icon={<LuTrash2 />}
-							aria-label="Delete"
+							aria-label={t('common.delete')}
 							color="red"
 							variant="outline"
 							disabled={!selectedId}

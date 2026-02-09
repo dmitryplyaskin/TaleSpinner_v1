@@ -28,7 +28,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({ data }) => {
 	}
 
 	return (
-		<Paper withBorder radius="md" p="md">
+		<Paper withBorder radius="md" p="md" className="ts-sidebar-card">
 			<Group justify="space-between" align="center" mb="xs" wrap="nowrap">
 				<Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
 					<Avatar size="md" name={data.name} src={data.avatarUrl ? `http://localhost:5000${data.avatarUrl}` : undefined} />

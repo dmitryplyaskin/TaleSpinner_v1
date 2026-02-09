@@ -1,10 +1,12 @@
 import { Avatar, Card, Group, Stack, Text } from '@mantine/core';
-import type { EntityProfileDto } from '../../../api/chat-core';
 import { LuTrash2 } from 'react-icons/lu';
 
 import { deleteEntityProfileRequested, selectEntityProfile } from '@model/chat-core';
-import { BACKEND_ORIGIN } from '../../../api/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+import { BACKEND_ORIGIN } from '../../../api/chat-core';
+
+import type { EntityProfileDto } from '../../../api/chat-core';
 
 type Props = {
 	data: EntityProfileDto;
@@ -18,7 +20,7 @@ export const AgentCard: React.FC<Props> = ({ data }) => {
 	const avatarSrc = data.avatarAssetId ? `${BACKEND_ORIGIN}${data.avatarAssetId}` : undefined;
 
 	return (
-		<Card withBorder padding="md" onClick={handleSelect} style={{ cursor: 'pointer', position: 'relative' }}>
+		<Card withBorder padding="md" onClick={handleSelect} className="ts-sidebar-card" style={{ cursor: 'pointer', position: 'relative' }}>
 			<Group gap="sm" wrap="nowrap" align="flex-start">
 				<Avatar size="lg" name={data.name} src={avatarSrc} />
 				<Stack gap={6} style={{ flex: 1, minWidth: 0 }}>

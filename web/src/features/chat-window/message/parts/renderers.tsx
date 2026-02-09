@@ -1,16 +1,16 @@
-import type React from 'react';
 import { Box, Code, Paper, Text } from '@mantine/core';
 
 import { RenderMd } from '@ui/render-md';
 
 import type { Part } from '@shared/types/chat-entry-parts';
+import type React from 'react';
 
 export type PartRenderer = React.FC<{ part: Part }>;
 
 const TextRenderer: PartRenderer = ({ part }) => {
 	const content = typeof part.payload === 'string' ? part.payload : '';
 	return (
-		<Text style={{ whiteSpace: 'pre-wrap' }} size="sm">
+		<Text style={{ whiteSpace: 'pre-wrap' }} size="sm" className="ts-chat-serif">
 			{content}
 		</Text>
 	);
@@ -18,7 +18,7 @@ const TextRenderer: PartRenderer = ({ part }) => {
 
 const MarkdownRenderer: PartRenderer = ({ part }) => {
 	const content = typeof part.payload === 'string' ? part.payload : '';
-	return <RenderMd content={content} />;
+	return <RenderMd content={content} containerProps={{ className: 'ts-chat-serif' }} />;
 };
 
 const JsonRenderer: PartRenderer = ({ part }) => {

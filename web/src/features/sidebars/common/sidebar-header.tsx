@@ -52,16 +52,16 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 	return (
 		<>
 			<input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".json" onChange={handleFileChange} />
-			<Group gap="sm" align="flex-end" wrap="nowrap">
+			<Group gap="sm" align="flex-end" wrap="nowrap" className="ts-sidebar-toolbar">
 				<Select
 					data={options}
 					value={settings?.selectedId ?? null}
 					onChange={(selectedId) => model.updateSettingsFx({ ...settings, selectedId: selectedId ?? null } as Partial<SettingsType>)}
 					comboboxProps={{ withinPortal: false }}
-					style={{ flex: 1 }}
+					className="ts-sidebar-toolbar__main"
 				/>
 
-				<Group gap="xs" wrap="nowrap">
+				<Group gap="xs" wrap="nowrap" className="ts-sidebar-toolbar__actions">
 					<IconButtonWithTooltip
 						tooltip={labels.createTooltip}
 						icon={<LuPlus />}

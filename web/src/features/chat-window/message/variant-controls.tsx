@@ -1,11 +1,13 @@
 import { Group, Paper, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
 
-import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
 import { $variantsByEntryId, loadVariantsFx, regenerateRequested, selectVariantRequested } from '@model/chat-entry-parts';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
 
 type Props = {
 	entry: ChatEntryWithVariantDto;
@@ -19,8 +21,9 @@ function pickActiveIndex(variants: Array<{ variantId: string }>, activeVariantId
 }
 
 export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
+	const { t } = useTranslation();
 	const variantsById = useUnit($variantsByEntryId);
-	const variants = variantsById[entry.entry.entryId] ?? [];
+	const variants = useMemo(() => variantsById[entry.entry.entryId] ?? [], [variantsById, entry.entry.entryId]);
 
 	const isImportedFirstMessage =
 		entry.variant?.kind === 'import' &&
@@ -33,11 +36,9 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 		if (!isLast) return;
 		if (entry.entry.role !== 'assistant') return;
 		if (variants.length > 0) return;
-		// Best-effort: ensure we have variants loaded for swipe UI.
 		void loadVariantsFx({ entryId: entry.entry.entryId });
 	}, [isLast, entry.entry.entryId, entry.entry.role, variants.length]);
 
-	// Hooks must be called unconditionally (React rules of hooks).
 	const currentIndex = useMemo(
 		() => pickActiveIndex(variants, entry.entry.activeVariantId),
 		[variants, entry.entry.activeVariantId],
@@ -58,7 +59,6 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 
 	const handleRight = () => {
 		if (total === 0) {
-			// Variants are loaded lazily. Do not treat "no variants loaded" as regenerate.
 			void loadVariantsFx({ entryId: entry.entry.entryId });
 			return;
 		}
@@ -76,24 +76,15 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 	const rightDisabled = total === 0 ? true : isImportedFirstMessage ? isLastVariant : false;
 
 	return (
-		<Paper
-			withBorder
-			radius="md"
-			p={6}
-			style={{
-				marginLeft: 'auto',
-				borderColor: 'var(--mantine-color-gray-3)',
-				backgroundColor: 'white',
-			}}
-		>
+		<Paper withBorder radius="md" p={6} style={{ marginLeft: 'auto', borderColor: 'var(--ts-border-soft)', backgroundColor: 'var(--ts-surface-elevated)' }}>
 			<Group gap="xs" align="center">
 				<IconButtonWithTooltip
 					size="xs"
 					variant="ghost"
-					colorPalette="violet"
+					colorPalette="cyan"
 					disabled={total > 0 ? isFirst : true}
 					icon={<LuArrowLeft />}
-					tooltip="Previous variant"
+					tooltip={t('chat.variants.previous')}
 					onClick={handleLeft}
 				/>
 
@@ -104,17 +95,17 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 				<IconButtonWithTooltip
 					size="xs"
 					variant="ghost"
-					colorPalette="violet"
+					colorPalette="cyan"
 					icon={<LuArrowRight />}
 					disabled={rightDisabled}
 					tooltip={
 						total === 0
-							? 'Loading…'
+							? t('chat.variants.loading')
 							: isImportedFirstMessage && isLastVariant
-								? 'Regenerate is disabled for imported greeting'
+								? t('chat.variants.regenerateBlocked')
 								: isLastVariant
-									? 'Regenerate'
-									: 'Next variant'
+									? t('chat.variants.regenerate')
+									: t('chat.variants.next')
 					}
 					onClick={handleRight}
 				/>

@@ -1,6 +1,8 @@
 import { Box, Group, Select, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { LuGitBranchPlus, LuMessageSquarePlus, LuTrash2 } from 'react-icons/lu';
 
 import {
 	$branches,
@@ -16,9 +18,8 @@ import {
 } from '@model/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
-import { LuGitBranchPlus, LuMessageSquarePlus, LuTrash2 } from 'react-icons/lu';
-
 export const ChatHeader: React.FC = () => {
+	const { t } = useTranslation();
 	const [profile, chats, chat, branches, currentBranchId] = useUnit([
 		$currentEntityProfile,
 		$chatsForCurrentProfile,
@@ -31,23 +32,11 @@ export const ChatHeader: React.FC = () => {
 	const branchOptions = branches.map((b) => ({ value: b.id, label: b.title ?? b.id }));
 
 	return (
-		<Box
-			style={{
-				position: 'sticky',
-				top: 0,
-				zIndex: 3,
-				padding: 10,
-				background: 'rgba(255,255,255,0.92)',
-				backdropFilter: 'blur(6px)',
-				borderBottom: '1px solid var(--mantine-color-gray-3)',
-				borderTopLeftRadius: 12,
-				borderTopRightRadius: 12,
-			}}
-		>
+		<Box className="ts-chat-header">
 			<Group justify="space-between" align="center" wrap="nowrap" gap="md">
 				<Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
 					<Text fw={700} truncate>
-						{profile?.name ?? 'Entity profile'}
+						{profile?.name ?? t('chat.head.entityFallback')}
 					</Text>
 
 					<Select
@@ -56,27 +45,28 @@ export const ChatHeader: React.FC = () => {
 						onChange={(chatId) => {
 							if (chatId) openChatRequested({ chatId });
 						}}
-						placeholder="Выберите чат"
+						placeholder={t('chat.head.selectChat')}
 						comboboxProps={{ withinPortal: false }}
 						style={{ flex: 1, minWidth: 220 }}
+						radius="md"
 					/>
 
 					<Group gap="xs" wrap="nowrap">
 						<IconButtonWithTooltip
-							tooltip="Создать чат"
-							aria-label="Create chat"
+							tooltip={t('chat.head.createChat')}
+							aria-label={t('chat.head.createChat')}
 							icon={<LuMessageSquarePlus />}
 							onClick={() => createChatRequested({})}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Удалить чат"
-							aria-label="Delete chat"
+							tooltip={t('chat.head.deleteChat')}
+							aria-label={t('chat.head.deleteChat')}
 							icon={<LuTrash2 />}
 							colorPalette="red"
 							disabled={!chat?.id}
 							onClick={() => {
 								if (!chat?.id) return;
-								if (!window.confirm('Удалить чат?')) return;
+								if (!window.confirm(t('chat.head.deleteChatConfirm'))) return;
 								deleteChatRequested({ chatId: chat.id });
 							}}
 						/>
@@ -90,13 +80,14 @@ export const ChatHeader: React.FC = () => {
 						onChange={(branchId) => {
 							if (branchId) activateBranchRequested({ branchId });
 						}}
-						placeholder="Ветка"
+						placeholder={t('chat.head.branch')}
 						comboboxProps={{ withinPortal: false }}
 						style={{ minWidth: 220 }}
+						radius="md"
 					/>
 					<IconButtonWithTooltip
-						tooltip="Создать ветку (fork от последнего сообщения)"
-						aria-label="Create branch"
+						tooltip={t('chat.head.createBranch')}
+						aria-label={t('chat.head.createBranch')}
 						icon={<LuGitBranchPlus />}
 						disabled={!chat?.id || !currentBranchId}
 						onClick={() => createBranchRequested({})}
@@ -106,4 +97,3 @@ export const ChatHeader: React.FC = () => {
 		</Box>
 	);
 };
-

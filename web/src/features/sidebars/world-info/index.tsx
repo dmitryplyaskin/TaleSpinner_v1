@@ -1,6 +1,7 @@
 import { Accordion, Button, Group, NumberInput, Select, Stack, Switch, Text, TextInput, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuCopy, LuDownload, LuPlus, LuRefreshCw, LuTrash2, LuUpload } from 'react-icons/lu';
 
 import { $currentChat } from '@model/chat-core';
@@ -48,6 +49,7 @@ const EMPTY_BOOK_DATA_JSON = `{
 }`;
 
 export const WorldInfoSidebar = () => {
+	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const [books, selectedId, selectedBook, settings, isBoundToCurrentChat, currentChat] = useUnit([
@@ -187,7 +189,7 @@ export const WorldInfoSidebar = () => {
 	};
 
 	return (
-		<Drawer name="worldInfo" title="World Info">
+		<Drawer name="worldInfo" title={t('sidebars.worldInfoTitle')}>
 			<Stack gap="md">
 				<input
 					type="file"
@@ -197,25 +199,25 @@ export const WorldInfoSidebar = () => {
 					onChange={handleFileChange}
 				/>
 
-				<Group gap="sm" wrap="nowrap" align="flex-end">
+				<Group gap="sm" wrap="nowrap" align="flex-end" className="ts-sidebar-toolbar">
 					<Select
 						data={bookOptions}
 						value={selectedId}
 						onChange={(id) => worldInfoBookSelected(id ?? null)}
-						placeholder="Выберите World Info книгу"
+						placeholder={t('sidebars.selectWorldInfoBook')}
 						comboboxProps={{ withinPortal: false }}
-						style={{ flex: 1 }}
+						className="ts-sidebar-toolbar__main"
 					/>
 
-					<Group gap="xs" wrap="nowrap">
+					<Group gap="xs" wrap="nowrap" className="ts-sidebar-toolbar__actions">
 						<IconButtonWithTooltip
-							tooltip="Создать"
+							tooltip={t('common.create')}
 							icon={<LuPlus />}
 							aria-label="Create world info book"
 							onClick={() => worldInfoBookCreateRequested()}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Дублировать"
+							tooltip={t('common.duplicate')}
 							icon={<LuCopy />}
 							aria-label="Duplicate world info book"
 							disabled={!selectedId}
@@ -225,20 +227,20 @@ export const WorldInfoSidebar = () => {
 							}}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Импорт"
+							tooltip={t('common.import')}
 							icon={<LuUpload />}
 							aria-label="Import world info book"
 							onClick={() => fileInputRef.current?.click()}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Экспорт"
+							tooltip={t('common.export')}
 							icon={<LuDownload />}
 							aria-label="Export world info book"
 							disabled={!selectedId}
 							onClick={() => void handleExport()}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Обновить"
+							tooltip={t('common.refresh')}
 							icon={<LuRefreshCw />}
 							aria-label="Refresh world info"
 							onClick={() => {
@@ -250,7 +252,7 @@ export const WorldInfoSidebar = () => {
 							}}
 						/>
 						<IconButtonWithTooltip
-							tooltip="Удалить"
+							tooltip={t('common.delete')}
 							icon={<LuTrash2 />}
 							aria-label="Delete world info book"
 							color="red"
@@ -267,7 +269,7 @@ export const WorldInfoSidebar = () => {
 
 				{!selectedBook ? (
 					<Text c="dimmed" size="sm">
-						Выберите книгу, чтобы редактировать ее JSON и привязки.
+						{t('sidebars.selectBookToEdit')}
 					</Text>
 				) : (
 					<Stack gap="sm">

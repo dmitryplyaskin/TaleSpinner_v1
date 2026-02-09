@@ -43,12 +43,11 @@ export const RenderMd = ({ content, variant = 'default', containerProps }: Rende
 			<Markdown
 				remarkPlugins={[remarkGfm, quotePlugin, remarkBreaks]}
 				rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-				components={getComponents(variant)}
-				// components={{ Quote: () =>  QuoteComponent }}
-			>
-				{content}
-			</Markdown>
-		</Box>
+		components={getComponents(variant)}
+		>
+			{content}
+		</Markdown>
+	</Box>
 	);
 };
 
@@ -68,7 +67,7 @@ function getComponents(variant: RenderMdVariant): Components {
 	return {
 		em(props) {
 			const { node: _node, ...rest } = props;
-			return <i style={{ color: 'red' }} {...rest} />;
+			return <em {...rest} />;
 		},
 		q: QuoteComponent,
 		a(props) {
@@ -95,7 +94,7 @@ function getComponents(variant: RenderMdVariant): Components {
 		},
 		p(props) {
 			const { node: _node, ...rest } = props;
-			return <Text my={variant === 'compact' ? 4 : 8} {...rest} />;
+			return <Text my={variant === 'compact' ? 4 : 8} lh={1.65} {...rest} />;
 		},
 		pre(props) {
 			const { node: _node, ...rest } = props;

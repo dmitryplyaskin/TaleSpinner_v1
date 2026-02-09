@@ -1,9 +1,12 @@
-import { ActionIcon, Drawer as MantineDrawer, Group, Title } from '@mantine/core';
+import { Box, Drawer as MantineDrawer, Modal } from '@mantine/core';
 import { useStoreMap } from 'effector-react';
-import type { ReactNode } from 'react';
-import { LuArrowRightToLine, LuArrowLeftToLine, LuFullscreen } from 'react-icons/lu';
+import { useTranslation } from 'react-i18next';
 
 import { $sidebars, changeSidebarSettings, type SidebarName, toggleSidebarOpen } from '@model/sidebars';
+
+import { SidebarShell } from './sidebar-shell';
+
+import type { ReactNode } from 'react';
 
 type Props = {
 	name: SidebarName;
@@ -12,9 +15,20 @@ type Props = {
 	defaultSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 	defaultPlacement?: 'start' | 'end' | 'top' | 'bottom';
 	contained?: boolean;
+	fullscreenContentMaxWidth?: number;
+	fixedSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 };
 
-export const Drawer = ({ name, title, children }: Props) => {
+const drawerWidthBySize: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', number> = {
+	xs: 340,
+	sm: 400,
+	md: 480,
+	lg: 560,
+	xl: 640,
+};
+
+export const Drawer = ({ name, title, children, fullscreenContentMaxWidth = 1440, fixedSize, defaultSize = 'md' }: Props) => {
+	const { t } = useTranslation();
 	const sidebar = useStoreMap({
 		store: $sidebars,
 		keys: [name],
@@ -22,54 +36,86 @@ export const Drawer = ({ name, title, children }: Props) => {
 	});
 
 	const { isOpen, isFullscreen, placement, size, contained } = sidebar;
+	const resolvedSize = fixedSize ?? size ?? defaultSize;
+	const fullScreen = isFullscreen || resolvedSize === 'full';
+	const drawerWidth = resolvedSize === 'full' ? '100%' : drawerWidthBySize[resolvedSize];
 
 	const handleClose = () => {
 		toggleSidebarOpen({ name, isOpen: false });
 	};
 
+	const handleToggleFullscreen = () => {
+		const nextFullscreen = !fullScreen;
+		const fallbackSize = fixedSize ?? defaultSize;
+		changeSidebarSettings({
+			name,
+			settings: nextFullscreen
+				? { isFullscreen: true }
+				: { isFullscreen: false, ...(resolvedSize === 'full' ? { size: fallbackSize } : {}) },
+		});
+	};
+
 	if (!isOpen) return null;
 
 	const position: 'left' | 'right' = placement === 'end' ? 'right' : 'left';
-	const fullScreen = isFullscreen || size === 'full';
+	const shell = (
+		<SidebarShell
+			title={title}
+			isFullscreen={fullScreen}
+			placement={placement}
+			onClose={handleClose}
+			onToggleFullscreen={handleToggleFullscreen}
+			onTogglePlacement={() =>
+				changeSidebarSettings({ name, settings: { placement: placement === 'start' ? 'end' : 'start' } })
+			}
+			labels={{
+				toggleFullscreen: t('drawer.toggleFullscreen'),
+				togglePlacement: t('drawer.togglePlacement'),
+				close: t('drawer.close'),
+			}}
+		>
+			{children}
+		</SidebarShell>
+	);
+
+	if (fullScreen) {
+		return (
+			<Modal
+				opened={isOpen}
+				onClose={handleClose}
+				fullScreen
+				withinPortal={!contained}
+				withCloseButton={false}
+				padding={0}
+				zIndex={3000}
+				classNames={{
+					content: 'ts-sidebar-modal-content',
+					body: 'ts-sidebar-modal-body',
+				}}
+			>
+				<Box className="ts-sidebar-modal-frame ts-scrollbar-thin">
+					<Box className="ts-sidebar-modal-container" style={{ maxWidth: fullscreenContentMaxWidth }}>
+						{shell}
+					</Box>
+				</Box>
+			</Modal>
+		);
+	}
 
 	return (
 		<MantineDrawer
 			opened={isOpen}
 			onClose={handleClose}
 			position={position}
-			size={fullScreen ? '100%' : size ?? 'lg'}
+			size={drawerWidth}
+			radius={0}
 			withOverlay={!contained}
 			withinPortal={!contained}
+			withCloseButton={false}
 			zIndex={3000}
+			classNames={{ content: 'ts-sidebar-drawer-content', body: 'ts-sidebar-drawer-body' }}
 		>
-			<Group justify="space-between" align="center" mb="md" wrap="nowrap">
-				<Title order={4} style={{ lineHeight: 1.2 }}>
-					{title}
-				</Title>
-				<Group gap="xs" wrap="nowrap">
-					<ActionIcon
-						aria-label="Toggle fullscreen"
-						variant={isFullscreen ? 'filled' : 'subtle'}
-						onClick={() => changeSidebarSettings({ name, settings: { isFullscreen: !isFullscreen } })}
-					>
-						<LuFullscreen />
-					</ActionIcon>
-					<ActionIcon
-						aria-label="Toggle placement"
-						variant="subtle"
-						onClick={() =>
-							changeSidebarSettings({ name, settings: { placement: placement === 'start' ? 'end' : 'start' } })
-						}
-					>
-						{placement === 'start' ? <LuArrowRightToLine /> : <LuArrowLeftToLine />}
-					</ActionIcon>
-					<ActionIcon aria-label="Close sidebar" variant="subtle" onClick={handleClose}>
-						×
-					</ActionIcon>
-				</Group>
-			</Group>
-
-			{children}
+			{shell}
 		</MantineDrawer>
 	);
 };
