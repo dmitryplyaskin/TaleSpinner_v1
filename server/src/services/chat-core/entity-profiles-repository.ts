@@ -12,6 +12,7 @@ export type EntityProfileDto = {
   kind: "CharSpec";
   spec: unknown;
   meta: unknown | null;
+  isFavorite: boolean;
   avatarAssetId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -25,6 +26,7 @@ function rowToDto(row: typeof entityProfiles.$inferSelect): EntityProfileDto {
     kind: row.kind,
     spec: safeJsonParse(row.specJson, {}),
     meta: safeJsonParse(row.metaJson, null),
+    isFavorite: row.isFavorite,
     avatarAssetId: row.avatarAssetId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -58,6 +60,7 @@ export async function createEntityProfile(params: {
   kind?: "CharSpec";
   spec: unknown;
   meta?: unknown;
+  isFavorite?: boolean;
   avatarAssetId?: string;
 }): Promise<EntityProfileDto> {
   const db = await initDb();
@@ -71,6 +74,7 @@ export async function createEntityProfile(params: {
     kind: params.kind ?? "CharSpec",
     specJson: safeJsonStringify(params.spec, "{}"),
     metaJson: typeof params.meta === "undefined" ? null : safeJsonStringify(params.meta),
+    isFavorite: params.isFavorite ?? false,
     avatarAssetId: params.avatarAssetId ?? null,
     createdAt: ts,
     updatedAt: ts,
@@ -86,6 +90,7 @@ export async function createEntityProfile(params: {
       kind: params.kind ?? "CharSpec",
       spec: params.spec,
       meta: params.meta ?? null,
+      isFavorite: params.isFavorite ?? false,
       avatarAssetId: params.avatarAssetId ?? null,
       createdAt: ts,
       updatedAt: ts,
@@ -100,6 +105,7 @@ export async function updateEntityProfile(params: {
   kind?: "CharSpec";
   spec?: unknown;
   meta?: unknown;
+  isFavorite?: boolean;
   avatarAssetId?: string | null;
 }): Promise<EntityProfileDto | null> {
   const db = await initDb();
@@ -110,6 +116,7 @@ export async function updateEntityProfile(params: {
   if (typeof params.kind === "string") set.kind = params.kind;
   if (typeof params.spec !== "undefined") set.specJson = safeJsonStringify(params.spec, "{}");
   if (typeof params.meta !== "undefined") set.metaJson = safeJsonStringify(params.meta);
+  if (typeof params.isFavorite === "boolean") set.isFavorite = params.isFavorite;
   if (typeof params.avatarAssetId !== "undefined") set.avatarAssetId = params.avatarAssetId;
 
   await db.update(entityProfiles).set(set).where(eq(entityProfiles.id, params.id));

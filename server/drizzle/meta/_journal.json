@@ -99,6 +99,13 @@
       "when": 1770672000000,
       "tag": "0017_llm_generations_message_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1770700000000,
+      "tag": "0018_entity_profiles_favorite",
+      "breakpoints": true
     }
   ]
 }

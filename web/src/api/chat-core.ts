@@ -58,6 +58,7 @@ export type EntityProfileDto = {
 	kind: 'CharSpec';
 	spec: unknown;
 	meta: unknown | null;
+	isFavorite: boolean;
 	avatarAssetId: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -103,6 +104,7 @@ export async function createEntityProfile(params: {
 	spec: unknown;
 	meta?: unknown;
 	ownerId?: string;
+	isFavorite?: boolean;
 	avatarAssetId?: string;
 }): Promise<EntityProfileDto> {
 	return apiJson<EntityProfileDto>('/entity-profiles', {
@@ -113,6 +115,29 @@ export async function createEntityProfile(params: {
 			kind: 'CharSpec',
 			spec: params.spec,
 			meta: params.meta,
+			isFavorite: params.isFavorite,
+			avatarAssetId: params.avatarAssetId,
+		}),
+	});
+}
+
+export async function updateEntityProfile(params: {
+	id: string;
+	name?: string;
+	kind?: 'CharSpec';
+	spec?: unknown;
+	meta?: unknown;
+	isFavorite?: boolean;
+	avatarAssetId?: string | null;
+}): Promise<EntityProfileDto> {
+	return apiJson<EntityProfileDto>(`/entity-profiles/${encodeURIComponent(params.id)}`, {
+		method: 'PUT',
+		body: JSON.stringify({
+			name: params.name,
+			kind: params.kind,
+			spec: params.spec,
+			meta: params.meta,
+			isFavorite: params.isFavorite,
 			avatarAssetId: params.avatarAssetId,
 		}),
 	});
@@ -132,6 +157,53 @@ export async function importEntityProfiles(files: File[]): Promise<ImportEntityP
 
 export async function deleteEntityProfile(id: string): Promise<{ id: string }> {
 	return apiJson<{ id: string }>(`/entity-profiles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function exportEntityProfileFile(params: {
+	id: string;
+	format: 'json' | 'png';
+	preferredName?: string;
+}): Promise<{ blob: Blob; filename: string; contentType: string }> {
+	const res = await fetch(
+		`${BASE_URL}/entity-profiles/${encodeURIComponent(params.id)}/export?format=${encodeURIComponent(params.format)}`,
+		{
+			method: 'GET',
+		},
+	);
+	if (!res.ok) {
+		let message = `HTTP error ${res.status}`;
+		try {
+			const body = (await res.json()) as { error?: { message?: string } };
+			message = body?.error?.message ?? message;
+		} catch {
+			// ignore parse error
+		}
+		throw new Error(message);
+	}
+
+	const blob = await res.blob();
+	const contentType = res.headers.get('content-type') ?? blob.type ?? 'application/octet-stream';
+	const disposition = res.headers.get('content-disposition') ?? '';
+	const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+	const plainMatch = disposition.match(/filename="?([^"]+)"?/i);
+	let fromHeader: string | undefined;
+	if (utf8Match?.[1]) {
+		try {
+			fromHeader = decodeURIComponent(utf8Match[1]);
+		} catch {
+			fromHeader = utf8Match[1];
+		}
+	} else {
+		fromHeader = plainMatch?.[1];
+	}
+	const safePreferredName = (params.preferredName ?? 'entity_profile').replace(/[\\/:*?"<>|]+/g, '_').trim();
+	const defaultFilename = `${safePreferredName.length > 0 ? safePreferredName : 'entity_profile'}.${params.format}`;
+	const safeHeaderFilename = (fromHeader ?? '').replace(/[\\/:*?"<>|]+/g, '_').trim();
+	return {
+		blob,
+		filename: safeHeaderFilename.length > 0 ? safeHeaderFilename : defaultFilename,
+		contentType,
+	};
 }
 
 export async function listChatsForEntityProfile(entityProfileId: string): Promise<ChatDto[]> {

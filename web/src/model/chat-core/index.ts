@@ -15,6 +15,7 @@ import {
 	listChatsForEntityProfile,
 	listEntityProfiles,
 	setChatPromptTemplate,
+	updateEntityProfile,
 } from '../../api/chat-core';
 import { listChatEntries } from '../../api/chat-entry-parts';
 import i18n from '../../i18n';
@@ -59,6 +60,42 @@ $currentEntityProfile.on(clearCurrentEntityProfile, () => null);
 export const createEntityProfileFx = createEffect(async (params: { name: string }): Promise<EntityProfileDto> => {
 	return createEntityProfile({ name: params.name, spec: makeMinimalCharSpecV3(params.name) });
 });
+
+export const updateEntityProfileRequested = createEvent<{
+	id: string;
+	name?: string;
+	kind?: 'CharSpec';
+	spec?: unknown;
+	meta?: unknown;
+	isFavorite?: boolean;
+	avatarAssetId?: string | null;
+}>();
+
+export const updateEntityProfileFx = createEffect(
+	async (params: {
+		id: string;
+		name?: string;
+		kind?: 'CharSpec';
+		spec?: unknown;
+		meta?: unknown;
+		isFavorite?: boolean;
+		avatarAssetId?: string | null;
+	}): Promise<EntityProfileDto> => {
+		return updateEntityProfile(params);
+	},
+);
+
+export const $updateEntityProfilePendingId = createStore<string | null>(null)
+	.on(updateEntityProfileFx, (_, params) => params.id)
+	.on(updateEntityProfileFx.finally, (state, { params }) => (state === params.id ? null : state));
+
+sample({
+	clock: updateEntityProfileRequested,
+	target: updateEntityProfileFx,
+});
+
+$entityProfiles.on(updateEntityProfileFx.doneData, (items, updated) => items.map((item) => (item.id === updated.id ? updated : item)));
+$currentEntityProfile.on(updateEntityProfileFx.doneData, (current, updated) => (current?.id === updated.id ? updated : current));
 
 export const importEntityProfilesFx = createEffect(async (files: File[]): Promise<ImportEntityProfilesResponse> => {
 	return importEntityProfiles(files);
@@ -357,6 +394,13 @@ deleteEntityProfileFx.doneData.watch(() => {
 deleteEntityProfileFx.failData.watch((error) => {
 	toaster.error({
 		title: i18n.t('chat.toasts.deleteProfileError'),
+		description: error instanceof Error ? error.message : String(error),
+	});
+});
+
+updateEntityProfileFx.failData.watch((error) => {
+	toaster.error({
+		title: i18n.t('chat.toasts.updateProfileError'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });

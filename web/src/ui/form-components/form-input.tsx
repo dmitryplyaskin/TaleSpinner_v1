@@ -35,7 +35,7 @@ export const FormInput: React.FC<FormInputProps> = ({
 	const errorMessage = typeof fieldState.error?.message === 'string' ? fieldState.error.message : '';
 
 	const labelComponent = (
-		<Group gap={6} wrap="nowrap">
+		<Group gap={6} wrap="nowrap" align="center" style={{ marginBottom: 2 }}>
 			{label}
 			{infoTip && <InfoTip content={infoTip} />}
 		</Group>

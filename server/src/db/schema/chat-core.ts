@@ -23,6 +23,7 @@ export const entityProfiles = sqliteTable(
     kind: text("kind", { enum: ["CharSpec"] }).notNull().default("CharSpec"),
     specJson: text("spec_json").notNull(),
     metaJson: text("meta_json"),
+    isFavorite: integer("is_favorite", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
     avatarAssetId: text("avatar_asset_id"),
@@ -30,6 +31,11 @@ export const entityProfiles = sqliteTable(
   (t) => ({
     ownerUpdatedAtIdx: index("entity_profiles_owner_updated_at_idx").on(
       t.ownerId,
+      t.updatedAt
+    ),
+    ownerFavoriteUpdatedAtIdx: index("entity_profiles_owner_favorite_updated_at_idx").on(
+      t.ownerId,
+      t.isFavorite,
       t.updatedAt
     ),
   })

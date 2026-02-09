@@ -39,6 +39,7 @@ export const createEntityProfileBodySchema = z.object({
   kind: z.literal("CharSpec").optional().default("CharSpec"),
   spec: jsonValueSchema,
   meta: jsonValueSchema.optional(),
+  isFavorite: z.boolean().optional(),
   avatarAssetId: z.string().min(1).optional(),
 });
 
@@ -49,6 +50,7 @@ export const updateEntityProfileBodySchema = z.object({
   kind: z.literal("CharSpec").optional(),
   spec: jsonValueSchema.optional(),
   meta: jsonValueSchema.optional(),
+  isFavorite: z.boolean().optional(),
   avatarAssetId: z.string().min(1).nullable().optional(),
 });
 
