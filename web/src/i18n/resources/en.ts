@@ -108,8 +108,18 @@ const en = {
 		},
 		appSettings: {
 			title: 'App settings',
+			tabs: {
+				general: 'General',
+				styles: 'Styles',
+			},
 			sections: {
 				general: 'General settings',
+			},
+			styles: {
+				theme: 'Theme',
+				light: 'Light',
+				dark: 'Dark',
+				description: 'Additional app visual customization settings will appear here.',
 			},
 			language: {
 				label: 'Language',

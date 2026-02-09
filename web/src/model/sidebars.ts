@@ -53,20 +53,39 @@ export const defaultSidebars: SidebarSettings = {
 	},
 	worldInfo: {
 		...defaultSidebarSetting,
-		size: 'xl',
 	},
 	appSettings: {
 		...defaultSidebarSetting,
-		isFullscreen: true,
-		size: 'full',
 	},
 };
 
+function normalizeLegacySidebarSettings(incoming: SidebarSettings): SidebarSettings {
+	const normalized = { ...incoming };
+	const settings = normalized.settings;
+	const worldInfo = normalized.worldInfo;
+	const appSettings = normalized.appSettings;
+
+	if (settings && settings.size === 'sm' && !settings.isFullscreen) {
+		normalized.settings = { ...settings, size: 'lg' };
+	}
+
+	if (worldInfo && worldInfo.size === 'xl' && !worldInfo.isFullscreen) {
+		normalized.worldInfo = { ...worldInfo, size: 'lg' };
+	}
+
+	if (appSettings && appSettings.size === 'full' && appSettings.isFullscreen) {
+		normalized.appSettings = { ...appSettings, size: 'lg', isFullscreen: false };
+	}
+
+	return normalized;
+}
+
 function mergeSidebarsState(defaults: SidebarSettings, incoming: SidebarSettings): SidebarSettings {
-	const result: SidebarSettings = { ...defaults, ...incoming };
+	const normalizedIncoming = normalizeLegacySidebarSettings(incoming);
+	const result: SidebarSettings = { ...defaults, ...normalizedIncoming };
 	for (const key of Object.keys(result)) {
 		const base = defaults[key] ?? defaultSidebarSetting;
-		const inc = incoming[key] ?? {};
+		const inc = normalizedIncoming[key] ?? {};
 		result[key] = { ...base, ...inc };
 	}
 	return result;

@@ -14,7 +14,7 @@ export const SettingsSidebar = () => {
 	const [activeTab, setActiveTab] = useState<TabType>('settings');
 
 	return (
-		<Drawer name="settings" title={t('sidebars.settingsTitle')} fixedSize="sm">
+		<Drawer name="settings" title={t('sidebars.settingsTitle')}>
 			<Tabs value={activeTab} onChange={(v) => setActiveTab((v as TabType) ?? 'settings')} variant="outline">
 				<Tabs.List mb="md">
 					<Tabs.Tab value="settings">{t('sidebars.llmSettings')}</Tabs.Tab>

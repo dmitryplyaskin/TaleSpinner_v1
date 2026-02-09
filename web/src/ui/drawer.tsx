@@ -28,7 +28,7 @@ const drawerWidthBySize: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', number> = {
 	xl: 640,
 };
 
-export const Drawer = ({ name, title, children, fullscreenContentMaxWidth = 1440, fixedSize, defaultSize = 'md' }: Props) => {
+export const Drawer = ({ name, title, children, fullscreenContentMaxWidth = 1440, fixedSize, defaultSize = 'lg' }: Props) => {
 	const { t } = useTranslation();
 	const sidebar = useStoreMap({
 		store: $sidebars,

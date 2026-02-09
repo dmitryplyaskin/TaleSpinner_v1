@@ -108,8 +108,18 @@ const ru = {
 		},
 		appSettings: {
 			title: 'Настройки приложения',
+			tabs: {
+				general: 'Основные',
+				styles: 'Стили',
+			},
 			sections: {
 				general: 'Основные настройки',
+			},
+			styles: {
+				theme: 'Тема',
+				light: 'Светлая',
+				dark: 'Тёмная',
+				description: 'Здесь будут дополнительные настройки визуального оформления приложения.',
 			},
 			language: {
 				label: 'Язык',
