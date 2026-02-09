@@ -11,7 +11,7 @@ export type CreateGenerationParams = {
   ownerId?: string;
   chatId: string;
   branchId: string;
-  messageId: string; // assistant message id
+  messageId: string | null;
   variantId: string | null;
   providerId: string;
   model: string;
@@ -55,7 +55,7 @@ export type GenerationDto = {
   id: string;
   chatId: string;
   branchId: string | null;
-  messageId: string;
+  messageId: string | null;
   variantId: string | null;
   status: GenerationStatus;
   startedAt: Date;
@@ -68,7 +68,7 @@ function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
     id: row.id,
     chatId: row.chatId,
     branchId: row.branchId ?? null,
-    messageId: row.messageId,
+    messageId: row.messageId ?? null,
     variantId: row.variantId ?? null,
     status: row.status,
     startedAt: row.startedAt,

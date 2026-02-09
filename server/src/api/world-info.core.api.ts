@@ -7,8 +7,8 @@ import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
 
 import { idSchema, ownerIdSchema } from "../chat-core/schemas";
+import { getChatById } from "../services/chat-core/chats-repository";
 import { listProjectedPromptMessages } from "../services/chat-entry-parts/prompt-history";
-import { getChatById, listMessagesForPrompt } from "../services/chat-core/chats-repository";
 import {
   convertWorldInfoImport,
   exportWorldInfoBookToStNative,
@@ -387,21 +387,12 @@ router.post(
     const branchId = body.branchId ?? chat.activeBranchId;
     if (!branchId) throw new HttpError(400, "branchId is required", "VALIDATION_ERROR");
 
-    let history: Array<{ role: string; content: string }> = [];
     const projected = await listProjectedPromptMessages({
       chatId: body.chatId,
       branchId,
       limit: body.historyLimit,
     });
-    if (projected.entryCount > 0) {
-      history = projected.messages;
-    } else {
-      history = await listMessagesForPrompt({
-        chatId: body.chatId,
-        branchId,
-        limit: body.historyLimit,
-      });
-    }
+    const history: Array<{ role: string; content: string }> = projected.messages;
 
     const resolved = await resolveWorldInfoRuntimeForChat({
       ownerId: body.ownerId ?? "global",

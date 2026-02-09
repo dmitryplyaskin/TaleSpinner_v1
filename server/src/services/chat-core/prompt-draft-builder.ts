@@ -1,10 +1,10 @@
 import crypto from "crypto";
 
+import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
+
 import type { GenerateMessage } from "@shared/types/generate";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
-import { listMessagesForPrompt } from "./chats-repository";
-import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
 
 type PromptDraftRole = "system" | "developer" | "user" | "assistant";
 
@@ -146,10 +146,7 @@ export async function buildPromptDraft(params: {
   trigger?: OperationTrigger;
 }): Promise<BuiltPromptDraft> {
   const historyLimit = params.historyLimit ?? 50;
-  const exclude = params.excludeMessageIds ?? [];
-
   let history: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
-  let usedEntries = false;
   try {
     const projected = await listProjectedPromptMessages({
       chatId: params.chatId,
@@ -157,21 +154,9 @@ export async function buildPromptDraft(params: {
       limit: historyLimit,
       excludeEntryIds: params.excludeEntryIds,
     });
-    if (projected.entryCount > 0) {
-      usedEntries = true;
-      history = projected.messages.map((m) => ({ role: m.role, content: m.content }));
-    }
+    history = projected.messages.map((m) => ({ role: m.role, content: m.content }));
   } catch {
-    // best-effort: fall back to legacy history below
-  }
-
-  if (!usedEntries) {
-    history = await listMessagesForPrompt({
-      chatId: params.chatId,
-      branchId: params.branchId,
-      limit: historyLimit,
-      excludeMessageIds: exclude,
-    });
+    history = [];
   }
   // Pipelines/artifacts were removed. Keep prompt drafting minimal and deterministic.
   const systemPrompt = params.systemPrompt ?? "";
@@ -200,9 +185,7 @@ export async function buildPromptDraft(params: {
 
   const trimming: PromptTrimmingSummary = {
     historyLimit,
-    excludedMessageIdsCount: usedEntries
-      ? (params.excludeEntryIds ?? []).length
-      : exclude.length,
+    excludedMessageIdsCount: (params.excludeEntryIds ?? []).length,
     historyReturnedCount: history.length,
   };
 

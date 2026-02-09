@@ -211,3 +211,14 @@ export async function softDeletePart(params: {
     .where(eq(variantParts.partId, params.partId));
 }
 
+export async function updatePartReplacesPartId(params: {
+  partId: string;
+  replacesPartId: string | null;
+}): Promise<void> {
+  const db = await initDb();
+  await db
+    .update(variantParts)
+    .set({ replacesPartId: params.replacesPartId })
+    .where(eq(variantParts.partId, params.partId));
+}
+

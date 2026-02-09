@@ -1,5 +1,4 @@
 import { updatePartPayloadText } from "../../chat-entry-parts/parts-repository";
-import { updateAssistantText } from "../../chat-core/chats-repository";
 import { streamGlobalChat } from "../../llm/llm-service";
 import { stripChatGenerationDebugSettings } from "../debug";
 
@@ -20,19 +19,10 @@ export async function runMainLlmPhase(params: {
   const flush = async (force = false): Promise<void> => {
     flushing = flushing.then(async () => {
       if (closed && !force) return;
-      if (params.request.persistenceTarget.mode === "entry_parts") {
-        await updatePartPayloadText({
-          partId: params.request.persistenceTarget.assistantMainPartId,
-          payloadText: params.runState.assistantText,
-          payloadFormat: "markdown",
-        });
-        return;
-      }
-
-      await updateAssistantText({
-        assistantMessageId: params.request.persistenceTarget.assistantMessageId,
-        variantId: params.request.persistenceTarget.variantId,
-        text: params.runState.assistantText,
+      await updatePartPayloadText({
+        partId: params.request.persistenceTarget.assistantMainPartId,
+        payloadText: params.runState.assistantText,
+        payloadFormat: "markdown",
       });
     });
     await flushing;

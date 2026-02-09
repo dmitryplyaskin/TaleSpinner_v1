@@ -103,9 +103,13 @@ export async function listEntries(params: {
   branchId: string;
   limit: number;
   before?: number;
+  includeSoftDeleted?: boolean;
 }): Promise<Entry[]> {
   const db = await initDb();
   const where = [eq(chatEntries.chatId, params.chatId), eq(chatEntries.branchId, params.branchId)];
+  if (!params.includeSoftDeleted) {
+    where.push(eq(chatEntries.softDeleted, false));
+  }
   if (typeof params.before === "number") {
     where.push(lt(chatEntries.createdAt, new Date(params.before)));
   }
@@ -149,12 +153,14 @@ export async function listEntriesWithActiveVariants(params: {
   limit: number;
   before?: number;
   excludeEntryIds?: string[];
+  includeSoftDeleted?: boolean;
 }): Promise<Array<{ entry: Entry; variant: Variant | null }>> {
   const entries = await listEntries({
     chatId: params.chatId,
     branchId: params.branchId,
     limit: params.limit,
     before: params.before,
+    includeSoftDeleted: params.includeSoftDeleted,
   });
 
   const exclude = new Set(params.excludeEntryIds ?? []);

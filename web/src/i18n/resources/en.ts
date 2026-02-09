@@ -68,6 +68,7 @@ const en = {
 			},
 			errors: {
 				branchIdRequired: 'branchId is required (activeBranchId is missing)',
+				editablePartNotFound: 'No editable message part found',
 			},
 			toasts: {
 				openChatError: 'Failed to open chat',

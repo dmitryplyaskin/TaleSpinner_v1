@@ -34,29 +34,18 @@ export type PromptSnapshotV1 = {
 };
 
 export type RunPersistenceTarget =
-  | {
-      mode: "legacy";
-      assistantMessageId: string;
-      variantId: string;
-    }
-  | {
-      mode: "entry_parts";
-      assistantMessageId: string;
-      variantId: string;
-      assistantEntryId: string;
-      assistantMainPartId: string;
-    };
+  {
+    mode: "entry_parts";
+    assistantEntryId: string;
+    assistantMainPartId: string;
+  };
 
 export type UserTurnTarget =
-  | {
-      mode: "legacy";
-      userMessageId: string;
-    }
-  | {
-      mode: "entry_parts";
-      userEntryId: string;
-      userMainPartId: string;
-    };
+  {
+    mode: "entry_parts";
+    userEntryId: string;
+    userMainPartId: string;
+  };
 
 export type RunRequest = {
   ownerId?: string;

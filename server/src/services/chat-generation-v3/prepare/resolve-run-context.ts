@@ -1,13 +1,13 @@
+import { createGeneration } from "../../chat-core/generations-repository";
 import { resolveGatewayModel } from "../../llm/llm-gateway-adapter";
 import { getProviderConfig, getRuntime } from "../../llm/llm-repository";
-import { createGeneration } from "../../chat-core/generations-repository";
 import { getOperationProfileSettings } from "../../operations/operation-profile-settings-repository";
 import { getOperationProfileById } from "../../operations/operation-profiles-repository";
 import { stripChatGenerationDebugSettings } from "../debug";
 
+import type { ProfileSnapshot, RunContext, RunRequest } from "../contracts";
 import type { OperationProfile } from "@shared/types/operation-profiles";
 
-import type { ProfileSnapshot, RunContext, RunRequest } from "../contracts";
 
 function buildSessionKey(params: {
   ownerId: string;
@@ -60,8 +60,8 @@ export async function resolveRunContext(params: {
     ownerId,
     chatId: params.request.chatId,
     branchId: params.request.branchId,
-    messageId: params.request.persistenceTarget.assistantMessageId,
-    variantId: params.request.persistenceTarget.variantId,
+    messageId: null,
+    variantId: null,
     providerId: runtime.activeProviderId,
     model,
     settings: stripChatGenerationDebugSettings(params.request.settings),

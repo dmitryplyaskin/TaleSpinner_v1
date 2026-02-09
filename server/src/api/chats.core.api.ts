@@ -1,39 +1,24 @@
-import express, { type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
+import express, { type Request } from "express";
 import { z } from "zod";
 
 import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
-import { initSse } from "@core/sse/sse";
 
 import {
   branchIdParamsSchema,
   chatIdParamsSchema,
   createBranchBodySchema,
-  createMessageBodySchema,
   idSchema,
-  listMessagesQuerySchema,
 } from "../chat-core/schemas";
-import { initDb } from "../db/client";
-import { chatMessages } from "../db/schema";
 import {
   activateBranch,
-  createAssistantMessageWithVariant,
   createChatBranch,
-  createChatMessage,
   getChatById,
   listChatBranches,
-  listChatMessages,
   setChatPromptTemplate,
   softDeleteChat,
 } from "../services/chat-core/chats-repository";
-import { abortGeneration } from "../services/chat-core/generation-runtime";
-import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
-import {
-  createMessageTransformVariant,
-  createRawUserInputVariant,
-} from "../services/chat-core/message-variants-repository";
 import { getPromptTemplateById } from "../services/chat-core/prompt-templates-repository";
 
 const router = express.Router();
@@ -113,44 +98,11 @@ router.post(
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
-    const parentBranchId =
-      req.body.parentBranchId ??
-      (typeof req.body.forkedFromMessageId === "string"
-        ? chat.activeBranchId ?? undefined
-        : undefined);
-
-    if (typeof req.body.forkedFromMessageId === "string") {
-      if (!parentBranchId) {
-        throw new HttpError(
-          400,
-          "parentBranchId обязателен для fork (нет activeBranchId)",
-          "VALIDATION_ERROR"
-        );
-      }
-      const db = await initDb();
-      const forkRows = await db
-        .select({ id: chatMessages.id })
-        .from(chatMessages)
-        .where(
-          and(
-            eq(chatMessages.chatId, params.id),
-            eq(chatMessages.branchId, parentBranchId),
-            eq(chatMessages.id, req.body.forkedFromMessageId)
-          )
-        )
-        .limit(1);
-      if (!forkRows[0]) {
-        throw new HttpError(404, "forkedFromMessageId не найден", "NOT_FOUND");
-      }
-    }
-
     const branch = await createChatBranch({
       ownerId: req.body.ownerId,
       chatId: params.id,
       title: req.body.title,
-      parentBranchId,
-      forkedFromMessageId: req.body.forkedFromMessageId,
-      forkedFromVariantId: req.body.forkedFromVariantId,
+      parentBranchId: req.body.parentBranchId,
       meta: req.body.meta,
     });
 
@@ -175,287 +127,6 @@ router.post(
       branchId: params.branchId,
     });
     return { data: updated };
-  })
-);
-
-router.get(
-  "/chats/:id/messages",
-  validate({ params: chatIdParamsSchema, query: listMessagesQuerySchema }),
-  asyncHandler(async (req: Request) => {
-    const params = req.params as unknown as { id: string };
-    const query = req.query as unknown as { branchId?: string; limit: number; before?: number };
-    const chat = await getChatById(params.id);
-    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
-
-    const branchId = query.branchId || chat.activeBranchId;
-    if (!branchId) {
-      throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
-    }
-
-    const messages = await listChatMessages({
-      chatId: params.id,
-      branchId,
-      limit: query.limit,
-      before: query.before,
-    });
-    return { data: { branchId, messages } };
-  })
-);
-
-router.post(
-  "/chats/:id/messages",
-  validate({ params: chatIdParamsSchema }),
-  asyncHandler(async (req: Request, res: Response) => {
-    const params = req.params as unknown as { id: string };
-    const chat = await getChatById(params.id);
-    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
-
-    const accept = String(req.headers.accept ?? "");
-    const wantsSse = accept.includes("text/event-stream");
-
-    if (!wantsSse) {
-      const body = createMessageBodySchema.parse(req.body);
-
-      const branchId = body.branchId || chat.activeBranchId;
-      if (!branchId) {
-        throw new HttpError(
-          400,
-          "branchId обязателен (нет activeBranchId)",
-          "VALIDATION_ERROR"
-        );
-      }
-
-      if (body.role === "assistant") {
-        throw new HttpError(
-          400,
-          "role=assistant запрещён в этом endpoint (v1)",
-          "VALIDATION_ERROR"
-        );
-      }
-
-      const message = await createChatMessage({
-        ownerId: body.ownerId,
-        chatId: params.id,
-        branchId,
-        role: body.role,
-        promptText: body.promptText,
-        format: body.format,
-        blocks: body.blocks,
-        meta: body.meta,
-      });
-
-      return { data: message };
-    }
-
-    // SSE mode: save user message + run generation
-    const sseBodySchema = createMessageBodySchema.extend({
-      settings: z.record(z.string(), z.unknown()).optional().default({}),
-      messageTransform: z
-        .object({
-          promptText: z.string().min(1),
-          label: z.string().min(1).optional(),
-        })
-        .optional(),
-    });
-
-    const body = sseBodySchema.parse(req.body);
-
-    const branchId = body.branchId || chat.activeBranchId;
-    if (!branchId) {
-      throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
-    }
-
-    if (body.role === "assistant") {
-      throw new HttpError(
-        400,
-        "role=assistant запрещён в этом endpoint (v1)",
-        "VALIDATION_ERROR"
-      );
-    }
-
-    // NOTE: for SSE we must take over the response; asyncHandler will not auto-send.
-    const sse = initSse({ res });
-
-    let generationId: string | null = null;
-
-    const runAbortController = new AbortController();
-    let shouldAbortOnClose = false;
-    let reqClosed = false;
-    req.on("close", () => {
-      reqClosed = true;
-      if (shouldAbortOnClose) {
-        runAbortController.abort();
-        if (generationId) abortGeneration(generationId);
-      }
-      sse.close();
-    });
-    try {
-      const ownerId = body.ownerId ?? "global";
-
-      const userMessage = await createChatMessage({
-        ownerId,
-        chatId: params.id,
-        branchId,
-        role: body.role,
-        promptText: body.promptText,
-        format: body.format,
-        blocks: body.blocks,
-        meta: body.meta,
-      });
-
-      const assistant = await createAssistantMessageWithVariant({
-        ownerId,
-        chatId: params.id,
-        branchId,
-      });
-
-      // Optional v1: message_transform for the *current* user message only.
-      // Implemented via variants so prompt assembly still reads selected `promptText`.
-      if (body.messageTransform) {
-        if (body.role !== "user") {
-          throw new HttpError(
-            400,
-            "messageTransform разрешён только для role=user (v1)",
-            "VALIDATION_ERROR"
-          );
-        }
-
-        const raw = String(body.promptText ?? "");
-        const transformed = String(body.messageTransform.promptText ?? "").trim();
-        if (!transformed) {
-          throw new HttpError(400, "messageTransform.promptText пустой", "VALIDATION_ERROR");
-        }
-
-        const rawVariant = await createRawUserInputVariant({
-          ownerId,
-          messageId: userMessage.id,
-          promptText: raw,
-          meta: { source: "user_message", createdBy: "messageTransform" },
-        });
-
-        const transformedVariant = await createMessageTransformVariant({
-          ownerId,
-          messageId: userMessage.id,
-          promptText: transformed,
-          meta: {
-            source: "message_transform",
-            label: body.messageTransform.label ?? null,
-            createdBy: "messageTransform",
-          },
-        });
-        void rawVariant;
-        void transformedVariant;
-      }
-
-      shouldAbortOnClose = true;
-      if (reqClosed) {
-        runAbortController.abort();
-        if (generationId) abortGeneration(generationId);
-      }
-
-      const envBase = {
-        chatId: params.id,
-        branchId,
-        userMessageId: userMessage.id,
-        assistantMessageId: assistant.assistantMessageId,
-        assistantVariantId: assistant.variantId,
-        variantId: assistant.variantId,
-      };
-
-      for await (const evt of runChatGenerationV3({
-        ownerId,
-        chatId: params.id,
-        branchId,
-        entityProfileId: chat.entityProfileId,
-        trigger: "generate",
-        settings: body.settings,
-        abortController: runAbortController,
-        persistenceTarget: {
-          mode: "legacy",
-          assistantMessageId: assistant.assistantMessageId,
-          variantId: assistant.variantId,
-        },
-        userTurnTarget:
-          body.role === "user"
-            ? { mode: "legacy", userMessageId: userMessage.id }
-            : undefined,
-      })) {
-        if (evt.type === "run.started") {
-          generationId = evt.data.generationId;
-          if (reqClosed) {
-            runAbortController.abort();
-            abortGeneration(generationId);
-          }
-          sse.send("llm.stream.meta", { ...envBase, generationId });
-        }
-
-        const eventGenerationId =
-          generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
-        const eventEnvelope = {
-          ...envBase,
-          generationId: eventGenerationId,
-          runId: evt.runId,
-          seq: evt.seq,
-          ...evt.data,
-        };
-        sse.send(evt.type, eventEnvelope);
-
-        if (evt.type === "main_llm.delta") {
-          sse.send("llm.stream.delta", {
-            ...envBase,
-            generationId: eventGenerationId,
-            content: evt.data.content,
-          });
-          continue;
-        }
-
-        if (evt.type === "main_llm.finished" && evt.data.status === "error") {
-          sse.send("llm.stream.error", {
-            ...envBase,
-            generationId: eventGenerationId,
-            code: "generation_error",
-            message: evt.data.message ?? "generation_error",
-          });
-          continue;
-        }
-
-        if (evt.type === "run.finished") {
-          sse.send("llm.stream.done", {
-            ...envBase,
-            generationId: eventGenerationId,
-            status:
-              evt.data.status === "done"
-                ? "done"
-                : evt.data.status === "aborted"
-                  ? "aborted"
-                  : "error",
-          });
-          if (evt.data.status !== "done" && evt.data.message) {
-            sse.send("llm.stream.error", {
-              ...envBase,
-              generationId: eventGenerationId,
-              code: "generation_error",
-              message: evt.data.message,
-            });
-          }
-          break;
-        }
-      }
-
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sse.send("llm.stream.error", {
-        chatId: params.id,
-        branchId,
-        generationId,
-        code: "generation_error",
-        message,
-      });
-    } finally {
-      sse.close();
-    }
-
-    return;
   })
 );
 

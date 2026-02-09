@@ -92,6 +92,13 @@
       "when": 1770640000000,
       "tag": "0016_ui_app_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770672000000,
+      "tag": "0017_llm_generations_message_nullable",
+      "breakpoints": true
     }
   ]
 }

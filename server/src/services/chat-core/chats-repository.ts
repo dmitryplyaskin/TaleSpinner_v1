@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lt, lte, ne } from "drizzle-orm";
+import { and, desc, eq, lt, ne } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
@@ -266,8 +266,6 @@ export async function createChatBranch(params: {
   chatId: string;
   title?: string;
   parentBranchId?: string;
-  forkedFromMessageId?: string;
-  forkedFromVariantId?: string;
   meta?: unknown;
 }): Promise<ChatBranchDto> {
   const db = await initDb();
@@ -282,8 +280,8 @@ export async function createChatBranch(params: {
     createdAt: ts,
     updatedAt: ts,
     parentBranchId: params.parentBranchId ?? null,
-    forkedFromMessageId: params.forkedFromMessageId ?? null,
-    forkedFromVariantId: params.forkedFromVariantId ?? null,
+    forkedFromMessageId: null,
+    forkedFromVariantId: null,
     metaJson:
       typeof params.meta === "undefined"
         ? null
@@ -295,101 +293,6 @@ export async function createChatBranch(params: {
     .from(chatBranches)
     .where(eq(chatBranches.id, id));
   if (!rows[0]) throw new Error("Не удалось создать ветку (внутренняя ошибка).");
-
-  // v1 fork semantics (minimal):
-  // If parentBranchId + forkedFromMessageId provided, copy messages up to fork point
-  // into the new branch so it starts with the same history.
-  if (params.parentBranchId && params.forkedFromMessageId) {
-    const forkRows = await db
-      .select()
-      .from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.chatId, params.chatId),
-          eq(chatMessages.branchId, params.parentBranchId),
-          eq(chatMessages.id, params.forkedFromMessageId)
-        )
-      )
-      .limit(1);
-    const fork = forkRows[0];
-    if (fork) {
-      const sourceRows = await db
-        .select()
-        .from(chatMessages)
-        .where(
-          and(
-            eq(chatMessages.chatId, params.chatId),
-            eq(chatMessages.branchId, params.parentBranchId),
-            lte(chatMessages.createdAt, fork.createdAt)
-          )
-        )
-        .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
-
-      for (const src of sourceRows) {
-        const meta = safeJsonParse(src.metaJson, null);
-        if (isDeletedMessageMeta(meta)) continue;
-
-        const messageId = uuidv4();
-        const baseMeta =
-          meta && typeof meta === "object"
-            ? (meta as Record<string, unknown>)
-            : {};
-        const forkMeta: Record<string, unknown> = {
-          ...baseMeta,
-          forkedFrom: {
-            messageId: src.id,
-            branchId: params.parentBranchId,
-          },
-        };
-
-        if (src.role === "assistant") {
-          const variantId = uuidv4();
-          await db.insert(chatMessages).values({
-            id: messageId,
-            ownerId: src.ownerId,
-            chatId: params.chatId,
-            branchId: id,
-            role: "assistant",
-            createdAt: src.createdAt,
-            promptText: src.promptText ?? "",
-            format: src.format ?? null,
-            blocksJson: src.blocksJson ?? "[]",
-            metaJson: safeJsonStringify(forkMeta),
-            activeVariantId: variantId,
-          });
-
-          await db.insert(messageVariants).values({
-            id: variantId,
-            ownerId: src.ownerId,
-            messageId,
-            createdAt: src.createdAt,
-            kind: "import",
-            promptText: src.promptText ?? "",
-            blocksJson: src.blocksJson ?? "[]",
-            metaJson: safeJsonStringify({
-              forkedFromVariantId: src.activeVariantId ?? null,
-              importedAt: new Date().toISOString(),
-            }),
-            isSelected: true,
-          });
-        } else {
-          await db.insert(chatMessages).values({
-            id: messageId,
-            ownerId: src.ownerId,
-            chatId: params.chatId,
-            branchId: id,
-            role: src.role,
-            createdAt: src.createdAt,
-            promptText: src.promptText ?? "",
-            format: src.format ?? null,
-            blocksJson: src.blocksJson ?? "[]",
-            metaJson: safeJsonStringify(forkMeta),
-            activeVariantId: null,
-          });
-        }
-      }
-    }
-  }
 
   return branchRowToDto(rows[0]);
 }

@@ -1,8 +1,9 @@
 import { BASE_URL } from '../const';
+
 import type {
-	OperationProfileSettings,
 	OperationProfile,
 	OperationProfileExport,
+	OperationProfileSettings,
 	OperationProfileUpsertInput,
 } from '@shared/types/operation-profiles';
 
@@ -89,25 +90,6 @@ export type ChatBranchDto = {
 	forkedFromMessageId: string | null;
 	forkedFromVariantId: string | null;
 	meta: unknown | null;
-};
-
-export type ChatMessageDto = {
-	id: string;
-	ownerId: string;
-	chatId: string;
-	branchId: string;
-	role: 'user' | 'assistant' | 'system';
-	createdAt: string;
-	promptText: string;
-	format: string | null;
-	blocks: unknown[];
-	meta: unknown | null;
-	activeVariantId: string | null;
-};
-
-export type ListChatMessagesResponse = {
-	branchId: string;
-	messages: ChatMessageDto[];
 };
 
 export type CreateChatResponse = { chat: ChatDto; mainBranch: ChatBranchDto };
@@ -198,8 +180,6 @@ export async function createChatBranch(params: {
 	chatId: string;
 	title?: string;
 	parentBranchId?: string;
-	forkedFromMessageId?: string;
-	forkedFromVariantId?: string;
 	meta?: unknown;
 	ownerId?: string;
 }): Promise<ChatBranchDto> {
@@ -209,8 +189,6 @@ export async function createChatBranch(params: {
 			ownerId: params.ownerId,
 			title: params.title,
 			parentBranchId: params.parentBranchId,
-			forkedFromMessageId: params.forkedFromMessageId,
-			forkedFromVariantId: params.forkedFromVariantId,
 			meta: params.meta,
 		}),
 	});
@@ -223,21 +201,6 @@ export async function activateChatBranch(params: { chatId: string; branchId: str
 	);
 }
 
-export async function listChatMessages(params: {
-	chatId: string;
-	branchId?: string;
-	limit?: number;
-	before?: number;
-}): Promise<ListChatMessagesResponse> {
-	const query = new URLSearchParams();
-	if (params.branchId) query.set('branchId', params.branchId);
-	if (typeof params.limit === 'number') query.set('limit', String(params.limit));
-	if (typeof params.before === 'number') query.set('before', String(params.before));
-
-	const suffix = query.toString() ? `?${query.toString()}` : '';
-	return apiJson<ListChatMessagesResponse>(`/chats/${encodeURIComponent(params.chatId)}/messages${suffix}`);
-}
-
 export type SseEnvelope<T = unknown> = {
 	id: string;
 	type: string;
@@ -245,258 +208,9 @@ export type SseEnvelope<T = unknown> = {
 	data: T;
 };
 
-export type ChatStreamMeta = {
-	chatId: string;
-	branchId: string;
-	userMessageId?: string | null;
-	assistantMessageId: string;
-	variantId: string;
-	generationId: string;
-};
-
-export type ChatStreamDelta = { content: string };
-export type ChatStreamError = { message: string };
-export type ChatStreamDone = { status: 'done' | 'aborted' | 'error' };
-
-const CHAT_GENERATION_DEBUG_STORAGE_KEY = 'chat_generation_debug';
-const CHAT_GENERATION_DEBUG_SETTINGS_KEY = '__chatGenerationDebug';
-
-function isChatGenerationDebugEnabledClient(): boolean {
-	if (typeof window === 'undefined') return false;
-	const win = window as Window & { __chatGenerationDebug?: boolean };
-	if (typeof win.__chatGenerationDebug === 'boolean') return win.__chatGenerationDebug;
-	try {
-		const raw = window.localStorage.getItem(CHAT_GENERATION_DEBUG_STORAGE_KEY);
-		if (raw === '1' || raw === 'true') return true;
-		if (raw === '0' || raw === 'false') return false;
-	} catch {
-		// ignore storage access errors
-	}
-	return import.meta.env.DEV;
-}
-
-function withChatGenerationDebugSettings(settings: Record<string, unknown> | undefined): Record<string, unknown> {
-	const next = { ...(settings ?? {}) };
-	if (isChatGenerationDebugEnabledClient()) {
-		next[CHAT_GENERATION_DEBUG_SETTINGS_KEY] = true;
-	}
-	return next;
-}
-
-function makeRequestId(): string {
-	return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-		? crypto.randomUUID()
-		: `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export async function* streamChatMessage(params: {
-	chatId: string;
-	branchId?: string;
-	role: 'user' | 'system';
-	promptText: string;
-	settings?: Record<string, unknown>;
-	ownerId?: string;
-	signal?: AbortSignal;
-}): AsyncGenerator<SseEnvelope> {
-	const requestId = makeRequestId();
-
-	const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(params.chatId)}/messages`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'text/event-stream',
-			Connection: 'keep-alive',
-			'Cache-Control': 'no-cache',
-		},
-		body: JSON.stringify({
-			ownerId: params.ownerId,
-			branchId: params.branchId,
-			role: params.role,
-			promptText: params.promptText,
-			settings: withChatGenerationDebugSettings(params.settings),
-			requestId,
-		}),
-		signal: params.signal,
-	});
-
-	if (!res.ok) {
-		const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-		throw new Error(body?.error?.message ?? `HTTP error ${res.status}`);
-	}
-
-	const reader = res.body?.getReader();
-	if (!reader) throw new Error('SSE: response body is not readable');
-
-	const decoder = new TextDecoder();
-	let buffer = '';
-	let currentEventType: string | null = null;
-
-	while (true) {
-		const { value, done } = await reader.read();
-		if (done) break;
-
-		buffer += decoder.decode(value, { stream: true });
-		const lines = buffer.split('\n');
-		buffer = lines.pop() ?? '';
-
-		for (const rawLine of lines) {
-			const line = rawLine.trimEnd();
-			if (!line) {
-				currentEventType = null;
-				continue;
-			}
-			// Heartbeats are comments: ": ping 123"
-			if (line.startsWith(':')) continue;
-
-			if (line.startsWith('event:')) {
-				currentEventType = line.slice('event:'.length).trim();
-				continue;
-			}
-
-			if (line.startsWith('data:')) {
-				const payload = line.slice('data:'.length).trim();
-				if (!payload) continue;
-				try {
-					const env = JSON.parse(payload) as SseEnvelope;
-					// Some clients rely on event:; backend duplicates it in env.type.
-					if (!env.type && currentEventType) env.type = currentEventType;
-					yield env;
-				} catch {
-					// Ignore malformed chunks; stream should keep going.
-				}
-			}
-		}
-	}
-}
-
 export async function abortGeneration(generationId: string): Promise<void> {
 	await apiJson<{ success: true }>(`/generations/${encodeURIComponent(generationId)}/abort`, { method: 'POST' });
 }
-
-export type MessageVariantDto = {
-	id: string;
-	ownerId: string;
-	messageId: string;
-	createdAt: string;
-	kind: 'generation' | 'manual_edit' | 'import';
-	promptText: string;
-	blocks: unknown[];
-	meta: unknown | null;
-	isSelected: boolean;
-};
-
-export async function createManualEditVariant(params: {
-	messageId: string;
-	promptText: string;
-	blocks?: unknown[];
-	meta?: unknown;
-	ownerId?: string;
-}): Promise<MessageVariantDto> {
-	return apiJson<MessageVariantDto>(`/messages/${encodeURIComponent(params.messageId)}/variants`, {
-		method: 'POST',
-		body: JSON.stringify({
-			ownerId: params.ownerId,
-			promptText: params.promptText,
-			blocks: params.blocks,
-			meta: params.meta,
-		}),
-	});
-}
-
-export async function deleteChatMessage(messageId: string): Promise<{ id: string }> {
-	return apiJson<{ id: string }>(`/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
-}
-
-export async function listMessageVariants(messageId: string): Promise<MessageVariantDto[]> {
-	return apiJson<MessageVariantDto[]>(`/messages/${encodeURIComponent(messageId)}/variants`);
-}
-
-export async function selectMessageVariant(params: {
-	messageId: string;
-	variantId: string;
-}): Promise<MessageVariantDto> {
-	return apiJson<MessageVariantDto>(
-		`/messages/${encodeURIComponent(params.messageId)}/variants/${encodeURIComponent(params.variantId)}/select`,
-		{ method: 'POST' },
-	);
-}
-
-export async function* streamRegenerateMessageVariant(params: {
-	messageId: string;
-	settings?: Record<string, unknown>;
-	ownerId?: string;
-	signal?: AbortSignal;
-}): AsyncGenerator<SseEnvelope> {
-	const requestId = makeRequestId();
-
-	const res = await fetch(`${BASE_URL}/messages/${encodeURIComponent(params.messageId)}/regenerate`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'text/event-stream',
-			Connection: 'keep-alive',
-			'Cache-Control': 'no-cache',
-		},
-		body: JSON.stringify({
-			ownerId: params.ownerId,
-			settings: withChatGenerationDebugSettings(params.settings),
-			requestId,
-		}),
-		signal: params.signal,
-	});
-
-	if (!res.ok) {
-		const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-		throw new Error(body?.error?.message ?? `HTTP error ${res.status}`);
-	}
-
-	const reader = res.body?.getReader();
-	if (!reader) throw new Error('SSE: response body is not readable');
-
-	const decoder = new TextDecoder();
-	let buffer = '';
-	let currentEventType: string | null = null;
-
-	while (true) {
-		const { value, done } = await reader.read();
-		if (done) break;
-
-		buffer += decoder.decode(value, { stream: true });
-		const lines = buffer.split('\n');
-		buffer = lines.pop() ?? '';
-
-		for (const rawLine of lines) {
-			const line = rawLine.trimEnd();
-			if (!line) {
-				currentEventType = null;
-				continue;
-			}
-			// Heartbeats are comments: ": ping 123"
-			if (line.startsWith(':')) continue;
-
-			if (line.startsWith('event:')) {
-				currentEventType = line.slice('event:'.length).trim();
-				continue;
-			}
-
-			if (line.startsWith('data:')) {
-				const payload = line.slice('data:'.length).trim();
-				if (!payload) continue;
-				try {
-					const env = JSON.parse(payload) as SseEnvelope;
-					// Some clients rely on event:; backend duplicates it in env.type.
-					if (!env.type && currentEventType) env.type = currentEventType;
-					yield env;
-				} catch {
-					// Ignore malformed chunks; stream should keep going.
-				}
-			}
-		}
-	}
-}
-
-
-// ---- Operation profiles
 
 export type OperationProfileDto = Omit<OperationProfile, 'createdAt' | 'updatedAt'> & {
 	createdAt: string;
@@ -560,5 +274,3 @@ export async function setActiveOperationProfile(activeProfileId: string | null):
 		body: JSON.stringify({ activeProfileId }),
 	});
 }
-
-

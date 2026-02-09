@@ -6,7 +6,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import { chatMessages, chats, messageVariants } from "./chat-core";
+import { chats, messageVariants } from "./chat-core";
 
 export const llmGenerations = sqliteTable(
   "llm_generations",
@@ -17,9 +17,7 @@ export const llmGenerations = sqliteTable(
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
     branchId: text("branch_id"),
-    messageId: text("message_id")
-      .notNull()
-      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    messageId: text("message_id"),
     variantId: text("variant_id").references(() => messageVariants.id, {
       onDelete: "set null",
     }),

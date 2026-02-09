@@ -60,9 +60,9 @@ function makeRequest() {
     trigger: "generate" as const,
     settings: {},
     persistenceTarget: {
-      mode: "legacy" as const,
-      assistantMessageId: "assistant-msg",
-      variantId: "variant-1",
+      mode: "entry_parts" as const,
+      assistantEntryId: "assistant-entry",
+      assistantMainPartId: "assistant-main-part",
     },
   };
 }

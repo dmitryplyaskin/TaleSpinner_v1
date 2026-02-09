@@ -2,8 +2,17 @@ import crypto from "crypto";
 
 import { unregisterGeneration, registerGeneration } from "../chat-core/generation-runtime";
 import { updateGenerationPromptData } from "../chat-core/generations-repository";
+
 import { ProfileSessionArtifactStore } from "./artifacts/profile-session-artifact-store";
 import { RunArtifactStore } from "./artifacts/run-artifact-store";
+import { isChatGenerationDebugEnabled } from "./debug";
+import { runMainLlmPhase } from "./main-llm/run-main-llm-phase";
+import { commitEffectsPhase } from "./operations/commit-effects-phase";
+import { executeOperationsPhase } from "./operations/execute-operations-phase";
+import { finalizeRun } from "./persist/finalize-run";
+import { resolveRunContext } from "./prepare/resolve-run-context";
+import { buildBasePrompt } from "./prompt/build-base-prompt";
+
 import type {
   ArtifactValue,
   PromptDraftMessage,
@@ -14,16 +23,7 @@ import type {
   RunResult,
   RunState,
 } from "./contracts";
-import { isChatGenerationDebugEnabled } from "./debug";
-import { runMainLlmPhase } from "./main-llm/run-main-llm-phase";
-import { commitEffectsPhase } from "./operations/commit-effects-phase";
-import { executeOperationsPhase } from "./operations/execute-operations-phase";
-import { finalizeRun } from "./persist/finalize-run";
-import { buildBasePrompt } from "./prompt/build-base-prompt";
-import { resolveRunContext } from "./prepare/resolve-run-context";
-
 import type { GenerateMessage } from "@shared/types/generate";
-import type { OperationHook } from "@shared/types/operation-profiles";
 
 function draftToLlmMessages(draft: PromptDraftMessage[]): GenerateMessage[] {
   return draft
@@ -228,11 +228,7 @@ export async function* runChatGenerationV3(
       historyLimit: context.historyLimit,
       trigger: context.trigger,
       scanSeed: context.generationId,
-      excludeMessageIds: [request.persistenceTarget.assistantMessageId],
-      excludeEntryIds:
-        request.persistenceTarget.mode === "entry_parts"
-          ? [request.persistenceTarget.assistantEntryId]
-          : undefined,
+      excludeEntryIds: [request.persistenceTarget.assistantEntryId],
     });
     runState.basePromptDraft = basePrompt.prompt.draftMessages.map((m) => ({ ...m }));
     runState.effectivePromptDraft = basePrompt.prompt.draftMessages.map((m) => ({ ...m }));

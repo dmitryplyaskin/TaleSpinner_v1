@@ -7,24 +7,31 @@ import { validate } from "@core/middleware/validate";
 import { initSse } from "@core/sse/sse";
 
 import { chatIdParamsSchema } from "../chat-core/schemas";
-import { getChatById, createAssistantMessageWithVariant } from "../services/chat-core/chats-repository";
+import { getChatById } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
-import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
+import { getBranchCurrentTurn, incrementBranchTurn } from "../services/chat-entry-parts/branch-turn-repository";
 import {
-  createVariantForRegenerate,
-  selectMessageVariant,
-} from "../services/chat-core/message-variants-repository";
-
-import { incrementBranchTurn, getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-repository";
-import { createEntryWithVariant, getEntryById, listEntriesWithActiveVariants } from "../services/chat-entry-parts/entries-repository";
-import { createPart, softDeletePart } from "../services/chat-entry-parts/parts-repository";
+  createEntryWithVariant,
+  getActiveVariantWithParts,
+  getEntryById,
+  listEntriesWithActiveVariants,
+  softDeleteEntry,
+} from "../services/chat-entry-parts/entries-repository";
+import {
+  createPart,
+  softDeletePart,
+  updatePartReplacesPartId,
+} from "../services/chat-entry-parts/parts-repository";
+import { getUiProjection } from "../services/chat-entry-parts/projection";
 import {
   createVariant,
   getVariantById,
   listEntryVariants,
   selectActiveVariant,
-  updateVariantDerived,
 } from "../services/chat-entry-parts/variants-repository";
+import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
+
+import type { Part } from "@shared/types/chat-entry-parts";
 
 const router = express.Router();
 
@@ -107,8 +114,7 @@ router.post(
     try {
       const currentTurn = await getBranchCurrentTurn({ branchId });
 
-      // --- Create user/system entry (parts are the source of truth).
-      const created = await createEntryWithVariant({
+      const user = await createEntryWithVariant({
         ownerId,
         chatId: params.id,
         branchId,
@@ -119,7 +125,7 @@ router.post(
 
       const userMainPart = await createPart({
         ownerId,
-        variantId: created.variant.variantId,
+        variantId: user.variant.variantId,
         channel: "main",
         order: 0,
         payload: body.content ?? "",
@@ -133,15 +139,7 @@ router.post(
         requestId: body.requestId,
       });
 
-      // --- Prepare assistant entry (new turn per LLM call).
       const newTurn = await incrementBranchTurn({ branchId });
-
-      // Create legacy assistant message+variant for generation logging and abort flow.
-      const legacyAssistant = await createAssistantMessageWithVariant({
-        ownerId,
-        chatId: params.id,
-        branchId,
-      });
 
       const assistant = await createEntryWithVariant({
         ownerId,
@@ -149,7 +147,6 @@ router.post(
         branchId,
         role: "assistant",
         variantKind: "generation",
-        meta: { legacyMessageId: legacyAssistant.assistantMessageId },
       });
 
       const assistantMainPart = await createPart({
@@ -167,14 +164,6 @@ router.post(
         source: "llm",
       });
 
-      await updateVariantDerived({
-        variantId: assistant.variant.variantId,
-        derived: {
-          legacyMessageId: legacyAssistant.assistantMessageId,
-          legacyVariantId: legacyAssistant.variantId,
-        },
-      });
-
       shouldAbortOnClose = true;
       if (reqClosed) {
         runAbortController.abort();
@@ -184,13 +173,10 @@ router.post(
       const envBase = {
         chatId: params.id,
         branchId,
-        userEntryId: created.entry.entryId,
+        userEntryId: user.entry.entryId,
         assistantEntryId: assistant.entry.entryId,
         assistantVariantId: assistant.variant.variantId,
         assistantMainPartId: assistantMainPart.partId,
-        // legacy correlation for debugging only
-        legacyAssistantMessageId: legacyAssistant.assistantMessageId,
-        legacyAssistantVariantId: legacyAssistant.variantId,
       };
 
       for await (const evt of runChatGenerationV3({
@@ -203,14 +189,12 @@ router.post(
         abortController: runAbortController,
         persistenceTarget: {
           mode: "entry_parts",
-          assistantMessageId: legacyAssistant.assistantMessageId,
-          variantId: legacyAssistant.variantId,
           assistantEntryId: assistant.entry.entryId,
           assistantMainPartId: assistantMainPart.partId,
         },
         userTurnTarget: {
           mode: "entry_parts",
-          userEntryId: created.entry.entryId,
+          userEntryId: user.entry.entryId,
           userMainPartId: userMainPart.partId,
         },
       })) {
@@ -329,22 +313,8 @@ router.post(
     });
 
     try {
-      const legacyMessageId =
-        (entry.meta && typeof entry.meta === "object" ? (entry.meta as any).legacyMessageId : null) ??
-        null;
-      if (typeof legacyMessageId !== "string" || !legacyMessageId.trim()) {
-        throw new HttpError(400, "entry.meta.legacyMessageId отсутствует (v2)", "VALIDATION_ERROR");
-      }
-
       const newTurn = await incrementBranchTurn({ branchId: entry.branchId });
 
-      // Create a new legacy message_variant and select it (for generation FK + audit).
-      const legacyVariant = await createVariantForRegenerate({
-        ownerId,
-        messageId: legacyMessageId,
-      });
-
-      // Create a new entry variant on the same entry and make it active.
       const newVariant = await createVariant({
         ownerId,
         entryId: entry.entryId,
@@ -365,11 +335,6 @@ router.post(
         lifespan: "infinite",
         createdTurn: newTurn,
         source: "llm",
-      });
-
-      await updateVariantDerived({
-        variantId: newVariant.variantId,
-        derived: { legacyMessageId, legacyVariantId: legacyVariant.id },
       });
 
       shouldAbortOnClose = true;
@@ -396,8 +361,6 @@ router.post(
         abortController: runAbortController,
         persistenceTarget: {
           mode: "entry_parts",
-          assistantMessageId: legacyMessageId,
-          variantId: legacyVariant.id,
           assistantEntryId: entry.entryId,
           assistantMainPartId: assistantMainPart.partId,
         },
@@ -503,27 +466,149 @@ router.post(
 
     await selectActiveVariant({ entryId: entry.entryId, variantId: params.variantId });
 
-    // Best-effort: sync legacy selection if mapping exists.
-    try {
-      const legacyMessageId =
-        entry.meta && typeof entry.meta === "object" ? (entry.meta as any).legacyMessageId : null;
-      const legacyVariantId =
-        variant.derived && typeof variant.derived === "object"
-          ? (variant.derived as any).legacyVariantId
-          : null;
-      if (
-        typeof legacyMessageId === "string" &&
-        legacyMessageId.trim() &&
-        typeof legacyVariantId === "string" &&
-        legacyVariantId.trim()
-      ) {
-        await selectMessageVariant({ messageId: legacyMessageId, variantId: legacyVariantId });
-      }
-    } catch {
-      // ignore
+    return { data: { entryId: entry.entryId, activeVariantId: params.variantId } };
+  })
+);
+
+const manualEditBodySchema = z.object({
+  ownerId: z.string().min(1).optional(),
+  partId: z.string().min(1).optional(),
+  content: z.string(),
+  requestId: z.string().min(1).optional(),
+});
+
+function sortPartsStable(a: Part, b: Part): number {
+  if (a.order !== b.order) return a.order - b.order;
+  if (a.partId < b.partId) return -1;
+  if (a.partId > b.partId) return 1;
+  return 0;
+}
+
+function isEditableMainPart(part: Part): boolean {
+  return (
+    part.channel === "main" &&
+    !part.softDeleted &&
+    typeof part.payload === "string" &&
+    (part.payloadFormat === "text" || part.payloadFormat === "markdown")
+  );
+}
+
+router.post(
+  "/entries/:id/manual-edit",
+  validate({ params: entryIdParamsSchema, body: manualEditBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = manualEditBodySchema.parse(req.body);
+    const ownerId = body.ownerId ?? "global";
+
+    const entry = await getEntryById({ entryId: params.id });
+    if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
+
+    const activeVariant = await getActiveVariantWithParts({ entry });
+    if (!activeVariant) {
+      throw new HttpError(400, "Active variant не найден", "VALIDATION_ERROR");
     }
 
-    return { data: { entryId: entry.entryId, activeVariantId: params.variantId } };
+    const currentTurn = await getBranchCurrentTurn({ branchId: entry.branchId });
+    const sourceParts = (activeVariant.parts ?? []).filter((p) => !p.softDeleted).sort(sortPartsStable);
+
+    if (sourceParts.length === 0) {
+      throw new HttpError(400, "В активном варианте нет частей для редактирования", "VALIDATION_ERROR");
+    }
+
+    let targetPartId: string | null = null;
+    if (body.partId) {
+      const target = sourceParts.find((p) => p.partId === body.partId) ?? null;
+      if (!target || !isEditableMainPart(target)) {
+        throw new HttpError(400, "partId не найден или не поддерживает редактирование", "VALIDATION_ERROR");
+      }
+      targetPartId = target.partId;
+    } else {
+      const visible = getUiProjection(entry, activeVariant, currentTurn, { debugEnabled: false });
+      const editableVisible = visible.filter(isEditableMainPart);
+      const fallback =
+        editableVisible.length > 0 ? editableVisible[editableVisible.length - 1] : null;
+      if (!fallback) {
+        throw new HttpError(400, "Не найден editable main-part для редактирования", "VALIDATION_ERROR");
+      }
+      targetPartId = fallback.partId;
+    }
+
+    const nextVariant = await createVariant({
+      ownerId,
+      entryId: entry.entryId,
+      kind: "manual_edit",
+    });
+
+    const partMap = new Map<string, Part>();
+
+    for (const source of sourceParts) {
+      const isTarget = source.partId === targetPartId;
+      const cloned = await createPart({
+        ownerId,
+        variantId: nextVariant.variantId,
+        channel: source.channel,
+        order: source.order,
+        payload: isTarget ? body.content : source.payload,
+        payloadFormat: source.payloadFormat,
+        schemaId: source.schemaId,
+        label: source.label,
+        visibility: source.visibility,
+        ui: source.ui,
+        prompt: source.prompt,
+        lifespan: source.lifespan,
+        createdTurn: source.createdTurn,
+        source: isTarget ? "user" : source.source,
+        agentId: isTarget ? undefined : source.agentId,
+        model: isTarget ? undefined : source.model,
+        requestId: isTarget ? body.requestId : source.requestId,
+        tags: source.tags,
+      });
+      partMap.set(source.partId, cloned);
+    }
+
+    for (const source of sourceParts) {
+      const sourceReplaceId = source.replacesPartId;
+      if (!sourceReplaceId) continue;
+      const cloned = partMap.get(source.partId);
+      if (!cloned) continue;
+      const clonedReplaceTarget = partMap.get(sourceReplaceId);
+      if (!clonedReplaceTarget) continue;
+      await updatePartReplacesPartId({
+        partId: cloned.partId,
+        replacesPartId: clonedReplaceTarget.partId,
+      });
+    }
+
+    await selectActiveVariant({
+      entryId: entry.entryId,
+      variantId: nextVariant.variantId,
+    });
+
+    return {
+      data: {
+        entryId: entry.entryId,
+        activeVariantId: nextVariant.variantId,
+      },
+    };
+  })
+);
+
+const softDeleteEntryBodySchema = z.object({
+  by: z.enum(["user", "agent"]).optional().default("user"),
+});
+
+router.post(
+  "/entries/:id/soft-delete",
+  validate({ params: entryIdParamsSchema, body: softDeleteEntryBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = softDeleteEntryBodySchema.parse(req.body);
+    const entry = await getEntryById({ entryId: params.id });
+    if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
+
+    await softDeleteEntry({ entryId: entry.entryId, by: body.by });
+    return { data: { id: entry.entryId } };
   })
 );
 
@@ -544,4 +629,3 @@ router.post(
 );
 
 export default router;
-

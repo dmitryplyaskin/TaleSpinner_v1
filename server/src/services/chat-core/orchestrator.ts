@@ -1,6 +1,6 @@
-import { getProviderConfig, getRuntime } from "../llm/llm-repository";
-import { resolveGatewayModel } from "../llm/llm-gateway-adapter";
 import { runChatGenerationV3 } from "../chat-generation-v3/run-chat-generation-v3";
+import { resolveGatewayModel } from "../llm/llm-gateway-adapter";
+import { getProviderConfig, getRuntime } from "../llm/llm-repository";
 
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
@@ -16,34 +16,19 @@ export async function* runChatGeneration(params: {
   branchId: string;
   entityProfileId: string;
   trigger?: OperationTrigger;
-  userMessageId?: string;
-  assistantMessageId: string;
-  variantId: string;
-  persistMode?: "legacy" | "entry_parts";
-  assistantMainPartId?: string;
+  userEntryId?: string;
+  userMainPartId?: string;
+  assistantEntryId: string;
+  assistantMainPartId: string;
   settings: Record<string, unknown>;
   flushMs?: number;
   abortController?: AbortController;
 }): AsyncGenerator<OrchestratorEvent> {
-  const persistenceTarget =
-    params.persistMode === "entry_parts" && params.assistantMainPartId
-      ? {
-          mode: "entry_parts" as const,
-          assistantMessageId: params.assistantMessageId,
-          variantId: params.variantId,
-          assistantEntryId: params.assistantMessageId,
-          assistantMainPartId: params.assistantMainPartId,
-        }
-      : {
-          mode: "legacy" as const,
-          assistantMessageId: params.assistantMessageId,
-          variantId: params.variantId,
-        };
-
-  const userTurnTarget = params.userMessageId
+  const userTurnTarget = params.userEntryId && params.userMainPartId
     ? ({
-        mode: "legacy",
-        userMessageId: params.userMessageId,
+        mode: "entry_parts",
+        userEntryId: params.userEntryId,
+        userMainPartId: params.userMainPartId,
       } as const)
     : undefined;
 
@@ -56,7 +41,11 @@ export async function* runChatGeneration(params: {
     settings: params.settings,
     flushMs: params.flushMs,
     abortController: params.abortController,
-    persistenceTarget,
+    persistenceTarget: {
+      mode: "entry_parts",
+      assistantEntryId: params.assistantEntryId,
+      assistantMainPartId: params.assistantMainPartId,
+    },
     userTurnTarget,
   })) {
     if (evt.type === "main_llm.delta") {

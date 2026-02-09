@@ -1,15 +1,24 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
-import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 import { toaster } from '@ui/toaster';
+
+import { abortGeneration } from '../../api/chat-core';
+import {
+	listChatEntries,
+	listEntryVariants,
+	manualEditEntry,
+	selectEntryVariant,
+	softDeleteEntry,
+	streamChatEntry,
+	streamRegenerateEntry,
+} from '../../api/chat-entry-parts';
 import i18n from '../../i18n';
+import { $currentBranchId, $currentChat, setOpenedChat } from '../chat-core';
+import { logChatGenerationSseEvent } from '../chat-generation-debug';
 
 import type { SseEnvelope } from '../../api/chat-core';
-import { abortGeneration } from '../../api/chat-core';
 import type { ChatEntryWithVariantDto } from '../../api/chat-entry-parts';
-import { listChatEntries, listEntryVariants, selectEntryVariant, streamChatEntry, streamRegenerateEntry } from '../../api/chat-entry-parts';
-import { logChatGenerationSseEvent } from '../chat-generation-debug';
-import { $currentBranchId, $currentChat, setOpenedChat } from '../chat-core';
+import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 
 function nowIso(): string {
 	return new Date().toISOString();
@@ -239,6 +248,30 @@ function appendDeltaToPart(part: Part, delta: string): Part {
 	return { ...part, payload: prev + delta };
 }
 
+function buildStreamingMainPart(seed: Part | undefined, partId: string): Part {
+	if (seed) {
+		return {
+			...seed,
+			partId,
+			payload: '',
+			source: 'llm',
+		};
+	}
+	return {
+		partId,
+		channel: 'main',
+		order: 0,
+		payload: '',
+		payloadFormat: 'markdown',
+		visibility: { ui: 'always', prompt: true },
+		ui: { rendererId: 'markdown' },
+		prompt: { serializerId: 'asText' },
+		lifespan: 'infinite',
+		createdTurn: 0,
+		source: 'llm',
+	};
+}
+
 function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStreamState, meta: any): { entries: ChatEntryWithVariantDto[]; stream: ActiveStreamState; generationId: string | null } {
 	const userEntryId = typeof meta?.userEntryId === 'string' ? meta.userEntryId : null;
 	const assistantEntryId = typeof meta?.assistantEntryId === 'string' ? meta.assistantEntryId : null;
@@ -269,6 +302,44 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 					variant: nextVariant,
 				};
 			}
+		}
+		if (stream.mode === 'regenerate' && assistantEntryId && x.entry.entryId === assistantEntryId) {
+			const nextVariantId = assistantVariantId ?? x.entry.activeVariantId;
+			const nextPartId = assistantMainPartId ?? stream.assistantMainPartId ?? `local_part_${nowIso()}`;
+			const currentVariant = x.variant;
+			const currentMainPart =
+				currentVariant?.parts?.find((p) => p.channel === 'main' && !p.softDeleted) ?? currentVariant?.parts?.[0];
+
+			let nextVariant = currentVariant;
+			if (!nextVariant || nextVariant.variantId !== nextVariantId) {
+				nextVariant = {
+					variantId: nextVariantId,
+					entryId: assistantEntryId,
+					kind: 'generation',
+					createdAt: Date.now(),
+					parts: [buildStreamingMainPart(currentMainPart, nextPartId)],
+				};
+			} else {
+				let replaced = false;
+				const nextParts = (nextVariant.parts ?? []).map((p) => {
+					if (replaced) return p;
+					if (p.channel === 'main' && !p.softDeleted) {
+						replaced = true;
+						return { ...p, partId: nextPartId, payload: '' };
+					}
+					return p;
+				});
+				nextVariant = {
+					...nextVariant,
+					parts: replaced ? nextParts : [buildStreamingMainPart(currentMainPart, nextPartId), ...nextParts],
+				};
+			}
+
+			return {
+				...x,
+				entry: { ...x.entry, activeVariantId: nextVariantId },
+				variant: nextVariant,
+			};
 		}
 		return x;
 	});
@@ -355,6 +426,20 @@ export const $variantsByEntryId = createStore<Record<string, Variant[]>>({}).on(
 	[entryId]: variants,
 }));
 
+export const loadVariantsRequested = createEvent<{ entryId: string }>();
+export const $variantsLoadingByEntryId = createStore<Record<string, boolean>>({})
+	.on(loadVariantsFx, (prev, { entryId }) => ({ ...prev, [entryId]: true }))
+	.on(loadVariantsFx.doneData, (prev, { entryId }) => ({ ...prev, [entryId]: false }))
+	.on(loadVariantsFx.fail, (prev, { params }) => ({ ...prev, [params.entryId]: false }));
+
+sample({
+	clock: loadVariantsRequested,
+	source: $variantsLoadingByEntryId,
+	filter: (loadingById, { entryId }) => !loadingById[entryId],
+	fn: (_loadingById, payload) => payload,
+	target: loadVariantsFx,
+});
+
 export const selectVariantRequested = createEvent<{ entryId: string; variantId: string }>();
 export const selectVariantFx = createEffect(async (params: { entryId: string; variantId: string }) => selectEntryVariant(params));
 
@@ -366,6 +451,56 @@ sample({
 	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
 	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
 	target: loadEntriesFx,
+});
+
+export const manualEditEntryRequested = createEvent<{ entryId: string; content: string; partId?: string }>();
+export const manualEditEntryFx = createEffect(async (params: { entryId: string; content: string; partId?: string }) => {
+	return manualEditEntry(params);
+});
+
+sample({ clock: manualEditEntryRequested, target: manualEditEntryFx });
+
+sample({
+	clock: manualEditEntryFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
+sample({
+	clock: manualEditEntryFx.doneData,
+	fn: ({ entryId }) => ({ entryId }),
+	target: loadVariantsRequested,
+});
+
+manualEditEntryFx.doneData.watch(() => {
+	toaster.success({ title: i18n.t('chat.toasts.variantSaved') });
+});
+
+manualEditEntryFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.saveEditError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+export const softDeleteEntryRequested = createEvent<{ entryId: string }>();
+export const softDeleteEntryFx = createEffect(async (params: { entryId: string }) => softDeleteEntry(params.entryId));
+
+sample({ clock: softDeleteEntryRequested, target: softDeleteEntryFx });
+
+sample({
+	clock: softDeleteEntryFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
+softDeleteEntryFx.doneData.watch(() => {
+	toaster.success({ title: i18n.t('chat.toasts.messageDeleted') });
+});
+
+softDeleteEntryFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.deleteMessageError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 export const regenerateRequested = createEvent<{ entryId: string }>();
@@ -421,7 +556,7 @@ export const runRegenerateStreamFx = createEffect(async (prep: Awaited<ReturnTyp
 		if (env.type === 'llm.stream.done') break;
 	}
 	await loadEntriesFx({ chatId: prep.chatId, branchId: prep.branchId });
-	await loadVariantsFx({ entryId: prep.entryId });
+	loadVariantsRequested({ entryId: prep.entryId });
 });
 
 sample({ clock: prepareRegenerateFx.doneData, target: runRegenerateStreamFx });

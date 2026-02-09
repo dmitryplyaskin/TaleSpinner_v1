@@ -79,8 +79,6 @@ export const createBranchBodySchema = z.object({
   ownerId: ownerIdSchema.optional(),
   title: z.string().min(1).optional(),
   parentBranchId: idSchema.optional(),
-  forkedFromMessageId: idSchema.optional(),
-  forkedFromVariantId: idSchema.optional(),
   meta: jsonValueSchema.optional(),
 });
 

@@ -1,7 +1,7 @@
 import { BASE_URL } from '../const';
 
-import type { Variant, Entry } from '@shared/types/chat-entry-parts';
 import type { SseEnvelope } from './chat-core';
+import type { Variant, Entry } from '@shared/types/chat-entry-parts';
 
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
@@ -230,6 +230,34 @@ export async function selectEntryVariant(params: { entryId: string; variantId: s
 		`/entries/${encodeURIComponent(params.entryId)}/variants/${encodeURIComponent(params.variantId)}/select`,
 		{ method: 'POST' },
 	);
+}
+
+export async function manualEditEntry(params: {
+	entryId: string;
+	partId?: string;
+	content: string;
+	ownerId?: string;
+	requestId?: string;
+}): Promise<{ entryId: string; activeVariantId: string }> {
+	return apiJson<{ entryId: string; activeVariantId: string }>(
+		`/entries/${encodeURIComponent(params.entryId)}/manual-edit`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				ownerId: params.ownerId,
+				partId: params.partId,
+				content: params.content,
+				requestId: params.requestId,
+			}),
+		},
+	);
+}
+
+export async function softDeleteEntry(entryId: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/entries/${encodeURIComponent(entryId)}/soft-delete`, {
+		method: 'POST',
+		body: JSON.stringify({ by: 'user' }),
+	});
 }
 
 export async function softDeletePart(partId: string): Promise<{ id: string }> {

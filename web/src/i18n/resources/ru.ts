@@ -68,6 +68,7 @@ const ru = {
 			},
 			errors: {
 				branchIdRequired: 'branchId обязателен (нет activeBranchId)',
+				editablePartNotFound: 'Не найдена редактируемая часть сообщения',
 			},
 			toasts: {
 				openChatError: 'Не удалось открыть чат',
