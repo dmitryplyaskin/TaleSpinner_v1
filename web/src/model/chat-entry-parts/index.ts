@@ -10,6 +10,7 @@ import {
 	manualEditEntry,
 	selectEntryVariant,
 	softDeleteEntry,
+	softDeletePart,
 	streamChatEntry,
 	streamContinueEntry,
 	streamRegenerateEntry,
@@ -840,8 +841,14 @@ manualEditEntryFx.failData.watch((error) => {
 
 export const softDeleteEntryRequested = createEvent<{ entryId: string }>();
 export const softDeleteEntryFx = createEffect(async (params: { entryId: string }) => softDeleteEntry(params.entryId));
+export const softDeletePartRequested = createEvent<{ entryId: string; partId: string }>();
+export const softDeletePartFx = createEffect(async (params: { entryId: string; partId: string }) => {
+	await softDeletePart(params.partId);
+	return params;
+});
 
 sample({ clock: softDeleteEntryRequested, target: softDeleteEntryFx });
+sample({ clock: softDeletePartRequested, target: softDeletePartFx });
 
 sample({
 	clock: softDeleteEntryFx.doneData,
@@ -859,19 +866,44 @@ softDeleteEntryFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.deleteMessageError'), description: error instanceof Error ? error.message : String(error) });
 });
 
+sample({
+	clock: softDeletePartFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
+sample({
+	clock: softDeletePartFx.doneData,
+	fn: ({ entryId }) => ({ entryId }),
+	target: loadVariantsRequested,
+});
+
+softDeletePartFx.doneData.watch(() => {
+	toaster.success({ title: i18n.t('chat.toasts.partDeleted') });
+});
+
+softDeletePartFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.deletePartError'), description: error instanceof Error ? error.message : String(error) });
+});
+
 export type DeleteConfirmState =
 	| { kind: 'entry'; entryId: string }
 	| { kind: 'variant'; entryId: string; variantId: string }
+	| { kind: 'part'; entryId: string; partId: string }
 	| null;
 
 export const openDeleteEntryConfirm = createEvent<{ entryId: string }>();
 export const openDeleteVariantConfirm = createEvent<{ entryId: string; variantId: string }>();
+export const openDeletePartConfirm = createEvent<{ entryId: string; partId: string }>();
 export const closeDeleteConfirm = createEvent();
 export const confirmDeleteAction = createEvent();
 
 export const $deleteConfirmState = createStore<DeleteConfirmState>(null)
 	.on(openDeleteEntryConfirm, (_prev, payload) => ({ kind: 'entry', ...payload }))
 	.on(openDeleteVariantConfirm, (_prev, payload) => ({ kind: 'variant', ...payload }))
+	.on(openDeletePartConfirm, (_prev, payload) => ({ kind: 'part', ...payload }))
 	.on(closeDeleteConfirm, () => null);
 
 sample({
@@ -891,6 +923,17 @@ sample({
 		variantId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'variant' }>).variantId,
 	}),
 	target: deleteVariantRequested,
+});
+
+sample({
+	clock: confirmDeleteAction,
+	source: $deleteConfirmState,
+	filter: (state): state is Extract<NonNullable<DeleteConfirmState>, { kind: 'part' }> => state?.kind === 'part',
+	fn: (state) => ({
+		entryId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'part' }>).entryId,
+		partId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'part' }>).partId,
+	}),
+	target: softDeletePartRequested,
 });
 
 sample({

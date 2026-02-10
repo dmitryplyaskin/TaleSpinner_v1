@@ -1,9 +1,11 @@
-import { Box, Collapse, Group, Paper, Stack, Text } from '@mantine/core';
+import { Box, Collapse, Group, Paper, Stack, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LuPen, LuTrash } from 'react-icons/lu';
 
 import { $appDebugEnabled } from '@model/app-debug';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 import { getUiProjection } from './projection';
 import { renderPart } from './renderers';
@@ -15,9 +17,34 @@ type Props = {
 	variant: Variant | null;
 	currentTurn: number;
 	preferPlainText?: boolean;
+	canMutateParts?: boolean;
+	editingPartId?: string | null;
+	draftText?: string;
+	onDraftTextChange?: (next: string) => void;
+	onEditPart?: (part: Part) => void;
+	onDeletePart?: (part: Part) => void;
 };
 
-const PartsViewInner: React.FC<Props> = ({ entry, variant, currentTurn, preferPlainText = false }) => {
+function isEditablePart(part: Part): boolean {
+	return (
+		!part.softDeleted &&
+		typeof part.payload === 'string' &&
+		(part.payloadFormat === 'text' || part.payloadFormat === 'markdown')
+	);
+}
+
+const PartsViewInner: React.FC<Props> = ({
+	entry,
+	variant,
+	currentTurn,
+	preferPlainText = false,
+	canMutateParts = false,
+	editingPartId = null,
+	draftText = '',
+	onDraftTextChange,
+	onEditPart,
+	onDeletePart,
+}) => {
 	const { t } = useTranslation();
 	const appDebugEnabled = useUnit($appDebugEnabled);
 	const [debugUiEnabled, setDebugUiEnabled] = useState(false);
@@ -50,7 +77,47 @@ const PartsViewInner: React.FC<Props> = ({ entry, variant, currentTurn, preferPl
 		return (
 			<Stack gap="xs">
 				{parts.map((p) => (
-					<Box key={p.partId}>{renderPart(p, { plainTextForMarkdown: preferPlainText })}</Box>
+					<Box key={p.partId}>
+						{canMutateParts && p.channel !== 'main' && (Boolean(onEditPart) || Boolean(onDeletePart)) && (
+							<Group justify="flex-end" gap={4} mb={4}>
+								{onDeletePart && !p.softDeleted && (
+									<IconButtonWithTooltip
+										size="xs"
+										variant="ghost"
+										colorPalette="red"
+										icon={<LuTrash />}
+										tooltip={t('chat.actions.deletePart')}
+										aria-label={t('chat.actions.deletePart')}
+										onClick={() => onDeletePart(p)}
+									/>
+								)}
+								{onEditPart && isEditablePart(p) && (
+									<IconButtonWithTooltip
+										size="xs"
+										variant="ghost"
+										colorPalette="violet"
+										icon={<LuPen />}
+										tooltip={t('chat.actions.editPart')}
+										aria-label={t('chat.actions.editPart')}
+										onClick={() => onEditPart(p)}
+									/>
+								)}
+							</Group>
+						)}
+						<Box>
+							{editingPartId === p.partId && isEditablePart(p) && onDraftTextChange ? (
+								<Textarea
+									value={draftText}
+									onChange={(event) => onDraftTextChange(event.currentTarget.value)}
+									autosize
+									minRows={2}
+									maxRows={12}
+								/>
+							) : (
+								renderPart(p, { plainTextForMarkdown: preferPlainText })
+							)}
+						</Box>
+					</Box>
 				))}
 			</Stack>
 		);
@@ -145,6 +212,12 @@ export const PartsView = memo(PartsViewInner, (prev, next) => {
 		prev.entry === next.entry &&
 		prev.variant === next.variant &&
 		prev.currentTurn === next.currentTurn &&
-		Boolean(prev.preferPlainText) === Boolean(next.preferPlainText)
+		Boolean(prev.preferPlainText) === Boolean(next.preferPlainText) &&
+		Boolean(prev.canMutateParts) === Boolean(next.canMutateParts) &&
+		prev.editingPartId === next.editingPartId &&
+		prev.draftText === next.draftText &&
+		prev.onDraftTextChange === next.onDraftTextChange &&
+		prev.onEditPart === next.onEditPart &&
+		prev.onDeletePart === next.onDeletePart
 	);
 });

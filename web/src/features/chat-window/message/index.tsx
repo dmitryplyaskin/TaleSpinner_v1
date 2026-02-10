@@ -1,4 +1,4 @@
-import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
+import { Avatar, Box, Flex, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import {
 	loadVariantsRequested,
 	manualEditEntryRequested,
 	openDeleteEntryConfirm,
+	openDeletePartConfirm,
 	openDeleteVariantConfirm,
 	regenerateRequested,
 	selectVariantRequested,
@@ -27,6 +28,7 @@ import { PartsView } from './parts/parts-view';
 import { VariantControls } from './variant-controls';
 
 import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
+import type { Part } from '@shared/types/chat-entry-parts';
 
 type MessageProps = {
 	data: ChatEntryWithVariantDto;
@@ -64,6 +66,18 @@ function resolveAssetUrl(value?: string | null): string | undefined {
 	return `${BACKEND_ORIGIN}${value}`;
 }
 
+function isEditablePart(part: Part): boolean {
+	return (
+		!part.softDeleted &&
+		typeof part.payload === 'string' &&
+		(part.payloadFormat === 'text' || part.payloadFormat === 'markdown')
+	);
+}
+
+function isEditableMainPart(part: Part): boolean {
+	return part.channel === 'main' && isEditablePart(part);
+}
+
 const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewRequested }) => {
 	const { t } = useTranslation();
 	const [currentProfile, selectedUserPerson] = useUnit([$currentEntityProfile, userPersonsModel.$selectedItem]);
@@ -99,17 +113,12 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 
 	const editableMainPart = useMemo(() => {
 		const parts = data.variant?.parts ?? [];
-		const candidates = parts.filter(
-			(part) =>
-				!part.softDeleted &&
-				part.channel === 'main' &&
-				typeof part.payload === 'string' &&
-				(part.payloadFormat === 'text' || part.payloadFormat === 'markdown'),
-		);
-		return candidates.length > 0 ? candidates[candidates.length - 1] : null;
+		const mainCandidates = parts.filter(isEditableMainPart);
+		return mainCandidates.length > 0 ? mainCandidates[mainCandidates.length - 1] : null;
 	}, [data.variant?.parts]);
 
 	const isEditing = Boolean(editingPartId);
+	const canMutateParts = !isOptimistic && !isStreaming;
 
 	useEffect(() => {
 		if (!isAssistant) return;
@@ -199,7 +208,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 	};
 
 	const handleOpenEdit = () => {
-		if (isOptimistic || isStreaming) return;
+		if (!canMutateParts) return;
 		const part = editableMainPart;
 		if (!part || typeof part.payload !== 'string') {
 			toaster.error({
@@ -208,6 +217,14 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 			});
 			return;
 		}
+		setEditingPartId(part.partId);
+		setDraftText(part.payload);
+	};
+
+	const handleOpenEditPart = (part: Part) => {
+		if (part.channel === 'main') return;
+		if (!canMutateParts || !isEditablePart(part)) return;
+		if (typeof part.payload !== 'string') return;
 		setEditingPartId(part.partId);
 		setDraftText(part.payload);
 	};
@@ -232,6 +249,11 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 	const handleRequestDeleteVariant = () => {
 		if (!canDeleteVariant || isOptimistic || isStreaming) return;
 		openDeleteVariantConfirm({ entryId: data.entry.entryId, variantId: data.entry.activeVariantId });
+	};
+
+	const handleRequestDeletePart = (part: Part) => {
+		if (!canMutateParts || part.softDeleted) return;
+		openDeletePartConfirm({ entryId: data.entry.entryId, partId: part.partId });
 	};
 
 	const handleAssistantAvatarClick = () => {
@@ -303,22 +325,18 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 						</Flex>
 
 						<Box className="ts-message-body ts-chat-serif">
-							{isEditing ? (
-								<Textarea
-									value={draftText}
-									onChange={(event) => setDraftText(event.currentTarget.value)}
-									autosize
-									minRows={2}
-									maxRows={12}
-								/>
-							) : (
-								<PartsView
-									entry={data.entry}
-									variant={data.variant}
-									currentTurn={currentTurn}
-									preferPlainText={isAssistant && isLast && isStreaming}
-								/>
-							)}
+							<PartsView
+								entry={data.entry}
+								variant={data.variant}
+								currentTurn={currentTurn}
+								preferPlainText={isAssistant && isLast && isStreaming}
+								canMutateParts={canMutateParts}
+								editingPartId={editingPartId}
+								draftText={draftText}
+								onDraftTextChange={setDraftText}
+								onEditPart={handleOpenEditPart}
+								onDeletePart={handleRequestDeletePart}
+							/>
 						</Box>
 					</Box>
 				</Stack>

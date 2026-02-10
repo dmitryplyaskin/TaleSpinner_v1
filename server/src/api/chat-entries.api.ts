@@ -763,8 +763,12 @@ function sortPartsStable(a: Part, b: Part): number {
 }
 
 function isEditableMainPart(part: Part): boolean {
+  if (part.channel !== "main") return false;
+  return isEditablePart(part);
+}
+
+function isEditablePart(part: Part): boolean {
   return (
-    part.channel === "main" &&
     !part.softDeleted &&
     typeof part.payload === "string" &&
     (part.payloadFormat === "text" || part.payloadFormat === "markdown")
@@ -796,17 +800,20 @@ router.post(
     let targetPartId: string | null = null;
     if (body.partId) {
       const target = sourceParts.find((p) => p.partId === body.partId) ?? null;
-      if (!target || !isEditableMainPart(target)) {
+      if (!target || !isEditablePart(target)) {
         throw new HttpError(400, "partId не найден или не поддерживает редактирование", "VALIDATION_ERROR");
       }
       targetPartId = target.partId;
     } else {
       const visible = getUiProjection(entry, activeVariant, currentTurn, { debugEnabled: false });
-      const editableVisible = visible.filter(isEditableMainPart);
+      const editableMainVisible = visible.filter(isEditableMainPart);
+      const editableVisible = visible.filter(isEditablePart);
+      const fallbackMain =
+        editableMainVisible.length > 0 ? editableMainVisible[editableMainVisible.length - 1] : null;
       const fallback =
-        editableVisible.length > 0 ? editableVisible[editableVisible.length - 1] : null;
+        fallbackMain ?? (editableVisible.length > 0 ? editableVisible[editableVisible.length - 1] : null);
       if (!fallback) {
-        throw new HttpError(400, "Не найден editable main-part для редактирования", "VALIDATION_ERROR");
+        throw new HttpError(400, "Не найден editable part для редактирования", "VALIDATION_ERROR");
       }
       targetPartId = fallback.partId;
     }
