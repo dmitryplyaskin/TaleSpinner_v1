@@ -1,15 +1,4 @@
 .op-ui {
-	--op-surface: #ffffff;
-	--op-surface-muted: #f7f9fc;
-	--op-border: #dbe3ee;
-	--op-border-strong: #c5d1e2;
-	--op-muted: #596b85;
-	--op-accent: #2d6cb0;
-	--op-accent-soft: #edf5ff;
-	--op-success: #15803d;
-	--op-warn: #d97706;
-	--op-danger: #dc2626;
-	--op-shadow: 0 8px 18px rgba(18, 36, 60, 0.06);
 	--op-radius-lg: 12px;
 	--op-radius-md: 10px;
 	--op-space-xs: 8px;
@@ -17,7 +6,7 @@
 	--op-space-md: 16px;
 	--op-space-lg: 20px;
 	--op-space-xl: 24px;
-	background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+	background: linear-gradient(180deg, var(--op-bg-gradient-start) 0%, var(--op-bg-gradient-end) 100%);
 	border-radius: var(--op-radius-lg);
 	padding: var(--op-space-md);
 	max-width: 1320px;
@@ -196,7 +185,7 @@
 .op-ui .op-listRow {
 	border-radius: var(--op-radius-md);
 	border: 1px solid var(--op-border);
-	background: #fdfefe;
+	background: var(--op-list-row-bg);
 	transition: border-color 120ms ease, transform 120ms ease, background-color 120ms ease;
 }
 

@@ -51,10 +51,12 @@ const GroupOverlaysImpl: React.FC<Props> = ({
 								width: bounds.width + pad * 2,
 								height: bounds.height + pad * 2,
 								borderRadius: 14,
-								border: isActive ? '2px solid rgba(47,116,208,0.9)' : '1px dashed rgba(26,53,89,0.28)',
+								border: isActive
+									? '2px solid var(--ts-node-group-border-active)'
+									: '1px dashed var(--ts-node-group-border)',
 								background: colors.bg,
 								pointerEvents: 'none',
-								boxShadow: isActive ? '0 8px 20px rgba(47,116,208,0.16)' : 'none',
+								boxShadow: isActive ? '0 8px 20px var(--ts-node-group-shadow-active)' : 'none',
 								zIndex: Z_INDEX.flow.groupOverlay,
 							}}
 						/>
@@ -74,7 +76,7 @@ const GroupOverlaysImpl: React.FC<Props> = ({
 									cursor: 'pointer',
 									userSelect: 'none',
 									background: colors.base,
-									boxShadow: '0 6px 14px rgba(19, 33, 54, 0.24)',
+									boxShadow: '0 6px 14px var(--ts-node-group-badge-shadow)',
 								}}
 								onPointerDown={(e) => onLabelPointerDown(e, groupId)}
 								onPointerMove={(e) => onLabelPointerMove(e)}

@@ -8,6 +8,7 @@ import { promptTemplatesInitRequested } from './prompt-templates';
 import { llmProviderModel } from './provider';
 import { samplersModel } from './samplers';
 import { getSettingsFx as fetchSidebarsFx } from './sidebars';
+import { loadUiThemePresetsFx, loadUiThemeSettingsFx } from './ui-themes';
 import { userPersonsModel } from './user-persons';
 import { worldInfoInitRequested } from './world-info';
 
@@ -23,6 +24,8 @@ export const appInitFx = createEffect(async (): Promise<void> => {
 		fetchSidebarsFx(),
 		fetchAppSettingsFx(),
 		fetchLlmSettingsFx(),
+		loadUiThemePresetsFx(),
+		loadUiThemeSettingsFx(),
 
 		// Data models (settings + items)
 		loadEntityProfilesFx(),

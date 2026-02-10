@@ -57,7 +57,7 @@ const QuoteComponent: NonNullable<Components['q']> = (props) => {
 	return (
 		<q
 			className={joinClassNames('ts-md__quote', className)}
-			style={{ color: 'var(--mantine-color-orange-6)', quotes: 'none' }}
+			style={{ color: 'var(--ts-md-quote-color)', quotes: 'none' }}
 			{...rest}
 		/>
 	);

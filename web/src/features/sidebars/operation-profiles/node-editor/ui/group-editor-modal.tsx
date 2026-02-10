@@ -56,7 +56,7 @@ export const GroupEditorModal: React.FC<Props> = ({ draft, onClose, onDelete, on
 									const nextBg = e.currentTarget.value;
 									setLocalDraft((prev) => (prev ? { ...prev, bg: nextBg } : prev));
 								}}
-								style={{ width: 44, height: 34, padding: 0, border: '1px solid rgba(0,0,0,0.2)', borderRadius: 8 }}
+								style={{ width: 44, height: 34, padding: 0, border: '1px solid var(--ts-node-group-editor-border)', borderRadius: 8 }}
 							/>
 							<TextInput
 								style={{ flex: 1 }}

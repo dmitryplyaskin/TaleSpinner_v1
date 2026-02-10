@@ -9,6 +9,7 @@ import llmRoutes from "./llm.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import samplersRoutes from "./samplers.api";
+import uiThemeCoreRoutes from "./ui-theme.core.api";
 import userPersonsCoreRoutes from "./user-persons.core.api";
 import worldInfoCoreRoutes from "./world-info.core.api";
 
@@ -25,5 +26,6 @@ export const routes = [
   fileRoutes,
   instructionsRoutes,
   promptTemplatesCoreRoutes,
+  uiThemeCoreRoutes,
   worldInfoCoreRoutes,
 ];

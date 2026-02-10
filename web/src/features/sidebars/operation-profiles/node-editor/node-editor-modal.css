@@ -17,25 +17,25 @@
 
 .opNodeHeader {
 	padding: 12px 14px;
-	background: #ffffff;
-	border: 1px solid #d9e3f0;
+	background: var(--op-node-surface);
+	border: 1px solid var(--op-node-border);
 	border-radius: 12px;
-	box-shadow: 0 12px 24px rgba(24, 43, 70, 0.08);
+	box-shadow: var(--op-node-shadow);
 }
 
 .opNodePanel {
-	border: 1px solid #d9e3f0;
+	border: 1px solid var(--op-node-border);
 	border-radius: 12px;
-	background: #ffffff;
-	box-shadow: 0 12px 24px rgba(24, 43, 70, 0.08);
+	background: var(--op-node-surface);
+	box-shadow: var(--op-node-shadow);
 }
 
 .opNodeToolbar {
 	padding: 8px;
-	background: rgba(255, 255, 255, 0.94);
-	border: 1px solid #d9e3f0;
+	background: var(--op-node-toolbar-bg);
+	border: 1px solid var(--op-node-border);
 	border-radius: 10px;
-	box-shadow: 0 8px 18px rgba(24, 43, 70, 0.12);
+	box-shadow: var(--op-node-shadow);
 }
 
 .opNodeInspector {
@@ -47,10 +47,10 @@
 .opNodeInspectorHeader {
 	padding-bottom: 10px;
 	margin-bottom: 10px;
-	border-bottom: 1px solid #d9e3f0;
+	border-bottom: 1px solid var(--op-node-border);
 	position: sticky;
 	top: 0;
-	background: #ffffff;
+	background: var(--op-node-surface);
 	z-index: 3;
 }
 

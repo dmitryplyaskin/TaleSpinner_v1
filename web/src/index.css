@@ -1,6 +1,13 @@
 :root {
   --ts-font-ui: 'Manrope', 'Segoe UI Variable Text', 'Trebuchet MS', sans-serif;
   --ts-font-chat: 'Literata', Georgia, Cambria, serif;
+  --ts-font-size-ui: 16px;
+  --ts-font-size-chat: 1rem;
+  --ts-md-font-size: 1rem;
+  --ts-md-line-height: 1.66;
+  --ts-md-code-font-size: 0.86em;
+  --ts-md-code-padding: 0.1em 0.32em;
+  --ts-md-quote-border-width: 3px;
   --ts-surface: #f2f5f7;
   --ts-surface-elevated: rgba(255, 255, 255, 0.86);
   --ts-border-soft: rgba(16, 36, 48, 0.14);
@@ -9,19 +16,115 @@
   --ts-overlay: rgba(8, 20, 29, 0.44);
   --ts-shadow-soft: 0 10px 28px rgba(8, 26, 38, 0.14);
   --ts-shadow-strong: 0 18px 36px rgba(6, 23, 34, 0.28);
+  --ts-body-bg-grad-a: rgba(20, 69, 84, 0.18);
+  --ts-body-bg-grad-b: rgba(18, 56, 71, 0.22);
+  --ts-left-rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 251, 255, 0.66));
+  --ts-left-rail-inset-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.3);
+  --ts-chat-window-overlay-top: rgba(9, 24, 34, 0.56);
+  --ts-chat-window-overlay-mid: rgba(8, 18, 27, 0.36);
+  --ts-chat-window-overlay-bottom: rgba(6, 15, 22, 0.5);
+  --ts-chat-window-radial-a: rgba(76, 141, 161, 0.14);
+  --ts-chat-window-radial-b: rgba(31, 96, 114, 0.16);
+  --ts-chat-scroll-bg-top: rgba(255, 255, 255, 0.28);
+  --ts-chat-scroll-bg-bottom: rgba(255, 255, 255, 0.16);
+  --ts-chat-header-border: rgba(16, 36, 48, 0.16);
+  --ts-message-assistant-bg: rgba(250, 252, 253, 0.96);
+  --ts-message-user-bg: rgba(228, 241, 246, 0.94);
+  --ts-message-user-border: rgba(22, 88, 108, 0.28);
+  --ts-message-assistant-name: #185f70;
+  --ts-message-user-name: #0e4f62;
+  --ts-chat-avatar-preview-bg: rgba(250, 252, 253, 0.86);
+  --ts-sidebar-card-bg: rgba(255, 255, 255, 0.92);
+  --ts-sidebar-card-hover-border: rgba(18, 77, 95, 0.34);
+  --ts-md-code-bg: rgba(13, 32, 43, 0.08);
+  --ts-md-quote-color: #c05f1d;
+  --ts-md-link-decoration-color: rgba(15, 143, 168, 0.35);
+  --ts-scrollbar-thumb: rgba(20, 101, 122, 0.45);
+  --ts-input-bg: #ffffff;
+  --ts-node-group-border: rgba(26,53,89,0.28);
+  --ts-node-group-border-active: rgba(47,116,208,0.9);
+  --ts-node-group-shadow-active: rgba(47,116,208,0.16);
+  --ts-node-group-badge-shadow: rgba(19, 33, 54, 0.24);
+  --ts-node-group-editor-border: rgba(0,0,0,0.2);
+  --op-surface: #ffffff;
+  --op-surface-muted: #f7f9fc;
+  --op-border: #dbe3ee;
+  --op-border-strong: #c5d1e2;
+  --op-muted: #596b85;
+  --op-accent: #2d6cb0;
+  --op-accent-soft: #edf5ff;
+  --op-success: #15803d;
+  --op-warn: #d97706;
+  --op-danger: #dc2626;
+  --op-shadow: 0 8px 18px rgba(18, 36, 60, 0.06);
+  --op-bg-gradient-start: #f8fbff;
+  --op-bg-gradient-end: #f4f7fb;
+  --op-list-row-bg: #fdfefe;
+  --op-node-surface: #ffffff;
+  --op-node-border: #d9e3f0;
+  --op-node-shadow: 0 12px 24px rgba(24, 43, 70, 0.08);
+  --op-node-toolbar-bg: rgba(255, 255, 255, 0.94);
   --ts-rail-width: 60px;
   --ts-chat-max-width: 1320px;
 }
 
 [data-mantine-color-scheme='dark'] {
-  --ts-surface: #0f1d27;
-  --ts-surface-elevated: rgba(15, 27, 36, 0.84);
-  --ts-border-soft: rgba(165, 196, 214, 0.2);
-  --ts-accent: #3bc4dd;
-  --ts-accent-soft: rgba(59, 196, 221, 0.22);
-  --ts-overlay: rgba(4, 10, 16, 0.56);
-  --ts-shadow-soft: 0 14px 34px rgba(2, 10, 15, 0.46);
-  --ts-shadow-strong: 0 20px 44px rgba(0, 8, 12, 0.62);
+  --ts-surface: #121417;
+  --ts-surface-elevated: rgba(24, 27, 32, 0.9);
+  --ts-border-soft: rgba(208, 218, 230, 0.16);
+  --ts-accent: #58b8d8;
+  --ts-accent-soft: rgba(88, 184, 216, 0.2);
+  --ts-overlay: rgba(8, 10, 14, 0.62);
+  --ts-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.34);
+  --ts-shadow-strong: 0 18px 40px rgba(0, 0, 0, 0.46);
+  --ts-body-bg-grad-a: rgba(55, 68, 84, 0.18);
+  --ts-body-bg-grad-b: rgba(39, 52, 66, 0.2);
+  --ts-left-rail-bg: linear-gradient(180deg, rgba(24, 28, 34, 0.9), rgba(16, 20, 25, 0.88));
+  --ts-left-rail-inset-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+  --ts-chat-window-overlay-top: rgba(10, 13, 18, 0.72);
+  --ts-chat-window-overlay-mid: rgba(9, 12, 17, 0.56);
+  --ts-chat-window-overlay-bottom: rgba(8, 11, 15, 0.72);
+  --ts-chat-window-radial-a: rgba(70, 96, 124, 0.16);
+  --ts-chat-window-radial-b: rgba(52, 72, 92, 0.18);
+  --ts-chat-scroll-bg-top: rgba(22, 27, 34, 0.56);
+  --ts-chat-scroll-bg-bottom: rgba(18, 22, 29, 0.44);
+  --ts-chat-header-border: rgba(182, 197, 212, 0.24);
+  --ts-message-assistant-bg: rgba(28, 32, 38, 0.94);
+  --ts-message-user-bg: rgba(33, 42, 52, 0.92);
+  --ts-message-user-border: rgba(112, 164, 191, 0.34);
+  --ts-message-assistant-name: #b6d9ea;
+  --ts-message-user-name: #9fd0e6;
+  --ts-chat-avatar-preview-bg: rgba(22, 26, 32, 0.9);
+  --ts-sidebar-card-bg: rgba(26, 31, 37, 0.92);
+  --ts-sidebar-card-hover-border: rgba(104, 160, 189, 0.36);
+  --ts-md-code-bg: rgba(140, 170, 195, 0.14);
+  --ts-md-quote-color: #f2b27a;
+  --ts-md-link-decoration-color: rgba(88, 184, 216, 0.38);
+  --ts-scrollbar-thumb: rgba(102, 146, 174, 0.52);
+  --ts-input-bg: rgba(18, 22, 27, 0.94);
+  --ts-node-group-border: rgba(126, 154, 184, 0.34);
+  --ts-node-group-border-active: rgba(102, 184, 216, 0.95);
+  --ts-node-group-shadow-active: rgba(63, 142, 177, 0.24);
+  --ts-node-group-badge-shadow: rgba(0, 0, 0, 0.42);
+  --ts-node-group-editor-border: rgba(130, 156, 184, 0.42);
+  --op-surface: #1a2027;
+  --op-surface-muted: #1e252d;
+  --op-border: #33404d;
+  --op-border-strong: #435464;
+  --op-muted: #a5b5c6;
+  --op-accent: #66b4d8;
+  --op-accent-soft: rgba(102, 180, 216, 0.18);
+  --op-success: #49b87a;
+  --op-warn: #e7ad5a;
+  --op-danger: #eb7474;
+  --op-shadow: 0 10px 24px rgba(0, 0, 0, 0.38);
+  --op-bg-gradient-start: #1a222b;
+  --op-bg-gradient-end: #151c24;
+  --op-list-row-bg: #202932;
+  --op-node-surface: #1d252e;
+  --op-node-border: #354655;
+  --op-node-shadow: 0 12px 24px rgba(0, 0, 0, 0.36);
+  --op-node-toolbar-bg: rgba(28, 36, 45, 0.94);
 }
 
 * {
@@ -38,13 +141,19 @@ body,
 
 body {
   font-family: var(--ts-font-ui);
-  background: radial-gradient(circle at top right, rgba(20, 69, 84, 0.18), transparent 48%),
-    radial-gradient(circle at bottom left, rgba(18, 56, 71, 0.22), transparent 52%), var(--ts-surface);
+  font-size: var(--ts-font-size-ui);
+  background: radial-gradient(circle at top right, var(--ts-body-bg-grad-a), transparent 48%),
+    radial-gradient(circle at bottom left, var(--ts-body-bg-grad-b), transparent 52%), var(--ts-surface);
   color: var(--mantine-color-text);
 }
 
 a {
   color: inherit;
+}
+
+.mantine-Modal-content,
+.mantine-Drawer-content {
+  background: var(--ts-surface);
 }
 
 .ts-app-shell {
@@ -67,19 +176,14 @@ a {
   width: var(--ts-rail-width);
   min-width: var(--ts-rail-width);
   border-right: 1px solid var(--ts-border-soft);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 251, 255, 0.66));
+  background: var(--ts-left-rail-bg);
   backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 10px 8px;
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.3);
-}
-
-[data-mantine-color-scheme='dark'] .ts-left-rail {
-  background: linear-gradient(180deg, rgba(17, 35, 46, 0.82), rgba(10, 22, 32, 0.76));
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--ts-left-rail-inset-shadow);
 }
 
 .ts-left-rail__top,
@@ -124,7 +228,7 @@ a {
 .ts-icon-button[data-active='true'] {
   background-color: var(--ts-accent-soft);
   color: var(--ts-accent);
-  border-color: rgba(10, 96, 116, 0.26);
+  border-color: var(--ts-border-soft);
   box-shadow: none;
 }
 
@@ -141,15 +245,20 @@ a {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(9, 24, 34, 0.56) 0%, rgba(8, 18, 27, 0.36) 24%, rgba(6, 15, 22, 0.5) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--ts-chat-window-overlay-top) 0%,
+    var(--ts-chat-window-overlay-mid) 24%,
+    var(--ts-chat-window-overlay-bottom) 100%
+  );
 }
 
 .ts-chat-window::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 10%, rgba(76, 141, 161, 0.14), transparent 44%),
-    radial-gradient(circle at 85% 80%, rgba(31, 96, 114, 0.16), transparent 34%);
+  background: radial-gradient(circle at 20% 10%, var(--ts-chat-window-radial-a), transparent 44%),
+    radial-gradient(circle at 85% 80%, var(--ts-chat-window-radial-b), transparent 34%);
 }
 
 .ts-chat-window__inner {
@@ -169,7 +278,7 @@ a {
   overflow-y: auto;
   border: 1px solid var(--ts-border-soft);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.16));
+  background: linear-gradient(180deg, var(--ts-chat-scroll-bg-top), var(--ts-chat-scroll-bg-bottom));
   backdrop-filter: blur(5px);
   box-shadow: var(--ts-shadow-strong);
   padding: 8px 10px 10px;
@@ -179,7 +288,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 5;
-  border: 1px solid rgba(16, 36, 48, 0.16);
+  border: 1px solid var(--ts-chat-header-border);
   border-radius: 14px;
   padding: 8px 10px;
   background: var(--ts-surface-elevated);
@@ -228,14 +337,14 @@ a {
   width: 100%;
   border: 1px solid var(--ts-border-soft);
   border-radius: 14px;
-  background: rgba(250, 252, 253, 0.96);
+  background: var(--ts-message-assistant-bg);
   padding: 16px;
   box-shadow: var(--ts-shadow-soft);
 }
 
 .ts-message-card[data-role='user'] {
-  background: rgba(228, 241, 246, 0.94);
-  border-color: rgba(22, 88, 108, 0.28);
+  background: var(--ts-message-user-bg);
+  border-color: var(--ts-message-user-border);
 }
 
 .ts-message-name {
@@ -243,11 +352,11 @@ a {
 }
 
 .ts-message-name[data-role='assistant'] {
-  color: #185f70;
+  color: var(--ts-message-assistant-name);
 }
 
 .ts-message-name[data-role='user'] {
-  color: #0e4f62;
+  color: var(--ts-message-user-name);
 }
 
 .ts-message-meta {
@@ -275,7 +384,7 @@ a {
   height: 100vh;
   min-height: 0;
   border-right: 1px solid var(--ts-border-soft);
-  background: rgba(250, 252, 253, 0.86);
+  background: var(--ts-chat-avatar-preview-bg);
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
@@ -286,10 +395,6 @@ a {
   bottom: 0;
   z-index: 8;
   box-shadow: var(--ts-shadow-strong);
-}
-
-[data-mantine-color-scheme='dark'] .ts-chat-avatar-preview {
-  background: rgba(14, 27, 36, 0.84);
 }
 
 .ts-chat-avatar-preview__header {
@@ -335,12 +440,12 @@ a {
 .ts-sidebar-card {
   border: 1px solid var(--ts-border-soft);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ts-sidebar-card-bg);
   transition: border-color 120ms ease, transform 120ms ease, background-color 120ms ease;
 }
 
 .ts-sidebar-card:hover {
-  border-color: rgba(18, 77, 95, 0.34);
+  border-color: var(--ts-sidebar-card-hover-border);
   transform: translateY(-1px);
 }
 
@@ -411,8 +516,8 @@ a {
 
 .ts-md {
   font-family: var(--ts-font-chat);
-  font-size: 1rem;
-  line-height: 1.66;
+  font-size: var(--ts-md-font-size);
+  line-height: var(--ts-md-line-height);
   color: inherit;
 }
 
@@ -436,10 +541,10 @@ a {
 
 .ts-md code {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 0.86em;
-  padding: 0.1em 0.32em;
+  font-size: var(--ts-md-code-font-size);
+  padding: var(--ts-md-code-padding);
   border-radius: 6px;
-  background: rgba(13, 32, 43, 0.08);
+  background: var(--ts-md-code-bg);
 }
 
 .ts-md pre code {
@@ -451,18 +556,18 @@ a {
 .ts-md blockquote {
   margin: 0.7rem 0;
   padding: 0.45rem 0.8rem;
-  border-left: 3px solid var(--ts-accent);
+  border-left: var(--ts-md-quote-border-width) solid var(--ts-accent);
   border-radius: 0 8px 8px 0;
   background: var(--ts-accent-soft);
 }
 
 .ts-md__quote {
-  color: #c05f1d;
+  color: var(--ts-md-quote-color);
 }
 
 .ts-md a {
   color: var(--ts-accent);
-  text-decoration-color: rgba(15, 143, 168, 0.35);
+  text-decoration-color: var(--ts-md-link-decoration-color);
 }
 
 .ts-md img {
@@ -480,7 +585,7 @@ a {
 .ts-sidebar-shell__content,
 .ts-sidebar-modal-frame {
   scrollbar-width: thin;
-  scrollbar-color: rgba(19, 95, 115, 0.42) transparent;
+  scrollbar-color: var(--ts-scrollbar-thumb) transparent;
 }
 
 .ts-scrollbar-thin::-webkit-scrollbar,
@@ -498,7 +603,7 @@ a {
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
-  background-color: rgba(20, 101, 122, 0.45);
+  background-color: var(--ts-scrollbar-thumb);
 }
 
 @media (max-width: 1024px) {
