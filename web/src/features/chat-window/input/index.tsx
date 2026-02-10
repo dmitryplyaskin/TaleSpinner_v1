@@ -3,7 +3,7 @@ import { useUnit } from 'effector-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-entry-parts';
+import { $entries, $isChatStreaming, abortRequested, continueFromLastUserRequested, sendMessageRequested } from '@model/chat-entry-parts';
 import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
 import { ChatManagementMenu } from './chat-management-menu';
@@ -13,9 +13,12 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 
 export const MessageInput = () => {
 	const { t } = useTranslation();
-	const isProcessing = useUnit($isChatStreaming);
+	const [isProcessing, entries] = useUnit([$isChatStreaming, $entries]);
 	const message = useUnit($userMessage);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const trimmedMessage = message.trim();
+	const lastEntry = entries[entries.length - 1];
+	const canContinueFromLastUser = !isProcessing && trimmedMessage.length === 0 && lastEntry?.entry.role === 'user';
 
 	const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setUserMessage(event.target.value);
@@ -26,8 +29,14 @@ export const MessageInput = () => {
 			abortRequested();
 			return;
 		}
-		sendMessageRequested({ promptText: message, role: 'user' });
-		clearUserMessage();
+		if (trimmedMessage.length > 0) {
+			sendMessageRequested({ promptText: message, role: 'user' });
+			clearUserMessage();
+			return;
+		}
+		if (canContinueFromLastUser) {
+			continueFromLastUserRequested();
+		}
 	};
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -65,7 +74,7 @@ export const MessageInput = () => {
 					<Flex gap="xs">
 						<SendActionMenu />
 						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'cyan'} style={{ whiteSpace: 'nowrap' }}>
-							{isProcessing ? t('chat.input.abort') : t('chat.input.send')}
+							{isProcessing ? t('chat.input.abort') : canContinueFromLastUser ? t('chat.input.continue') : t('chat.input.send')}
 						</Button>
 					</Flex>
 				</Flex>

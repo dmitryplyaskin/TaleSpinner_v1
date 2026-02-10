@@ -38,6 +38,7 @@ const ru = {
 			input: {
 				placeholder: 'Введите сообщение...',
 				send: 'Отправить',
+				continue: 'Продолжить',
 				abort: 'Остановить',
 				actions: 'Действия отправки',
 			},
@@ -66,6 +67,11 @@ const ru = {
 				streaming: 'Генерация…',
 				saving: 'Сохранение…',
 				assistantFallback: 'AI Assistant',
+			},
+			reasoning: {
+				title: 'Ход рассуждений',
+				show: 'показать',
+				hide: 'скрыть',
 			},
 			avatarPreview: {
 				title: 'Просмотр аватара',
@@ -136,6 +142,11 @@ const ru = {
 				sendMessageError: 'Не удалось отправить сообщение',
 				streamError: 'Ошибка стрима',
 				regenerateError: 'Ошибка регенерации',
+				operationStarted: 'Операция {{name}} ({{hook}}) запущена',
+				operationFinishedDone: 'Операция {{name}} ({{hook}}) завершена',
+				operationFinishedSkipped: 'Операция {{name}} ({{hook}}) пропущена',
+				operationFinishedError: 'Операция {{name}} ({{hook}}) завершилась с ошибкой',
+				operationFinishedAborted: 'Операция {{name}} ({{hook}}) прервана',
 			},
 		},
 		sidebars: {

@@ -38,6 +38,7 @@ export type RunPersistenceTarget =
     mode: "entry_parts";
     assistantEntryId: string;
     assistantMainPartId: string;
+    assistantReasoningPartId?: string;
   };
 
 export type UserTurnTarget =
@@ -203,6 +204,7 @@ export type RunState = {
   effectivePromptDraft: PromptDraftMessage[];
   llmMessages: GenerateMessage[];
   assistantText: string;
+  assistantReasoningText: string;
   runArtifacts: Record<string, ArtifactValue>;
   persistedArtifactsSnapshot: Record<string, ArtifactValue>;
   operationResultsByHook: Record<OperationHook, OperationExecutionResult[]>;
@@ -292,6 +294,12 @@ export type RunEvent =
   | {
       runId: string;
       seq: number;
+      type: "main_llm.reasoning_delta";
+      data: { content: string };
+    }
+  | {
+      runId: string;
+      seq: number;
       type: "main_llm.finished";
       data: {
         status: "done" | "aborted" | "error";
@@ -329,6 +337,7 @@ export type RunEvent =
         basePromptDraft: PromptDraftMessage[];
         effectivePromptDraft: PromptDraftMessage[];
         assistantText: string;
+        assistantReasoningText: string;
         artifacts: Record<string, ArtifactValue>;
       };
     }

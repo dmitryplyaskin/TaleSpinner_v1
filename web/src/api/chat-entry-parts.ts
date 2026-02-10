@@ -77,17 +77,12 @@ export async function listChatEntries(params: {
 	);
 }
 
-export async function* streamChatEntry(params: {
-	chatId: string;
-	branchId?: string;
-	role: 'user' | 'system';
-	content: string;
-	settings?: Record<string, unknown>;
-	ownerId?: string;
+async function* streamSseRequest(params: {
+	path: string;
+	body: Record<string, unknown>;
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
-	const requestId = makeRequestId();
-	const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(params.chatId)}/entries`, {
+	const res = await fetch(`${BASE_URL}${params.path}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -95,14 +90,7 @@ export async function* streamChatEntry(params: {
 			Connection: 'keep-alive',
 			'Cache-Control': 'no-cache',
 		},
-		body: JSON.stringify({
-			ownerId: params.ownerId,
-			branchId: params.branchId,
-			role: params.role,
-			content: params.content,
-			settings: withChatGenerationDebugSettings(params.settings),
-			requestId,
-		}),
+		body: JSON.stringify(params.body),
 		signal: params.signal,
 	});
 
@@ -152,6 +140,30 @@ export async function* streamChatEntry(params: {
 	}
 }
 
+export async function* streamChatEntry(params: {
+	chatId: string;
+	branchId?: string;
+	role: 'user' | 'system';
+	content: string;
+	settings?: Record<string, unknown>;
+	ownerId?: string;
+	signal?: AbortSignal;
+}): AsyncGenerator<SseEnvelope> {
+	const requestId = makeRequestId();
+	yield* streamSseRequest({
+		path: `/chats/${encodeURIComponent(params.chatId)}/entries`,
+		body: {
+			ownerId: params.ownerId,
+			branchId: params.branchId,
+			role: params.role,
+			content: params.content,
+			settings: withChatGenerationDebugSettings(params.settings),
+			requestId,
+		},
+		signal: params.signal,
+	});
+}
+
 export async function* streamRegenerateEntry(params: {
 	entryId: string;
 	settings?: Record<string, unknown>;
@@ -159,66 +171,35 @@ export async function* streamRegenerateEntry(params: {
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
 	const requestId = makeRequestId();
-	const res = await fetch(`${BASE_URL}/entries/${encodeURIComponent(params.entryId)}/regenerate`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Accept: 'text/event-stream',
-			Connection: 'keep-alive',
-			'Cache-Control': 'no-cache',
-		},
-		body: JSON.stringify({
+	yield* streamSseRequest({
+		path: `/entries/${encodeURIComponent(params.entryId)}/regenerate`,
+		body: {
 			ownerId: params.ownerId,
 			settings: withChatGenerationDebugSettings(params.settings),
 			requestId,
-		}),
+		},
 		signal: params.signal,
 	});
+}
 
-	if (!res.ok) {
-		const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-		throw new Error(body?.error?.message ?? `HTTP error ${res.status}`);
-	}
-
-	const reader = res.body?.getReader();
-	if (!reader) throw new Error('SSE: response body is not readable');
-
-	const decoder = new TextDecoder();
-	let buffer = '';
-	let currentEventType: string | null = null;
-
-	while (true) {
-		const { value, done } = await reader.read();
-		if (done) break;
-
-		buffer += decoder.decode(value, { stream: true });
-		const lines = buffer.split('\n');
-		buffer = lines.pop() ?? '';
-
-		for (const rawLine of lines) {
-			const line = rawLine.trimEnd();
-			if (!line) {
-				currentEventType = null;
-				continue;
-			}
-			if (line.startsWith(':')) continue;
-			if (line.startsWith('event:')) {
-				currentEventType = line.slice('event:'.length).trim();
-				continue;
-			}
-			if (line.startsWith('data:')) {
-				const payload = line.slice('data:'.length).trim();
-				if (!payload) continue;
-				try {
-					const env = JSON.parse(payload) as SseEnvelope;
-					if (!env.type && currentEventType) env.type = currentEventType;
-					yield env;
-				} catch {
-					// ignore malformed chunks
-				}
-			}
-		}
-	}
+export async function* streamContinueEntry(params: {
+	chatId: string;
+	branchId?: string;
+	settings?: Record<string, unknown>;
+	ownerId?: string;
+	signal?: AbortSignal;
+}): AsyncGenerator<SseEnvelope> {
+	const requestId = makeRequestId();
+	yield* streamSseRequest({
+		path: `/chats/${encodeURIComponent(params.chatId)}/entries/continue`,
+		body: {
+			ownerId: params.ownerId,
+			branchId: params.branchId,
+			settings: withChatGenerationDebugSettings(params.settings),
+			requestId,
+		},
+		signal: params.signal,
+	});
 }
 
 export async function listEntryVariants(entryId: string): Promise<Variant[]> {

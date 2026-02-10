@@ -113,7 +113,7 @@ export async function* streamGlobalChat(params: {
   settings: Record<string, unknown>;
   scopeId?: string;
   abortController?: AbortController;
-}): AsyncGenerator<{ content: string; error: string | null }> {
+}): AsyncGenerator<{ content: string; reasoning: string; error: string | null }> {
   const runtime = await getRuntime("global", params.scopeId ?? "global");
   const providerId = runtime.activeProviderId;
   const tokenId = runtime.activeTokenId;
@@ -148,11 +148,15 @@ export async function* streamGlobalChat(params: {
   for await (const evt of llmGateway.stream(req)) {
     if (abortSignal?.aborted) return;
     if (evt.type === "delta") {
-      yield { content: evt.text, error: null };
+      yield { content: evt.text, reasoning: "", error: null };
+      continue;
+    }
+    if (evt.type === "reasoning_delta") {
+      yield { content: "", reasoning: evt.text, error: null };
       continue;
     }
     if (evt.type === "error") {
-      yield { content: "", error: evt.message };
+      yield { content: "", reasoning: "", error: evt.message };
       return;
     }
   }

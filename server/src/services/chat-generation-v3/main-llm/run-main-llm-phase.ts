@@ -12,18 +12,47 @@ export async function runMainLlmPhase(params: {
   ownerId: string;
   abortController: AbortController;
   onDelta: (content: string) => void;
+  onReasoningDelta: (content: string) => void;
 }): Promise<{ status: "done" | "aborted" | "error"; message?: string }> {
   let flushing = Promise.resolve();
   let closed = false;
+  let flushedAssistantText = "";
+  let flushedReasoningText = "";
 
   const flush = async (force = false): Promise<void> => {
     flushing = flushing.then(async () => {
       if (closed && !force) return;
-      await updatePartPayloadText({
-        partId: params.request.persistenceTarget.assistantMainPartId,
-        payloadText: params.runState.assistantText,
-        payloadFormat: "markdown",
-      });
+      const writes: Array<Promise<void>> = [];
+
+      if (force || flushedAssistantText !== params.runState.assistantText) {
+        writes.push(
+          updatePartPayloadText({
+            partId: params.request.persistenceTarget.assistantMainPartId,
+            payloadText: params.runState.assistantText,
+            payloadFormat: "markdown",
+          })
+        );
+        flushedAssistantText = params.runState.assistantText;
+      }
+
+      const reasoningPartId = params.request.persistenceTarget.assistantReasoningPartId;
+      if (
+        reasoningPartId &&
+        (force || flushedReasoningText !== params.runState.assistantReasoningText)
+      ) {
+        writes.push(
+          updatePartPayloadText({
+            partId: reasoningPartId,
+            payloadText: params.runState.assistantReasoningText,
+            payloadFormat: "markdown",
+          })
+        );
+        flushedReasoningText = params.runState.assistantReasoningText;
+      }
+
+      if (writes.length > 0) {
+        await Promise.all(writes);
+      }
     });
     await flushing;
   };
@@ -52,6 +81,11 @@ export async function runMainLlmPhase(params: {
       if (chunk.content) {
         params.runState.assistantText += chunk.content;
         params.onDelta(chunk.content);
+      }
+
+      if (chunk.reasoning) {
+        params.runState.assistantReasoningText += chunk.reasoning;
+        params.onReasoningDelta(chunk.reasoning);
       }
     }
 

@@ -6,6 +6,9 @@ import type { Part } from '@shared/types/chat-entry-parts';
 import type React from 'react';
 
 export type PartRenderer = React.FC<{ part: Part }>;
+export type RenderPartOptions = {
+	plainTextForMarkdown?: boolean;
+};
 
 const TextRenderer: PartRenderer = ({ part }) => {
 	const content = typeof part.payload === 'string' ? part.payload : '';
@@ -42,9 +45,10 @@ const FallbackRenderer: PartRenderer = ({ part }) => {
 	);
 };
 
-export function renderPart(part: Part): React.ReactNode {
+export function renderPart(part: Part, options?: RenderPartOptions): React.ReactNode {
 	const id = part.ui?.rendererId ?? 'markdown';
 	if (id === 'text') return <TextRenderer part={part} />;
+	if (id === 'markdown' && options?.plainTextForMarkdown) return <TextRenderer part={part} />;
 	if (id === 'markdown') return <MarkdownRenderer part={part} />;
 	if (id === 'json') return <JsonRenderer part={part} />;
 	if (id === 'card') return <JsonRenderer part={part} />;

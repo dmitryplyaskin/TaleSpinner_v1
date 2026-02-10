@@ -98,6 +98,10 @@ router.post("/generate", async (req: Request, res: Response) => {
           return;
         }
 
+        if (!chunk.content) {
+          continue;
+        }
+
         // botResponse += chunk.content;
         res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
       }

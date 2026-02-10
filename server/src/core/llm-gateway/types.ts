@@ -63,6 +63,7 @@ export type LlmGatewayDoneStatus = "done" | "aborted" | "error";
 
 export type LlmGatewayStreamEvent =
   | { type: "delta"; text: string }
+  | { type: "reasoning_delta"; text: string }
   | { type: "error"; message: string }
   | { type: "done"; status: LlmGatewayDoneStatus; warnings?: string[] };
 

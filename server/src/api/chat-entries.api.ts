@@ -4,7 +4,7 @@ import { z } from "zod";
 import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
-import { initSse } from "@core/sse/sse";
+import { initSse, type SseWriter } from "@core/sse/sse";
 
 import { chatIdParamsSchema } from "../chat-core/schemas";
 import { getChatById } from "../services/chat-core/chats-repository";
@@ -15,6 +15,7 @@ import {
   createEntryWithVariant,
   getActiveVariantWithParts,
   getEntryById,
+  listEntries,
   listEntriesWithActiveVariants,
   softDeleteEntry,
 } from "../services/chat-entry-parts/entries-repository";
@@ -33,7 +34,8 @@ import {
 } from "../services/chat-entry-parts/variants-repository";
 import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
 
-import type { Part } from "@shared/types/chat-entry-parts";
+import type { RunEvent } from "../services/chat-generation-v3/contracts";
+import type { Entry, Part, Variant } from "@shared/types/chat-entry-parts";
 
 const router = express.Router();
 
@@ -71,6 +73,164 @@ export function buildUserEntryMeta(params: {
   };
 
   return meta;
+}
+
+function ensureSseRequested(req: Request): void {
+  const accept = String(req.headers.accept ?? "");
+  if (!accept.includes("text/event-stream")) {
+    throw new HttpError(406, "Нужен Accept: text/event-stream", "NOT_ACCEPTABLE");
+  }
+}
+
+function mapRunStatusToStreamDoneStatus(status: "done" | "failed" | "aborted" | "error"): "done" | "aborted" | "error" {
+  if (status === "done") return "done";
+  if (status === "aborted") return "aborted";
+  return "error";
+}
+
+async function proxyRunEventsToSse(params: {
+  sse: SseWriter;
+  events: AsyncGenerator<RunEvent>;
+  envBase: Record<string, unknown>;
+  reqClosed: () => boolean;
+  abortController: AbortController;
+  onGenerationId: (generationId: string) => void;
+}): Promise<void> {
+  let generationId: string | null = null;
+
+  for await (const evt of params.events) {
+    if (evt.type === "run.started") {
+      generationId = evt.data.generationId;
+      params.onGenerationId(generationId);
+      if (params.reqClosed()) {
+        params.abortController.abort();
+        abortGeneration(generationId);
+      }
+      params.sse.send("llm.stream.meta", { ...params.envBase, generationId });
+    }
+
+    const eventGenerationId =
+      generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
+    const eventEnvelope = {
+      ...params.envBase,
+      generationId: eventGenerationId,
+      runId: evt.runId,
+      seq: evt.seq,
+      ...evt.data,
+    };
+    params.sse.send(evt.type, eventEnvelope);
+
+    if (evt.type === "main_llm.delta") {
+      params.sse.send("llm.stream.delta", {
+        ...params.envBase,
+        generationId: eventGenerationId,
+        content: evt.data.content,
+      });
+      continue;
+    }
+
+    if (evt.type === "main_llm.reasoning_delta") {
+      params.sse.send("llm.stream.reasoning_delta", {
+        ...params.envBase,
+        generationId: eventGenerationId,
+        content: evt.data.content,
+      });
+      continue;
+    }
+
+    if (evt.type === "main_llm.finished" && evt.data.status === "error") {
+      params.sse.send("llm.stream.error", {
+        ...params.envBase,
+        generationId: eventGenerationId,
+        code: "generation_error",
+        message: evt.data.message ?? "generation_error",
+      });
+      continue;
+    }
+
+    if (evt.type === "run.finished") {
+      params.sse.send("llm.stream.done", {
+        ...params.envBase,
+        generationId: eventGenerationId,
+        status: mapRunStatusToStreamDoneStatus(evt.data.status),
+      });
+      if (evt.data.status !== "done" && evt.data.message) {
+        params.sse.send("llm.stream.error", {
+          ...params.envBase,
+          generationId: eventGenerationId,
+          code: "generation_error",
+          message: evt.data.message,
+        });
+      }
+      break;
+    }
+  }
+}
+
+export function resolveContinueUserTurnTarget(params: {
+  lastEntry: Entry | null;
+  lastVariant: Variant | null;
+}): { userEntryId: string; userMainPartId: string } {
+  if (!params.lastEntry || params.lastEntry.role !== "user") {
+    throw new HttpError(
+      409,
+      "Продолжение доступно только когда последнее сообщение в ветке от пользователя",
+      "CONTINUE_NOT_AVAILABLE"
+    );
+  }
+
+  const variant = params.lastVariant;
+  if (!variant) {
+    throw new HttpError(
+      409,
+      "У последнего сообщения пользователя нет активного варианта",
+      "CONTINUE_NOT_AVAILABLE"
+    );
+  }
+
+  const editableMainParts = (variant.parts ?? [])
+    .filter(isEditableMainPart)
+    .sort(sortPartsStable);
+  const userMainPart =
+    editableMainParts.length > 0
+      ? editableMainParts[editableMainParts.length - 1]
+      : null;
+
+  if (!userMainPart) {
+    throw new HttpError(
+      409,
+      "У последнего сообщения пользователя нет редактируемой основной части",
+      "CONTINUE_NOT_AVAILABLE"
+    );
+  }
+
+  return {
+    userEntryId: params.lastEntry.entryId,
+    userMainPartId: userMainPart.partId,
+  };
+}
+
+async function createAssistantReasoningPart(params: {
+  ownerId: string;
+  variantId: string;
+  createdTurn: number;
+  requestId?: string;
+}): Promise<Part> {
+  return createPart({
+    ownerId: params.ownerId,
+    variantId: params.variantId,
+    channel: "reasoning",
+    order: -1,
+    payload: "",
+    payloadFormat: "markdown",
+    visibility: { ui: "always", prompt: false },
+    ui: { rendererId: "markdown" },
+    prompt: { serializerId: "asText" },
+    lifespan: "infinite",
+    createdTurn: params.createdTurn,
+    source: "llm",
+    requestId: params.requestId,
+  });
 }
 
 const listEntriesQuerySchema = z.object({
@@ -123,11 +283,7 @@ router.post(
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
-    const accept = String(req.headers.accept ?? "");
-    const wantsSse = accept.includes("text/event-stream");
-    if (!wantsSse) {
-      throw new HttpError(406, "Нужен Accept: text/event-stream", "NOT_ACCEPTABLE");
-    }
+    ensureSseRequested(req);
 
     const body = createEntryBodySchema.parse(req.body);
     const ownerId = body.ownerId ?? "global";
@@ -206,6 +362,12 @@ router.post(
         createdTurn: newTurn,
         source: "llm",
       });
+      const assistantReasoningPart = await createAssistantReasoningPart({
+        ownerId,
+        variantId: assistant.variant.variantId,
+        createdTurn: newTurn,
+        requestId: body.requestId,
+      });
 
       shouldAbortOnClose = true;
       if (reqClosed) {
@@ -220,88 +382,165 @@ router.post(
         assistantEntryId: assistant.entry.entryId,
         assistantVariantId: assistant.variant.variantId,
         assistantMainPartId: assistantMainPart.partId,
+        assistantReasoningPartId: assistantReasoningPart.partId,
       };
+      await proxyRunEventsToSse({
+        sse,
+        envBase,
+        reqClosed: () => reqClosed,
+        abortController: runAbortController,
+        onGenerationId: (id) => {
+          generationId = id;
+        },
+        events: runChatGenerationV3({
+          ownerId,
+          chatId: params.id,
+          branchId,
+          entityProfileId: chat.entityProfileId,
+          trigger: "generate",
+          settings: body.settings,
+          abortController: runAbortController,
+          persistenceTarget: {
+            mode: "entry_parts",
+            assistantEntryId: assistant.entry.entryId,
+            assistantMainPartId: assistantMainPart.partId,
+            assistantReasoningPartId: assistantReasoningPart.partId,
+          },
+          userTurnTarget: {
+            mode: "entry_parts",
+            userEntryId: user.entry.entryId,
+            userMainPartId: userMainPart.partId,
+          },
+        }),
+      });
+    } finally {
+      sse.close();
+    }
 
-      for await (const evt of runChatGenerationV3({
+    return;
+  })
+);
+
+const continueEntryBodySchema = z.object({
+  ownerId: z.string().min(1).optional(),
+  branchId: z.string().min(1).optional(),
+  settings: z.record(z.string(), z.unknown()).optional().default({}),
+  requestId: z.string().min(1).optional(),
+});
+
+router.post(
+  "/chats/:id/entries/continue",
+  validate({ params: chatIdParamsSchema }),
+  asyncHandler(async (req: Request, res: Response) => {
+    const params = req.params as unknown as { id: string };
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+    ensureSseRequested(req);
+
+    const body = continueEntryBodySchema.parse(req.body);
+    const ownerId = body.ownerId ?? "global";
+    const branchId = body.branchId || chat.activeBranchId;
+    if (!branchId) throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
+
+    const sse = initSse({ res });
+    let generationId: string | null = null;
+    const runAbortController = new AbortController();
+    let shouldAbortOnClose = false;
+    let reqClosed = false;
+    req.on("close", () => {
+      reqClosed = true;
+      if (shouldAbortOnClose) {
+        runAbortController.abort();
+        if (generationId) abortGeneration(generationId);
+      }
+      sse.close();
+    });
+
+    try {
+      const lastEntries = await listEntries({
+        chatId: params.id,
+        branchId,
+        limit: 1,
+      });
+      const lastEntry = lastEntries.length > 0 ? lastEntries[lastEntries.length - 1] : null;
+      const lastVariant = lastEntry ? await getActiveVariantWithParts({ entry: lastEntry }) : null;
+      const userTurnTarget = resolveContinueUserTurnTarget({ lastEntry, lastVariant });
+
+      const newTurn = await incrementBranchTurn({ branchId });
+      const assistant = await createEntryWithVariant({
         ownerId,
         chatId: params.id,
         branchId,
-        entityProfileId: chat.entityProfileId,
-        trigger: "generate",
-        settings: body.settings,
-        abortController: runAbortController,
-        persistenceTarget: {
-          mode: "entry_parts",
-          assistantEntryId: assistant.entry.entryId,
-          assistantMainPartId: assistantMainPart.partId,
-        },
-        userTurnTarget: {
-          mode: "entry_parts",
-          userEntryId: user.entry.entryId,
-          userMainPartId: userMainPart.partId,
-        },
-      })) {
-        if (evt.type === "run.started") {
-          generationId = evt.data.generationId;
-          if (reqClosed) {
-            runAbortController.abort();
-            abortGeneration(generationId);
-          }
-          sse.send("llm.stream.meta", { ...envBase, generationId });
-        }
+        role: "assistant",
+        variantKind: "generation",
+      });
+      const assistantMainPart = await createPart({
+        ownerId,
+        variantId: assistant.variant.variantId,
+        channel: "main",
+        order: 0,
+        payload: "",
+        payloadFormat: "markdown",
+        visibility: { ui: "always", prompt: true },
+        ui: { rendererId: "markdown" },
+        prompt: { serializerId: "asText" },
+        lifespan: "infinite",
+        createdTurn: newTurn,
+        source: "llm",
+        requestId: body.requestId,
+      });
+      const assistantReasoningPart = await createAssistantReasoningPart({
+        ownerId,
+        variantId: assistant.variant.variantId,
+        createdTurn: newTurn,
+        requestId: body.requestId,
+      });
 
-        const eventGenerationId =
-          generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
-        const eventEnvelope = {
-          ...envBase,
-          generationId: eventGenerationId,
-          runId: evt.runId,
-          seq: evt.seq,
-          ...evt.data,
-        };
-        sse.send(evt.type, eventEnvelope);
-
-        if (evt.type === "main_llm.delta") {
-          sse.send("llm.stream.delta", {
-            ...envBase,
-            generationId: eventGenerationId,
-            content: evt.data.content,
-          });
-          continue;
-        }
-
-        if (evt.type === "main_llm.finished" && evt.data.status === "error") {
-          sse.send("llm.stream.error", {
-            ...envBase,
-            generationId: eventGenerationId,
-            code: "generation_error",
-            message: evt.data.message ?? "generation_error",
-          });
-          continue;
-        }
-
-        if (evt.type === "run.finished") {
-          sse.send("llm.stream.done", {
-            ...envBase,
-            generationId: eventGenerationId,
-            status:
-              evt.data.status === "done"
-                ? "done"
-                : evt.data.status === "aborted"
-                  ? "aborted"
-                  : "error",
-          });
-          if (evt.data.status !== "done" && evt.data.message) {
-            sse.send("llm.stream.error", {
-              ...envBase,
-              generationId: eventGenerationId,
-              code: "generation_error",
-              message: evt.data.message,
-            });
-          }
-          break;
-        }
+      shouldAbortOnClose = true;
+      if (reqClosed) {
+        runAbortController.abort();
+        if (generationId) abortGeneration(generationId);
       }
+
+      const envBase = {
+        chatId: params.id,
+        branchId,
+        userEntryId: userTurnTarget.userEntryId,
+        assistantEntryId: assistant.entry.entryId,
+        assistantVariantId: assistant.variant.variantId,
+        assistantMainPartId: assistantMainPart.partId,
+        assistantReasoningPartId: assistantReasoningPart.partId,
+      };
+
+      await proxyRunEventsToSse({
+        sse,
+        envBase,
+        reqClosed: () => reqClosed,
+        abortController: runAbortController,
+        onGenerationId: (id) => {
+          generationId = id;
+        },
+        events: runChatGenerationV3({
+          ownerId,
+          chatId: params.id,
+          branchId,
+          entityProfileId: chat.entityProfileId,
+          trigger: "generate",
+          settings: body.settings,
+          abortController: runAbortController,
+          persistenceTarget: {
+            mode: "entry_parts",
+            assistantEntryId: assistant.entry.entryId,
+            assistantMainPartId: assistantMainPart.partId,
+            assistantReasoningPartId: assistantReasoningPart.partId,
+          },
+          userTurnTarget: {
+            mode: "entry_parts",
+            userEntryId: userTurnTarget.userEntryId,
+            userMainPartId: userTurnTarget.userMainPartId,
+          },
+        }),
+      });
     } finally {
       sse.close();
     }
@@ -322,11 +561,7 @@ router.post(
   validate({ params: entryIdParamsSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const params = req.params as unknown as { id: string };
-    const accept = String(req.headers.accept ?? "");
-    const wantsSse = accept.includes("text/event-stream");
-    if (!wantsSse) {
-      throw new HttpError(406, "Нужен Accept: text/event-stream", "NOT_ACCEPTABLE");
-    }
+    ensureSseRequested(req);
 
     const body = regenerateBodySchema.parse(req.body);
     const ownerId = body.ownerId ?? "global";
@@ -379,6 +614,12 @@ router.post(
         createdTurn: newTurn,
         source: "llm",
       });
+      const assistantReasoningPart = await createAssistantReasoningPart({
+        ownerId,
+        variantId: newVariant.variantId,
+        createdTurn: newTurn,
+        requestId: body.requestId,
+      });
 
       shouldAbortOnClose = true;
       if (reqClosed) {
@@ -392,83 +633,32 @@ router.post(
         assistantEntryId: entry.entryId,
         assistantVariantId: newVariant.variantId,
         assistantMainPartId: assistantMainPart.partId,
+        assistantReasoningPartId: assistantReasoningPart.partId,
       };
-
-      for await (const evt of runChatGenerationV3({
-        ownerId,
-        chatId: entry.chatId,
-        branchId: entry.branchId,
-        entityProfileId: chat.entityProfileId,
-        trigger: "regenerate",
-        settings: body.settings,
+      await proxyRunEventsToSse({
+        sse,
+        envBase,
+        reqClosed: () => reqClosed,
         abortController: runAbortController,
-        persistenceTarget: {
-          mode: "entry_parts",
-          assistantEntryId: entry.entryId,
-          assistantMainPartId: assistantMainPart.partId,
+        onGenerationId: (id) => {
+          generationId = id;
         },
-      })) {
-        if (evt.type === "run.started") {
-          generationId = evt.data.generationId;
-          if (reqClosed) {
-            runAbortController.abort();
-            abortGeneration(generationId);
-          }
-          sse.send("llm.stream.meta", { ...envBase, generationId });
-        }
-
-        const eventGenerationId =
-          generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
-        const eventEnvelope = {
-          ...envBase,
-          generationId: eventGenerationId,
-          runId: evt.runId,
-          seq: evt.seq,
-          ...evt.data,
-        };
-        sse.send(evt.type, eventEnvelope);
-
-        if (evt.type === "main_llm.delta") {
-          sse.send("llm.stream.delta", {
-            ...envBase,
-            generationId: eventGenerationId,
-            content: evt.data.content,
-          });
-          continue;
-        }
-
-        if (evt.type === "main_llm.finished" && evt.data.status === "error") {
-          sse.send("llm.stream.error", {
-            ...envBase,
-            generationId: eventGenerationId,
-            code: "generation_error",
-            message: evt.data.message ?? "generation_error",
-          });
-          continue;
-        }
-
-        if (evt.type === "run.finished") {
-          sse.send("llm.stream.done", {
-            ...envBase,
-            generationId: eventGenerationId,
-            status:
-              evt.data.status === "done"
-                ? "done"
-                : evt.data.status === "aborted"
-                  ? "aborted"
-                  : "error",
-          });
-          if (evt.data.status !== "done" && evt.data.message) {
-            sse.send("llm.stream.error", {
-              ...envBase,
-              generationId: eventGenerationId,
-              code: "generation_error",
-              message: evt.data.message,
-            });
-          }
-          break;
-        }
-      }
+        events: runChatGenerationV3({
+          ownerId,
+          chatId: entry.chatId,
+          branchId: entry.branchId,
+          entityProfileId: chat.entityProfileId,
+          trigger: "regenerate",
+          settings: body.settings,
+          abortController: runAbortController,
+          persistenceTarget: {
+            mode: "entry_parts",
+            assistantEntryId: entry.entryId,
+            assistantMainPartId: assistantMainPart.partId,
+            assistantReasoningPartId: assistantReasoningPart.partId,
+          },
+        }),
+      });
     } finally {
       sse.close();
     }

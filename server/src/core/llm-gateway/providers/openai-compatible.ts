@@ -119,6 +119,10 @@ export class OpenAiCompatibleProvider implements LlmProviderAdapter {
         if (typeof text === "string" && text.length > 0) {
           yield { type: "delta", text };
         }
+        const reasoning = extractReasoningText(chunk);
+        if (reasoning.length > 0) {
+          yield { type: "reasoning_delta", text: reasoning };
+        }
       }
 
       yield { type: "done", status: "done" };
@@ -132,5 +136,42 @@ export class OpenAiCompatibleProvider implements LlmProviderAdapter {
       yield { type: "done", status: "error", warnings: [`Provider error: ${msg}`] };
     }
   }
+}
+
+function extractReasoningText(chunk: ChatCompletionChunk): string {
+  const delta: any = chunk?.choices?.[0]?.delta;
+  if (!delta || typeof delta !== "object") return "";
+
+  const out: string[] = [];
+  const pushIfString = (value: unknown): void => {
+    if (typeof value === "string" && value.length > 0) out.push(value);
+  };
+
+  pushIfString(delta.reasoning);
+  pushIfString(delta.reasoning_content);
+
+  const reasoningObj = delta.reasoning;
+  if (reasoningObj && typeof reasoningObj === "object") {
+    pushIfString((reasoningObj as any).text);
+    const content = (reasoningObj as any).content;
+    if (Array.isArray(content)) {
+      for (const item of content) {
+        if (!item || typeof item !== "object") continue;
+        pushIfString((item as any).text);
+      }
+    }
+  }
+
+  if (Array.isArray(delta.content)) {
+    for (const item of delta.content) {
+      if (!item || typeof item !== "object") continue;
+      const itemType = typeof (item as any).type === "string" ? (item as any).type : "";
+      if (itemType.includes("reasoning")) {
+        pushIfString((item as any).text);
+      }
+    }
+  }
+
+  return out.join("");
 }
 

@@ -1,6 +1,6 @@
 import { Avatar, Box, Flex, Stack, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { $currentEntityProfile } from '@model/chat-core';
@@ -64,7 +64,7 @@ function resolveAssetUrl(value?: string | null): string | undefined {
 	return `${BACKEND_ORIGIN}${value}`;
 }
 
-export const Message: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewRequested }) => {
+const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewRequested }) => {
 	const { t } = useTranslation();
 	const [currentProfile, selectedUserPerson] = useUnit([$currentEntityProfile, userPersonsModel.$selectedItem]);
 	const isStreaming = useUnit($isChatStreaming);
@@ -282,7 +282,7 @@ export const Message: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewR
 										{t('chat.message.streaming')}
 									</Text>
 								)}
-								{isOptimistic && (
+								{isOptimistic && !(isLast && isAssistant && isStreaming) && (
 									<Text size="xs" className="ts-message-meta">
 										{t('chat.message.saving')}
 									</Text>
@@ -312,7 +312,12 @@ export const Message: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewR
 									maxRows={12}
 								/>
 							) : (
-								<PartsView entry={data.entry} variant={data.variant} currentTurn={currentTurn} />
+								<PartsView
+									entry={data.entry}
+									variant={data.variant}
+									currentTurn={currentTurn}
+									preferPlainText={isAssistant && isLast && isStreaming}
+								/>
 							)}
 						</Box>
 					</Box>
@@ -337,3 +342,11 @@ export const Message: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewR
 		</Box>
 	);
 };
+
+export const Message = memo(MessageInner, (prev, next) => {
+	return (
+		prev.data === next.data &&
+		prev.isLast === next.isLast &&
+		prev.onAvatarPreviewRequested === next.onAvatarPreviewRequested
+	);
+});

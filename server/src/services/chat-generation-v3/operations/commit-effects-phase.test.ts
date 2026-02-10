@@ -16,6 +16,7 @@ function makeRunState(): RunState {
     ],
     llmMessages: [],
     assistantText: "",
+    assistantReasoningText: "",
     runArtifacts: {},
     persistedArtifactsSnapshot: {},
     operationResultsByHook: {

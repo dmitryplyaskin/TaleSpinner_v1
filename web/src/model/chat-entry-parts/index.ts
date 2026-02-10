@@ -11,6 +11,7 @@ import {
 	selectEntryVariant,
 	softDeleteEntry,
 	streamChatEntry,
+	streamContinueEntry,
 	streamRegenerateEntry,
 } from '../../api/chat-entry-parts';
 import i18n from '../../i18n';
@@ -47,22 +48,25 @@ export const $isChatStreaming = createStore(false);
 export const $activeGenerationId = createStore<string | null>(null);
 
 export const sendMessageRequested = createEvent<{ promptText: string; role?: 'user' | 'system' }>();
+export const continueFromLastUserRequested = createEvent();
 export const abortRequested = createEvent();
 
 type ActiveStreamState = {
 	controller: AbortController;
 	chatId: string;
 	branchId: string;
-	mode: 'send' | 'regenerate';
+	mode: 'send' | 'regenerate' | 'continue';
 
 	// Local optimistic ids
 	pendingUserEntryId?: string;
 	pendingAssistantEntryId?: string;
 	pendingAssistantMainPartId?: string;
+	pendingAssistantReasoningPartId?: string;
 
 	// Server ids (learned from llm.stream.meta)
 	assistantEntryId?: string;
 	assistantMainPartId?: string;
+	assistantReasoningPartId?: string;
 	generationId?: string;
 };
 
@@ -77,7 +81,18 @@ type LocalPrep = {
 	pendingUserEntryId: string;
 	pendingAssistantEntryId: string;
 	pendingAssistantMainPartId: string;
+	pendingAssistantReasoningPartId: string;
 	mode: 'send';
+};
+
+type ContinuePrep = {
+	controller: AbortController;
+	chatId: string;
+	branchId: string;
+	pendingAssistantEntryId: string;
+	pendingAssistantMainPartId: string;
+	pendingAssistantReasoningPartId: string;
+	mode: 'continue';
 };
 
 export const prepareSendFx = createEffect(async (params: { chatId: string; branchId: string; role: 'user' | 'system'; promptText: string }) => {
@@ -85,6 +100,7 @@ export const prepareSendFx = createEffect(async (params: { chatId: string; branc
 	const pendingUserEntryId = `local_user_${nowIso()}`;
 	const pendingAssistantEntryId = `local_assistant_${nowIso()}`;
 	const pendingAssistantMainPartId = `local_part_${nowIso()}`;
+	const pendingAssistantReasoningPartId = `local_part_${nowIso()}`;
 	return {
 		controller,
 		chatId: params.chatId,
@@ -94,6 +110,7 @@ export const prepareSendFx = createEffect(async (params: { chatId: string; branc
 		pendingUserEntryId,
 		pendingAssistantEntryId,
 		pendingAssistantMainPartId,
+		pendingAssistantReasoningPartId,
 		mode: 'send' as const,
 	} satisfies LocalPrep;
 });
@@ -112,11 +129,39 @@ sample({
 	target: prepareSendFx,
 });
 
-function makeLocalVariantWithSingleMainPart(params: {
+export const prepareContinueFx = createEffect(async (params: { chatId: string; branchId: string }) => {
+	const controller = new AbortController();
+	const pendingAssistantEntryId = `local_assistant_${nowIso()}`;
+	const pendingAssistantMainPartId = `local_part_${nowIso()}`;
+	const pendingAssistantReasoningPartId = `local_part_${nowIso()}`;
+	return {
+		controller,
+		chatId: params.chatId,
+		branchId: params.branchId,
+		pendingAssistantEntryId,
+		pendingAssistantMainPartId,
+		pendingAssistantReasoningPartId,
+		mode: 'continue' as const,
+	} satisfies ContinuePrep;
+});
+
+sample({
+	clock: continueFromLastUserRequested,
+	source: { chat: $currentChat, branchId: $currentBranchId, isStreaming: $isChatStreaming, entries: $entries },
+	filter: ({ chat, branchId, isStreaming, entries }) => {
+		if (!chat?.id || !branchId || isStreaming) return false;
+		const last = entries[entries.length - 1];
+		return Boolean(last && last.entry.role === 'user');
+	},
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: prepareContinueFx,
+});
+
+function makeLocalVariant(params: {
 	entryId: string;
 	role: Entry['role'];
 	createdAt: number;
-	mainPart: Part;
+	parts: Part[];
 }): ChatEntryWithVariantDto {
 	const variantId = `local_variant_${nowIso()}`;
 	const entry: Entry = {
@@ -133,7 +178,7 @@ function makeLocalVariantWithSingleMainPart(params: {
 		entryId: params.entryId,
 		kind: 'manual_edit',
 		createdAt: params.createdAt,
-		parts: [params.mainPart],
+		parts: params.parts,
 	};
 	return { entry, variant };
 }
@@ -171,18 +216,31 @@ sample({
 			createdTurn: 0,
 			source: 'llm',
 		};
+		const assistantReasoningPart: Part = {
+			partId: prep.pendingAssistantReasoningPartId,
+			channel: 'reasoning',
+			order: -1,
+			payload: '',
+			payloadFormat: 'markdown',
+			visibility: { ui: 'always', prompt: false },
+			ui: { rendererId: 'markdown' },
+			prompt: { serializerId: 'asText' },
+			lifespan: 'infinite',
+			createdTurn: 0,
+			source: 'llm',
+		};
 
-		const userEntry = makeLocalVariantWithSingleMainPart({
+		const userEntry = makeLocalVariant({
 			entryId: prep.pendingUserEntryId,
 			role: prep.role,
 			createdAt: now,
-			mainPart: userPart,
+			parts: [userPart],
 		});
-		const assistantEntry = makeLocalVariantWithSingleMainPart({
+		const assistantEntry = makeLocalVariant({
 			entryId: prep.pendingAssistantEntryId,
 			role: 'assistant',
 			createdAt: now + 1,
-			mainPart: assistantPart,
+			parts: [assistantReasoningPart, assistantPart],
 		});
 
 		// Fill correct chatId/branchId in optimistic entries (for debugging).
@@ -194,6 +252,55 @@ sample({
 		}
 
 		return [...entries, userEntry, assistantEntry];
+	},
+	target: $entries,
+});
+
+// Optimistic insert: assistant placeholder only (continue from last user turn).
+sample({
+	clock: prepareContinueFx.doneData,
+	source: { entries: $entries, chat: $currentChat, branchId: $currentBranchId },
+	fn: ({ entries, chat, branchId }, prep) => {
+		const now = Date.now();
+		const assistantPart: Part = {
+			partId: prep.pendingAssistantMainPartId,
+			channel: 'main',
+			order: 0,
+			payload: '',
+			payloadFormat: 'markdown',
+			visibility: { ui: 'always', prompt: true },
+			ui: { rendererId: 'markdown' },
+			prompt: { serializerId: 'asText' },
+			lifespan: 'infinite',
+			createdTurn: 0,
+			source: 'llm',
+		};
+		const assistantReasoningPart: Part = {
+			partId: prep.pendingAssistantReasoningPartId,
+			channel: 'reasoning',
+			order: -1,
+			payload: '',
+			payloadFormat: 'markdown',
+			visibility: { ui: 'always', prompt: false },
+			ui: { rendererId: 'markdown' },
+			prompt: { serializerId: 'asText' },
+			lifespan: 'infinite',
+			createdTurn: 0,
+			source: 'llm',
+		};
+		const assistantEntry = makeLocalVariant({
+			entryId: prep.pendingAssistantEntryId,
+			role: 'assistant',
+			createdAt: now,
+			parts: [assistantReasoningPart, assistantPart],
+		});
+
+		if (chat?.id && branchId) {
+			assistantEntry.entry.chatId = chat.id;
+			assistantEntry.entry.branchId = branchId;
+		}
+
+		return [...entries, assistantEntry];
 	},
 	target: $entries,
 });
@@ -217,6 +324,20 @@ export const runSendStreamFx = createEffect(async (prep: LocalPrep): Promise<voi
 	await loadEntriesFx({ chatId: prep.chatId, branchId: prep.branchId });
 });
 
+export const runContinueStreamFx = createEffect(async (prep: ContinuePrep): Promise<void> => {
+	for await (const env of streamContinueEntry({
+		chatId: prep.chatId,
+		branchId: prep.branchId,
+		settings: {},
+		signal: prep.controller.signal,
+	})) {
+		logChatGenerationSseEvent({ scope: 'entry-parts', envelope: env });
+		handleSseEnvelope(env);
+		if (env.type === 'llm.stream.done') break;
+	}
+	await loadEntriesFx({ chatId: prep.chatId, branchId: prep.branchId });
+});
+
 // Track active stream state for abort button
 $activeStream.on(prepareSendFx.doneData, (_, prep) => ({
 	controller: prep.controller,
@@ -226,11 +347,27 @@ $activeStream.on(prepareSendFx.doneData, (_, prep) => ({
 	pendingUserEntryId: prep.pendingUserEntryId,
 	pendingAssistantEntryId: prep.pendingAssistantEntryId,
 	pendingAssistantMainPartId: prep.pendingAssistantMainPartId,
+	pendingAssistantReasoningPartId: prep.pendingAssistantReasoningPartId,
+}));
+
+$activeStream.on(prepareContinueFx.doneData, (_, prep) => ({
+	controller: prep.controller,
+	chatId: prep.chatId,
+	branchId: prep.branchId,
+	mode: 'continue',
+	pendingAssistantEntryId: prep.pendingAssistantEntryId,
+	pendingAssistantMainPartId: prep.pendingAssistantMainPartId,
+	pendingAssistantReasoningPartId: prep.pendingAssistantReasoningPartId,
 }));
 
 sample({
 	clock: prepareSendFx.doneData,
 	target: runSendStreamFx,
+});
+
+sample({
+	clock: prepareContinueFx.doneData,
+	target: runContinueStreamFx,
 });
 
 type StreamPatch = {
@@ -247,6 +384,41 @@ $activeGenerationId.on(applyStreamPatch, (prev, p) => (typeof p.generationId ===
 function appendDeltaToPart(part: Part, delta: string): Part {
 	const prev = typeof part.payload === 'string' ? part.payload : '';
 	return { ...part, payload: prev + delta };
+}
+
+function appendDeltaToEntryPart(params: {
+	entries: ChatEntryWithVariantDto[];
+	entryId: string;
+	partId: string;
+	delta: string;
+}): ChatEntryWithVariantDto[] {
+	const entryIndex = params.entries.findIndex((item) => item.entry.entryId === params.entryId);
+	if (entryIndex < 0) return params.entries;
+
+	const target = params.entries[entryIndex];
+	if (!target?.variant) return params.entries;
+
+	const parts = target.variant.parts ?? [];
+	const partIndex = parts.findIndex((part) => part.partId === params.partId);
+	if (partIndex < 0) return params.entries;
+
+	const currentPart = parts[partIndex];
+	const nextPart = appendDeltaToPart(currentPart, params.delta);
+	if (nextPart.payload === currentPart.payload) return params.entries;
+
+	const nextParts = [...parts];
+	nextParts[partIndex] = nextPart;
+
+	const nextEntries = [...params.entries];
+	nextEntries[entryIndex] = {
+		...target,
+		variant: {
+			...target.variant,
+			parts: nextParts,
+		},
+	};
+
+	return nextEntries;
 }
 
 function buildStreamingMainPart(seed: Part | undefined, partId: string): Part {
@@ -273,11 +445,38 @@ function buildStreamingMainPart(seed: Part | undefined, partId: string): Part {
 	};
 }
 
+function buildStreamingReasoningPart(seed: Part | undefined, partId: string): Part {
+	if (seed) {
+		return {
+			...seed,
+			partId,
+			payload: '',
+			source: 'llm',
+			channel: 'reasoning',
+			visibility: { ui: 'always', prompt: false },
+		};
+	}
+	return {
+		partId,
+		channel: 'reasoning',
+		order: -1,
+		payload: '',
+		payloadFormat: 'markdown',
+		visibility: { ui: 'always', prompt: false },
+		ui: { rendererId: 'markdown' },
+		prompt: { serializerId: 'asText' },
+		lifespan: 'infinite',
+		createdTurn: 0,
+		source: 'llm',
+	};
+}
+
 function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStreamState, meta: any): { entries: ChatEntryWithVariantDto[]; stream: ActiveStreamState; generationId: string | null } {
 	const userEntryId = typeof meta?.userEntryId === 'string' ? meta.userEntryId : null;
 	const assistantEntryId = typeof meta?.assistantEntryId === 'string' ? meta.assistantEntryId : null;
 	const assistantVariantId = typeof meta?.assistantVariantId === 'string' ? meta.assistantVariantId : null;
 	const assistantMainPartId = typeof meta?.assistantMainPartId === 'string' ? meta.assistantMainPartId : null;
+	const assistantReasoningPartId = typeof meta?.assistantReasoningPartId === 'string' ? meta.assistantReasoningPartId : null;
 	const generationId = typeof meta?.generationId === 'string' ? meta.generationId : null;
 
 	const nextEntries = entries.map((x) => {
@@ -293,7 +492,11 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 							variantId: assistantVariantId ?? x.variant.variantId,
 							entryId: assistantEntryId,
 							parts: (x.variant.parts ?? []).map((p) =>
-								p.partId === stream.pendingAssistantMainPartId && assistantMainPartId ? { ...p, partId: assistantMainPartId } : p,
+								p.partId === stream.pendingAssistantMainPartId && assistantMainPartId
+									? { ...p, partId: assistantMainPartId }
+									: p.partId === stream.pendingAssistantReasoningPartId && assistantReasoningPartId
+										? { ...p, partId: assistantReasoningPartId }
+										: p,
 							),
 						}
 					: x.variant;
@@ -304,12 +507,35 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 				};
 			}
 		}
+		if (stream.mode === 'continue' && x.entry.entryId === stream.pendingAssistantEntryId && assistantEntryId) {
+			const nextVariant = x.variant
+				? {
+						...x.variant,
+						variantId: assistantVariantId ?? x.variant.variantId,
+						entryId: assistantEntryId,
+						parts: (x.variant.parts ?? []).map((p) =>
+							p.partId === stream.pendingAssistantMainPartId && assistantMainPartId
+								? { ...p, partId: assistantMainPartId }
+								: p.partId === stream.pendingAssistantReasoningPartId && assistantReasoningPartId
+									? { ...p, partId: assistantReasoningPartId }
+									: p,
+						),
+					}
+				: x.variant;
+			return {
+				...x,
+				entry: { ...x.entry, entryId: assistantEntryId, activeVariantId: assistantVariantId ?? x.entry.activeVariantId },
+				variant: nextVariant,
+			};
+		}
 		if (stream.mode === 'regenerate' && assistantEntryId && x.entry.entryId === assistantEntryId) {
 			const nextVariantId = assistantVariantId ?? x.entry.activeVariantId;
 			const nextPartId = assistantMainPartId ?? stream.assistantMainPartId ?? `local_part_${nowIso()}`;
+			const nextReasoningPartId = assistantReasoningPartId ?? stream.assistantReasoningPartId ?? `local_part_${nowIso()}`;
 			const currentVariant = x.variant;
 			const currentMainPart =
 				currentVariant?.parts?.find((p) => p.channel === 'main' && !p.softDeleted) ?? currentVariant?.parts?.[0];
+			const currentReasoningPart = currentVariant?.parts?.find((p) => p.channel === 'reasoning' && !p.softDeleted);
 
 			let nextVariant = currentVariant;
 			if (!nextVariant || nextVariant.variantId !== nextVariantId) {
@@ -318,21 +544,31 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 					entryId: assistantEntryId,
 					kind: 'generation',
 					createdAt: Date.now(),
-					parts: [buildStreamingMainPart(currentMainPart, nextPartId)],
+					parts: [
+						buildStreamingReasoningPart(currentReasoningPart, nextReasoningPartId),
+						buildStreamingMainPart(currentMainPart, nextPartId),
+					],
 				};
 			} else {
-				let replaced = false;
+				let mainReplaced = false;
+				let reasoningReplaced = false;
 				const nextParts = (nextVariant.parts ?? []).map((p) => {
-					if (replaced) return p;
-					if (p.channel === 'main' && !p.softDeleted) {
-						replaced = true;
+					if (p.channel === 'main' && !p.softDeleted && !mainReplaced) {
+						mainReplaced = true;
 						return { ...p, partId: nextPartId, payload: '' };
+					}
+					if (p.channel === 'reasoning' && !p.softDeleted && !reasoningReplaced) {
+						reasoningReplaced = true;
+						return { ...p, partId: nextReasoningPartId, payload: '' };
 					}
 					return p;
 				});
+				const withReasoning = reasoningReplaced
+					? nextParts
+					: [buildStreamingReasoningPart(currentReasoningPart, nextReasoningPartId), ...nextParts];
 				nextVariant = {
 					...nextVariant,
-					parts: replaced ? nextParts : [buildStreamingMainPart(currentMainPart, nextPartId), ...nextParts],
+					parts: mainReplaced ? withReasoning : [buildStreamingMainPart(currentMainPart, nextPartId), ...withReasoning],
 				};
 			}
 
@@ -347,7 +583,13 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 
 	return {
 		entries: nextEntries,
-		stream: { ...stream, assistantEntryId: assistantEntryId ?? stream.assistantEntryId, assistantMainPartId: assistantMainPartId ?? stream.assistantMainPartId, generationId: generationId ?? stream.generationId },
+		stream: {
+			...stream,
+			assistantEntryId: assistantEntryId ?? stream.assistantEntryId,
+			assistantMainPartId: assistantMainPartId ?? stream.assistantMainPartId,
+			assistantReasoningPartId: assistantReasoningPartId ?? stream.assistantReasoningPartId,
+			generationId: generationId ?? stream.generationId,
+		},
 		generationId,
 	};
 }
@@ -372,16 +614,30 @@ sample({
 			const partId = stream.assistantMainPartId ?? stream.pendingAssistantMainPartId ?? null;
 			if (!assistantEntryId || !partId) return { entries, stream };
 
-			const nextEntries = entries.map((x) => {
-				if (x.entry.entryId !== assistantEntryId) return x;
-				if (!x.variant) return x;
-				return {
-					...x,
-					variant: {
-						...x.variant,
-						parts: (x.variant.parts ?? []).map((p) => (p.partId === partId ? appendDeltaToPart(p, content) : p)),
-					},
-				};
+			const nextEntries = appendDeltaToEntryPart({
+				entries,
+				entryId: assistantEntryId,
+				partId,
+				delta: content,
+			});
+
+			return { entries: nextEntries, stream };
+		}
+
+		if (env.type === 'llm.stream.reasoning_delta') {
+			const delta = env.data as any;
+			const content = typeof delta?.content === 'string' ? delta.content : '';
+			if (!content) return { entries, stream };
+
+			const assistantEntryId = stream.assistantEntryId ?? stream.pendingAssistantEntryId ?? null;
+			const partId = stream.assistantReasoningPartId ?? stream.pendingAssistantReasoningPartId ?? null;
+			if (!assistantEntryId || !partId) return { entries, stream };
+
+			const nextEntries = appendDeltaToEntryPart({
+				entries,
+				entryId: assistantEntryId,
+				partId,
+				delta: content,
 			});
 
 			return { entries: nextEntries, stream };
@@ -394,6 +650,44 @@ sample({
 		return { entries, stream };
 	},
 	target: applyStreamPatch,
+});
+
+handleSseEnvelope.watch((env) => {
+	const data = typeof env.data === 'object' && env.data !== null ? (env.data as Record<string, unknown>) : null;
+	if (!data) return;
+	const name = typeof data.name === 'string' && data.name.trim().length > 0 ? data.name : String(data.opId ?? 'operation');
+	const hook = typeof data.hook === 'string' && data.hook.trim().length > 0 ? data.hook : 'unknown';
+
+	if (env.type === 'operation.started') {
+		toaster.info({
+			title: i18n.t('chat.toasts.operationStarted', { name, hook }),
+		});
+		return;
+	}
+
+	if (env.type !== 'operation.finished') return;
+	const status = typeof data.status === 'string' ? data.status : '';
+	if (status === 'done') {
+		toaster.success({
+			title: i18n.t('chat.toasts.operationFinishedDone', { name, hook }),
+		});
+		return;
+	}
+	if (status === 'skipped') {
+		toaster.warning({
+			title: i18n.t('chat.toasts.operationFinishedSkipped', { name, hook }),
+		});
+		return;
+	}
+	if (status === 'aborted') {
+		toaster.error({
+			title: i18n.t('chat.toasts.operationFinishedAborted', { name, hook }),
+		});
+		return;
+	}
+	toaster.error({
+		title: i18n.t('chat.toasts.operationFinishedError', { name, hook }),
+	});
 });
 
 export const abortGenerationFx = createEffect(async (params: { generationId: string }) => abortGeneration(params.generationId));
@@ -413,7 +707,11 @@ doAbort.watch(({ stream, generationId }) => {
 	if (generationId) void abortGenerationFx({ generationId });
 });
 
-$isChatStreaming.on(runSendStreamFx, () => true).on(runSendStreamFx.finally, () => false);
+$isChatStreaming
+	.on(runSendStreamFx, () => true)
+	.on(runSendStreamFx.finally, () => false)
+	.on(runContinueStreamFx, () => true)
+	.on(runContinueStreamFx.finally, () => false);
 
 // ---- Variants (entry-level)
 
@@ -664,6 +962,10 @@ prepareSendFx.failData.watch((error) => {
 });
 
 runSendStreamFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.streamError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+runContinueStreamFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.streamError'), description: error instanceof Error ? error.message : String(error) });
 });
 

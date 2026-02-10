@@ -128,12 +128,24 @@ export async function* runChatGenerationV3(
 ): AsyncGenerator<RunEvent> {
   const abortController = request.abortController ?? new AbortController();
   const pendingEvents: RunEvent[] = [];
+  const waiters: Array<() => void> = [];
   let seq = 0;
   let runId = "";
   let context: Awaited<ReturnType<typeof resolveRunContext>>["context"] | null = null;
   let runState: RunState | null = null;
   let finalized = false;
   const debugEnabled = isChatGenerationDebugEnabled(request.settings);
+
+  const notifyWaiters = (): void => {
+    if (waiters.length === 0) return;
+    const queued = waiters.splice(0, waiters.length);
+    for (const wake of queued) wake();
+  };
+
+  const waitForSignal = (): Promise<void> =>
+    new Promise((resolve) => {
+      waiters.push(resolve);
+    });
 
   const emit = (type: RunEvent["type"], data: any): void => {
     if (!runId) return;
@@ -143,6 +155,7 @@ export async function* runChatGenerationV3(
       type,
       data,
     } as RunEvent);
+    notifyWaiters();
   };
 
   const flushEvents = function* (): Generator<RunEvent> {
@@ -151,6 +164,38 @@ export async function* runChatGenerationV3(
       if (!evt) continue;
       yield evt;
     }
+  };
+
+  const streamEventsWhile = async function* <T>(
+    work: Promise<T>
+  ): AsyncGenerator<RunEvent, T> {
+    let settled = false;
+    let result: T | undefined;
+    let failure: unknown;
+
+    work.then(
+      (value) => {
+        result = value;
+        settled = true;
+        notifyWaiters();
+      },
+      (error) => {
+        failure = error;
+        settled = true;
+        notifyWaiters();
+      }
+    );
+
+    while (!settled || pendingEvents.length > 0) {
+      if (pendingEvents.length > 0) {
+        yield* flushEvents();
+        continue;
+      }
+      await waitForSignal();
+    }
+
+    if (failure) throw failure;
+    return result as T;
   };
 
   const markPhase = (phase: RunState["phaseReports"][number]["phase"], status: "done" | "failed" | "aborted", startedAt: number, message?: string): void => {
@@ -171,6 +216,7 @@ export async function* runChatGenerationV3(
       basePromptDraft: clonePromptDraftMessages(runState.basePromptDraft),
       effectivePromptDraft: clonePromptDraftMessages(runState.effectivePromptDraft),
       assistantText: runState.assistantText,
+      assistantReasoningText: runState.assistantReasoningText,
       artifacts: mergeArtifactsForDebug(runState.persistedArtifactsSnapshot, runState.runArtifacts),
     });
   };
@@ -200,6 +246,7 @@ export async function* runChatGenerationV3(
       effectivePromptDraft: [],
       llmMessages: [],
       assistantText: "",
+      assistantReasoningText: "",
       runArtifacts: {},
       persistedArtifactsSnapshot,
       operationResultsByHook: {
@@ -243,41 +290,45 @@ export async function* runChatGenerationV3(
     // execute_before_operations
     emit("run.phase_changed", { phase: "execute_before_operations" });
     const execBeforeStartedAt = Date.now();
-    runState.operationResultsByHook.before_main_llm = await executeOperationsPhase({
-      runId: context.runId,
-      hook: "before_main_llm",
-      trigger: context.trigger,
-      operations: profileOperations,
-      executionMode,
-      baseMessages: runState.effectivePromptDraft,
-      baseArtifacts: mergeArtifacts(runState.persistedArtifactsSnapshot, runState.runArtifacts),
-      assistantText: runState.assistantText,
-      templateContext: basePrompt.templateContext,
-      abortSignal: abortController.signal,
-      onOperationStarted: (data) => emit("operation.started", data),
-      onOperationFinished: (data) => emit("operation.finished", data),
-      onTemplateDebug: debugEnabled
-        ? (data) => emit("operation.debug.template", data)
-        : undefined,
-    });
+    runState.operationResultsByHook.before_main_llm = yield* streamEventsWhile(
+      executeOperationsPhase({
+        runId: context.runId,
+        hook: "before_main_llm",
+        trigger: context.trigger,
+        operations: profileOperations,
+        executionMode,
+        baseMessages: runState.effectivePromptDraft,
+        baseArtifacts: mergeArtifacts(runState.persistedArtifactsSnapshot, runState.runArtifacts),
+        assistantText: runState.assistantText,
+        templateContext: basePrompt.templateContext,
+        abortSignal: abortController.signal,
+        onOperationStarted: (data) => emit("operation.started", data),
+        onOperationFinished: (data) => emit("operation.finished", data),
+        onTemplateDebug: debugEnabled
+          ? (data) => emit("operation.debug.template", data)
+          : undefined,
+      })
+    );
     markPhase("execute_before_operations", "done", execBeforeStartedAt);
     yield* flushEvents();
 
     // commit_before_effects
     emit("run.phase_changed", { phase: "commit_before_effects" });
     const commitBeforeStartedAt = Date.now();
-    const commitBefore = await commitEffectsPhase({
-      hook: "before_main_llm",
-      ownerId: context.ownerId,
-      chatId: context.chatId,
-      branchId: context.branchId,
-      profile: resolved.profile,
-      sessionKey: context.sessionKey,
-      runState,
-      runArtifactStore,
-      userTurnTarget: request.userTurnTarget,
-      onCommitEvent: (evt) => emit(evt.type, evt.data),
-    });
+    const commitBefore = yield* streamEventsWhile(
+      commitEffectsPhase({
+        hook: "before_main_llm",
+        ownerId: context.ownerId,
+        chatId: context.chatId,
+        branchId: context.branchId,
+        profile: resolved.profile,
+        sessionKey: context.sessionKey,
+        runState,
+        runArtifactStore,
+        userTurnTarget: request.userTurnTarget,
+        onCommitEvent: (evt) => emit(evt.type, evt.data),
+      })
+    );
     runState.commitReportsByHook.before_main_llm = commitBefore.report;
     emitStateSnapshot("post_commit_before");
     markPhase(
@@ -340,13 +391,17 @@ export async function* runChatGenerationV3(
         providerId: context.runtimeInfo.providerId,
       });
       const mainStartedAt = Date.now();
-      const main = await runMainLlmPhase({
-        request,
-        runState,
-        ownerId: context.ownerId,
-        abortController,
-        onDelta: (content) => emit("main_llm.delta", { content }),
-      });
+      const main = yield* streamEventsWhile(
+        runMainLlmPhase({
+          request,
+          runState,
+          ownerId: context.ownerId,
+          abortController,
+          onDelta: (content) => emit("main_llm.delta", { content }),
+          onReasoningDelta: (content) =>
+            emit("main_llm.reasoning_delta", { content }),
+        })
+      );
       emit("main_llm.finished", {
         status: main.status,
         message: main.message,
@@ -374,41 +429,45 @@ export async function* runChatGenerationV3(
           ...runState.effectivePromptDraft.map((m) => ({ ...m })),
           { role: "assistant" as const, content: runState.assistantText },
         ];
-        runState.operationResultsByHook.after_main_llm = await executeOperationsPhase({
-          runId: context.runId,
-          hook: "after_main_llm",
-          trigger: context.trigger,
-          operations: profileOperations,
-          executionMode,
-          baseMessages: afterBaseMessages,
-          baseArtifacts: mergeArtifacts(runState.persistedArtifactsSnapshot, runState.runArtifacts),
-          assistantText: runState.assistantText,
-          templateContext: basePrompt.templateContext,
-          abortSignal: abortController.signal,
-          onOperationStarted: (data) => emit("operation.started", data),
-          onOperationFinished: (data) => emit("operation.finished", data),
-          onTemplateDebug: debugEnabled
-            ? (data) => emit("operation.debug.template", data)
-            : undefined,
-        });
+        runState.operationResultsByHook.after_main_llm = yield* streamEventsWhile(
+          executeOperationsPhase({
+            runId: context.runId,
+            hook: "after_main_llm",
+            trigger: context.trigger,
+            operations: profileOperations,
+            executionMode,
+            baseMessages: afterBaseMessages,
+            baseArtifacts: mergeArtifacts(runState.persistedArtifactsSnapshot, runState.runArtifacts),
+            assistantText: runState.assistantText,
+            templateContext: basePrompt.templateContext,
+            abortSignal: abortController.signal,
+            onOperationStarted: (data) => emit("operation.started", data),
+            onOperationFinished: (data) => emit("operation.finished", data),
+            onTemplateDebug: debugEnabled
+              ? (data) => emit("operation.debug.template", data)
+              : undefined,
+          })
+        );
         markPhase("execute_after_operations", "done", executeAfterStartedAt);
         yield* flushEvents();
 
         // commit_after_effects
         emit("run.phase_changed", { phase: "commit_after_effects" });
         const commitAfterStartedAt = Date.now();
-        const commitAfter = await commitEffectsPhase({
-          hook: "after_main_llm",
-          ownerId: context.ownerId,
-          chatId: context.chatId,
-          branchId: context.branchId,
-          profile: resolved.profile,
-          sessionKey: context.sessionKey,
-          runState,
-          runArtifactStore,
-          userTurnTarget: request.userTurnTarget,
-          onCommitEvent: (evt) => emit(evt.type, evt.data),
-        });
+        const commitAfter = yield* streamEventsWhile(
+          commitEffectsPhase({
+            hook: "after_main_llm",
+            ownerId: context.ownerId,
+            chatId: context.chatId,
+            branchId: context.branchId,
+            profile: resolved.profile,
+            sessionKey: context.sessionKey,
+            runState,
+            runArtifactStore,
+            userTurnTarget: request.userTurnTarget,
+            onCommitEvent: (evt) => emit(evt.type, evt.data),
+          })
+        );
         runState.commitReportsByHook.after_main_llm = commitAfter.report;
         emitStateSnapshot("post_commit_after");
         markPhase(

@@ -38,6 +38,7 @@ const en = {
 			input: {
 				placeholder: 'Type a message...',
 				send: 'Send',
+				continue: 'Continue',
 				abort: 'Stop',
 				actions: 'Send actions',
 			},
@@ -66,6 +67,11 @@ const en = {
 				streaming: 'Generating…',
 				saving: 'Saving…',
 				assistantFallback: 'AI Assistant',
+			},
+			reasoning: {
+				title: 'Reasoning',
+				show: 'show',
+				hide: 'hide',
 			},
 			avatarPreview: {
 				title: 'Avatar preview',
@@ -136,6 +142,11 @@ const en = {
 				sendMessageError: 'Failed to send message',
 				streamError: 'Stream error',
 				regenerateError: 'Regeneration error',
+				operationStarted: 'Operation {{name}} ({{hook}}) started',
+				operationFinishedDone: 'Operation {{name}} ({{hook}}) completed',
+				operationFinishedSkipped: 'Operation {{name}} ({{hook}}) skipped',
+				operationFinishedError: 'Operation {{name}} ({{hook}}) failed',
+				operationFinishedAborted: 'Operation {{name}} ({{hook}}) aborted',
 			},
 		},
 		sidebars: {

@@ -27,6 +27,8 @@ type RunStats = {
 	mainLlm: {
 		deltaChunks: number;
 		deltaChars: number;
+		reasoningChunks: number;
+		reasoningChars: number;
 	};
 };
 const runStatsById = new Map<string, RunStats>();
@@ -85,6 +87,8 @@ function ensureRunStats(runId: string, generationId: string | null, ts: number):
 		mainLlm: {
 			deltaChunks: 0,
 			deltaChars: 0,
+			reasoningChunks: 0,
+			reasoningChars: 0,
 		},
 	};
 	runStatsById.set(runId, created);
@@ -128,6 +132,12 @@ function updateRunStats(type: string, data: Record<string, unknown> | null, ts: 
 		stats.mainLlm.deltaChars += chunk.length;
 	}
 
+	if (type === 'main_llm.reasoning_delta' || type === 'llm.stream.reasoning_delta') {
+		const chunk = getString(data, 'content') ?? '';
+		stats.mainLlm.reasoningChunks += 1;
+		stats.mainLlm.reasoningChars += chunk.length;
+	}
+
 	if (type === 'run.finished') {
 		runStatsById.delete(effectiveRunId);
 		return {
@@ -169,7 +179,7 @@ function summarizeEvent(type: string, data: Record<string, unknown> | null): Rec
 		};
 	}
 
-	if (type === 'llm.stream.delta' || type === 'main_llm.delta') {
+	if (type === 'llm.stream.delta' || type === 'main_llm.delta' || type === 'llm.stream.reasoning_delta' || type === 'main_llm.reasoning_delta') {
 		const content = getString(data, 'content') ?? '';
 		return {
 			...base,
