@@ -1,5 +1,5 @@
-import type { GenerateMessage } from "@shared/types/generate";
 import type { Entry, Part, Variant } from "@shared/types/chat-entry-parts";
+import type { GenerateMessage } from "@shared/types/generate";
 
 type UiProjectionOptions = {
   debugEnabled: boolean;
@@ -117,6 +117,7 @@ export function getPromptProjection(params: {
 
   for (const { entry, variant } of params.entries) {
     if (entry.softDeleted) continue;
+    if (entry.meta?.excludedFromPrompt === true) continue;
     if (!variant) continue;
 
     const all = variant.parts ?? [];

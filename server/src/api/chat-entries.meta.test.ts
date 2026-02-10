@@ -4,6 +4,7 @@ import { HttpError } from "@core/middleware/error-handler";
 
 import {
   buildUserEntryMeta,
+  mergeEntryPromptVisibilityMeta,
   renderUserInputWithLiquid,
   resolveContinueUserTurnTarget,
 } from "./chat-entries.api";
@@ -187,6 +188,39 @@ describe("buildUserEntryMeta", () => {
       userEntryId: "user-entry-1",
       userMainPartId: "part-new",
     });
+  });
+});
+
+describe("mergeEntryPromptVisibilityMeta", () => {
+  test("preserves unrelated meta fields and adds excludedFromPrompt when includeInPrompt=false", () => {
+    const next = mergeEntryPromptVisibilityMeta({
+      existingMeta: { requestId: "req-1", custom: { a: 1 } },
+      includeInPrompt: false,
+    });
+
+    expect(next).toEqual({
+      requestId: "req-1",
+      custom: { a: 1 },
+      excludedFromPrompt: true,
+    });
+  });
+
+  test("removes excludedFromPrompt when includeInPrompt=true", () => {
+    const next = mergeEntryPromptVisibilityMeta({
+      existingMeta: { requestId: "req-1", excludedFromPrompt: true },
+      includeInPrompt: true,
+    });
+
+    expect(next).toEqual({ requestId: "req-1" });
+  });
+
+  test("returns null when only excludedFromPrompt was present and includeInPrompt=true", () => {
+    const next = mergeEntryPromptVisibilityMeta({
+      existingMeta: { excludedFromPrompt: true },
+      includeInPrompt: true,
+    });
+
+    expect(next).toBeNull();
   });
 });
 

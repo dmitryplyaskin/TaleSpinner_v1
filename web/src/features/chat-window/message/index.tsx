@@ -1,4 +1,4 @@
-import { Avatar, Box, Flex, Stack, Text } from '@mantine/core';
+import { Avatar, Box, Checkbox, Flex, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import {
 	openDeleteVariantConfirm,
 	regenerateRequested,
 	selectVariantRequested,
+	setEntryPromptVisibilityRequested,
 } from '@model/chat-entry-parts';
 import { userPersonsModel } from '@model/user-persons';
 import { toaster } from '@ui/toaster';
@@ -34,6 +35,9 @@ type MessageProps = {
 	data: ChatEntryWithVariantDto;
 	isLast: boolean;
 	onAvatarPreviewRequested?: (preview: ChatAvatarPreview) => void;
+	isBulkDeleteMode: boolean;
+	isBulkSelected: boolean;
+	onToggleBulkSelection: () => void;
 };
 
 type PersonaSnapshot = {
@@ -78,7 +82,14 @@ function isEditableMainPart(part: Part): boolean {
 	return part.channel === 'main' && isEditablePart(part);
 }
 
-const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewRequested }) => {
+const MessageInner: React.FC<MessageProps> = ({
+	data,
+	isLast,
+	onAvatarPreviewRequested,
+	isBulkDeleteMode,
+	isBulkSelected,
+	onToggleBulkSelection,
+}) => {
 	const { t } = useTranslation();
 	const [currentProfile, selectedUserPerson] = useUnit([$currentEntityProfile, userPersonsModel.$selectedItem]);
 	const isStreaming = useUnit($isChatStreaming);
@@ -91,6 +102,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 
 	const isUser = data.entry.role === 'user';
 	const isAssistant = data.entry.role === 'assistant';
+	const isPromptExcluded = typeof data.entry.meta === 'object' && data.entry.meta !== null && (data.entry.meta as any).excludedFromPrompt === true;
 	const assistantName = currentProfile?.name || t('chat.message.assistantFallback');
 	const assistantAvatarSrc = resolveAssetUrl(currentProfile?.avatarAssetId ?? undefined);
 	const personaSnapshot = useMemo(() => readPersonaSnapshot(data.entry.meta), [data.entry.meta]);
@@ -109,7 +121,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 		data.entry.meta !== null &&
 		Boolean((data.entry.meta as any)?.imported) &&
 		((data.entry.meta as any)?.kind === 'first_mes' || (data.entry.meta as any)?.source === 'entity_profile_import');
-	const canSwipeVariants = isAssistant && isLast;
+	const canSwipeVariants = isAssistant && isLast && !isBulkDeleteMode;
 
 	const editableMainPart = useMemo(() => {
 		const parts = data.variant?.parts ?? [];
@@ -124,7 +136,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 		return parts.find((part) => part.partId === editingPartId) ?? null;
 	}, [data.variant?.parts, editingPartId]);
 	const isEditingMainPart = Boolean(editingPart && editingPart.channel === 'main');
-	const canMutateParts = !isOptimistic && !isStreaming;
+	const canMutateParts = !isOptimistic && !isStreaming && !isBulkDeleteMode;
 
 	useEffect(() => {
 		if (!isAssistant) return;
@@ -132,6 +144,12 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 		if (variants.length > 0) return;
 		loadVariantsRequested({ entryId: data.entry.entryId });
 	}, [data.entry.entryId, isAssistant, isLast, variants.length]);
+
+	useEffect(() => {
+		if (!isBulkDeleteMode) return;
+		setEditingPartId(null);
+		setDraftText('');
+	}, [isBulkDeleteMode]);
 
 	const currentVariantIndex = useMemo(() => {
 		if (variants.length === 0) return -1;
@@ -265,6 +283,14 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 		openDeletePartConfirm({ entryId: data.entry.entryId, partId: part.partId });
 	};
 
+	const handleTogglePromptVisibility = () => {
+		if (isOptimistic || isStreaming || isEditing || isBulkDeleteMode) return;
+		setEntryPromptVisibilityRequested({
+			entryId: data.entry.entryId,
+			includeInPrompt: isPromptExcluded,
+		});
+	};
+
 	const handleAssistantAvatarClick = () => {
 		if (!assistantAvatarSrc || !onAvatarPreviewRequested) return;
 		onAvatarPreviewRequested({ src: assistantAvatarSrc, name: assistantName, kind: 'assistant' });
@@ -288,6 +314,23 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 				) : (
 					<Box className="ts-message-avatar-spacer" />
 				)}
+				{isBulkDeleteMode && (
+					<Box className="ts-message-bulk-checkbox-wrap">
+						<Checkbox
+							checked={isBulkSelected}
+							color="red"
+							onChange={() => onToggleBulkSelection()}
+							onClick={(event) => event.stopPropagation()}
+							aria-label={t('chat.management.bulkSelectMessage')}
+							size="sm"
+							styles={{
+								input: {
+									borderColor: 'var(--mantine-color-red-6)',
+								},
+							}}
+						/>
+					</Box>
+				)}
 			</Box>
 
 			<Box style={{ minWidth: 0 }}>
@@ -295,10 +338,14 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 					<Box
 						className="ts-message-card"
 						data-role={isUser ? 'user' : 'assistant'}
+						data-prompt-excluded={isPromptExcluded ? 'true' : undefined}
+						data-bulk-selected={isBulkSelected ? 'true' : undefined}
 						onTouchStart={handleTouchStart}
 						onTouchEnd={handleTouchEnd}
 						onPointerDown={handlePointerDown}
 						onPointerUp={handlePointerUp}
+						onClick={isBulkDeleteMode ? onToggleBulkSelection : undefined}
+						style={isBulkDeleteMode ? { cursor: 'pointer' } : undefined}
 					>
 						<Flex align="center" justify="space-between" gap="sm">
 							<Stack gap={0}>
@@ -320,16 +367,22 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 								)}
 							</Stack>
 							<Flex gap="xs" align="center">
-								<ActionBar
-									isEditing={isEditingMainPart}
-									canDeleteVariant={canDeleteVariant}
-									onOpenEdit={handleOpenEdit}
-									onCancelEdit={handleCancelEdit}
-									onConfirmEdit={handleConfirmEdit}
-									onRequestDeleteMessage={handleRequestDeleteMessage}
-									onRequestDeleteVariant={handleRequestDeleteVariant}
-								/>
-								{isAssistant && <VariantControls entry={data} isLast={isLast} />}
+								{!isBulkDeleteMode && (
+									<>
+										<ActionBar
+											isEditing={isEditingMainPart}
+											canDeleteVariant={canDeleteVariant}
+											isPromptExcluded={isPromptExcluded}
+											onTogglePromptVisibility={handleTogglePromptVisibility}
+											onOpenEdit={handleOpenEdit}
+											onCancelEdit={handleCancelEdit}
+											onConfirmEdit={handleConfirmEdit}
+											onRequestDeleteMessage={handleRequestDeleteMessage}
+											onRequestDeleteVariant={handleRequestDeleteVariant}
+										/>
+										{isAssistant && <VariantControls entry={data} isLast={isLast} />}
+									</>
+								)}
 							</Flex>
 						</Flex>
 
@@ -376,6 +429,9 @@ export const Message = memo(MessageInner, (prev, next) => {
 	return (
 		prev.data === next.data &&
 		prev.isLast === next.isLast &&
-		prev.onAvatarPreviewRequested === next.onAvatarPreviewRequested
+		prev.onAvatarPreviewRequested === next.onAvatarPreviewRequested &&
+		prev.isBulkDeleteMode === next.isBulkDeleteMode &&
+		prev.isBulkSelected === next.isBulkSelected &&
+		prev.onToggleBulkSelection === next.onToggleBulkSelection
 	);
 });

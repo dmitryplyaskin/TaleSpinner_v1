@@ -30,6 +30,7 @@ export type Entry = {
   meta?: {
     imported?: boolean;
     pinned?: boolean;
+    excludedFromPrompt?: boolean;
     [key: string]: unknown;
   };
 };

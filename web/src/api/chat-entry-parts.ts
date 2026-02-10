@@ -248,10 +248,30 @@ export async function softDeleteEntry(entryId: string): Promise<{ id: string }> 
 	});
 }
 
+export async function softDeleteEntriesBulk(entryIds: string[]): Promise<{ ids: string[] }> {
+	return apiJson<{ ids: string[] }>(`/entries/soft-delete-bulk`, {
+		method: 'POST',
+		body: JSON.stringify({ entryIds, by: 'user' }),
+	});
+}
+
 export async function softDeletePart(partId: string): Promise<{ id: string }> {
 	return apiJson<{ id: string }>(`/parts/${encodeURIComponent(partId)}/soft-delete`, {
 		method: 'POST',
 		body: JSON.stringify({ by: 'user' }),
 	});
+}
+
+export async function setEntryPromptVisibility(params: {
+	entryId: string;
+	includeInPrompt: boolean;
+}): Promise<{ id: string; includeInPrompt: boolean }> {
+	return apiJson<{ id: string; includeInPrompt: boolean }>(
+		`/entries/${encodeURIComponent(params.entryId)}/prompt-visibility`,
+		{
+			method: 'POST',
+			body: JSON.stringify({ includeInPrompt: params.includeInPrompt }),
+		},
+	);
 }
 

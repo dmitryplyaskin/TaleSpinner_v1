@@ -134,5 +134,34 @@ describe("chat-entry-parts projection", () => {
 
     expect(msgs).toEqual([{ role: "user", content: "hello" }]);
   });
+
+  it("excludes entries marked as excludedFromPrompt from prompt projection", () => {
+    const entry = mkEntry({
+      entryId: "e1",
+      role: "assistant",
+      meta: { excludedFromPrompt: true },
+    });
+    const variant = mkVariant({
+      variantId: "v1",
+      entryId: "e1",
+      parts: [
+        mkPart({
+          partId: "main",
+          channel: "main",
+          order: 0,
+          payload: "hidden from prompt",
+          visibility: { ui: "always", prompt: true },
+        }),
+      ],
+    });
+
+    const msgs = getPromptProjection({
+      entries: [{ entry, variant }],
+      currentTurn: 0,
+      serializePart,
+    });
+
+    expect(msgs).toEqual([]);
+  });
 });
 

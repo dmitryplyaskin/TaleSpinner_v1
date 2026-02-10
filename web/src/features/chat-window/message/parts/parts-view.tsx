@@ -35,6 +35,11 @@ function isEditablePart(part: Part): boolean {
 	);
 }
 
+function estimateInitialEditRows(value: string): number {
+	const lines = value.split(/\r?\n/).length;
+	return Math.max(2, lines);
+}
+
 const PartsViewInner: React.FC<Props> = ({
 	entry,
 	variant,
@@ -147,8 +152,7 @@ const PartsViewInner: React.FC<Props> = ({
 									value={draftText}
 									onChange={(event) => onDraftTextChange(event.currentTarget.value)}
 									autosize
-									minRows={2}
-									maxRows={12}
+									minRows={estimateInitialEditRows(draftText)}
 								/>
 							) : (
 								renderPart(p, { plainTextForMarkdown: preferPlainText })

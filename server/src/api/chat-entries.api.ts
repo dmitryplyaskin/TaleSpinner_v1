@@ -21,6 +21,7 @@ import {
   listEntries,
   listEntriesWithActiveVariants,
   softDeleteEntry,
+  softDeleteEntries,
   updateEntryMeta,
 } from "../services/chat-entry-parts/entries-repository";
 import {
@@ -97,6 +98,19 @@ export function buildUserEntryMeta(params: {
   };
 
   return meta;
+}
+
+export function mergeEntryPromptVisibilityMeta(params: {
+  existingMeta: unknown;
+  includeInPrompt: boolean;
+}): Record<string, unknown> | null {
+  const nextMeta = isRecord(params.existingMeta) ? { ...params.existingMeta } : {};
+  if (params.includeInPrompt) {
+    delete nextMeta.excludedFromPrompt;
+  } else {
+    nextMeta.excludedFromPrompt = true;
+  }
+  return Object.keys(nextMeta).length > 0 ? nextMeta : null;
 }
 
 export async function renderUserInputWithLiquid(params: {
@@ -997,6 +1011,28 @@ const softDeleteEntryBodySchema = z.object({
   by: z.enum(["user", "agent"]).optional().default("user"),
 });
 
+const softDeleteEntriesBulkBodySchema = z.object({
+  entryIds: z.array(z.string().min(1)).min(1),
+  by: z.enum(["user", "agent"]).optional().default("user"),
+});
+
+const entryPromptVisibilityBodySchema = z.object({
+  includeInPrompt: z.boolean(),
+});
+
+router.post(
+  "/entries/soft-delete-bulk",
+  validate({ body: softDeleteEntriesBulkBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const body = softDeleteEntriesBulkBodySchema.parse(req.body);
+    const ids = await softDeleteEntries({
+      entryIds: body.entryIds,
+      by: body.by,
+    });
+    return { data: { ids } };
+  })
+);
+
 router.post(
   "/entries/:id/soft-delete",
   validate({ params: entryIdParamsSchema, body: softDeleteEntryBodySchema }),
@@ -1008,6 +1044,34 @@ router.post(
 
     await softDeleteEntry({ entryId: entry.entryId, by: body.by });
     return { data: { id: entry.entryId } };
+  })
+);
+
+router.post(
+  "/entries/:id/prompt-visibility",
+  validate({ params: entryIdParamsSchema, body: entryPromptVisibilityBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = entryPromptVisibilityBodySchema.parse(req.body);
+    const entry = await getEntryById({ entryId: params.id });
+    if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
+
+    const nextMeta = mergeEntryPromptVisibilityMeta({
+      existingMeta: entry.meta,
+      includeInPrompt: body.includeInPrompt,
+    });
+
+    await updateEntryMeta({
+      entryId: entry.entryId,
+      meta: nextMeta,
+    });
+
+    return {
+      data: {
+        id: entry.entryId,
+        includeInPrompt: body.includeInPrompt,
+      },
+    };
   })
 );
 

@@ -308,6 +308,16 @@ a {
   padding-top: 14px;
 }
 
+.ts-bulk-delete-toolbar {
+  margin-bottom: 8px;
+  border: 1px solid var(--ts-border-soft);
+  border-radius: 12px;
+  background: var(--ts-surface-elevated);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--ts-shadow-soft);
+  padding: 8px 10px;
+}
+
 .ts-message-grid {
   width: 100%;
   display: grid;
@@ -324,10 +334,19 @@ a {
 
 .ts-message-avatar--assistant {
   justify-content: flex-start;
+  flex-direction: column;
+  align-items: center;
 }
 
 .ts-message-avatar--user {
   justify-content: flex-end;
+}
+
+.ts-message-bulk-checkbox-wrap {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .ts-message-avatar-clickable {
@@ -341,11 +360,22 @@ a {
   background: var(--ts-message-assistant-bg);
   padding: 16px;
   box-shadow: var(--ts-shadow-soft);
+  transition: border-color 120ms ease, box-shadow 120ms ease, filter 120ms ease, opacity 120ms ease;
 }
 
 .ts-message-card[data-role='user'] {
   background: var(--ts-message-user-bg);
   border-color: var(--ts-message-user-border);
+}
+
+.ts-message-card[data-prompt-excluded='true'] {
+  opacity: 0.72;
+  filter: saturate(0.75);
+}
+
+.ts-message-card[data-bulk-selected='true'] {
+  border-color: var(--mantine-color-red-6);
+  box-shadow: 0 0 0 1px var(--mantine-color-red-6), 0 0 0 2px rgba(250, 82, 82, 0.12), var(--ts-shadow-soft);
 }
 
 .ts-message-name {

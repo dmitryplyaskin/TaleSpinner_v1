@@ -3,7 +3,14 @@ import { useUnit } from 'effector-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { $entries, $isChatStreaming, abortRequested, continueFromLastUserRequested, sendMessageRequested } from '@model/chat-entry-parts';
+import {
+	$entries,
+	$isBulkDeleteMode,
+	$isChatStreaming,
+	abortRequested,
+	continueFromLastUserRequested,
+	sendMessageRequested,
+} from '@model/chat-entry-parts';
 import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
 import { ChatManagementMenu } from './chat-management-menu';
@@ -13,12 +20,12 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 
 export const MessageInput = () => {
 	const { t } = useTranslation();
-	const [isProcessing, entries] = useUnit([$isChatStreaming, $entries]);
+	const [isProcessing, entries, isBulkDeleteMode] = useUnit([$isChatStreaming, $entries, $isBulkDeleteMode]);
 	const message = useUnit($userMessage);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const trimmedMessage = message.trim();
 	const lastEntry = entries[entries.length - 1];
-	const canContinueFromLastUser = !isProcessing && trimmedMessage.length === 0 && lastEntry?.entry.role === 'user';
+	const canContinueFromLastUser = !isProcessing && !isBulkDeleteMode && trimmedMessage.length === 0 && lastEntry?.entry.role === 'user';
 
 	const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setUserMessage(event.target.value);
@@ -29,6 +36,7 @@ export const MessageInput = () => {
 			abortRequested();
 			return;
 		}
+		if (isBulkDeleteMode) return;
 		if (trimmedMessage.length > 0) {
 			sendMessageRequested({ promptText: message, role: 'user' });
 			clearUserMessage();
@@ -54,8 +62,8 @@ export const MessageInput = () => {
 					value={message}
 					onChange={handleInputChange}
 					onKeyDown={handleKeyDown}
-					placeholder={t('chat.input.placeholder')}
-					disabled={isProcessing}
+					placeholder={isBulkDeleteMode ? t('chat.input.bulkDeleteModePlaceholder') : t('chat.input.placeholder')}
+					disabled={isProcessing || isBulkDeleteMode}
 					autosize
 					minRows={1}
 					maxRows={6}
@@ -72,8 +80,13 @@ export const MessageInput = () => {
 				<Flex justify="space-between" align="center">
 					<ChatManagementMenu />
 					<Flex gap="xs">
-						<SendActionMenu />
-						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'cyan'} style={{ whiteSpace: 'nowrap' }}>
+						{!isBulkDeleteMode && <SendActionMenu />}
+						<Button
+							onClick={handleSendMessage}
+							color={isProcessing ? 'red' : 'cyan'}
+							style={{ whiteSpace: 'nowrap' }}
+							disabled={isBulkDeleteMode}
+						>
 							{isProcessing ? t('chat.input.abort') : canContinueFromLastUser ? t('chat.input.continue') : t('chat.input.send')}
 						</Button>
 					</Flex>

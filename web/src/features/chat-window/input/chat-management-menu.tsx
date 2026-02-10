@@ -19,6 +19,7 @@ import {
 	updateBranchTitleRequested,
 	updateChatTitleRequested,
 } from '@model/chat-core';
+import { $isBulkDeleteMode, enterBulkDeleteMode } from '@model/chat-entry-parts';
 import { Dialog } from '@ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Z_INDEX } from '@ui/z-index';
@@ -29,12 +30,14 @@ function normalizeName(value: string): string {
 
 export const ChatManagementMenu = () => {
 	const { t } = useTranslation();
-	const [chats, currentChat, branches, currentBranchId, currentProfile] = useUnit([
+	const [chats, currentChat, branches, currentBranchId, currentProfile, isBulkDeleteMode, startBulkDeleteMode] = useUnit([
 		$chatsForCurrentProfile,
 		$currentChat,
 		$branches,
 		$currentBranchId,
 		$currentEntityProfile,
+		$isBulkDeleteMode,
+		enterBulkDeleteMode,
 	]);
 
 	const [chatsModalOpen, setChatsModalOpen] = useState(false);
@@ -120,6 +123,13 @@ export const ChatManagementMenu = () => {
 						onClick={() => setBranchesModalOpen(true)}
 					>
 						{t('chat.management.manageBranches')}
+					</Menu.Item>
+					<Menu.Item
+						leftSection={<LuTrash2 />}
+						disabled={!currentChatId || isBulkDeleteMode}
+						onClick={() => startBulkDeleteMode()}
+					>
+						{t('chat.management.bulkDelete')}
 					</Menu.Item>
 				</Menu.Dropdown>
 			</Menu>

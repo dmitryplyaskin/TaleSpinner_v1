@@ -1,7 +1,7 @@
 import { Stack } from '@mantine/core';
 import { useUnit } from 'effector-react';
 
-import { $entries } from '@model/chat-entry-parts';
+import { $bulkDeleteSelectedEntryIds, $entries, $isBulkDeleteMode, toggleBulkDeleteEntrySelection } from '@model/chat-entry-parts';
 
 import { type ChatAvatarPreview } from './avatar-preview-panel';
 import { Message } from './message';
@@ -11,7 +11,13 @@ type RenderChatProps = {
 };
 
 export const RenderChat = ({ onAvatarPreviewRequested }: RenderChatProps) => {
-	const entries = useUnit($entries);
+	const [entries, isBulkDeleteMode, selectedEntryIds, toggleSelection] = useUnit([
+		$entries,
+		$isBulkDeleteMode,
+		$bulkDeleteSelectedEntryIds,
+		toggleBulkDeleteEntrySelection,
+	]);
+	const selectedSet = new Set(selectedEntryIds);
 
 	if (!entries) return null;
 
@@ -23,6 +29,9 @@ export const RenderChat = ({ onAvatarPreviewRequested }: RenderChatProps) => {
 					data={entry}
 					isLast={index === entries.length - 1}
 					onAvatarPreviewRequested={onAvatarPreviewRequested}
+					isBulkDeleteMode={isBulkDeleteMode}
+					isBulkSelected={selectedSet.has(entry.entry.entryId)}
+					onToggleBulkSelection={() => toggleSelection({ entryId: entry.entry.entryId })}
 				/>
 			))}
 		</Stack>

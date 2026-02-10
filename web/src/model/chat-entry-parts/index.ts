@@ -10,7 +10,9 @@ import {
 	manualEditEntry,
 	selectEntryVariant,
 	softDeleteEntry,
+	softDeleteEntriesBulk,
 	softDeletePart,
+	setEntryPromptVisibility,
 	streamChatEntry,
 	streamContinueEntry,
 	streamRegenerateEntry,
@@ -28,12 +30,22 @@ function nowIso(): string {
 	return new Date().toISOString();
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export const loadEntriesFx = createEffect(async (params: { chatId: string; branchId: string }) => {
 	return listChatEntries({ chatId: params.chatId, branchId: params.branchId, limit: 200 });
 });
 
 export const $entries = createStore<ChatEntryWithVariantDto[]>([]).on(loadEntriesFx.doneData, (_, res) => res.entries);
 export const $currentTurn = createStore<number>(0).on(loadEntriesFx.doneData, (_, res) => res.currentTurn);
+export const $isBulkDeleteMode = createStore(false);
+export const $bulkDeleteSelectedEntryIds = createStore<string[]>([]);
+export const enterBulkDeleteMode = createEvent();
+export const exitBulkDeleteMode = createEvent();
+export const toggleBulkDeleteEntrySelection = createEvent<{ entryId: string }>();
+export const clearBulkDeleteSelection = createEvent();
 
 loadEntriesFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.loadChatError'), description: error instanceof Error ? error.message : String(error) });
@@ -44,6 +56,30 @@ sample({
 	clock: setOpenedChat,
 	fn: ({ chat, branchId }) => ({ chatId: chat.id, branchId }),
 	target: loadEntriesFx,
+});
+
+$isBulkDeleteMode
+	.on(enterBulkDeleteMode, () => true)
+	.on(exitBulkDeleteMode, () => false)
+	.on(setOpenedChat, () => false);
+
+$bulkDeleteSelectedEntryIds
+	.on(toggleBulkDeleteEntrySelection, (selected, { entryId }) =>
+		selected.includes(entryId) ? selected.filter((id) => id !== entryId) : [...selected, entryId],
+	)
+	.on(enterBulkDeleteMode, () => [])
+	.on(exitBulkDeleteMode, () => [])
+	.on(clearBulkDeleteSelection, () => [])
+	.on(setOpenedChat, () => []);
+
+sample({
+	clock: loadEntriesFx.doneData,
+	source: $bulkDeleteSelectedEntryIds,
+	fn: (selected, res) => {
+		const available = new Set(res.entries.map((item) => item.entry.entryId));
+		return selected.filter((id) => available.has(id));
+	},
+	target: $bulkDeleteSelectedEntryIds,
 });
 
 export const $isChatStreaming = createStore(false);
@@ -909,14 +945,48 @@ manualEditEntryFx.failData.watch((error) => {
 
 export const softDeleteEntryRequested = createEvent<{ entryId: string }>();
 export const softDeleteEntryFx = createEffect(async (params: { entryId: string }) => softDeleteEntry(params.entryId));
+export const softDeleteEntriesBulkRequested = createEvent<{ entryIds: string[] }>();
+export const softDeleteEntriesBulkFx = createEffect(async (params: { entryIds: string[] }) => softDeleteEntriesBulk(params.entryIds));
 export const softDeletePartRequested = createEvent<{ entryId: string; partId: string }>();
 export const softDeletePartFx = createEffect(async (params: { entryId: string; partId: string }) => {
 	await softDeletePart(params.partId);
 	return params;
 });
+export const setEntryPromptVisibilityRequested = createEvent<{ entryId: string; includeInPrompt: boolean }>();
+export const setEntryPromptVisibilityFx = createEffect(async (params: { entryId: string; includeInPrompt: boolean }) => {
+	return setEntryPromptVisibility(params);
+});
+
+const applyEntryPromptVisibilityOptimistic = createEvent<{ entryId: string; includeInPrompt: boolean }>();
+
+$entries.on(applyEntryPromptVisibilityOptimistic, (entries, payload) =>
+	entries.map((item) => {
+		if (item.entry.entryId !== payload.entryId) return item;
+		const meta = isRecord(item.entry.meta) ? { ...item.entry.meta } : {};
+		if (payload.includeInPrompt) {
+			delete meta.excludedFromPrompt;
+		} else {
+			meta.excludedFromPrompt = true;
+		}
+		return {
+			...item,
+			entry: {
+				...item.entry,
+				meta,
+			},
+		};
+	}),
+);
 
 sample({ clock: softDeleteEntryRequested, target: softDeleteEntryFx });
+sample({
+	clock: softDeleteEntriesBulkRequested,
+	filter: ({ entryIds }) => entryIds.length > 0,
+	target: softDeleteEntriesBulkFx,
+});
 sample({ clock: softDeletePartRequested, target: softDeletePartFx });
+sample({ clock: setEntryPromptVisibilityRequested, target: applyEntryPromptVisibilityOptimistic });
+sample({ clock: setEntryPromptVisibilityRequested, target: setEntryPromptVisibilityFx });
 
 sample({
 	clock: softDeleteEntryFx.doneData,
@@ -948,6 +1018,27 @@ sample({
 	target: loadVariantsRequested,
 });
 
+sample({
+	clock: softDeleteEntriesBulkFx.doneData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
+sample({
+	clock: softDeleteEntriesBulkFx.doneData,
+	target: [exitBulkDeleteMode, clearBulkDeleteSelection],
+});
+
+sample({
+	clock: setEntryPromptVisibilityFx.failData,
+	source: { chat: $currentChat, branchId: $currentBranchId },
+	filter: ({ chat, branchId }) => Boolean(chat?.id && branchId),
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
 softDeletePartFx.doneData.watch(() => {
 	toaster.success({ title: i18n.t('chat.toasts.partDeleted') });
 });
@@ -956,15 +1047,39 @@ softDeletePartFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.deletePartError'), description: error instanceof Error ? error.message : String(error) });
 });
 
+softDeleteEntriesBulkFx.doneData.watch((result) => {
+	toaster.success({ title: i18n.t('chat.toasts.bulkMessagesDeleted', { count: result.ids.length }) });
+});
+
+softDeleteEntriesBulkFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.bulkDeleteMessageError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+setEntryPromptVisibilityFx.done.watch(({ params }) => {
+	toaster.success({
+		title: params.includeInPrompt ? i18n.t('chat.toasts.messageShownInPrompt') : i18n.t('chat.toasts.messageHiddenFromPrompt'),
+	});
+});
+
+setEntryPromptVisibilityFx.failData.watch((error) => {
+	toaster.error({
+		title: i18n.t('chat.toasts.togglePromptVisibilityError'),
+		description: error instanceof Error ? error.message : String(error),
+	});
+});
+
 export type DeleteConfirmState =
 	| { kind: 'entry'; entryId: string }
 	| { kind: 'variant'; entryId: string; variantId: string }
 	| { kind: 'part'; entryId: string; partId: string }
+	| { kind: 'bulkEntries'; entryIds: string[]; count: number }
 	| null;
 
 export const openDeleteEntryConfirm = createEvent<{ entryId: string }>();
 export const openDeleteVariantConfirm = createEvent<{ entryId: string; variantId: string }>();
 export const openDeletePartConfirm = createEvent<{ entryId: string; partId: string }>();
+export const openBulkDeleteConfirm = createEvent();
+const openBulkDeleteConfirmResolved = createEvent<{ entryIds: string[]; count: number }>();
 export const closeDeleteConfirm = createEvent();
 export const confirmDeleteAction = createEvent();
 
@@ -972,7 +1087,16 @@ export const $deleteConfirmState = createStore<DeleteConfirmState>(null)
 	.on(openDeleteEntryConfirm, (_prev, payload) => ({ kind: 'entry', ...payload }))
 	.on(openDeleteVariantConfirm, (_prev, payload) => ({ kind: 'variant', ...payload }))
 	.on(openDeletePartConfirm, (_prev, payload) => ({ kind: 'part', ...payload }))
+	.on(openBulkDeleteConfirmResolved, (_prev, payload) => ({ kind: 'bulkEntries', ...payload }))
 	.on(closeDeleteConfirm, () => null);
+
+sample({
+	clock: openBulkDeleteConfirm,
+	source: $bulkDeleteSelectedEntryIds,
+	filter: (entryIds) => entryIds.length > 0,
+	fn: (entryIds) => ({ entryIds, count: entryIds.length }),
+	target: openBulkDeleteConfirmResolved,
+});
 
 sample({
 	clock: confirmDeleteAction,
@@ -1002,6 +1126,16 @@ sample({
 		partId: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'part' }>).partId,
 	}),
 	target: softDeletePartRequested,
+});
+
+sample({
+	clock: confirmDeleteAction,
+	source: $deleteConfirmState,
+	filter: (state): state is Extract<NonNullable<DeleteConfirmState>, { kind: 'bulkEntries' }> => state?.kind === 'bulkEntries',
+	fn: (state) => ({
+		entryIds: (state as Extract<NonNullable<DeleteConfirmState>, { kind: 'bulkEntries' }>).entryIds,
+	}),
+	target: softDeleteEntriesBulkRequested,
 });
 
 sample({

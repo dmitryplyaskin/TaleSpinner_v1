@@ -203,6 +203,34 @@ export async function softDeleteEntry(params: { entryId: string; by: "user" | "a
     .where(eq(chatEntries.entryId, params.entryId));
 }
 
+export async function softDeleteEntries(params: {
+  entryIds: string[];
+  by: "user" | "agent";
+}): Promise<string[]> {
+  const db = await initDb();
+  const dedupedEntryIds = Array.from(new Set(params.entryIds.map((id) => id.trim()).filter(Boolean)));
+  if (dedupedEntryIds.length === 0) return [];
+
+  const rows = await db
+    .select({ entryId: chatEntries.entryId })
+    .from(chatEntries)
+    .where(inArray(chatEntries.entryId, dedupedEntryIds));
+
+  const foundEntryIds = rows.map((row) => row.entryId);
+  if (foundEntryIds.length === 0) return [];
+
+  await db
+    .update(chatEntries)
+    .set({
+      softDeleted: true,
+      softDeletedAt: new Date(),
+      softDeletedBy: params.by,
+    })
+    .where(inArray(chatEntries.entryId, foundEntryIds));
+
+  return foundEntryIds;
+}
+
 export async function updateEntryMeta(params: {
   entryId: string;
   meta: unknown | null;

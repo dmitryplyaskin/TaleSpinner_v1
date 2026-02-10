@@ -1,13 +1,15 @@
-import { Box, Flex } from '@mantine/core';
+import { Box, Flex, Paper } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuEllipsis, LuPen, LuTrash, LuX } from 'react-icons/lu';
+import { LuCheck, LuEllipsis, LuEye, LuEyeOff, LuPen, LuTrash, LuX } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
 type ActionBarProps = {
 	isEditing: boolean;
 	canDeleteVariant: boolean;
+	isPromptExcluded: boolean;
+	onTogglePromptVisibility: () => void;
 	onOpenEdit: () => void;
 	onCancelEdit: () => void;
 	onConfirmEdit: () => void;
@@ -18,6 +20,8 @@ type ActionBarProps = {
 export const ActionBar = ({
 	isEditing,
 	canDeleteVariant,
+	isPromptExcluded,
+	onTogglePromptVisibility,
 	onOpenEdit,
 	onCancelEdit,
 	onConfirmEdit,
@@ -31,7 +35,7 @@ export const ActionBar = ({
 		if (isEditing) setActionsOpen(false);
 	}, [isEditing]);
 
-	const expandedWidth = canDeleteVariant ? 56 : 28;
+	const expandedWidth = canDeleteVariant ? 74 : 48;
 
 	return (
 		<Flex gap={6} align="center">
@@ -41,8 +45,8 @@ export const ActionBar = ({
 					<IconButtonWithTooltip size="xs" variant="solid" colorPalette="green" icon={<LuCheck />} tooltip={t('chat.actions.confirmEdit')} aria-label={t('chat.actions.confirmEdit')} onClick={onConfirmEdit} />
 				</Flex>
 			) : (
-				<>
-					<Flex gap={4} align="center" wrap="nowrap">
+				<Paper withBorder radius="md" p={6} style={{ borderColor: 'var(--ts-border-soft)', backgroundColor: 'var(--ts-surface-elevated)' }}>
+					<Flex gap={3} align="center" wrap="nowrap">
 						<Box
 							style={{
 								width: actionsOpen ? expandedWidth : 0,
@@ -77,6 +81,18 @@ export const ActionBar = ({
 										onRequestDeleteMessage();
 									}}
 								/>
+								<IconButtonWithTooltip
+									size="xs"
+									variant="ghost"
+									colorPalette={isPromptExcluded ? 'gray' : 'cyan'}
+									icon={isPromptExcluded ? <LuEye /> : <LuEyeOff />}
+									tooltip={isPromptExcluded ? t('chat.actions.showInPrompt') : t('chat.actions.hideFromPrompt')}
+									aria-label={isPromptExcluded ? t('chat.actions.showInPrompt') : t('chat.actions.hideFromPrompt')}
+									onClick={() => {
+										setActionsOpen(false);
+										onTogglePromptVisibility();
+									}}
+								/>
 							</Flex>
 						</Box>
 						<IconButtonWithTooltip
@@ -89,17 +105,17 @@ export const ActionBar = ({
 							active={actionsOpen}
 							onClick={() => setActionsOpen((prev) => !prev)}
 						/>
+						<IconButtonWithTooltip
+							size="xs"
+							variant="ghost"
+							colorPalette="violet"
+							icon={<LuPen />}
+							tooltip={t('chat.actions.editMessage')}
+							aria-label={t('chat.actions.editMessage')}
+							onClick={onOpenEdit}
+						/>
 					</Flex>
-					<IconButtonWithTooltip
-						size="xs"
-						variant="ghost"
-						colorPalette="violet"
-						icon={<LuPen />}
-						tooltip={t('chat.actions.editMessage')}
-						aria-label={t('chat.actions.editMessage')}
-						onClick={onOpenEdit}
-					/>
-				</>
+				</Paper>
 			)}
 		</Flex>
 	);
