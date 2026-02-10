@@ -118,6 +118,12 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 	}, [data.variant?.parts]);
 
 	const isEditing = Boolean(editingPartId);
+	const editingPart = useMemo(() => {
+		if (!editingPartId) return null;
+		const parts = data.variant?.parts ?? [];
+		return parts.find((part) => part.partId === editingPartId) ?? null;
+	}, [data.variant?.parts, editingPartId]);
+	const isEditingMainPart = Boolean(editingPart && editingPart.channel === 'main');
 	const canMutateParts = !isOptimistic && !isStreaming;
 
 	useEffect(() => {
@@ -209,6 +215,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 
 	const handleOpenEdit = () => {
 		if (!canMutateParts) return;
+		if (isEditing) return;
 		const part = editableMainPart;
 		if (!part || typeof part.payload !== 'string') {
 			toaster.error({
@@ -222,6 +229,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 	};
 
 	const handleOpenEditPart = (part: Part) => {
+		if (isEditing && editingPartId !== part.partId) return;
 		if (part.channel === 'main') return;
 		if (!canMutateParts || !isEditablePart(part)) return;
 		if (typeof part.payload !== 'string') return;
@@ -242,16 +250,17 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 	};
 
 	const handleRequestDeleteMessage = () => {
-		if (isOptimistic || isStreaming) return;
+		if (isOptimistic || isStreaming || isEditing) return;
 		openDeleteEntryConfirm({ entryId: data.entry.entryId });
 	};
 
 	const handleRequestDeleteVariant = () => {
-		if (!canDeleteVariant || isOptimistic || isStreaming) return;
+		if (!canDeleteVariant || isOptimistic || isStreaming || isEditing) return;
 		openDeleteVariantConfirm({ entryId: data.entry.entryId, variantId: data.entry.activeVariantId });
 	};
 
 	const handleRequestDeletePart = (part: Part) => {
+		if (isEditing && editingPartId !== part.partId) return;
 		if (!canMutateParts || part.softDeleted) return;
 		openDeletePartConfirm({ entryId: data.entry.entryId, partId: part.partId });
 	};
@@ -312,7 +321,7 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 							</Stack>
 							<Flex gap="xs" align="center">
 								<ActionBar
-									isEditing={isEditing}
+									isEditing={isEditingMainPart}
 									canDeleteVariant={canDeleteVariant}
 									onOpenEdit={handleOpenEdit}
 									onCancelEdit={handleCancelEdit}
@@ -334,6 +343,8 @@ const MessageInner: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewReq
 								editingPartId={editingPartId}
 								draftText={draftText}
 								onDraftTextChange={setDraftText}
+								onCancelEditPart={handleCancelEdit}
+								onConfirmEditPart={handleConfirmEdit}
 								onEditPart={handleOpenEditPart}
 								onDeletePart={handleRequestDeletePart}
 							/>

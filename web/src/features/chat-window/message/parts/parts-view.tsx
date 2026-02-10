@@ -2,7 +2,7 @@ import { Box, Collapse, Group, Paper, Stack, Text, Textarea } from '@mantine/cor
 import { useUnit } from 'effector-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPen, LuTrash } from 'react-icons/lu';
+import { LuCheck, LuPen, LuTrash, LuX } from 'react-icons/lu';
 
 import { $appDebugEnabled } from '@model/app-debug';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -21,6 +21,8 @@ type Props = {
 	editingPartId?: string | null;
 	draftText?: string;
 	onDraftTextChange?: (next: string) => void;
+	onCancelEditPart?: () => void;
+	onConfirmEditPart?: () => void;
 	onEditPart?: (part: Part) => void;
 	onDeletePart?: (part: Part) => void;
 };
@@ -42,6 +44,8 @@ const PartsViewInner: React.FC<Props> = ({
 	editingPartId = null,
 	draftText = '',
 	onDraftTextChange,
+	onCancelEditPart,
+	onConfirmEditPart,
 	onEditPart,
 	onDeletePart,
 }) => {
@@ -78,32 +82,65 @@ const PartsViewInner: React.FC<Props> = ({
 			<Stack gap="xs">
 				{parts.map((p) => (
 					<Box key={p.partId}>
-						{canMutateParts && p.channel !== 'main' && (Boolean(onEditPart) || Boolean(onDeletePart)) && (
-							<Group justify="flex-end" gap={4} mb={4}>
-								{onDeletePart && !p.softDeleted && (
-									<IconButtonWithTooltip
-										size="xs"
-										variant="ghost"
-										colorPalette="red"
-										icon={<LuTrash />}
-										tooltip={t('chat.actions.deletePart')}
-										aria-label={t('chat.actions.deletePart')}
-										onClick={() => onDeletePart(p)}
-									/>
-								)}
-								{onEditPart && isEditablePart(p) && (
-									<IconButtonWithTooltip
-										size="xs"
-										variant="ghost"
-										colorPalette="violet"
-										icon={<LuPen />}
-										tooltip={t('chat.actions.editPart')}
-										aria-label={t('chat.actions.editPart')}
-										onClick={() => onEditPart(p)}
-									/>
-								)}
-							</Group>
-						)}
+						{(() => {
+							const isEditingThisPart = editingPartId === p.partId && isEditablePart(p);
+							const hasActiveEdit = Boolean(editingPartId);
+							const controlsLockedByOtherEdit = hasActiveEdit && !isEditingThisPart;
+
+							if (!canMutateParts || p.channel === 'main' || controlsLockedByOtherEdit) return null;
+
+							if (isEditingThisPart && onCancelEditPart && onConfirmEditPart) {
+								return (
+									<Group justify="flex-end" gap={4} mb={4}>
+										<IconButtonWithTooltip
+											size="xs"
+											variant="solid"
+											colorPalette="red"
+											icon={<LuX />}
+											tooltip={t('chat.actions.cancelEdit')}
+											aria-label={t('chat.actions.cancelEdit')}
+											onClick={onCancelEditPart}
+										/>
+										<IconButtonWithTooltip
+											size="xs"
+											variant="solid"
+											colorPalette="green"
+											icon={<LuCheck />}
+											tooltip={t('chat.actions.confirmEdit')}
+											aria-label={t('chat.actions.confirmEdit')}
+											onClick={onConfirmEditPart}
+										/>
+									</Group>
+								);
+							}
+
+							return (
+								<Group justify="flex-end" gap={4} mb={4}>
+									{onDeletePart && !p.softDeleted && (
+										<IconButtonWithTooltip
+											size="xs"
+											variant="ghost"
+											colorPalette="red"
+											icon={<LuTrash />}
+											tooltip={t('chat.actions.deletePart')}
+											aria-label={t('chat.actions.deletePart')}
+											onClick={() => onDeletePart(p)}
+										/>
+									)}
+									{onEditPart && isEditablePart(p) && (
+										<IconButtonWithTooltip
+											size="xs"
+											variant="ghost"
+											colorPalette="violet"
+											icon={<LuPen />}
+											tooltip={t('chat.actions.editPart')}
+											aria-label={t('chat.actions.editPart')}
+											onClick={() => onEditPart(p)}
+										/>
+									)}
+								</Group>
+							);
+						})()}
 						<Box>
 							{editingPartId === p.partId && isEditablePart(p) && onDraftTextChange ? (
 								<Textarea
@@ -217,6 +254,8 @@ export const PartsView = memo(PartsViewInner, (prev, next) => {
 		prev.editingPartId === next.editingPartId &&
 		prev.draftText === next.draftText &&
 		prev.onDraftTextChange === next.onDraftTextChange &&
+		prev.onCancelEditPart === next.onCancelEditPart &&
+		prev.onConfirmEditPart === next.onConfirmEditPart &&
 		prev.onEditPart === next.onEditPart &&
 		prev.onDeletePart === next.onDeletePart
 	);
