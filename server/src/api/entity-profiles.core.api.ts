@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+
 import express, { type Request } from "express";
 import { z } from "zod";
 
@@ -17,10 +18,6 @@ import {
   createImportedAssistantMessage,
   listChatsByEntityProfile,
 } from "../services/chat-core/chats-repository";
-import { getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-repository";
-import { createEntryWithVariant } from "../services/chat-entry-parts/entries-repository";
-import { createPart } from "../services/chat-entry-parts/parts-repository";
-import { createVariant } from "../services/chat-entry-parts/variants-repository";
 import {
   createEntityProfile,
   deleteEntityProfile,
@@ -28,6 +25,12 @@ import {
   listEntityProfiles,
   updateEntityProfile,
 } from "../services/chat-core/entity-profiles-repository";
+import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
+import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
+import { getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-repository";
+import { createEntryWithVariant } from "../services/chat-entry-parts/entries-repository";
+import { createPart } from "../services/chat-entry-parts/parts-repository";
+import { createVariant, updateVariantDerived } from "../services/chat-entry-parts/variants-repository";
 
 const router = express.Router();
 
@@ -118,6 +121,74 @@ function toProfileMediaPath(avatarAssetId: string | null): string | null {
   if (!avatarAssetId) return null;
   if (!avatarAssetId.startsWith("/media/")) return null;
   return path.join(process.cwd(), "data", avatarAssetId.replace(/^\/media\//, "media/"));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractSelectedUserId(contextUser: unknown): string | null {
+  if (!isRecord(contextUser)) return null;
+  return typeof contextUser.id === "string" ? contextUser.id : null;
+}
+
+export type GreetingTemplateSeed = {
+  engine: "liquidjs";
+  rawTemplate: string;
+  renderedForUserPersonId: string | null;
+  renderedAt: string;
+  renderError?: string;
+};
+
+const TEMPLATE_MAX_PASSES = 3;
+
+export async function renderGreetingTemplateSinglePass(params: {
+  rawTemplate: string;
+  context: {
+    char: unknown;
+    user: unknown;
+    chat: unknown;
+    messages: Array<{ role: string; content: string }>;
+    rag: unknown;
+    art?: Record<string, unknown>;
+    now: string;
+  };
+}): Promise<{
+  rendered: string;
+  seed: GreetingTemplateSeed;
+}> {
+  const renderedForUserPersonId = extractSelectedUserId(params.context.user);
+  const baseSeed: GreetingTemplateSeed = {
+    engine: "liquidjs",
+    rawTemplate: params.rawTemplate,
+    renderedForUserPersonId,
+    renderedAt: new Date().toISOString(),
+  };
+
+  try {
+    const rendered = String(
+      await renderLiquidTemplate({
+        templateText: params.rawTemplate,
+        context: params.context,
+        options: {
+          strictVariables: false,
+          maxPasses: TEMPLATE_MAX_PASSES,
+        },
+      })
+    );
+    return {
+      rendered,
+      seed: baseSeed,
+    };
+  } catch (error) {
+    return {
+      rendered: params.rawTemplate,
+      seed: {
+        ...baseSeed,
+        renderError: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
 }
 
 async function buildCharSpecPngBuffer(profile: { name: string; spec: unknown; avatarAssetId: string | null }): Promise<Buffer> {
@@ -301,9 +372,10 @@ router.post(
     if (!profile) {
       throw new HttpError(404, "EntityProfile не найден", "NOT_FOUND");
     }
+    const ownerId = req.body.ownerId ?? "global";
 
     const { chat, mainBranch } = await createChat({
-      ownerId: req.body.ownerId,
+      ownerId,
       entityProfileId: params.id,
       title: req.body.title,
       meta: req.body.meta,
@@ -321,10 +393,21 @@ router.post(
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
+      const greetingTemplateContext = await buildPromptTemplateRenderContext({
+        ownerId,
+        chatId: chat.id,
+        branchId: mainBranch.id,
+        entityProfileId: params.id,
+        historyLimit: 50,
+      });
+
       // --- New model: seed entry-parts so chat window (v2) renders immediately.
       if (firstMes.length > 0) {
-        const ownerId = req.body.ownerId ?? "global";
         const createdTurn = await getBranchCurrentTurn({ branchId: mainBranch.id });
+        const firstMesRender = await renderGreetingTemplateSinglePass({
+          rawTemplate: firstMes,
+          context: greetingTemplateContext,
+        });
 
         const seeded = await createEntryWithVariant({
           ownerId,
@@ -340,7 +423,7 @@ router.post(
           variantId: seeded.variant.variantId,
           channel: "main",
           order: 0,
-          payload: firstMes,
+          payload: firstMesRender.rendered,
           payloadFormat: "markdown",
           visibility: { ui: "always", prompt: true },
           ui: { rendererId: "markdown" },
@@ -349,19 +432,32 @@ router.post(
           createdTurn,
           source: "import",
         });
+        await updateVariantDerived({
+          variantId: seeded.variant.variantId,
+          derived: {
+            templateSeed: firstMesRender.seed,
+          },
+        });
 
         for (const greeting of altGreetings) {
+          const altRender = await renderGreetingTemplateSinglePass({
+            rawTemplate: greeting,
+            context: greetingTemplateContext,
+          });
           const v = await createVariant({
             ownerId,
             entryId: seeded.entry.entryId,
             kind: "import",
+            derived: {
+              templateSeed: altRender.seed,
+            },
           });
           await createPart({
             ownerId,
             variantId: v.variantId,
             channel: "main",
             order: 0,
-            payload: greeting,
+            payload: altRender.rendered,
             payloadFormat: "markdown",
             visibility: { ui: "always", prompt: true },
             ui: { rendererId: "markdown" },
@@ -375,11 +471,15 @@ router.post(
 
       // --- Legacy model: keep for now (other parts of the app still use chatMessages/messageVariants).
       if (firstMes.length > 0) {
+        const firstMesRender = await renderGreetingTemplateSinglePass({
+          rawTemplate: firstMes,
+          context: greetingTemplateContext,
+        });
         await createImportedAssistantMessage({
-          ownerId: req.body.ownerId,
+          ownerId,
           chatId: chat.id,
           branchId: mainBranch.id,
-          promptText: firstMes,
+          promptText: firstMesRender.rendered,
           meta: { source: "entity_profile_import", kind: "first_mes" },
         });
       }

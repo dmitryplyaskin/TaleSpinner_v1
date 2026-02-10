@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import { HttpError } from "@core/middleware/error-handler";
 
-import { buildUserEntryMeta, resolveContinueUserTurnTarget } from "./chat-entries.api";
+import {
+  buildUserEntryMeta,
+  renderUserInputWithLiquid,
+  resolveContinueUserTurnTarget,
+} from "./chat-entries.api";
 
 import type { Entry, Variant } from "@shared/types/chat-entry-parts";
 
@@ -45,6 +49,31 @@ describe("buildUserEntryMeta", () => {
 
     expect(meta).toEqual({
       requestId: null,
+    });
+  });
+
+  test("includes template render metadata when provided", () => {
+    const meta = buildUserEntryMeta({
+      requestId: "req-liquid",
+      selectedUser: null,
+      templateRender: {
+        engine: "liquidjs",
+        rawContent: "Hi {{user}}",
+        renderedContent: "Hi Alice",
+        changed: true,
+        renderedAt: "2026-02-10T00:00:00.000Z",
+      },
+    });
+
+    expect(meta).toEqual({
+      requestId: "req-liquid",
+      templateRender: {
+        engine: "liquidjs",
+        rawContent: "Hi {{user}}",
+        renderedContent: "Hi Alice",
+        changed: true,
+        renderedAt: "2026-02-10T00:00:00.000Z",
+      },
     });
   });
 
@@ -157,6 +186,89 @@ describe("buildUserEntryMeta", () => {
     ).toEqual({
       userEntryId: "user-entry-1",
       userMainPartId: "part-new",
+    });
+  });
+});
+
+describe("renderUserInputWithLiquid", () => {
+  const context = {
+    char: {},
+    user: { name: "Alice" },
+    chat: {},
+    messages: [],
+    rag: {},
+    art: {},
+    now: new Date("2026-02-10T00:00:00.000Z").toISOString(),
+  };
+
+  test("returns same text for plain input", async () => {
+    const rendered = await renderUserInputWithLiquid({
+      content: "Just text",
+      context,
+    });
+
+    expect(rendered).toEqual({
+      renderedContent: "Just text",
+      changed: false,
+    });
+  });
+
+  test("renders valid liquid template", async () => {
+    const rendered = await renderUserInputWithLiquid({
+      content: "Hi {{user.name}}",
+      context,
+    });
+
+    expect(rendered).toEqual({
+      renderedContent: "Hi Alice",
+      changed: true,
+    });
+  });
+
+  test("renders nested liquid values recursively up to depth 3", async () => {
+    const rendered = await renderUserInputWithLiquid({
+      content: "{{description}}",
+      context: {
+        ...context,
+        description: "{{persona}}",
+        persona: "{{user.name}}",
+      },
+    });
+
+    expect(rendered).toEqual({
+      renderedContent: "Alice",
+      changed: true,
+    });
+  });
+
+  test("throws HttpError on liquid syntax error", async () => {
+    await expect(
+      renderUserInputWithLiquid({
+        content: "Hi {{",
+        context,
+      })
+    ).rejects.toBeInstanceOf(HttpError);
+  });
+
+  test("throws HttpError when rendered output is empty", async () => {
+    await expect(
+      renderUserInputWithLiquid({
+        content: "{{missing.value}}",
+        context,
+      })
+    ).rejects.toBeInstanceOf(HttpError);
+  });
+
+  test("allows empty rendered output when allowEmptyResult=true", async () => {
+    const rendered = await renderUserInputWithLiquid({
+      content: "{{missing.value}}",
+      context,
+      options: { allowEmptyResult: true },
+    });
+
+    expect(rendered).toEqual({
+      renderedContent: "",
+      changed: true,
     });
   });
 });

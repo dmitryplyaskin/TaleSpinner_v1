@@ -203,3 +203,36 @@ export async function softDeleteEntry(params: { entryId: string; by: "user" | "a
     .where(eq(chatEntries.entryId, params.entryId));
 }
 
+export async function updateEntryMeta(params: {
+  entryId: string;
+  meta: unknown | null;
+}): Promise<void> {
+  const db = await initDb();
+  await db
+    .update(chatEntries)
+    .set({
+      metaJson: params.meta === null ? null : safeJsonStringify(params.meta),
+    })
+    .where(eq(chatEntries.entryId, params.entryId));
+}
+
+export async function hasActiveUserEntriesInBranch(params: {
+  chatId: string;
+  branchId: string;
+}): Promise<boolean> {
+  const db = await initDb();
+  const rows = await db
+    .select({ entryId: chatEntries.entryId })
+    .from(chatEntries)
+    .where(
+      and(
+        eq(chatEntries.chatId, params.chatId),
+        eq(chatEntries.branchId, params.branchId),
+        eq(chatEntries.role, "user"),
+        eq(chatEntries.softDeleted, false)
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+

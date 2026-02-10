@@ -9,6 +9,9 @@ import { initSse, type SseWriter } from "@core/sse/sse";
 import { chatIdParamsSchema } from "../chat-core/schemas";
 import { getChatById } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
+import { rerenderGreetingTemplatesIfPreplay } from "../services/chat-core/greeting-template-rerender";
+import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
+import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { getSelectedUserPerson } from "../services/chat-core/user-persons-repository";
 import { getBranchCurrentTurn, incrementBranchTurn } from "../services/chat-entry-parts/branch-turn-repository";
 import {
@@ -18,6 +21,7 @@ import {
   listEntries,
   listEntriesWithActiveVariants,
   softDeleteEntry,
+  updateEntryMeta,
 } from "../services/chat-entry-parts/entries-repository";
 import {
   applyManualEditToPart,
@@ -34,6 +38,7 @@ import {
 } from "../services/chat-entry-parts/variants-repository";
 import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
 
+import type { PromptTemplateRenderContext } from "../services/chat-core/prompt-template-renderer";
 import type { RunEvent } from "../services/chat-generation-v3/contracts";
 import type { Entry, Part, Variant } from "@shared/types/chat-entry-parts";
 
@@ -48,6 +53,14 @@ type UserPersonaSnapshot = {
 type UserEntryMeta = {
   requestId: string | null;
   personaSnapshot?: UserPersonaSnapshot;
+  templateRender?: {
+    engine: "liquidjs";
+    rawContent: string;
+    renderedContent: string;
+    changed: boolean;
+    renderedAt: string;
+    source?: "entry_create" | "manual_edit";
+  };
 };
 
 type SelectedUserLike = {
@@ -56,13 +69,24 @@ type SelectedUserLike = {
   avatarUrl?: string;
 } | null;
 
+const TEMPLATE_MAX_PASSES = 3;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function buildUserEntryMeta(params: {
   requestId?: string;
   selectedUser: SelectedUserLike;
+  templateRender?: UserEntryMeta["templateRender"];
 }): UserEntryMeta {
   const meta: UserEntryMeta = {
     requestId: params.requestId ?? null,
   };
+
+  if (params.templateRender) {
+    meta.templateRender = params.templateRender;
+  }
 
   if (!params.selectedUser) return meta;
 
@@ -73,6 +97,47 @@ export function buildUserEntryMeta(params: {
   };
 
   return meta;
+}
+
+export async function renderUserInputWithLiquid(params: {
+  content: string;
+  context: PromptTemplateRenderContext;
+  options?: {
+    allowEmptyResult?: boolean;
+  };
+}): Promise<{ renderedContent: string; changed: boolean }> {
+  let renderedContent = "";
+  try {
+    renderedContent = String(
+      await renderLiquidTemplate({
+        templateText: params.content,
+        context: params.context,
+        options: {
+          strictVariables: false,
+          maxPasses: TEMPLATE_MAX_PASSES,
+        },
+      })
+    );
+  } catch (error) {
+    throw new HttpError(
+      400,
+      `User input template render error: ${error instanceof Error ? error.message : String(error)}`,
+      "VALIDATION_ERROR"
+    );
+  }
+
+  if (!params.options?.allowEmptyResult && renderedContent.trim().length === 0) {
+    throw new HttpError(
+      400,
+      "User input became empty after Liquid rendering",
+      "VALIDATION_ERROR"
+    );
+  }
+
+  return {
+    renderedContent,
+    changed: renderedContent !== params.content,
+  };
 }
 
 function ensureSseRequested(req: Request): void {
@@ -293,6 +358,17 @@ router.get(
       throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
     }
 
+    try {
+      await rerenderGreetingTemplatesIfPreplay({
+        ownerId: chat.ownerId,
+        chatId: params.id,
+        branchId,
+        entityProfileId: chat.entityProfileId,
+      });
+    } catch {
+      // best-effort rerender; never fail the entries listing
+    }
+
     const entries = await listEntriesWithActiveVariants({
       chatId: params.id,
       branchId,
@@ -329,6 +405,18 @@ router.post(
     const branchId = body.branchId || chat.activeBranchId;
     if (!branchId) throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
 
+    const templateContext = await buildPromptTemplateRenderContext({
+      ownerId,
+      chatId: params.id,
+      branchId,
+      entityProfileId: chat.entityProfileId,
+      historyLimit: 50,
+    });
+    const { renderedContent, changed } = await renderUserInputWithLiquid({
+      content: body.content ?? "",
+      context: templateContext,
+    });
+
     const sse = initSse({ res });
 
     let generationId: string | null = null;
@@ -350,6 +438,14 @@ router.post(
       const userEntryMeta = buildUserEntryMeta({
         requestId: body.requestId,
         selectedUser,
+        templateRender: {
+          engine: "liquidjs",
+          rawContent: body.content ?? "",
+          renderedContent,
+          changed,
+          renderedAt: new Date().toISOString(),
+          source: "entry_create",
+        },
       });
 
       const user = await createEntryWithVariant({
@@ -366,7 +462,7 @@ router.post(
         variantId: user.variant.variantId,
         channel: "main",
         order: 0,
-        payload: body.content ?? "",
+        payload: renderedContent,
         payloadFormat: "markdown",
         visibility: { ui: "always", prompt: true },
         ui: { rendererId: "markdown" },
@@ -418,6 +514,8 @@ router.post(
         chatId: params.id,
         branchId,
         userEntryId: user.entry.entryId,
+        userMainPartId: userMainPart.partId,
+        userRenderedContent: renderedContent,
         assistantEntryId: assistant.entry.entryId,
         assistantVariantId: assistant.variant.variantId,
         assistantMainPartId: assistantMainPart.partId,
@@ -676,7 +774,7 @@ router.post(
         assistantMainPartId: assistantMainPart.partId,
         assistantReasoningPartId: assistantReasoningPart.partId,
       };
-      const runSummary = await proxyRunEventsToSse({
+      await proxyRunEventsToSse({
         sse,
         envBase,
         reqClosed: () => reqClosed,
@@ -823,11 +921,40 @@ router.post(
       throw new HttpError(400, "partId не найден в активном варианте", "VALIDATION_ERROR");
     }
 
+    const ownerId = body.ownerId ?? "global";
+    const templateContext = await buildPromptTemplateRenderContext({
+      ownerId,
+      chatId: entry.chatId,
+      branchId: entry.branchId,
+      historyLimit: 50,
+    });
+    const { renderedContent, changed } = await renderUserInputWithLiquid({
+      content: body.content,
+      context: templateContext,
+      options: { allowEmptyResult: true },
+    });
+
     await applyManualEditToPart({
       partId: targetPart.partId,
-      payloadText: body.content,
+      payloadText: renderedContent,
       payloadFormat: targetPart.payloadFormat,
       requestId: body.requestId,
+    });
+
+    const nextMeta = {
+      ...(isRecord(entry.meta) ? entry.meta : {}),
+      templateRender: {
+        engine: "liquidjs",
+        rawContent: body.content,
+        renderedContent,
+        changed,
+        renderedAt: new Date().toISOString(),
+        source: "manual_edit",
+      },
+    };
+    await updateEntryMeta({
+      entryId: entry.entryId,
+      meta: nextMeta,
     });
 
     return {

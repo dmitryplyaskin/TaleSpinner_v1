@@ -18,6 +18,7 @@ import {
 import i18n from '../../i18n';
 import { $currentBranchId, $currentChat, setOpenedChat } from '../chat-core';
 import { logChatGenerationSseEvent } from '../chat-generation-debug';
+import { userPersonsModel } from '../user-persons';
 
 import type { SseEnvelope } from '../../api/chat-core';
 import type { ChatEntryWithVariantDto } from '../../api/chat-entry-parts';
@@ -52,6 +53,18 @@ export const sendMessageRequested = createEvent<{ promptText: string; role?: 'us
 export const continueFromLastUserRequested = createEvent();
 export const abortRequested = createEvent();
 
+// Preplay greeting may be rerendered on backend when selected persona changes.
+sample({
+	clock: userPersonsModel.updateSettingsFx.done,
+	source: { chat: $currentChat, branchId: $currentBranchId, isStreaming: $isChatStreaming },
+	filter: ({ chat, branchId, isStreaming }, { params }) => {
+		if (!chat?.id || !branchId || isStreaming) return false;
+		return typeof params.selectedId !== 'undefined' || typeof params.enabled !== 'undefined';
+	},
+	fn: ({ chat, branchId }) => ({ chatId: chat!.id, branchId: branchId! }),
+	target: loadEntriesFx,
+});
+
 type ActiveStreamState = {
 	controller: AbortController;
 	chatId: string;
@@ -60,11 +73,13 @@ type ActiveStreamState = {
 
 	// Local optimistic ids
 	pendingUserEntryId?: string;
+	pendingUserMainPartId?: string;
 	pendingAssistantEntryId?: string;
 	pendingAssistantMainPartId?: string;
 	pendingAssistantReasoningPartId?: string;
 
 	// Server ids (learned from llm.stream.meta)
+	userMainPartId?: string;
 	assistantEntryId?: string;
 	assistantMainPartId?: string;
 	assistantReasoningPartId?: string;
@@ -80,6 +95,7 @@ type LocalPrep = {
 	role: 'user' | 'system';
 	promptText: string;
 	pendingUserEntryId: string;
+	pendingUserMainPartId: string;
 	pendingAssistantEntryId: string;
 	pendingAssistantMainPartId: string;
 	pendingAssistantReasoningPartId: string;
@@ -99,6 +115,7 @@ type ContinuePrep = {
 export const prepareSendFx = createEffect(async (params: { chatId: string; branchId: string; role: 'user' | 'system'; promptText: string }) => {
 	const controller = new AbortController();
 	const pendingUserEntryId = `local_user_${nowIso()}`;
+	const pendingUserMainPartId = `local_part_${nowIso()}`;
 	const pendingAssistantEntryId = `local_assistant_${nowIso()}`;
 	const pendingAssistantMainPartId = `local_part_${nowIso()}`;
 	const pendingAssistantReasoningPartId = `local_part_${nowIso()}`;
@@ -109,6 +126,7 @@ export const prepareSendFx = createEffect(async (params: { chatId: string; branc
 		role: params.role,
 		promptText: params.promptText,
 		pendingUserEntryId,
+		pendingUserMainPartId,
 		pendingAssistantEntryId,
 		pendingAssistantMainPartId,
 		pendingAssistantReasoningPartId,
@@ -191,7 +209,7 @@ sample({
 	fn: ({ entries, chat, branchId }, prep) => {
 		const now = Date.now();
 		const userPart: Part = {
-			partId: `local_part_${nowIso()}`,
+			partId: prep.pendingUserMainPartId,
 			channel: 'main',
 			order: 0,
 			payload: prep.promptText,
@@ -346,6 +364,7 @@ $activeStream.on(prepareSendFx.doneData, (_, prep) => ({
 	branchId: prep.branchId,
 	mode: 'send',
 	pendingUserEntryId: prep.pendingUserEntryId,
+	pendingUserMainPartId: prep.pendingUserMainPartId,
 	pendingAssistantEntryId: prep.pendingAssistantEntryId,
 	pendingAssistantMainPartId: prep.pendingAssistantMainPartId,
 	pendingAssistantReasoningPartId: prep.pendingAssistantReasoningPartId,
@@ -369,6 +388,13 @@ sample({
 sample({
 	clock: prepareContinueFx.doneData,
 	target: runContinueStreamFx,
+});
+
+// Roll back optimistic user/assistant placeholders if stream fails before final sync.
+sample({
+	clock: runSendStreamFx.fail,
+	fn: ({ params }) => ({ chatId: params.chatId, branchId: params.branchId }),
+	target: loadEntriesFx,
 });
 
 type StreamPatch = {
@@ -473,7 +499,18 @@ function buildStreamingReasoningPart(seed: Part | undefined, partId: string): Pa
 }
 
 function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStreamState, meta: any): { entries: ChatEntryWithVariantDto[]; stream: ActiveStreamState; generationId: string | null } {
+	const clearOptimisticMeta = (entryMeta: unknown): unknown => {
+		if (!entryMeta || typeof entryMeta !== 'object') return entryMeta;
+		const obj = entryMeta as Record<string, unknown>;
+		if (!Object.prototype.hasOwnProperty.call(obj, 'optimistic')) return entryMeta;
+		const next = { ...obj };
+		delete next.optimistic;
+		return next;
+	};
+
 	const userEntryId = typeof meta?.userEntryId === 'string' ? meta.userEntryId : null;
+	const userMainPartId = typeof meta?.userMainPartId === 'string' ? meta.userMainPartId : null;
+	const userRenderedContent = typeof meta?.userRenderedContent === 'string' ? meta.userRenderedContent : null;
 	const assistantEntryId = typeof meta?.assistantEntryId === 'string' ? meta.assistantEntryId : null;
 	const assistantVariantId = typeof meta?.assistantVariantId === 'string' ? meta.assistantVariantId : null;
 	const assistantMainPartId = typeof meta?.assistantMainPartId === 'string' ? meta.assistantMainPartId : null;
@@ -484,7 +521,27 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 		// Replace optimistic ids
 		if (stream.mode === 'send') {
 			if (x.entry.entryId === stream.pendingUserEntryId && userEntryId) {
-				return { ...x, entry: { ...x.entry, entryId: userEntryId }, variant: x.variant ? { ...x.variant, entryId: userEntryId } : x.variant };
+				const nextVariant = x.variant
+					? {
+							...x.variant,
+							entryId: userEntryId,
+							parts: (x.variant.parts ?? []).map((p) => {
+								if (p.partId === stream.pendingUserMainPartId) {
+									return {
+										...p,
+										partId: userMainPartId ?? p.partId,
+										payload: userRenderedContent ?? p.payload,
+									};
+								}
+								return p;
+							}),
+						}
+					: x.variant;
+				return {
+					...x,
+					entry: { ...x.entry, entryId: userEntryId, meta: clearOptimisticMeta(x.entry.meta) as typeof x.entry.meta },
+					variant: nextVariant,
+				};
 			}
 			if (x.entry.entryId === stream.pendingAssistantEntryId && assistantEntryId) {
 				const nextVariant = x.variant
@@ -503,7 +560,12 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 					: x.variant;
 				return {
 					...x,
-					entry: { ...x.entry, entryId: assistantEntryId, activeVariantId: assistantVariantId ?? x.entry.activeVariantId },
+					entry: {
+						...x.entry,
+						entryId: assistantEntryId,
+						activeVariantId: assistantVariantId ?? x.entry.activeVariantId,
+						meta: clearOptimisticMeta(x.entry.meta) as typeof x.entry.meta,
+					},
 					variant: nextVariant,
 				};
 			}
@@ -525,7 +587,12 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 				: x.variant;
 			return {
 				...x,
-				entry: { ...x.entry, entryId: assistantEntryId, activeVariantId: assistantVariantId ?? x.entry.activeVariantId },
+				entry: {
+					...x.entry,
+					entryId: assistantEntryId,
+					activeVariantId: assistantVariantId ?? x.entry.activeVariantId,
+					meta: clearOptimisticMeta(x.entry.meta) as typeof x.entry.meta,
+				},
 				variant: nextVariant,
 			};
 		}
@@ -586,6 +653,7 @@ function replaceIdsOnMeta(entries: ChatEntryWithVariantDto[], stream: ActiveStre
 		entries: nextEntries,
 		stream: {
 			...stream,
+			userMainPartId: userMainPartId ?? stream.userMainPartId,
 			assistantEntryId: assistantEntryId ?? stream.assistantEntryId,
 			assistantMainPartId: assistantMainPartId ?? stream.assistantMainPartId,
 			assistantReasoningPartId: assistantReasoningPartId ?? stream.assistantReasoningPartId,
