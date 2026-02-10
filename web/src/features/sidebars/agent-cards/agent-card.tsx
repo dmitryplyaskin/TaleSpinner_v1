@@ -1,6 +1,6 @@
 import { Avatar, Badge, Card, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { LuPencil, LuStar, LuTrash2 } from 'react-icons/lu';
+import { LuBookMarked, LuPencil, LuStar, LuTrash2 } from 'react-icons/lu';
 
 import { selectEntityProfile } from '@model/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -15,12 +15,13 @@ type Props = {
 	data: EntityProfileDto;
 	isActive: boolean;
 	favoritePending: boolean;
+	worldInfoBookName: string | null;
 	onEdit: (profile: EntityProfileDto) => void;
 	onDelete: (profile: EntityProfileDto) => void;
 	onToggleFavorite: (profile: EntityProfileDto) => void;
 };
 
-export const AgentCard = ({ data, isActive, favoritePending, onEdit, onDelete, onToggleFavorite }: Props) => {
+export const AgentCard = ({ data, isActive, favoritePending, worldInfoBookName, onEdit, onDelete, onToggleFavorite }: Props) => {
 	const { t } = useTranslation();
 	const handleSelect = () => {
 		selectEntityProfile(data);
@@ -53,6 +54,15 @@ export const AgentCard = ({ data, isActive, favoritePending, onEdit, onDelete, o
 						<Text fw={600} truncate>
 							{data.name}
 						</Text>
+						{worldInfoBookName && (
+							<IconButtonWithTooltip
+								tooltip={t('agentCards.worldInfoBadgeTooltip', { name: worldInfoBookName })}
+								variant="subtle"
+								size="xs"
+								aria-label={t('agentCards.worldInfoBadgeAria')}
+								icon={<LuBookMarked />}
+							/>
+						)}
 						{isActive && (
 							<Badge size="xs" color="cyan" variant="light">
 								{t('agentCards.badges.active')}

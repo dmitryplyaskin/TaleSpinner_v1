@@ -49,6 +49,12 @@ export const worldInfoSettingsSaveRequested = createEvent<{
 }>();
 export const worldInfoBookBindingToggleRequested = createEvent<{ bookId: string; enabled: boolean }>();
 export const worldInfoImportBookRequested = createEvent<{ file: File }>();
+export const worldInfoEditorOpenRequested = createEvent<{ bookId: string | null }>();
+export const setWorldInfoBookBoundToEntityRequested = createEvent<{
+	entityProfileId: string;
+	bookId: string | null;
+	silent?: boolean;
+}>();
 
 export const loadWorldInfoBooksFx = createEffect(async (): Promise<WorldInfoBookSummaryDto[]> => {
 	const response = await listWorldInfoBooks({ ownerId: DEFAULT_OWNER_ID, limit: 200 });
@@ -68,6 +74,13 @@ export const loadWorldInfoChatBindingsFx = createEffect(async (params: { chatId:
 		ownerId: DEFAULT_OWNER_ID,
 		scope: 'chat',
 		scopeId: params.chatId,
+	});
+});
+
+export const loadWorldInfoEntityBindingsFx = createEffect(async (): Promise<WorldInfoBindingDto[]> => {
+	return listWorldInfoBindings({
+		ownerId: DEFAULT_OWNER_ID,
+		scope: 'entity_profile',
 	});
 });
 
@@ -171,9 +184,42 @@ export const importWorldInfoBookFx = createEffect(async (params: { file: File })
 	return importWorldInfoBook({ file: params.file, ownerId: DEFAULT_OWNER_ID, format: 'auto' });
 });
 
+export const setWorldInfoBookBoundToEntityFx = createEffect(
+	async (params: {
+		entityProfileId: string;
+		bookId: string | null;
+		silent?: boolean;
+	}): Promise<WorldInfoBindingDto[]> => {
+		const items =
+			typeof params.bookId === 'string' && params.bookId.trim().length > 0
+				? [
+					{
+						bookId: params.bookId,
+						bindingRole: 'primary' as const,
+						displayOrder: 0,
+						enabled: true,
+					},
+				]
+				: [];
+		return replaceWorldInfoBindings({
+			ownerId: DEFAULT_OWNER_ID,
+			scope: 'entity_profile',
+			scopeId: params.entityProfileId,
+			items,
+		});
+	},
+);
+
 export const $worldInfoBooks = createStore<WorldInfoBookSummaryDto[]>([]).on(loadWorldInfoBooksFx.doneData, (_, items) => items);
 
 export const $selectedWorldInfoBookId = createStore<string | null>(null).on(worldInfoBookSelected, (_, id) => id);
+export const $worldInfoEditorLaunch = createStore<{ nonce: number; bookId: string | null }>({ nonce: 0, bookId: null }).on(
+	worldInfoEditorOpenRequested,
+	(state, payload) => ({
+		nonce: state.nonce + 1,
+		bookId: payload.bookId,
+	}),
+);
 
 export const clearSelectedWorldInfoBook = createEvent();
 
@@ -190,6 +236,31 @@ export const $worldInfoChatBindings = createStore<WorldInfoBindingDto[]>([])
 	.on(loadWorldInfoChatBindingsFx.doneData, (_, items) => items)
 	.on(setWorldInfoBookBoundToCurrentChatFx.doneData, (_, items) => items);
 
+export const $worldInfoEntityBindings = createStore<WorldInfoBindingDto[]>(
+	[],
+).on(loadWorldInfoEntityBindingsFx.doneData, (_, items) => items);
+
+export const $worldInfoEntityBookByProfileId = createStore<Record<string, string | null>>({}).on(
+	$worldInfoEntityBindings,
+	(_, bindings) => {
+		const grouped: Record<string, WorldInfoBindingDto[]> = {};
+		bindings.forEach((binding) => {
+			if (!binding.enabled || !binding.scopeId) return;
+			if (!grouped[binding.scopeId]) {
+				grouped[binding.scopeId] = [];
+			}
+			grouped[binding.scopeId].push(binding);
+		});
+
+		const map: Record<string, string | null> = {};
+		Object.keys(grouped).forEach((profileId) => {
+			const sorted = grouped[profileId].slice().sort((a, b) => a.displayOrder - b.displayOrder);
+			map[profileId] = sorted[0]?.bookId ?? null;
+		});
+		return map;
+	},
+);
+
 export const $isWorldInfoBookBoundToCurrentChat = combine(
 	$worldInfoChatBindings,
 	$selectedWorldInfoBookId,
@@ -201,7 +272,7 @@ export const $isWorldInfoBookBoundToCurrentChat = combine(
 
 sample({
 	clock: worldInfoRefreshRequested,
-	target: [loadWorldInfoBooksFx, loadWorldInfoSettingsFx],
+	target: [loadWorldInfoBooksFx, loadWorldInfoSettingsFx, loadWorldInfoEntityBindingsFx],
 });
 
 sample({
@@ -268,6 +339,11 @@ sample({
 });
 
 sample({
+	clock: [deleteWorldInfoBookFx.doneData, importWorldInfoBookFx.doneData],
+	target: loadWorldInfoEntityBindingsFx,
+});
+
+sample({
 	clock: saveWorldInfoBookFx.doneData,
 	target: loadWorldInfoBooksFx,
 });
@@ -288,6 +364,16 @@ sample({
 		enabled: payload.enabled,
 	}),
 	target: setWorldInfoBookBoundToCurrentChatFx,
+});
+
+sample({
+	clock: setWorldInfoBookBoundToEntityRequested,
+	target: setWorldInfoBookBoundToEntityFx,
+});
+
+sample({
+	clock: setWorldInfoBookBoundToEntityFx.doneData,
+	target: loadWorldInfoEntityBindingsFx,
 });
 
 createWorldInfoBookFx.failData.watch((error) => {
@@ -323,6 +409,16 @@ setWorldInfoBookBoundToCurrentChatFx.doneData.watch(() => {
 });
 
 setWorldInfoBookBoundToCurrentChatFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('worldInfo.toasts.bindingUpdateErrorTitle'), description: error instanceof Error ? error.message : String(error) });
+});
+
+setWorldInfoBookBoundToEntityFx.done.watch(({ params }) => {
+	if (params.silent) return;
+	toaster.success({ title: i18n.t('worldInfo.toasts.bindingUpdated') });
+});
+
+setWorldInfoBookBoundToEntityFx.fail.watch(({ params, error }) => {
+	if (params.silent) return;
 	toaster.error({ title: i18n.t('worldInfo.toasts.bindingUpdateErrorTitle'), description: error instanceof Error ? error.message : String(error) });
 });
 

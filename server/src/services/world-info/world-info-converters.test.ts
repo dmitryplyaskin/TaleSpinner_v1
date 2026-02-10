@@ -36,6 +36,23 @@ describe("world-info converters", () => {
     expect(Object.keys(converted.data.entries).length).toBe(1);
   });
 
+  test("converts nested data.character_book format", () => {
+    const converted = convertWorldInfoImport({
+      raw: {
+        name: "Nested Char",
+        data: {
+          character_book: {
+            entries: [{ id: 7, keys: ["mage"], content: "Mages." }],
+          },
+        },
+      },
+      format: "auto",
+    });
+    expect(converted.format).toBe("character_book");
+    expect(Object.keys(converted.data.entries).length).toBe(1);
+    expect((converted.data.entries["0"] as { uid?: number }).uid).toBe(7);
+  });
+
   test("exports to st_native payload", () => {
     const out = exportWorldInfoBookToStNative({
       name: "Book",

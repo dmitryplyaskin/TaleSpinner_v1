@@ -66,7 +66,7 @@ function makeComputeOp(params: {
   opId: string;
   order: number;
   hooks?: Array<"before_main_llm" | "after_main_llm">;
-}): Extract<OperationInProfile, { kind: "compute" }> {
+}): OperationInProfile {
   return {
     opId: params.opId,
     name: params.opId,

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import type { OperationHook } from "@shared/types/operation-profiles";
 
 import { RunArtifactStore } from "../artifacts/run-artifact-store";
 import type {
   OperationExecutionResult,
-  OperationHook,
   RunState,
   RuntimeEffect,
 } from "../contracts";

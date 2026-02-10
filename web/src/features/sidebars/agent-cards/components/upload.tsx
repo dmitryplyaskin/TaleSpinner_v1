@@ -6,7 +6,13 @@ import { importEntityProfilesFx } from '@model/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
-export const Upload = () => {
+import type { ImportEntityProfilesResponse } from '../../../../api/chat-core';
+
+type UploadProps = {
+	onImportFinished?: (result: ImportEntityProfilesResponse) => void;
+};
+
+export const Upload = ({ onImportFinished }: UploadProps) => {
 	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -25,7 +31,8 @@ export const Upload = () => {
 				return;
 			}
 
-			importEntityProfilesFx(arr);
+			const result = await importEntityProfilesFx(arr);
+			onImportFinished?.(result);
 		} catch {
 			toaster.error({ title: t('agentCards.toasts.uploadFailed') });
 		}
@@ -39,7 +46,7 @@ export const Upload = () => {
 				type="file"
 				style={{ display: 'none' }}
 				multiple
-				accept=".png,image/png"
+				accept=".png,.json,application/json,image/png"
 				onChange={(e) => handleFileChange(e.currentTarget.files)}
 			/>
 			<IconButtonWithTooltip

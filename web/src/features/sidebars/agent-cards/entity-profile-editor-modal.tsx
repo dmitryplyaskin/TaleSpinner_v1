@@ -28,7 +28,7 @@ import type { EntityProfileDto } from '../../../api/chat-core';
 import type { Control } from 'react-hook-form';
 
 type GreetingField = { value: string };
-type EditorTab = 'basic' | 'chat' | 'greetings' | 'system' | 'advanced';
+type EditorTab = 'basic' | 'chat' | 'greetings' | 'system' | 'worldInfo' | 'advanced';
 
 type FormValues = {
 	name: string;
@@ -62,6 +62,15 @@ type Props = {
 	onAvatarChange: (profile: EntityProfileDto, avatarUrl: string) => void;
 	onAvatarRemove: (profile: EntityProfileDto) => void;
 	onExport: (profile: EntityProfileDto, format: 'json' | 'png') => void;
+	worldInfoBooks: Array<{
+		id: string;
+		name: string;
+		slug: string;
+	}>;
+	worldInfoBookId: string | null;
+	worldInfoBindingPending: boolean;
+	onWorldInfoBindingChange: (profile: EntityProfileDto, bookId: string | null) => void;
+	onOpenWorldInfoSidebar: () => void;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -199,6 +208,11 @@ export const EntityProfileEditorModal = ({
 	onAvatarChange,
 	onAvatarRemove,
 	onExport,
+	worldInfoBooks,
+	worldInfoBookId,
+	worldInfoBindingPending,
+	onWorldInfoBindingChange,
+	onOpenWorldInfoSidebar,
 }: Props) => {
 	const { t } = useTranslation();
 	const parsedSpec = useMemo(() => parseSpec(profile?.spec), [profile?.spec]);
@@ -232,6 +246,19 @@ export const EntityProfileEditorModal = ({
 		control: methods.control,
 		name: 'alternateGreetings',
 	});
+
+	const worldInfoOptions = useMemo(
+		() => [
+			{ value: '__none__', label: t('agentCards.worldInfo.none') },
+			...worldInfoBooks.map((book) => ({ value: book.id, label: book.name })),
+		],
+		[t, worldInfoBooks],
+	);
+
+	const selectedWorldInfoBook = useMemo(
+		() => worldInfoBooks.find((book) => book.id === worldInfoBookId) ?? null,
+		[worldInfoBookId, worldInfoBooks],
+	);
 
 	useEffect(() => {
 		const justOpened = opened && !wasOpenedRef.current;
@@ -431,6 +458,7 @@ export const EntityProfileEditorModal = ({
 								<Tabs.Tab value="chat">{t('agentCards.editor.tabs.chat')}</Tabs.Tab>
 								<Tabs.Tab value="greetings">{t('agentCards.editor.tabs.greetings')}</Tabs.Tab>
 								<Tabs.Tab value="system">{t('agentCards.editor.tabs.system')}</Tabs.Tab>
+								<Tabs.Tab value="worldInfo">{t('agentCards.editor.tabs.worldInfo')}</Tabs.Tab>
 								<Tabs.Tab value="advanced">{t('agentCards.editor.tabs.advanced')}</Tabs.Tab>
 							</Tabs.List>
 
@@ -548,6 +576,41 @@ export const EntityProfileEditorModal = ({
 									/>
 									<FormInput name="creator" label={t('agentCards.editor.fields.creator')} />
 									<FormInput name="characterVersion" label={t('agentCards.editor.fields.characterVersion')} />
+								</Stack>
+							</Tabs.Panel>
+
+							<Tabs.Panel value="worldInfo" pt="md" style={{ overflowY: 'auto' }}>
+								<Stack gap="md">
+									<Select
+										label={t('agentCards.worldInfo.bindingLabel')}
+										value={worldInfoBookId ?? '__none__'}
+										data={worldInfoOptions}
+										disabled={!profile || isBusy || worldInfoBindingPending}
+										comboboxProps={{ withinPortal: false }}
+										onChange={(value) => {
+											if (!profile) return;
+											onWorldInfoBindingChange(profile, value === '__none__' ? null : value ?? null);
+										}}
+									/>
+
+									{selectedWorldInfoBook ? (
+										<Stack gap={4}>
+											<Text size="sm" fw={600}>
+												{selectedWorldInfoBook.name}
+											</Text>
+											<Text size="xs" c="dimmed">
+												slug: {selectedWorldInfoBook.slug}
+											</Text>
+										</Stack>
+									) : (
+										<Text size="sm" c="dimmed">
+											{t('agentCards.worldInfo.notBound')}
+										</Text>
+									)}
+
+									<Button type="button" variant="light" onClick={onOpenWorldInfoSidebar}>
+										{t('agentCards.worldInfo.openEditor')}
+									</Button>
 								</Stack>
 							</Tabs.Panel>
 

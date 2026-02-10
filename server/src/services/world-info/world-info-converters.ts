@@ -225,7 +225,10 @@ function convertCharacterBook(raw: unknown): {
   warnings: string[];
 } {
   const root = isRecord(raw) ? raw : {};
-  const bookRoot = isRecord(root.character_book) ? root.character_book : root;
+  const rootData = isRecord(root.data) ? root.data : {};
+  const nestedCharacterBook = isRecord(rootData.character_book) ? rootData.character_book : null;
+  const directCharacterBook = isRecord(root.character_book) ? root.character_book : null;
+  const bookRoot = nestedCharacterBook ?? directCharacterBook ?? root;
   const entriesRaw = (bookRoot as { entries?: unknown }).entries;
   const entries = normalizeEntriesRecord(entriesRaw);
   const warnings: string[] = [];
@@ -290,9 +293,10 @@ function convertNovel(raw: unknown): {
 
 function detectFormat(raw: unknown): ConcreteWorldInfoImportFormat {
   const root = isRecord(raw) ? raw : {};
+  const rootData = isRecord(root.data) ? root.data : {};
   if (isRecord(root.entries)) return "st_native";
   if (Array.isArray(root.entries) && typeof root.lorebookVersion === "number") return "novel";
-  if (isRecord(root.character_book)) return "character_book";
+  if (isRecord(root.character_book) || isRecord(rootData.character_book)) return "character_book";
   if (root.kind === "memory" || isRecord(root.memory)) return "agnai";
   if (root.type === "risu") return "risu";
   if (Array.isArray(root.entries)) return "st_native";

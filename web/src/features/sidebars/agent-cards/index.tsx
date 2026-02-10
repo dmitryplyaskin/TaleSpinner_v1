@@ -1,4 +1,4 @@
-import { Box, Button, Collapse, Group, MultiSelect, NumberInput, Pagination, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Box, Button, Checkbox, Collapse, Group, MultiSelect, NumberInput, Pagination, ScrollArea, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,20 +13,32 @@ import {
 	updateEntityProfileFx,
 	updateEntityProfileRequested,
 } from '@model/chat-core';
+import { toggleSidebarOpen } from '@model/sidebars';
+import {
+	$worldInfoBooks,
+	$worldInfoEntityBookByProfileId,
+	loadWorldInfoBooksFx,
+	loadWorldInfoEntityBindingsFx,
+	worldInfoEditorOpenRequested,
+	setWorldInfoBookBoundToEntityFx,
+	setWorldInfoBookBoundToEntityRequested,
+} from '@model/world-info';
 import { Dialog } from '@ui/dialog';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
-import { exportEntityProfileFile } from '../../../api/chat-core';
+import {
+	exportEntityProfileFile,
+	type EntityProfileDto,
+	type ImportEntityProfilesResponse,
+} from '../../../api/chat-core';
+import { importWorldInfoBook } from '../../../api/world-info';
 
 import { AgentCard } from './agent-card';
 import { Upload } from './components/upload';
 import { EntityProfileEditorModal } from './entity-profile-editor-modal';
 import { estimateTokens, getSpecSearchText, parseSpec } from './spec-utils';
-
-
-import type { EntityProfileDto } from '../../../api/chat-core';
 
 type SortType = 'A-Z' | 'Z-A' | 'newest' | 'oldest' | 'latest' | 'favorites' | 'mostTokens' | 'fewestTokens';
 type FavoriteFilterMode = 'all' | 'onlyFavorite' | 'onlyNonFavorite';
@@ -39,6 +51,12 @@ type AgentCardsUiState = {
 	tokenMin: number | null;
 	tokenMax: number | null;
 	pageSize: number;
+};
+type WorldInfoImportCandidate = {
+	entityProfileId: string;
+	profileName: string;
+	characterBook: Record<string, unknown>;
+	selected: boolean;
 };
 
 const AGENT_CARDS_UI_STATE_STORAGE_KEY = 'agent_cards_ui_state_v1';
@@ -121,6 +139,13 @@ function saveAgentCardsUiState(state: AgentCardsUiState): void {
 	}
 }
 
+function toCharacterBookRecord(input: unknown): Record<string, unknown> | null {
+	if (!isRecord(input)) return null;
+	const entries = input.entries;
+	if (!Array.isArray(entries) && !isRecord(entries)) return null;
+	return input;
+}
+
 export const AgentCardsSidebar = () => {
 	const { t } = useTranslation();
 	const initialUiStateRef = useRef<AgentCardsUiState | null>(null);
@@ -139,6 +164,23 @@ export const AgentCardsSidebar = () => {
 		updateEntityProfileFx,
 		deleteEntityProfileFx,
 	]);
+	const [
+		worldInfoBooks,
+		worldInfoEntityBookByProfileId,
+		loadWorldInfoBooks,
+		loadWorldInfoEntityBindings,
+		bindWorldInfoToEntity,
+		bindWorldInfoToEntityRequested,
+		worldInfoBindingPending,
+	] = useUnit([
+		$worldInfoBooks,
+		$worldInfoEntityBookByProfileId,
+		loadWorldInfoBooksFx,
+		loadWorldInfoEntityBindingsFx,
+		setWorldInfoBookBoundToEntityFx,
+		setWorldInfoBookBoundToEntityRequested,
+		setWorldInfoBookBoundToEntityFx.pending,
+	]);
 
 	const [searchValue, setSearchValue] = useState(initialUiState.searchValue);
 	const [sortType, setSortType] = useState<SortType>(initialUiState.sortType);
@@ -152,6 +194,9 @@ export const AgentCardsSidebar = () => {
 	const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 	const [profileToDelete, setProfileToDelete] = useState<EntityProfileDto | null>(null);
 	const [exportPending, setExportPending] = useState(false);
+	const [worldInfoImportCandidates, setWorldInfoImportCandidates] = useState<WorldInfoImportCandidate[]>([]);
+	const [worldInfoImportPending, setWorldInfoImportPending] = useState(false);
+	const [worldInfoImportErrors, setWorldInfoImportErrors] = useState<string[]>([]);
 
 	const sortOptions = useMemo(
 		() => [
@@ -166,6 +211,24 @@ export const AgentCardsSidebar = () => {
 		],
 		[t],
 	);
+
+	useEffect(() => {
+		void loadWorldInfoBooks();
+		void loadWorldInfoEntityBindings();
+	}, [loadWorldInfoBooks, loadWorldInfoEntityBindings]);
+
+	const worldInfoBookById = useMemo(() => {
+		return new Map(worldInfoBooks.map((book) => [book.id, book]));
+	}, [worldInfoBooks]);
+
+	const worldInfoBookNameByProfileId = useMemo(() => {
+		const map: Record<string, string | null> = {};
+		Object.keys(worldInfoEntityBookByProfileId).forEach((profileId) => {
+			const bookId = worldInfoEntityBookByProfileId[profileId];
+			map[profileId] = bookId ? worldInfoBookById.get(bookId)?.name ?? null : null;
+		});
+		return map;
+	}, [worldInfoBookById, worldInfoEntityBookByProfileId]);
 
 	const profilesView = useMemo(() => {
 		return list.map((profile) => {
@@ -304,6 +367,88 @@ export const AgentCardsSidebar = () => {
 		}
 	};
 
+	const handleImportFinished = (result: ImportEntityProfilesResponse) => {
+		const candidates = result.created
+			.map((profile): WorldInfoImportCandidate | null => {
+				const characterBook = toCharacterBookRecord(parseSpec(profile.spec).characterBook);
+				if (!characterBook) return null;
+				return {
+					entityProfileId: profile.id,
+					profileName: profile.name,
+					characterBook,
+					selected: true,
+				};
+			})
+			.filter((item): item is WorldInfoImportCandidate => Boolean(item));
+
+		if (candidates.length === 0) return;
+		setWorldInfoImportErrors([]);
+		setWorldInfoImportCandidates(candidates);
+	};
+
+	const handleConfirmWorldInfoImport = async () => {
+		const selectedCandidates = worldInfoImportCandidates.filter((item) => item.selected);
+		if (selectedCandidates.length === 0) {
+			setWorldInfoImportErrors([t('agentCards.worldInfoImport.emptySelection')]);
+			return;
+		}
+
+		setWorldInfoImportPending(true);
+		const failures: string[] = [];
+		const failedCandidates: WorldInfoImportCandidate[] = [];
+		let successCount = 0;
+
+		for (const candidate of selectedCandidates) {
+			try {
+				const payload = {
+					name: candidate.profileName,
+					character_book: candidate.characterBook,
+				};
+				const file = new File(
+					[JSON.stringify(payload, null, 2)],
+					`${candidate.profileName.replace(/[\\/:*?"<>|]+/g, '_') || 'entity_profile'}.json`,
+					{ type: 'application/json' },
+				);
+				const imported = await importWorldInfoBook({
+					file,
+					ownerId: 'global',
+					format: 'character_book',
+				});
+				await bindWorldInfoToEntity({
+					entityProfileId: candidate.entityProfileId,
+					bookId: imported.book.id,
+					silent: true,
+				});
+				successCount += 1;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				failures.push(`${candidate.profileName}: ${message}`);
+				failedCandidates.push(candidate);
+			}
+		}
+
+		void loadWorldInfoBooks();
+		void loadWorldInfoEntityBindings();
+
+		if (successCount > 0) {
+			toaster.success({
+				title: t('agentCards.toasts.worldInfoImportCompleted'),
+				description: t('agentCards.toasts.worldInfoImportCount', { count: successCount }),
+			});
+		}
+
+		failures.forEach((message) => {
+			toaster.error({
+				title: t('agentCards.toasts.worldInfoImportFailedTitle'),
+				description: message,
+			});
+		});
+
+		setWorldInfoImportErrors(failures);
+		setWorldInfoImportCandidates(failedCandidates);
+		setWorldInfoImportPending(false);
+	};
+
 	return (
 		<>
 			<Drawer name="agentCards" title={t('sidebars.agentProfilesTitle')}>
@@ -316,7 +461,7 @@ export const AgentCardsSidebar = () => {
 						>
 							{t('sidebars.createProfile')}
 						</Button>
-						<Upload />
+						<Upload onImportFinished={handleImportFinished} />
 					</Group>
 
 					<TextInput
@@ -428,6 +573,7 @@ export const AgentCardsSidebar = () => {
 								data={item.profile}
 								isActive={currentProfile?.id === item.profile.id}
 								favoritePending={updatePendingId === item.profile.id}
+								worldInfoBookName={worldInfoBookNameByProfileId[item.profile.id] ?? null}
 								onEdit={(profile) => setEditingProfileId(profile.id)}
 								onDelete={setProfileToDelete}
 								onToggleFavorite={(profile) => requestUpdate({ id: profile.id, isFavorite: !profile.isFavorite })}
@@ -456,7 +602,89 @@ export const AgentCardsSidebar = () => {
 				onAvatarChange={(profile, avatarUrl) => requestUpdate({ id: profile.id, avatarAssetId: avatarUrl })}
 				onAvatarRemove={(profile) => requestUpdate({ id: profile.id, avatarAssetId: null })}
 				onExport={handleExportProfile}
+				worldInfoBooks={worldInfoBooks}
+				worldInfoBookId={editingProfile ? (worldInfoEntityBookByProfileId[editingProfile.id] ?? null) : null}
+				worldInfoBindingPending={worldInfoBindingPending}
+				onWorldInfoBindingChange={(profile, bookId) =>
+					bindWorldInfoToEntityRequested({
+						entityProfileId: profile.id,
+						bookId,
+					})
+				}
+				onOpenWorldInfoSidebar={() => {
+					toggleSidebarOpen({ name: 'worldInfo', isOpen: true });
+					worldInfoEditorOpenRequested({
+						bookId: editingProfile ? (worldInfoEntityBookByProfileId[editingProfile.id] ?? null) : null,
+					});
+				}}
 			/>
+
+			<Dialog
+				open={worldInfoImportCandidates.length > 0}
+				onOpenChange={(open) => {
+					if (open) return;
+					if (worldInfoImportPending) return;
+					setWorldInfoImportCandidates([]);
+					setWorldInfoImportErrors([]);
+				}}
+				title={t('agentCards.worldInfoImport.title')}
+				size="lg"
+				footer={
+					<>
+						<Button
+							variant="subtle"
+							disabled={worldInfoImportPending}
+							onClick={() => {
+								setWorldInfoImportCandidates([]);
+								setWorldInfoImportErrors([]);
+							}}
+						>
+							{t('common.cancel')}
+						</Button>
+						<Button loading={worldInfoImportPending} onClick={() => void handleConfirmWorldInfoImport()}>
+							{t('agentCards.worldInfoImport.confirm')}
+						</Button>
+					</>
+				}
+			>
+				<Stack gap="sm">
+					<Text size="sm" c="dimmed">
+						{t('agentCards.worldInfoImport.description')}
+					</Text>
+					<ScrollArea.Autosize mah={320}>
+						<Stack gap="xs">
+							{worldInfoImportCandidates.map((candidate) => (
+								<Checkbox
+									key={candidate.entityProfileId}
+									checked={candidate.selected}
+									onChange={(event) =>
+										setWorldInfoImportCandidates((prev) =>
+											prev.map((item) =>
+												item.entityProfileId === candidate.entityProfileId
+													? { ...item, selected: event.currentTarget.checked }
+													: item,
+											),
+										)
+									}
+									label={candidate.profileName}
+								/>
+							))}
+						</Stack>
+					</ScrollArea.Autosize>
+					{worldInfoImportErrors.length > 0 && (
+						<Stack gap={4}>
+							<Text size="sm" c="red" fw={600}>
+								{t('agentCards.worldInfoImport.errorsTitle')}
+							</Text>
+							{worldInfoImportErrors.map((error) => (
+								<Text key={error} size="xs" c="red">
+									{error}
+								</Text>
+							))}
+						</Stack>
+					)}
+				</Stack>
+			</Dialog>
 
 			<Dialog
 				open={Boolean(profileToDelete)}
