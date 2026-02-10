@@ -159,6 +159,7 @@ const ru = {
 			tabs: {
 				general: 'Основные',
 				styles: 'Стили',
+				debug: 'Debug',
 			},
 			sections: {
 				general: 'Основные настройки',
@@ -183,6 +184,10 @@ const ru = {
 			autoSelectCurrentPersona: {
 				label: 'Автовыбор персоны',
 				info: 'Автоматически выбирать актуальную персону в текущем чате',
+			},
+			debug: {
+				label: 'Включить debug-функции чата',
+				info: 'Показывает debug UI в чате и включает SSE debug-логи в консоли браузера.',
 			},
 		},
 		llmSettings: {

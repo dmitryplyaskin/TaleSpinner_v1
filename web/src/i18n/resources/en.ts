@@ -159,6 +159,7 @@ const en = {
 			tabs: {
 				general: 'General',
 				styles: 'Styles',
+				debug: 'Debug',
 			},
 			sections: {
 				general: 'General settings',
@@ -183,6 +184,10 @@ const en = {
 			autoSelectCurrentPersona: {
 				label: 'Auto-select persona',
 				info: 'Automatically select the relevant persona in the current chat',
+			},
+			debug: {
+				label: 'Enable chat debug features',
+				info: 'Shows debug UI in chat and enables SSE debug logs in browser console.',
 			},
 		},
 		llmSettings: {

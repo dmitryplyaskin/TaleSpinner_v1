@@ -1,3 +1,5 @@
+import { isAppDebugEnabled } from './app-debug';
+
 type SseEnvelopeLike = {
 	id?: string;
 	type?: string;
@@ -27,14 +29,6 @@ type RunStats = {
 		deltaChars: number;
 	};
 };
-
-declare global {
-	interface Window {
-		__chatGenerationDebug?: boolean;
-	}
-}
-
-const DEBUG_STORAGE_KEY = 'chat_generation_debug';
 const runStatsById = new Map<string, RunStats>();
 let announced = false;
 
@@ -61,21 +55,7 @@ function toPreview(value: unknown, max = 120): string {
 }
 
 function isDebugEnabled(): boolean {
-	if (typeof window !== 'undefined' && typeof window.__chatGenerationDebug === 'boolean') {
-		return window.__chatGenerationDebug;
-	}
-
-	if (typeof window !== 'undefined') {
-		try {
-			const raw = window.localStorage.getItem(DEBUG_STORAGE_KEY);
-			if (raw === '1' || raw === 'true') return true;
-			if (raw === '0' || raw === 'false') return false;
-		} catch {
-			// ignore storage access errors
-		}
-	}
-
-	return import.meta.env.DEV;
+	return isAppDebugEnabled();
 }
 
 function ensureRunStats(runId: string, generationId: string | null, ts: number): RunStats {
@@ -285,9 +265,7 @@ export function logChatGenerationSseEvent(params: {
 	const ts = typeof params.envelope.ts === 'number' ? params.envelope.ts : Date.now();
 
 	if (!announced) {
-		console.warn(
-			`[chat-gen-debug] enabled (scope=${params.scope}). Toggle via localStorage.${DEBUG_STORAGE_KEY}=1|0 or window.__chatGenerationDebug`
-		);
+		console.warn(`[chat-gen-debug] enabled (scope=${params.scope}). Toggle in App settings -> Debug`);
 		announced = true;
 	}
 

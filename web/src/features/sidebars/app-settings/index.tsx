@@ -1,20 +1,21 @@
-import { Box, SegmentedControl, Stack, Tabs, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { Box, Checkbox, SegmentedControl, Stack, Tabs, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { type AppSettings } from '@shared/types/app-settings';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { $appDebugEnabled, setAppDebugEnabled } from '@model/app-debug';
 import { $appSettings, fetchAppSettingsFx, updateAppSettings } from '@model/app-settings';
 import { Drawer } from '@ui/drawer';
 import { FormCheckbox, FormSelect } from '@ui/form-components';
 
-type AppSettingsTab = 'general' | 'styles';
+type AppSettingsTab = 'general' | 'styles' | 'debug';
 type ColorSchemeValue = 'light' | 'dark';
 
 export const AppSettingsSidebar: React.FC = () => {
 	const { t } = useTranslation();
-	const appSettings = useUnit($appSettings);
+	const [appSettings, appDebugEnabled] = useUnit([$appSettings, $appDebugEnabled]);
 	const [activeTab, setActiveTab] = useState<AppSettingsTab>('general');
 	const { colorScheme, setColorScheme } = useMantineColorScheme();
 	const computedColorScheme = useComputedColorScheme('light');
@@ -54,6 +55,7 @@ export const AppSettingsSidebar: React.FC = () => {
 					<Tabs.List mb="md">
 						<Tabs.Tab value="general">{t('appSettings.tabs.general')}</Tabs.Tab>
 						<Tabs.Tab value="styles">{t('appSettings.tabs.styles')}</Tabs.Tab>
+						<Tabs.Tab value="debug">{t('appSettings.tabs.debug')}</Tabs.Tab>
 					</Tabs.List>
 
 					<Tabs.Panel value="general">
@@ -106,6 +108,19 @@ export const AppSettingsSidebar: React.FC = () => {
 							/>
 							<Text size="xs" c="dimmed">
 								{t('appSettings.styles.description')}
+							</Text>
+						</Stack>
+					</Tabs.Panel>
+
+					<Tabs.Panel value="debug">
+						<Stack gap="sm">
+							<Checkbox
+								checked={appDebugEnabled}
+								onChange={(event) => setAppDebugEnabled(event.currentTarget.checked)}
+								label={t('appSettings.debug.label')}
+							/>
+							<Text size="xs" c="dimmed">
+								{t('appSettings.debug.info')}
 							</Text>
 						</Stack>
 					</Tabs.Panel>

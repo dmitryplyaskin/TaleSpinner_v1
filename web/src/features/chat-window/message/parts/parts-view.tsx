@@ -1,7 +1,9 @@
 import { Box, Collapse, Group, Paper, Stack, Text } from '@mantine/core';
-import { useState } from 'react';
+import { useUnit } from 'effector-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { $appDebugEnabled } from '@model/app-debug';
 
 import { getUiProjection } from './projection';
 import { renderPart } from './renderers';
@@ -14,15 +16,23 @@ type Props = {
 	currentTurn: number;
 };
 
-const isDevRuntime = import.meta.env.DEV;
-
 export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
 	const { t } = useTranslation();
-	const [debugEnabled, setDebugEnabled] = useState(false);
+	const appDebugEnabled = useUnit($appDebugEnabled);
+	const [debugUiEnabled, setDebugUiEnabled] = useState(false);
 	const [inspectorOpen, setInspectorOpen] = useState(false);
 
-	const visible = getUiProjection(entry, variant, { currentTurn, debugEnabled });
+	const visible = getUiProjection(entry, variant, {
+		currentTurn,
+		debugEnabled: appDebugEnabled && debugUiEnabled,
+	});
 	const allParts = variant?.parts ?? [];
+
+	useEffect(() => {
+		if (appDebugEnabled) return;
+		setDebugUiEnabled(false);
+		setInspectorOpen(false);
+	}, [appDebugEnabled]);
 
 	const renderList = (parts: Part[]) => {
 		return (
@@ -34,7 +44,7 @@ export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
 		);
 	};
 
-	if (!isDevRuntime) {
+	if (!appDebugEnabled) {
 		return <>{renderList(visible)}</>;
 	}
 
@@ -43,8 +53,8 @@ export const PartsView: React.FC<Props> = ({ entry, variant, currentTurn }) => {
 			{renderList(visible)}
 
 			<Group gap="xs" justify="flex-end">
-				<Text size="xs" c="dimmed" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setDebugEnabled((v) => !v)}>
-					{t('chat.debug.debugUi')}: {debugEnabled ? t('chat.debug.on') : t('chat.debug.off')}
+				<Text size="xs" c="dimmed" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setDebugUiEnabled((v) => !v)}>
+					{t('chat.debug.debugUi')}: {debugUiEnabled ? t('chat.debug.on') : t('chat.debug.off')}
 				</Text>
 				<Text size="xs" c="dimmed" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setInspectorOpen((v) => !v)}>
 					{t('chat.debug.inspector')}: {inspectorOpen ? t('chat.debug.hide') : t('chat.debug.show')}
