@@ -114,4 +114,22 @@ describe("llm-gateway-adapter", () => {
       abortSignal: abortController.signal,
     });
   });
+
+  test("buildGatewayStreamRequest injects anthropic cache feature from provider config", () => {
+    const req = buildGatewayStreamRequest({
+      providerId: "openrouter",
+      token: "tok",
+      providerConfig: {
+        defaultModel: "anthropic/claude-3.5-sonnet",
+        anthropicCache: { enabled: true, depth: 2, ttl: "1h" },
+      },
+      runtimeModel: null,
+      messages: [{ role: "user", content: "hi" }],
+      settings: {},
+    });
+
+    expect(req.features).toEqual({
+      anthropicCache: { enabled: true, depth: 2, ttl: "1h" },
+    });
+  });
 });

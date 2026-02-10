@@ -1,12 +1,13 @@
-import type { GenerateMessage } from "@shared/types/generate";
-
-import type { LlmGatewayMessage, LlmGatewayRequest, LlmSamplingParams, LlmProviderSpec } from "@core/llm-gateway";
-
 import {
+  parseProviderConfig,
   openAiCompatibleConfigSchema,
   openRouterConfigSchema,
   type LlmProviderId,
 } from "./llm-definitions";
+
+import type { LlmGatewayMessage, LlmGatewayRequest, LlmSamplingParams, LlmProviderSpec } from "@core/llm-gateway";
+import type { GenerateMessage } from "@shared/types/generate";
+
 
 const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.0-flash-lite-preview-02-05:free";
 const DEFAULT_OPENAI_COMPATIBLE_MODEL = "gpt-4o-mini";
@@ -42,6 +43,17 @@ function asStringArray(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;
   const out = value.filter((v) => typeof v === "string" && v.trim().length > 0) as string[];
   return out.length > 0 ? out : null;
+}
+
+function resolveGatewayFeatures(params: {
+  providerId: LlmProviderId;
+  providerConfig: unknown;
+}): LlmGatewayRequest["features"] | undefined {
+  const parsed = parseProviderConfig(params.providerId, params.providerConfig);
+  if (!parsed.anthropicCache) return undefined;
+  return {
+    anthropicCache: parsed.anthropicCache,
+  };
 }
 
 export function resolveGatewayModel(params: {
@@ -161,8 +173,12 @@ export function buildGatewayStreamRequest(params: {
   });
 
   const { sampling, extra } = splitSamplingAndExtra(params.settings ?? {});
+  const features = resolveGatewayFeatures({
+    providerId: params.providerId,
+    providerConfig: params.providerConfig,
+  });
 
-  return {
+  const req: LlmGatewayRequest = {
     provider,
     model,
     messages: toGatewayMessages(params.messages),
@@ -170,5 +186,8 @@ export function buildGatewayStreamRequest(params: {
     extra,
     abortSignal: params.abortSignal,
   };
+  if (features) {
+    req.features = features;
+  }
+  return req;
 }
-

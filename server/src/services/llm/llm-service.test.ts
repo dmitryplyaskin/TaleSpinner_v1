@@ -40,6 +40,7 @@ vi.mock("./llm-gateway-adapter", () => ({
 }));
 
 import { HttpError } from "@core/middleware/error-handler";
+
 import {
   getModels,
   getProvidersForUi,
@@ -208,6 +209,7 @@ describe("llm-service", () => {
       activeTokenId: null,
       activeModel: null,
     });
+    mocks.listTokens.mockResolvedValueOnce([]);
 
     const iter = streamGlobalChat({
       messages: [{ role: "user", content: "hi" }],
@@ -236,6 +238,140 @@ describe("llm-service", () => {
     await expect(iter.next()).rejects.toMatchObject({
       code: "LLM_TOKEN_NOT_FOUND",
     });
+  });
+
+  test("streamGlobalChat falls back to next token when pre-stream error occurs", async () => {
+    mocks.listTokens.mockResolvedValueOnce([
+      { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
+      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+    ]);
+    mocks.getProviderConfig.mockResolvedValueOnce({
+      providerId: "openrouter",
+      config: { tokenPolicy: { fallbackOnError: true } },
+    });
+    mocks.getTokenPlaintext.mockImplementation(async (id: string) => {
+      if (id === "tok-1") return "secret-1";
+      if (id === "tok-2") return "secret-2";
+      return null;
+    });
+    mocks.llmGatewayStream
+      .mockImplementationOnce(async function* () {
+        yield { type: "error", message: "first-token-failed" };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: "delta", text: "ok-from-second" };
+        yield { type: "done", status: "done" as const };
+      });
+
+    const out = await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "hi" }],
+        settings: {},
+      })
+    );
+
+    expect(out).toEqual([{ content: "ok-from-second", reasoning: "", error: null }]);
+    expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ token: "secret-1" })
+    );
+    expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ token: "secret-2" })
+    );
+  });
+
+  test("streamGlobalChat does not fallback when error happens after first chunk", async () => {
+    mocks.listTokens.mockResolvedValueOnce([
+      { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
+      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+    ]);
+    mocks.getProviderConfig.mockResolvedValueOnce({
+      providerId: "openrouter",
+      config: { tokenPolicy: { fallbackOnError: true } },
+    });
+    mocks.getTokenPlaintext.mockImplementation(async (id: string) => {
+      if (id === "tok-1") return "secret-1";
+      if (id === "tok-2") return "secret-2";
+      return null;
+    });
+    mocks.llmGatewayStream.mockImplementationOnce(async function* () {
+      yield { type: "delta", text: "partial" };
+      yield { type: "error", message: "boom-after-partial" };
+    });
+
+    const out = await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "hi" }],
+        settings: {},
+      })
+    );
+
+    expect(out).toEqual([
+      { content: "partial", reasoning: "", error: null },
+      { content: "", reasoning: "", error: "boom-after-partial" },
+    ]);
+    expect(mocks.buildGatewayStreamRequest).toHaveBeenCalledTimes(1);
+  });
+
+  test("streamGlobalChat randomizes token order when randomize is enabled", async () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+    mocks.listTokens.mockResolvedValueOnce([
+      { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
+      { id: "tok-2", providerId: "openrouter", name: "backup-1", tokenHint: "***" },
+      { id: "tok-3", providerId: "openrouter", name: "backup-2", tokenHint: "***" },
+    ]);
+    mocks.getProviderConfig.mockResolvedValueOnce({
+      providerId: "openrouter",
+      config: { tokenPolicy: { randomize: true } },
+    });
+    mocks.getTokenPlaintext.mockImplementation(async (id: string) => `secret-${id}`);
+    mocks.llmGatewayStream.mockImplementation(async function* () {
+      yield { type: "done", status: "done" as const };
+    });
+
+    await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "hi" }],
+        settings: {},
+      })
+    );
+
+    expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ token: "secret-tok-2" })
+    );
+    randomSpy.mockRestore();
+  });
+
+  test("streamGlobalChat handles missing active token id by trying other tokens", async () => {
+    mocks.getRuntime.mockResolvedValueOnce({
+      scope: "global",
+      scopeId: "global",
+      activeProviderId: "openrouter",
+      activeTokenId: "missing-token",
+      activeModel: null,
+    });
+    mocks.listTokens.mockResolvedValueOnce([
+      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+    ]);
+    mocks.getTokenPlaintext.mockImplementation(async (id: string) => {
+      if (id === "tok-2") return "secret-2";
+      return null;
+    });
+    mocks.llmGatewayStream.mockImplementationOnce(async function* () {
+      yield { type: "delta", text: "from-backup" };
+      yield { type: "done", status: "done" as const };
+    });
+
+    const out = await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "hi" }],
+        settings: {},
+      })
+    );
+
+    expect(out).toEqual([{ content: "from-backup", reasoning: "", error: null }]);
   });
 
   test("streamGlobalChat yields delta/reasoning/error events and stops on error", async () => {

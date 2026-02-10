@@ -1,6 +1,22 @@
 import { z } from "zod";
 
 export type LlmProviderId = "openrouter" | "openai_compatible";
+export type LlmAnthropicCacheTtl = "5m" | "1h";
+
+export const tokenPolicySchema = z
+  .object({
+    randomize: z.boolean().optional(),
+    fallbackOnError: z.boolean().optional(),
+  })
+  .strict();
+
+export const anthropicCacheSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    depth: z.number().int().min(0).optional(),
+    ttl: z.enum(["5m", "1h"] satisfies LlmAnthropicCacheTtl[]).optional(),
+  })
+  .strict();
 
 export type LlmProviderUiField =
   | {
@@ -72,6 +88,8 @@ export const llmProviderDefinitions: ReadonlyArray<LlmProviderDefinition> = [
 export const openRouterConfigSchema = z
   .object({
     defaultModel: z.string().min(1).optional(),
+    tokenPolicy: tokenPolicySchema.optional(),
+    anthropicCache: anthropicCacheSchema.optional(),
   })
   .passthrough();
 
@@ -81,6 +99,8 @@ export const openAiCompatibleConfigSchema = z
   .object({
     baseUrl: z.string().min(1),
     defaultModel: z.string().min(1).optional(),
+    tokenPolicy: tokenPolicySchema.optional(),
+    anthropicCache: anthropicCacheSchema.optional(),
   })
   .passthrough();
 

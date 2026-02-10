@@ -5,6 +5,7 @@ import entityProfilesImportRoutes from "./entity-profiles.import.api";
 import fileRoutes from "./files/routes";
 import generationsCoreRoutes from "./generations.core.api";
 import instructionsRoutes from "./instructions.api";
+import llmPresetsRoutes from "./llm-presets.api";
 import llmRoutes from "./llm.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
@@ -23,6 +24,7 @@ export const routes = [
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,
+  llmPresetsRoutes,
   fileRoutes,
   instructionsRoutes,
   promptTemplatesCoreRoutes,

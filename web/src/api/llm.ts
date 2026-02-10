@@ -2,6 +2,9 @@ import { BASE_URL } from '../const';
 
 import type {
 	LlmModel,
+	LlmPreset,
+	LlmPresetPayload,
+	LlmPresetSettings,
 	LlmProviderConfig,
 	LlmProviderDefinition,
 	LlmProviderId,
@@ -123,4 +126,87 @@ export async function getModels(params: {
 
 	const data = await apiJson<{ models: LlmModel[] }>(`/llm/models?${query.toString()}`);
 	return data.models;
+}
+
+export type LlmPresetDto = Omit<LlmPreset, 'createdAt' | 'updatedAt'> & {
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type LlmPresetSettingsDto = Omit<LlmPresetSettings, 'updatedAt'> & {
+	updatedAt: string;
+};
+
+export async function listLlmPresets(ownerId = 'global'): Promise<LlmPresetDto[]> {
+	return apiJson<LlmPresetDto[]>(`/llm-presets?ownerId=${encodeURIComponent(ownerId)}`);
+}
+
+export async function createLlmPreset(input: {
+	ownerId?: string;
+	name: string;
+	description?: string;
+	payload: LlmPresetPayload;
+}): Promise<LlmPresetDto> {
+	return apiJson<LlmPresetDto>('/llm-presets', {
+		method: 'POST',
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updateLlmPreset(input: {
+	presetId: string;
+	ownerId?: string;
+	name?: string;
+	description?: string | null;
+	payload?: LlmPresetPayload;
+}): Promise<LlmPresetDto> {
+	return apiJson<LlmPresetDto>(`/llm-presets/${encodeURIComponent(input.presetId)}`, {
+		method: 'PUT',
+		body: JSON.stringify({
+			ownerId: input.ownerId,
+			name: input.name,
+			description: input.description,
+			payload: input.payload,
+		}),
+	});
+}
+
+export async function deleteLlmPreset(input: { presetId: string; ownerId?: string }): Promise<{ id: string }> {
+	const query = input.ownerId ? `?ownerId=${encodeURIComponent(input.ownerId)}` : '';
+	return apiJson<{ id: string }>(`/llm-presets/${encodeURIComponent(input.presetId)}${query}`, {
+		method: 'DELETE',
+	});
+}
+
+export async function applyLlmPreset(input: {
+	presetId: string;
+	ownerId?: string;
+	scope?: LlmScope;
+	scopeId?: string;
+}): Promise<{ preset: LlmPresetDto; runtime: LlmRuntime; warnings: string[] }> {
+	return apiJson<{ preset: LlmPresetDto; runtime: LlmRuntime; warnings: string[] }>(
+		`/llm-presets/${encodeURIComponent(input.presetId)}/apply`,
+		{
+			method: 'POST',
+			body: JSON.stringify({
+				ownerId: input.ownerId,
+				scope: input.scope,
+				scopeId: input.scopeId,
+			}),
+		},
+	);
+}
+
+export async function getLlmPresetSettings(ownerId = 'global'): Promise<LlmPresetSettingsDto> {
+	return apiJson<LlmPresetSettingsDto>(`/llm-preset-settings?ownerId=${encodeURIComponent(ownerId)}`);
+}
+
+export async function patchLlmPresetSettings(input: {
+	ownerId?: string;
+	activePresetId?: string | null;
+}): Promise<LlmPresetSettingsDto> {
+	return apiJson<LlmPresetSettingsDto>('/llm-preset-settings', {
+		method: 'PUT',
+		body: JSON.stringify(input),
+	});
 }

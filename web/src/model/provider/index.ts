@@ -4,6 +4,7 @@ import * as llmApi from '../../api/llm';
 
 import type {
 	LlmModel,
+	LlmPresetPayload,
 	LlmProviderConfig,
 	LlmProviderDefinition,
 	LlmProviderId,
@@ -87,6 +88,70 @@ export const loadModelsFx = createEffect(
 	},
 );
 
+export const loadLlmPresetsFx = createEffect(async (): Promise<llmApi.LlmPresetDto[]> => {
+	return llmApi.listLlmPresets('global');
+});
+
+export const loadLlmPresetSettingsFx = createEffect(async (): Promise<llmApi.LlmPresetSettingsDto> => {
+	return llmApi.getLlmPresetSettings('global');
+});
+
+export const createLlmPresetFx = createEffect(
+	async (params: { name: string; description?: string; payload: LlmPresetPayload }): Promise<llmApi.LlmPresetDto> => {
+		return llmApi.createLlmPreset({
+			ownerId: 'global',
+			name: params.name,
+			description: params.description,
+			payload: params.payload,
+		});
+	},
+);
+
+export const updateLlmPresetFx = createEffect(
+	async (params: {
+		presetId: string;
+		name?: string;
+		description?: string | null;
+		payload?: LlmPresetPayload;
+	}): Promise<llmApi.LlmPresetDto> => {
+		return llmApi.updateLlmPreset({
+			ownerId: 'global',
+			presetId: params.presetId,
+			name: params.name,
+			description: params.description,
+			payload: params.payload,
+		});
+	},
+);
+
+export const deleteLlmPresetFx = createEffect(async (presetId: string): Promise<{ id: string }> => {
+	return llmApi.deleteLlmPreset({ ownerId: 'global', presetId });
+});
+
+export const applyLlmPresetFx = createEffect(
+	async (params: { presetId: string; scope: LlmScope; scopeId: string }): Promise<{
+		preset: llmApi.LlmPresetDto;
+		runtime: LlmRuntime;
+		warnings: string[];
+	}> => {
+		return llmApi.applyLlmPreset({
+			ownerId: 'global',
+			presetId: params.presetId,
+			scope: params.scope,
+			scopeId: params.scopeId,
+		});
+	},
+);
+
+export const patchLlmPresetSettingsFx = createEffect(
+	async (params: { activePresetId?: string | null }): Promise<llmApi.LlmPresetSettingsDto> => {
+		return llmApi.patchLlmPresetSettings({
+			ownerId: 'global',
+			activePresetId: params.activePresetId,
+		});
+	},
+);
+
 export const providerPickerMounted = createEvent<{ scope: LlmScope; scopeId: string }>();
 export const providerSelected = createEvent<{ scope: LlmScope; scopeId: string; providerId: LlmProviderId }>();
 export const tokenSelected = createEvent<{ scope: LlmScope; scopeId: string; tokenId: string | null }>();
@@ -103,6 +168,8 @@ export const $tokensByProviderId = createStore<Record<LlmProviderId, LlmTokenLis
 );
 export const $modelsByProviderTokenKey = createStore<Record<string, LlmModel[]>>({});
 export const $isTokenManagerOpen = createStore(false);
+export const $llmPresets = createStore<llmApi.LlmPresetDto[]>([]);
+export const $llmPresetSettings = createStore<llmApi.LlmPresetSettingsDto | null>(null);
 
 $providers.on(loadProvidersFx.doneData, (_, providers) => providers);
 
@@ -135,10 +202,23 @@ $modelsByProviderTokenKey.on(loadModelsFx.doneData, (state, payload) => ({
 }));
 
 $isTokenManagerOpen.on(tokenManagerOpened, (_, isOpen) => isOpen);
+$llmPresets.on(loadLlmPresetsFx.doneData, (_, presets) => presets);
+$llmPresetSettings
+	.on(loadLlmPresetSettingsFx.doneData, (_, settings) => settings)
+	.on(patchLlmPresetSettingsFx.doneData, (_, settings) => settings);
+$runtimeByScopeKey.on(applyLlmPresetFx.doneData, (state, payload) => ({
+	...state,
+	[toScopeKey(payload.runtime.scope, payload.runtime.scopeId)]: payload.runtime,
+}));
 
 sample({
 	clock: providerPickerMounted,
 	target: loadProvidersFx,
+});
+
+sample({
+	clock: providerPickerMounted,
+	target: [loadLlmPresetsFx, loadLlmPresetSettingsFx],
 });
 
 sample({
@@ -251,6 +331,18 @@ sample({
 	target: loadTokensFx,
 });
 
+sample({
+	clock: [createLlmPresetFx.doneData, updateLlmPresetFx.doneData, deleteLlmPresetFx.done, applyLlmPresetFx.doneData],
+	fn: () => undefined,
+	target: [loadLlmPresetsFx, loadLlmPresetSettingsFx],
+});
+
+sample({
+	clock: applyLlmPresetFx.doneData,
+	fn: (payload) => payload.runtime.activeProviderId,
+	target: [loadTokensFx, loadProviderConfigFx],
+});
+
 export const llmProviderModel = {
 	$providers,
 	$runtimeByScopeKey,
@@ -258,6 +350,8 @@ export const llmProviderModel = {
 	$tokensByProviderId,
 	$modelsByProviderTokenKey,
 	$isTokenManagerOpen,
+	$llmPresets,
+	$llmPresetSettings,
 
 	providerPickerMounted,
 	providerSelected,
@@ -275,4 +369,11 @@ export const llmProviderModel = {
 	loadModelsFx,
 	loadProviderConfigFx,
 	patchProviderConfigFx,
+	loadLlmPresetsFx,
+	loadLlmPresetSettingsFx,
+	createLlmPresetFx,
+	updateLlmPresetFx,
+	deleteLlmPresetFx,
+	applyLlmPresetFx,
+	patchLlmPresetSettingsFx,
 };

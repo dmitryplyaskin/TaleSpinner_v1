@@ -1,10 +1,4 @@
 import OpenAI from "openai";
-import type {
-  ChatCompletionChunk,
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
-  ChatCompletionMessageParam,
-} from "openai/resources";
 
 import type {
   LlmGatewayProviderRequest,
@@ -12,6 +6,12 @@ import type {
   LlmGatewayStreamEvent,
   LlmProviderAdapter,
 } from "../types";
+import type {
+  ChatCompletionChunk,
+  ChatCompletionCreateParamsNonStreaming,
+  ChatCompletionCreateParamsStreaming,
+  ChatCompletionMessageParam,
+} from "openai/resources";
 
 function toChatMessages(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>
@@ -21,6 +21,14 @@ function toChatMessages(
     if (m.role === "user") return { role: "user", content: m.content };
     return { role: "assistant", content: m.content };
   });
+}
+
+function resolvePayloadMessages(req: LlmGatewayProviderRequest): unknown[] {
+  const payloadMessages = (req.payload as Record<string, unknown>)?.messages;
+  if (Array.isArray(payloadMessages)) {
+    return payloadMessages as unknown[];
+  }
+  return toChatMessages(req.messages);
 }
 
 function createClient(params: {
@@ -38,26 +46,28 @@ function createClient(params: {
 function buildNonStreamingPayload(
   req: LlmGatewayProviderRequest
 ): ChatCompletionCreateParamsNonStreaming {
-  const { stream: _stream, ...rest } = req.payload as Record<string, unknown> & {
+  const { stream: _stream, messages: _messages, ...rest } = req.payload as Record<string, unknown> & {
     stream?: unknown;
+    messages?: unknown;
   };
   return {
     ...(rest as Record<string, unknown>),
     model: req.model,
-    messages: toChatMessages(req.messages),
+    messages: resolvePayloadMessages(req),
   } as ChatCompletionCreateParamsNonStreaming;
 }
 
 function buildStreamingPayload(
   req: LlmGatewayProviderRequest
 ): ChatCompletionCreateParamsStreaming {
-  const { stream: _stream, ...rest } = req.payload as Record<string, unknown> & {
+  const { stream: _stream, messages: _messages, ...rest } = req.payload as Record<string, unknown> & {
     stream?: unknown;
+    messages?: unknown;
   };
   return {
     ...(rest as Record<string, unknown>),
     model: req.model,
-    messages: toChatMessages(req.messages),
+    messages: resolvePayloadMessages(req),
     stream: true,
   } as ChatCompletionCreateParamsStreaming;
 }

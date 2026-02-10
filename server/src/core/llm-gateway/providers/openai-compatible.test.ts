@@ -138,6 +138,42 @@ describe("OpenAiCompatibleProvider", () => {
     );
   });
 
+  test("uses payload.messages as-is when provided", async () => {
+    mocks.create.mockResolvedValue({
+      choices: [{ message: { content: "hello" } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    });
+
+    const provider = new OpenAiCompatibleProvider({ id: "p", defaultBaseUrl: "http://base/v1" });
+    await provider.generate({
+      provider: { id: "p", token: "tok" },
+      model: "m1",
+      messages: [{ role: "user", content: "fallback-msg" }],
+      payload: {
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "text", text: "structured", cache_control: { type: "ephemeral", ttl: "5m" } }],
+          },
+        ],
+      },
+      headers: {},
+    });
+
+    expect(mocks.create).toHaveBeenCalledWith(
+      {
+        model: "m1",
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "text", text: "structured", cache_control: { type: "ephemeral", ttl: "5m" } }],
+          },
+        ],
+      },
+      { signal: undefined }
+    );
+  });
+
   test("stream returns aborted done when abort error thrown", async () => {
     const err = new Error("aborted");
     (err as any).name = "AbortError";

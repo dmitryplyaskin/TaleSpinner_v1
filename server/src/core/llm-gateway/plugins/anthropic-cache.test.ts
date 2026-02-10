@@ -2,94 +2,100 @@ import { describe, expect, test } from "vitest";
 
 import { anthropicCachePlugin } from "./anthropic-cache";
 
+function makeCtx(messages: Array<{ role: "system" | "user" | "assistant"; content: string }>) {
+  return {
+    providerId: "openrouter",
+    model: "anthropic/claude-3.5-sonnet",
+    messages,
+    sampling: {},
+    extra: {},
+    headers: {},
+    payload: { messages },
+    features: {},
+    abortSignal: undefined,
+    logger: {
+      debug: () => undefined,
+      info: () => undefined,
+      warn: () => undefined,
+      error: () => undefined,
+    },
+  };
+}
+
 describe("anthropicCachePlugin", () => {
-  test("matches anthropic-like model ids unless explicitly disabled", () => {
+  test("matches only when feature enabled for anthropic-like models", () => {
+    expect(
+      anthropicCachePlugin.match?.({
+        providerId: "openrouter",
+        model: "anthropic/claude-3.5-sonnet",
+        features: { anthropicCache: { enabled: true } },
+      })
+    ).toBe(true);
     expect(
       anthropicCachePlugin.match?.({
         providerId: "openrouter",
         model: "anthropic/claude-3.5-sonnet",
         features: {},
       })
-    ).toBe(true);
-    expect(
-      anthropicCachePlugin.match?.({
-        providerId: "openrouter",
-        model: "claude-3-opus",
-        features: {},
-      })
-    ).toBe(true);
-    expect(
-      anthropicCachePlugin.match?.({
-        providerId: "openrouter",
-        model: "gpt-4o-mini",
-        features: {},
-      })
     ).toBe(false);
     expect(
       anthropicCachePlugin.match?.({
         providerId: "openrouter",
-        model: "anthropic/claude-3.5-sonnet",
-        features: { anthropicCache: { enabled: false } },
+        model: "gpt-4.1",
+        features: { anthropicCache: { enabled: true } },
       })
     ).toBe(false);
   });
 
-  test("cache hook is no-op scaffold and delegates to next", async () => {
-    const debugLogs: unknown[] = [];
-    const next = async () => ({ text: "ok" });
+  test("mutateRequest adds cache_control at depth and depth+2", () => {
+    const ctx = makeCtx([
+      { role: "system", content: "sys" },
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+      { role: "assistant", content: "a2" },
+      { role: "user", content: "u3" },
+    ]);
 
-    const out = await anthropicCachePlugin.cache!(
-      {
-        providerId: "openrouter",
-        model: "anthropic/claude",
-        messages: [],
-        sampling: {},
-        extra: {},
-        headers: {},
-        payload: {},
-        features: {},
-        abortSignal: undefined,
-        logger: {
-          debug: (msg, meta) => debugLogs.push({ msg, meta }),
-          info: () => undefined,
-          warn: () => undefined,
-          error: () => undefined,
-        },
-      },
-      { enabled: true, depth: 3 },
-      next
-    );
+    const out = anthropicCachePlugin.mutateRequest!(ctx as any, {
+      enabled: true,
+      depth: 0,
+      ttl: "1h",
+    });
 
-    expect(out).toEqual({ text: "ok" });
-    expect(debugLogs).toHaveLength(1);
+    const patched = (out.payloadPatch as any).messages as any[];
+    expect(patched).toHaveLength(6);
+
+    expect(patched[5].content[0].cache_control).toEqual({
+      type: "ephemeral",
+      ttl: "1h",
+    });
+    expect(patched[3].content[0].cache_control).toEqual({
+      type: "ephemeral",
+      ttl: "1h",
+    });
+    expect(patched[4].content[0]?.cache_control).toBeUndefined();
   });
 
-  test("cache hook bypasses logging when feature disabled", async () => {
-    const debug = () => {
-      throw new Error("should not log when disabled");
-    };
-    const out = await anthropicCachePlugin.cache!(
-      {
-        providerId: "openrouter",
-        model: "anthropic/claude",
-        messages: [],
-        sampling: {},
-        extra: {},
-        headers: {},
-        payload: {},
-        features: {},
-        abortSignal: undefined,
-        logger: {
-          debug,
-          info: () => undefined,
-          warn: () => undefined,
-          error: () => undefined,
-        },
-      },
-      { enabled: false },
-      async () => ({ text: "ok" })
-    );
+  test("skips tail assistant prefill before depth calculation", () => {
+    const ctx = makeCtx([
+      { role: "system", content: "sys" },
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "assistant", content: "prefill" },
+    ]);
 
-    expect(out).toEqual({ text: "ok" });
+    const out = anthropicCachePlugin.mutateRequest!(ctx as any, {
+      enabled: true,
+      depth: 0,
+      ttl: "5m",
+    });
+    const patched = (out.payloadPatch as any).messages as any[];
+    expect(patched[3].content[0]?.cache_control).toBeUndefined();
+    expect(patched[2].content[0]?.cache_control).toBeUndefined();
+    expect(patched[1].content[0].cache_control).toEqual({
+      type: "ephemeral",
+      ttl: "5m",
+    });
   });
 });

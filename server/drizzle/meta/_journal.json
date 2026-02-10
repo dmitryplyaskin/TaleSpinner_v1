@@ -113,6 +113,13 @@
       "when": 1770750000000,
       "tag": "0019_ui_theme_presets",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1770850000000,
+      "tag": "0020_llm_presets",
+      "breakpoints": true
     }
   ]
 }

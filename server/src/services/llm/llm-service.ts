@@ -1,8 +1,17 @@
 import axios from "axios";
 
+import { llmGateway } from "@core/llm-gateway";
 import { HttpError } from "@core/middleware/error-handler";
 
-import { llmGateway } from "@core/llm-gateway";
+import {
+  openAiCompatibleConfigSchema,
+  openRouterConfigSchema,
+  type LlmProviderId,
+} from "./llm-definitions";
+import {
+  buildGatewayStreamRequest,
+  resolveGatewayProviderSpec,
+} from "./llm-gateway-adapter";
 import {
   getProviderConfig,
   getRuntime,
@@ -14,12 +23,7 @@ import {
   type LlmScope,
 } from "./llm-repository";
 
-import type { LlmProviderId } from "./llm-definitions";
 import type { GenerateMessage } from "@shared/types/generate";
-import {
-  buildGatewayStreamRequest,
-  resolveGatewayProviderSpec,
-} from "./llm-gateway-adapter";
 
 export async function getRuntimeOrThrow(
   scope: LlmScope,
@@ -43,6 +47,57 @@ export async function getTokensForUi(
     name: t.name,
     tokenHint: t.tokenHint,
   }));
+}
+
+type TokenPolicy = {
+  randomize: boolean;
+  fallbackOnError: boolean;
+};
+
+function resolveTokenPolicy(providerId: LlmProviderId, config: unknown): TokenPolicy {
+  if (providerId === "openrouter") {
+    const parsed = openRouterConfigSchema.safeParse(config ?? {});
+    const policy = parsed.success ? parsed.data.tokenPolicy : undefined;
+    return {
+      randomize: policy?.randomize === true,
+      fallbackOnError: policy?.fallbackOnError === true,
+    };
+  }
+
+  const parsed = openAiCompatibleConfigSchema.safeParse(config ?? {});
+  const policy = parsed.success ? parsed.data.tokenPolicy : undefined;
+  return {
+    randomize: policy?.randomize === true,
+    fallbackOnError: policy?.fallbackOnError === true,
+  };
+}
+
+function buildTokenAttemptOrder(params: {
+  tokenIds: string[];
+  activeTokenId: string | null;
+  randomize: boolean;
+}): string[] {
+  const unique = Array.from(new Set(params.tokenIds));
+  if (unique.length === 0) return [];
+
+  if (params.randomize && unique.length > 1) {
+    const shuffled = [...unique];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  const ordered: string[] = [];
+  if (params.activeTokenId) {
+    ordered.push(params.activeTokenId);
+  }
+  for (const tokenId of unique) {
+    if (ordered.includes(tokenId)) continue;
+    ordered.push(tokenId);
+  }
+  return ordered;
 }
 
 export async function getModels(params: {
@@ -116,8 +171,17 @@ export async function* streamGlobalChat(params: {
 }): AsyncGenerator<{ content: string; reasoning: string; error: string | null }> {
   const runtime = await getRuntime("global", params.scopeId ?? "global");
   const providerId = runtime.activeProviderId;
-  const tokenId = runtime.activeTokenId;
-  if (!tokenId) {
+  const config = await getProviderConfig(providerId);
+  const tokenPolicy = resolveTokenPolicy(providerId, config.config);
+  const availableTokens = await listTokens(providerId);
+  const tokenIds = availableTokens.map((item) => item.id);
+  const attemptOrder = buildTokenAttemptOrder({
+    tokenIds,
+    activeTokenId: runtime.activeTokenId,
+    randomize: tokenPolicy.randomize,
+  });
+
+  if (attemptOrder.length === 0) {
     throw new HttpError(
       400,
       "No active token configured for the selected provider",
@@ -125,39 +189,97 @@ export async function* streamGlobalChat(params: {
     );
   }
 
-  const token = await getTokenPlaintext(tokenId);
-  if (!token) {
-    throw new HttpError(400, "Active token not found", "LLM_TOKEN_NOT_FOUND");
-  }
-
-  const config = await getProviderConfig(providerId);
-
-  await touchTokenLastUsed(tokenId);
-
   const abortSignal = params.abortController?.signal;
-  const req = buildGatewayStreamRequest({
-    providerId,
-    token,
-    providerConfig: config.config,
-    runtimeModel: runtime.activeModel,
-    messages: params.messages,
-    settings: params.settings ?? {},
-    abortSignal,
-  });
+  let lastError: string | null = null;
 
-  for await (const evt of llmGateway.stream(req)) {
+  for (let index = 0; index < attemptOrder.length; index += 1) {
     if (abortSignal?.aborted) return;
-    if (evt.type === "delta") {
-      yield { content: evt.text, reasoning: "", error: null };
+
+    const tokenId = attemptOrder[index];
+    const token = await getTokenPlaintext(tokenId);
+    if (!token) {
+      lastError =
+        runtime.activeTokenId === tokenId
+          ? "Active token not found"
+          : `Token not found: ${tokenId}`;
       continue;
     }
-    if (evt.type === "reasoning_delta") {
-      yield { content: "", reasoning: evt.text, error: null };
-      continue;
+
+    await touchTokenLastUsed(tokenId);
+
+    const req = buildGatewayStreamRequest({
+      providerId,
+      token,
+      providerConfig: config.config,
+      runtimeModel: runtime.activeModel,
+      messages: params.messages,
+      settings: params.settings ?? {},
+      abortSignal,
+    });
+
+    let gotAnyContent = false;
+    let attemptError: string | null = null;
+
+    try {
+      for await (const evt of llmGateway.stream(req)) {
+        if (abortSignal?.aborted) return;
+
+        if (evt.type === "delta") {
+          gotAnyContent = true;
+          yield { content: evt.text, reasoning: "", error: null };
+          continue;
+        }
+        if (evt.type === "reasoning_delta") {
+          gotAnyContent = true;
+          yield { content: "", reasoning: evt.text, error: null };
+          continue;
+        }
+        if (evt.type === "error") {
+          attemptError = evt.message;
+          break;
+        }
+        if (evt.type === "done") {
+          if (evt.status === "aborted") {
+            return;
+          }
+          if (evt.status === "error") {
+            attemptError = evt.warnings?.[0] ?? "Provider stream failed";
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      attemptError = error instanceof Error ? error.message : String(error);
     }
-    if (evt.type === "error") {
-      yield { content: "", reasoning: "", error: evt.message };
+
+    if (!attemptError) {
       return;
     }
+
+    lastError = attemptError;
+
+    const hasNextToken = index < attemptOrder.length - 1;
+    const canFallback =
+      tokenPolicy.fallbackOnError &&
+      hasNextToken &&
+      !gotAnyContent &&
+      !(abortSignal?.aborted ?? false);
+
+    if (canFallback) {
+      continue;
+    }
+
+    yield { content: "", reasoning: "", error: attemptError };
+    return;
   }
+
+  if (lastError) {
+    throw new HttpError(400, lastError, "LLM_TOKEN_NOT_FOUND");
+  }
+
+  throw new HttpError(
+    400,
+    "No active token configured for the selected provider",
+    "LLM_TOKEN_MISSING"
+  );
 }
