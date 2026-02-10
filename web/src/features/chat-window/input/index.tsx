@@ -56,7 +56,7 @@ export const MessageInput = () => {
 					styles={{
 						input: {
 							overflow: 'hidden',
-							backgroundColor: 'transparent',
+							backgroundColor: '#ffffff',
 						},
 					}}
 				/>
