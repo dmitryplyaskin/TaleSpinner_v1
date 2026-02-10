@@ -9,6 +9,7 @@ import { initSse } from "@core/sse/sse";
 import { chatIdParamsSchema } from "../chat-core/schemas";
 import { getChatById } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
+import { getSelectedUserPerson } from "../services/chat-core/user-persons-repository";
 import { getBranchCurrentTurn, incrementBranchTurn } from "../services/chat-entry-parts/branch-turn-repository";
 import {
   createEntryWithVariant,
@@ -35,6 +36,42 @@ import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-gen
 import type { Part } from "@shared/types/chat-entry-parts";
 
 const router = express.Router();
+
+type UserPersonaSnapshot = {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+};
+
+type UserEntryMeta = {
+  requestId: string | null;
+  personaSnapshot?: UserPersonaSnapshot;
+};
+
+type SelectedUserLike = {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+} | null;
+
+export function buildUserEntryMeta(params: {
+  requestId?: string;
+  selectedUser: SelectedUserLike;
+}): UserEntryMeta {
+  const meta: UserEntryMeta = {
+    requestId: params.requestId ?? null,
+  };
+
+  if (!params.selectedUser) return meta;
+
+  meta.personaSnapshot = {
+    id: params.selectedUser.id,
+    name: params.selectedUser.name,
+    avatarUrl: params.selectedUser.avatarUrl,
+  };
+
+  return meta;
+}
 
 const listEntriesQuerySchema = z.object({
   branchId: z.string().min(1).optional(),
@@ -114,6 +151,11 @@ router.post(
 
     try {
       const currentTurn = await getBranchCurrentTurn({ branchId });
+      const selectedUser = await getSelectedUserPerson({ ownerId });
+      const userEntryMeta = buildUserEntryMeta({
+        requestId: body.requestId,
+        selectedUser,
+      });
 
       const user = await createEntryWithVariant({
         ownerId,
@@ -121,7 +163,7 @@ router.post(
         branchId,
         role: body.role,
         variantKind: "manual_edit",
-        meta: { requestId: body.requestId ?? null },
+        meta: userEntryMeta,
       });
 
       const userMainPart = await createPart({

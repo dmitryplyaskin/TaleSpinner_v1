@@ -3,9 +3,14 @@ import { useUnit } from 'effector-react';
 
 import { $entries } from '@model/chat-entry-parts';
 
+import { type ChatAvatarPreview } from './avatar-preview-panel';
 import { Message } from './message';
 
-export const RenderChat = () => {
+type RenderChatProps = {
+	onAvatarPreviewRequested?: (preview: ChatAvatarPreview) => void;
+};
+
+export const RenderChat = ({ onAvatarPreviewRequested }: RenderChatProps) => {
 	const entries = useUnit($entries);
 
 	if (!entries) return null;
@@ -13,7 +18,12 @@ export const RenderChat = () => {
 	return (
 		<Stack gap="md">
 			{entries.map((entry, index) => (
-				<Message key={entry.entry.entryId} data={entry} isLast={index === entries.length - 1} />
+				<Message
+					key={entry.entry.entryId}
+					data={entry}
+					isLast={index === entries.length - 1}
+					onAvatarPreviewRequested={onAvatarPreviewRequested}
+				/>
 			))}
 		</Stack>
 	);

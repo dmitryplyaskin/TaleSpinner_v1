@@ -8,6 +8,7 @@ import {
 	createChatForEntityProfile,
 	createEntityProfile,
 	deleteChat,
+	deleteChatBranch,
 	deleteEntityProfile,
 	getChatById,
 	importEntityProfiles,
@@ -15,6 +16,8 @@ import {
 	listChatsForEntityProfile,
 	listEntityProfiles,
 	setChatPromptTemplate,
+	updateChat,
+	updateChatBranch,
 	updateEntityProfile,
 } from '../../api/chat-core';
 import { listChatEntries } from '../../api/chat-entry-parts';
@@ -275,6 +278,26 @@ deleteChatFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.deleteChatError'), description: error instanceof Error ? error.message : String(error) });
 });
 
+export const updateChatTitleRequested = createEvent<{ chatId: string; title: string }>();
+
+export const updateChatTitleFx = createEffect(async (params: { chatId: string; title: string }): Promise<ChatDto> => {
+	return updateChat(params);
+});
+
+sample({
+	clock: updateChatTitleRequested,
+	target: updateChatTitleFx,
+});
+
+$currentChat.on(updateChatTitleFx.doneData, (current, updated) => (current?.id === updated.id ? updated : current));
+$chatsForCurrentProfile.on(updateChatTitleFx.doneData, (items, updated) =>
+	items.map((item) => (item.id === updated.id ? updated : item)),
+);
+
+updateChatTitleFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.renameChatError'), description: error instanceof Error ? error.message : String(error) });
+});
+
 export const loadBranchesFx = createEffect(async (params: { chatId: string }): Promise<ChatBranchDto[]> => {
 	return listChatBranches(params.chatId);
 });
@@ -352,6 +375,56 @@ sample({
 
 createBranchFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.createBranchError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+export const updateBranchTitleRequested = createEvent<{ chatId: string; branchId: string; title: string }>();
+
+export const updateBranchTitleFx = createEffect(
+	async (params: { chatId: string; branchId: string; title: string }): Promise<ChatBranchDto> => {
+		return updateChatBranch(params);
+	},
+);
+
+sample({
+	clock: updateBranchTitleRequested,
+	target: updateBranchTitleFx,
+});
+
+$branches.on(updateBranchTitleFx.doneData, (items, updated) =>
+	items.map((item) => (item.id === updated.id ? updated : item)),
+);
+
+updateBranchTitleFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.renameBranchError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+export const deleteBranchRequested = createEvent<{ chatId: string; branchId: string }>();
+
+export const deleteBranchFx = createEffect(
+	async (params: { chatId: string; branchId: string }): Promise<{ chat: ChatDto; deletedBranchId: string }> => {
+		return deleteChatBranch(params);
+	},
+);
+
+sample({
+	clock: deleteBranchRequested,
+	target: deleteBranchFx,
+});
+
+$currentChat.on(deleteBranchFx.doneData, (_, payload) => payload.chat);
+$chatsForCurrentProfile.on(deleteBranchFx.doneData, (items, payload) =>
+	items.map((item) => (item.id === payload.chat.id ? payload.chat : item)),
+);
+
+sample({
+	clock: deleteBranchFx.doneData,
+	filter: ({ chat }) => Boolean(chat.activeBranchId),
+	fn: ({ chat }) => ({ chat, branchId: chat.activeBranchId ?? '' }),
+	target: setOpenedChat,
+});
+
+deleteBranchFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.deleteBranchError'), description: error instanceof Error ? error.message : String(error) });
 });
 
 sample({

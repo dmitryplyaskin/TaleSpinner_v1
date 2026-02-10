@@ -249,6 +249,19 @@ export async function softDeleteChat(id: string): Promise<ChatDto | null> {
   return getChatById(id);
 }
 
+export async function updateChatTitle(params: {
+  chatId: string;
+  title: string;
+}): Promise<ChatDto | null> {
+  const db = await initDb();
+  const ts = new Date();
+  await db
+    .update(chats)
+    .set({ title: params.title, updatedAt: ts })
+    .where(eq(chats.id, params.chatId));
+  return getChatById(params.chatId);
+}
+
 export async function listChatBranches(params: {
   chatId: string;
 }): Promise<ChatBranchDto[]> {
@@ -295,6 +308,70 @@ export async function createChatBranch(params: {
   if (!rows[0]) throw new Error("Не удалось создать ветку (внутренняя ошибка).");
 
   return branchRowToDto(rows[0]);
+}
+
+export async function updateChatBranchTitle(params: {
+  chatId: string;
+  branchId: string;
+  title: string;
+}): Promise<ChatBranchDto | null> {
+  const db = await initDb();
+  const ts = new Date();
+  await db
+    .update(chatBranches)
+    .set({ title: params.title, updatedAt: ts })
+    .where(and(eq(chatBranches.id, params.branchId), eq(chatBranches.chatId, params.chatId)));
+
+  const rows = await db
+    .select()
+    .from(chatBranches)
+    .where(and(eq(chatBranches.id, params.branchId), eq(chatBranches.chatId, params.chatId)))
+    .limit(1);
+  return rows[0] ? branchRowToDto(rows[0]) : null;
+}
+
+export async function deleteChatBranch(params: {
+  chatId: string;
+  branchId: string;
+}): Promise<{ chat: ChatDto; deletedBranchId: string }> {
+  const db = await initDb();
+  const chat = await getChatById(params.chatId);
+  if (!chat) throw new Error("Chat не найден");
+
+  const branches = await listChatBranches({ chatId: params.chatId });
+  if (branches.length <= 1) {
+    throw new Error("Нельзя удалить последнюю ветку");
+  }
+
+  const target = branches.find((branch) => branch.id === params.branchId);
+  if (!target) throw new Error("Branch не найден");
+
+  const fallback = branches.find((branch) => branch.id !== params.branchId) ?? null;
+  if (!fallback) {
+    throw new Error("Нельзя удалить последнюю ветку");
+  }
+
+  const ts = new Date();
+  const shouldSwitchActive = chat.activeBranchId === params.branchId;
+
+  await db.delete(chatBranches).where(eq(chatBranches.id, params.branchId));
+
+  if (shouldSwitchActive) {
+    await db
+      .update(chats)
+      .set({ activeBranchId: fallback.id, updatedAt: ts })
+      .where(eq(chats.id, params.chatId));
+  } else {
+    await db
+      .update(chats)
+      .set({ updatedAt: ts })
+      .where(eq(chats.id, params.chatId));
+  }
+
+  const updatedChat = await getChatById(params.chatId);
+  if (!updatedChat) throw new Error("Chat не найден");
+
+  return { chat: updatedChat, deletedBranchId: params.branchId };
 }
 
 export async function activateBranch(params: {

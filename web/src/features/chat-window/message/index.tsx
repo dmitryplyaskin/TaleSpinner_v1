@@ -15,7 +15,11 @@ import {
 	regenerateRequested,
 	selectVariantRequested,
 } from '@model/chat-entry-parts';
+import { userPersonsModel } from '@model/user-persons';
 import { toaster } from '@ui/toaster';
+
+import { BACKEND_ORIGIN } from '../../../api/chat-core';
+import { type ChatAvatarPreview } from '../avatar-preview-panel';
 
 import { ActionBar } from './action-bar';
 import { AssistantIcon } from './assistant-icon';
@@ -27,11 +31,42 @@ import type { ChatEntryWithVariantDto } from '../../../api/chat-entry-parts';
 type MessageProps = {
 	data: ChatEntryWithVariantDto;
 	isLast: boolean;
+	onAvatarPreviewRequested?: (preview: ChatAvatarPreview) => void;
 };
 
-export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
+type PersonaSnapshot = {
+	id: string;
+	name: string;
+	avatarUrl?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readPersonaSnapshot(meta: unknown): PersonaSnapshot | null {
+	if (!isRecord(meta)) return null;
+	const snapshot = meta.personaSnapshot;
+	if (!isRecord(snapshot)) return null;
+	if (typeof snapshot.id !== 'string' || snapshot.id.trim().length === 0) return null;
+	if (typeof snapshot.name !== 'string' || snapshot.name.trim().length === 0) return null;
+
+	return {
+		id: snapshot.id,
+		name: snapshot.name,
+		avatarUrl: typeof snapshot.avatarUrl === 'string' && snapshot.avatarUrl.length > 0 ? snapshot.avatarUrl : undefined,
+	};
+}
+
+function resolveAssetUrl(value?: string | null): string | undefined {
+	if (!value) return undefined;
+	if (value.startsWith('http://') || value.startsWith('https://')) return value;
+	return `${BACKEND_ORIGIN}${value}`;
+}
+
+export const Message: React.FC<MessageProps> = ({ data, isLast, onAvatarPreviewRequested }) => {
 	const { t } = useTranslation();
-	const currentProfile = useUnit($currentEntityProfile);
+	const [currentProfile, selectedUserPerson] = useUnit([$currentEntityProfile, userPersonsModel.$selectedItem]);
 	const isStreaming = useUnit($isChatStreaming);
 	const currentTurn = useUnit($currentTurn);
 	const variantsById = useUnit($variantsByEntryId);
@@ -43,6 +78,12 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 	const isUser = data.entry.role === 'user';
 	const isAssistant = data.entry.role === 'assistant';
 	const assistantName = currentProfile?.name || t('chat.message.assistantFallback');
+	const assistantAvatarSrc = resolveAssetUrl(currentProfile?.avatarAssetId ?? undefined);
+	const personaSnapshot = useMemo(() => readPersonaSnapshot(data.entry.meta), [data.entry.meta]);
+	const userName = personaSnapshot?.name || selectedUserPerson?.name || t('chat.message.you');
+	const userAvatarSrc = resolveAssetUrl(personaSnapshot?.avatarUrl ?? selectedUserPerson?.avatarUrl);
+	const canPreviewAssistantAvatar = Boolean(assistantAvatarSrc && onAvatarPreviewRequested);
+	const canPreviewUserAvatar = Boolean(userAvatarSrc && onAvatarPreviewRequested);
 	const tsLabel = useMemo(() => new Date(data.entry.createdAt).toLocaleTimeString(), [data.entry.createdAt]);
 
 	const isOptimistic =
@@ -193,10 +234,29 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 		openDeleteVariantConfirm({ entryId: data.entry.entryId, variantId: data.entry.activeVariantId });
 	};
 
+	const handleAssistantAvatarClick = () => {
+		if (!assistantAvatarSrc || !onAvatarPreviewRequested) return;
+		onAvatarPreviewRequested({ src: assistantAvatarSrc, name: assistantName, kind: 'assistant' });
+	};
+
+	const handleUserAvatarClick = () => {
+		if (!userAvatarSrc || !onAvatarPreviewRequested) return;
+		onAvatarPreviewRequested({ src: userAvatarSrc, name: userName, kind: 'user' });
+	};
+
 	return (
 		<Box className="ts-message-grid">
 			<Box className="ts-message-avatar ts-message-avatar--assistant">
-				{isAssistant ? <AssistantIcon size={52} /> : <Box className="ts-message-avatar-spacer" />}
+				{isAssistant ? (
+					<AssistantIcon
+						size={52}
+						name={assistantName}
+						src={assistantAvatarSrc}
+						onClick={canPreviewAssistantAvatar ? handleAssistantAvatarClick : undefined}
+					/>
+				) : (
+					<Box className="ts-message-avatar-spacer" />
+				)}
 			</Box>
 
 			<Box style={{ minWidth: 0 }}>
@@ -212,7 +272,7 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 						<Flex align="center" justify="space-between" gap="sm">
 							<Stack gap={0}>
 								<Text size="sm" className="ts-message-name" data-role={isUser ? 'user' : 'assistant'}>
-									{isUser ? t('chat.message.you') : assistantName}
+									{isUser ? userName : assistantName}
 								</Text>
 								<Text size="xs" className="ts-message-meta">
 									{tsLabel}
@@ -260,7 +320,19 @@ export const Message: React.FC<MessageProps> = ({ data, isLast }) => {
 			</Box>
 
 			<Box className="ts-message-avatar ts-message-avatar--user">
-				{isUser ? <Avatar size={52} name="User" src="/user-avatar.png" color="cyan" radius="xl" /> : <Box className="ts-message-avatar-spacer" />}
+				{isUser ? (
+					<Avatar
+						size={52}
+						name={userName}
+						src={userAvatarSrc}
+						color="cyan"
+						radius="xl"
+						onClick={canPreviewUserAvatar ? handleUserAvatarClick : undefined}
+						className={canPreviewUserAvatar ? 'ts-message-avatar-clickable' : undefined}
+					/>
+				) : (
+					<Box className="ts-message-avatar-spacer" />
+				)}
 			</Box>
 		</Box>
 	);

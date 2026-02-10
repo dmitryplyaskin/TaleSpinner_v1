@@ -230,6 +230,13 @@ export async function deleteChat(chatId: string): Promise<ChatDto> {
 	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`, { method: 'DELETE' });
 }
 
+export async function updateChat(params: { chatId: string; title: string }): Promise<ChatDto> {
+	return apiJson<ChatDto>(`/chats/${encodeURIComponent(params.chatId)}`, {
+		method: 'PUT',
+		body: JSON.stringify({ title: params.title }),
+	});
+}
+
 export async function getChatById(chatId: string): Promise<ChatDto> {
 	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`);
 }
@@ -270,6 +277,23 @@ export async function activateChatBranch(params: { chatId: string; branchId: str
 	return apiJson<ChatDto>(
 		`/chats/${encodeURIComponent(params.chatId)}/branches/${encodeURIComponent(params.branchId)}/activate`,
 		{ method: 'POST' },
+	);
+}
+
+export async function updateChatBranch(params: { chatId: string; branchId: string; title: string }): Promise<ChatBranchDto> {
+	return apiJson<ChatBranchDto>(
+		`/chats/${encodeURIComponent(params.chatId)}/branches/${encodeURIComponent(params.branchId)}`,
+		{
+			method: 'PUT',
+			body: JSON.stringify({ title: params.title }),
+		},
+	);
+}
+
+export async function deleteChatBranch(params: { chatId: string; branchId: string }): Promise<{ chat: ChatDto; deletedBranchId: string }> {
+	return apiJson<{ chat: ChatDto; deletedBranchId: string }>(
+		`/chats/${encodeURIComponent(params.chatId)}/branches/${encodeURIComponent(params.branchId)}`,
+		{ method: 'DELETE' },
 	);
 }
 

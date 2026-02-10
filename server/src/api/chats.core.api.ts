@@ -14,10 +14,13 @@ import {
 import {
   activateBranch,
   createChatBranch,
+  deleteChatBranch,
   getChatById,
   listChatBranches,
   setChatPromptTemplate,
   softDeleteChat,
+  updateChatBranchTitle,
+  updateChatTitle,
 } from "../services/chat-core/chats-repository";
 import { getPromptTemplateById } from "../services/chat-core/prompt-templates-repository";
 
@@ -62,6 +65,25 @@ router.put(
     });
     if (!updated) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
+    return { data: updated };
+  })
+);
+
+const updateChatBodySchema = z.object({
+  title: z.string().min(1),
+});
+
+router.put(
+  "/chats/:id",
+  validate({ params: chatIdParamsSchema, body: updateChatBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const body = updateChatBodySchema.parse(req.body);
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    const updated = await updateChatTitle({ chatId: params.id, title: body.title });
+    if (!updated) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
     return { data: updated };
   })
 );
@@ -127,6 +149,53 @@ router.post(
       branchId: params.branchId,
     });
     return { data: updated };
+  })
+);
+
+const updateBranchBodySchema = z.object({
+  title: z.string().min(1),
+});
+
+router.put(
+  "/chats/:id/branches/:branchId",
+  validate({ params: branchIdParamsSchema, body: updateBranchBodySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string; branchId: string };
+    const body = updateBranchBodySchema.parse(req.body);
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    const updated = await updateChatBranchTitle({
+      chatId: params.id,
+      branchId: params.branchId,
+      title: body.title,
+    });
+    if (!updated) throw new HttpError(404, "Branch не найден", "NOT_FOUND");
+    return { data: updated };
+  })
+);
+
+router.delete(
+  "/chats/:id/branches/:branchId",
+  validate({ params: branchIdParamsSchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string; branchId: string };
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    try {
+      const deleted = await deleteChatBranch({ chatId: params.id, branchId: params.branchId });
+      return { data: deleted };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("последнюю ветку")) {
+        throw new HttpError(400, message, "VALIDATION_ERROR");
+      }
+      if (message.includes("Branch не найден")) {
+        throw new HttpError(404, message, "NOT_FOUND");
+      }
+      throw error;
+    }
   })
 );
 

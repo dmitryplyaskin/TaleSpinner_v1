@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { $isChatStreaming, abortRequested, sendMessageRequested } from '@model/chat-entry-parts';
 import { $userMessage, clearUserMessage, setUserMessage } from '@model/llm-orchestration/user-message';
 
+import { ChatManagementMenu } from './chat-management-menu';
 import { SendActionMenu } from './send-action-menu';
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
@@ -59,7 +60,8 @@ export const MessageInput = () => {
 						},
 					}}
 				/>
-				<Flex justify="flex-end">
+				<Flex justify="space-between" align="center">
+					<ChatManagementMenu />
 					<Flex gap="xs">
 						<SendActionMenu />
 						<Button onClick={handleSendMessage} color={isProcessing ? 'red' : 'cyan'} style={{ whiteSpace: 'nowrap' }}>

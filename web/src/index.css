@@ -160,7 +160,7 @@ a {
   margin: 0 auto;
   height: 100%;
   min-height: 0;
-  padding: 10px 16px 16px;
+  padding: 0 16px;
 }
 
 .ts-chat-scroll {
@@ -220,6 +220,10 @@ a {
   justify-content: flex-end;
 }
 
+.ts-message-avatar-clickable {
+  cursor: zoom-in;
+}
+
 .ts-message-card {
   width: 100%;
   border: 1px solid var(--ts-border-soft);
@@ -263,6 +267,51 @@ a {
   backdrop-filter: blur(8px);
   box-shadow: var(--ts-shadow-soft);
   padding: 10px;
+}
+
+.ts-chat-avatar-preview {
+  width: min(36vw, 360px);
+  max-width: 100%;
+  height: 100vh;
+  min-height: 0;
+  border-right: 1px solid var(--ts-border-soft);
+  background: rgba(250, 252, 253, 0.86);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  position: fixed;
+  top: 0;
+  left: var(--ts-rail-width);
+  bottom: 0;
+  z-index: 8;
+  box-shadow: var(--ts-shadow-strong);
+}
+
+[data-mantine-color-scheme='dark'] .ts-chat-avatar-preview {
+  background: rgba(14, 27, 36, 0.84);
+}
+
+.ts-chat-avatar-preview__header {
+  margin-bottom: 10px;
+}
+
+.ts-chat-avatar-preview__image-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ts-chat-avatar-preview__image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--ts-border-soft);
+  box-shadow: var(--ts-shadow-soft);
 }
 
 .ts-sidebar-toolbar {
@@ -454,7 +503,11 @@ a {
 
 @media (max-width: 1024px) {
   .ts-chat-window__inner {
-    padding: 8px 10px 12px;
+    padding: 0 10px;
+  }
+
+  .ts-chat-avatar-preview {
+    width: min(42vw, 320px);
   }
 
   .ts-sidebar-modal-frame {
@@ -478,6 +531,19 @@ a {
 
   .ts-rail-button-wrap[data-active='true']::before {
     left: -6px;
+  }
+
+  .ts-chat-window__inner {
+    padding: 0 8px;
+  }
+
+  .ts-chat-avatar-preview {
+    position: fixed;
+    top: 0;
+    left: var(--ts-rail-width);
+    bottom: 0;
+    width: min(calc(100vw - var(--ts-rail-width)), 320px);
+    z-index: 8;
   }
 
   .ts-message-grid {

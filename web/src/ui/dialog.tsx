@@ -10,7 +10,7 @@ export interface DialogProps {
 	onOpenChange: (open: boolean) => void;
 	title: string;
 	children: ReactNode;
-	size?: 'sm' | 'md' | 'lg' | 'xl' | 'cover';
+	size?: 'sm' | 'md' | 'lg' | 'xl' | 'cover' | number;
 	footer?: ReactNode;
 	showCloseButton?: boolean;
 	closeOnInteractOutside?: boolean;
