@@ -703,7 +703,8 @@ sample({
 });
 
 doAbort.watch(({ stream, generationId }) => {
-	if (stream) stream.controller.abort();
+	const keepRegenerateStreamOpen = Boolean(stream && stream.mode === 'regenerate' && generationId);
+	if (stream && !keepRegenerateStreamOpen) stream.controller.abort();
 	if (generationId) void abortGenerationFx({ generationId });
 });
 
@@ -904,6 +905,26 @@ export const prepareRegenerateFx = createEffect(async (params: { chatId: string;
 	return { controller, chatId: params.chatId, branchId: params.branchId, entryId: params.entryId, mode: 'regenerate' as const };
 });
 
+function isAbortLikeError(error: unknown): boolean {
+	if (!error) return false;
+	if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+		return error.name === 'AbortError';
+	}
+	if (error instanceof Error) {
+		return error.name === 'AbortError';
+	}
+	return false;
+}
+
+function isVariantTextuallyEmpty(variant: Variant): boolean {
+	const parts = (variant.parts ?? []).filter((p) => !p.softDeleted);
+	if (parts.length === 0) return true;
+	return parts.every((part) => {
+		if (typeof part.payload !== 'string') return false;
+		return part.payload.trim().length === 0;
+	});
+}
+
 sample({
 	clock: regenerateRequested,
 	source: { chat: $currentChat, branchId: $currentBranchId, isStreaming: $isChatStreaming },
@@ -940,17 +961,75 @@ $activeStream.on(prepareRegenerateFx.doneData, (_, prep) => ({
 }));
 
 export const runRegenerateStreamFx = createEffect(async (prep: Awaited<ReturnType<typeof prepareRegenerateFx>>): Promise<void> => {
-	for await (const env of streamRegenerateEntry({
-		entryId: prep.entryId,
-		settings: {},
-		signal: prep.controller.signal,
-	})) {
-		logChatGenerationSseEvent({ scope: 'entry-parts', envelope: env });
-		handleSseEnvelope(env);
-		if (env.type === 'llm.stream.done') break;
+	const baselineVariants = await listEntryVariants(prep.entryId).catch(() => []);
+	const baselineVariantIds = new Set(baselineVariants.map((v) => v.variantId));
+
+	let assistantVariantId: string | null = null;
+	let sawFirstToken = false;
+	let doneStatus: 'done' | 'aborted' | 'error' | null = null;
+	let streamFailed: unknown = null;
+
+	try {
+		for await (const env of streamRegenerateEntry({
+			entryId: prep.entryId,
+			settings: {},
+			signal: prep.controller.signal,
+		})) {
+			logChatGenerationSseEvent({ scope: 'entry-parts', envelope: env });
+			handleSseEnvelope(env);
+
+			if (env.type === 'llm.stream.meta') {
+				const meta = env.data as Record<string, unknown> | null;
+				const variantId = meta && typeof meta.assistantVariantId === 'string' ? meta.assistantVariantId : null;
+				if (variantId) assistantVariantId = variantId;
+			}
+
+			if (env.type === 'llm.stream.delta' || env.type === 'llm.stream.reasoning_delta') {
+				const data = env.data as Record<string, unknown> | null;
+				const content = data && typeof data.content === 'string' ? data.content : '';
+				if (content.length > 0) sawFirstToken = true;
+			}
+
+			if (env.type === 'llm.stream.done') {
+				const data = env.data as Record<string, unknown> | null;
+				const status = data && typeof data.status === 'string' ? data.status : '';
+				if (status === 'done' || status === 'aborted' || status === 'error') doneStatus = status;
+				break;
+			}
+		}
+	} catch (error) {
+		if (isAbortLikeError(error)) {
+			doneStatus = 'aborted';
+		} else {
+			streamFailed = error;
+		}
 	}
+
+	// User aborted before first token: remove empty regeneration variant automatically.
+	if (doneStatus === 'aborted' && !sawFirstToken) {
+		const cleanupCandidates: string[] = [];
+		if (assistantVariantId) cleanupCandidates.push(assistantVariantId);
+
+		const currentVariants = await listEntryVariants(prep.entryId).catch(() => []);
+		for (const variant of currentVariants) {
+			if (baselineVariantIds.has(variant.variantId)) continue;
+			if (!isVariantTextuallyEmpty(variant)) continue;
+			cleanupCandidates.push(variant.variantId);
+		}
+
+		for (const variantId of Array.from(new Set(cleanupCandidates))) {
+			try {
+				await deleteEntryVariant({ entryId: prep.entryId, variantId });
+			} catch {
+				// Ignore cleanup errors; canonical reload below keeps UI consistent.
+			}
+		}
+	}
+
 	await loadEntriesFx({ chatId: prep.chatId, branchId: prep.branchId });
 	loadVariantsRequested({ entryId: prep.entryId });
+
+	if (streamFailed) throw streamFailed;
 });
 
 sample({ clock: prepareRegenerateFx.doneData, target: runRegenerateStreamFx });

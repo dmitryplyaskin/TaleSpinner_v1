@@ -89,6 +89,12 @@ export async function runMainLlmPhase(params: {
       }
     }
 
+    // Stream may end without yielding chunks after abort (provider "done:aborted").
+    // Treat this as aborted instead of successful completion.
+    if (params.abortController.signal.aborted) {
+      return { status: "aborted", message: "aborted" };
+    }
+
     return { status: "done" };
   } finally {
     closed = true;

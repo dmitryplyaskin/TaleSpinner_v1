@@ -88,6 +88,11 @@ function mapRunStatusToStreamDoneStatus(status: "done" | "failed" | "aborted" | 
   return "error";
 }
 
+type RunProxySummary = {
+  runStatus: "done" | "failed" | "aborted" | "error" | null;
+  sawTextDelta: boolean;
+};
+
 async function proxyRunEventsToSse(params: {
   sse: SseWriter;
   events: AsyncGenerator<RunEvent>;
@@ -95,8 +100,12 @@ async function proxyRunEventsToSse(params: {
   reqClosed: () => boolean;
   abortController: AbortController;
   onGenerationId: (generationId: string) => void;
-}): Promise<void> {
+}): Promise<RunProxySummary> {
   let generationId: string | null = null;
+  const summary: RunProxySummary = {
+    runStatus: null,
+    sawTextDelta: false,
+  };
 
   for await (const evt of params.events) {
     if (evt.type === "run.started") {
@@ -121,6 +130,7 @@ async function proxyRunEventsToSse(params: {
     params.sse.send(evt.type, eventEnvelope);
 
     if (evt.type === "main_llm.delta") {
+      if (evt.data.content.length > 0) summary.sawTextDelta = true;
       params.sse.send("llm.stream.delta", {
         ...params.envBase,
         generationId: eventGenerationId,
@@ -130,6 +140,7 @@ async function proxyRunEventsToSse(params: {
     }
 
     if (evt.type === "main_llm.reasoning_delta") {
+      if (evt.data.content.length > 0) summary.sawTextDelta = true;
       params.sse.send("llm.stream.reasoning_delta", {
         ...params.envBase,
         generationId: eventGenerationId,
@@ -149,6 +160,7 @@ async function proxyRunEventsToSse(params: {
     }
 
     if (evt.type === "run.finished") {
+      summary.runStatus = evt.data.status;
       params.sse.send("llm.stream.done", {
         ...params.envBase,
         generationId: eventGenerationId,
@@ -165,6 +177,8 @@ async function proxyRunEventsToSse(params: {
       break;
     }
   }
+
+  return summary;
 }
 
 export function resolveContinueUserTurnTarget(params: {
@@ -231,6 +245,31 @@ async function createAssistantReasoningPart(params: {
     source: "llm",
     requestId: params.requestId,
   });
+}
+
+function isVariantTextuallyEmpty(variant: Variant): boolean {
+  const parts = (variant.parts ?? []).filter((part) => !part.softDeleted);
+  if (parts.length === 0) return true;
+
+  return parts.every((part) => {
+    if (typeof part.payload !== "string") return false;
+    return part.payload.trim().length === 0;
+  });
+}
+
+async function cleanupEmptyGenerationVariants(entryId: string): Promise<void> {
+  let variants = await listEntryVariants({ entryId });
+  for (const variant of variants) {
+    if (variants.length <= 1) break;
+    if (variant.kind !== "generation") continue;
+    if (!isVariantTextuallyEmpty(variant)) continue;
+    try {
+      await deleteVariant({ entryId, variantId: variant.variantId });
+    } catch {
+      // best-effort cleanup; ignore failures for this variant
+    }
+    variants = variants.filter((v) => v.variantId !== variant.variantId);
+  }
 }
 
 const listEntriesQuerySchema = z.object({
@@ -413,6 +452,7 @@ router.post(
           },
         }),
       });
+
     } finally {
       sse.close();
     }
@@ -541,6 +581,7 @@ router.post(
           },
         }),
       });
+
     } finally {
       sse.close();
     }
@@ -635,7 +676,7 @@ router.post(
         assistantMainPartId: assistantMainPart.partId,
         assistantReasoningPartId: assistantReasoningPart.partId,
       };
-      await proxyRunEventsToSse({
+      const runSummary = await proxyRunEventsToSse({
         sse,
         envBase,
         reqClosed: () => reqClosed,
@@ -659,6 +700,10 @@ router.post(
           },
         }),
       });
+
+      // Always run best-effort cleanup for empty generation variants.
+      // This removes both the current aborted-empty variant and older empty leftovers.
+      await cleanupEmptyGenerationVariants(entry.entryId);
     } finally {
       sse.close();
     }
