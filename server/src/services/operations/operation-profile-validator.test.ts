@@ -63,6 +63,25 @@ function makeLlmOperation(
   };
 }
 
+function makeExampleJsonSchemaSpec() {
+  return {
+    project_name: "string: Название проекта",
+    budget: "number: Бюджет в долларах",
+    "is_active?": "boolean: Активен ли проект",
+    team: {
+      leader: "string: Имя тимлида",
+      members_count: 10,
+    },
+    tasks: [
+      {
+        id: "number: ID задачи",
+        title: "string: Заголовок задачи",
+        "tags?": ["string: тег"],
+      },
+    ],
+  };
+}
+
 describe("operation profile validator hardening", () => {
   test("rejects prompt_time when before_main_llm hook is absent", () => {
     const input = makeBaseInput();
@@ -316,5 +335,188 @@ describe("operation profile validator hardening", () => {
     ];
 
     expect(() => validateOperationProfileUpsertInput(input)).toThrow(/LLM system template не компилируется/);
+  });
+
+  test("accepts llm strict JSON schema config", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              strictSchemaValidation: true,
+              jsonSchema: makeExampleJsonSchemaSpec(),
+            },
+          },
+        },
+      }),
+    ];
+
+    const out = validateOperationProfileUpsertInput(input);
+    expect(out.operations[0]?.kind).toBe("llm");
+  });
+
+  test("rejects llm strict schema validation without json output mode", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "text",
+              strictSchemaValidation: true,
+              jsonSchema: makeExampleJsonSchemaSpec(),
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(
+      /strictSchemaValidation requires outputMode=json/
+    );
+  });
+
+  test("rejects llm strict schema validation without schema", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              strictSchemaValidation: true,
+              jsonSchema: undefined,
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(
+      /strictSchemaValidation requires jsonSchema/
+    );
+  });
+
+  test("rejects invalid llm json schema descriptor", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              strictSchemaValidation: true,
+              jsonSchema: {
+                title: "str: unsupported type",
+              },
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/LLM jsonSchema не валидна/);
+  });
+
+  test("accepts llm json parse mode markdown_code_block", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              jsonParseMode: "markdown_code_block",
+            },
+          },
+        },
+      }),
+    ];
+
+    const out = validateOperationProfileUpsertInput(input);
+    expect(out.operations[0]?.kind).toBe("llm");
+  });
+
+  test("rejects jsonParseMode when outputMode is not json", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "text",
+              jsonParseMode: "markdown_code_block",
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
+  });
+
+  test("rejects custom_regex parse mode without pattern", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              jsonParseMode: "custom_regex",
+              jsonCustomPattern: undefined,
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
+  });
+
+  test("rejects custom_regex parse mode with invalid flags", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "json",
+              jsonParseMode: "custom_regex",
+              jsonCustomPattern: "<result>([\\s\\S]*?)</result>",
+              jsonCustomFlags: "x",
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
   });
 });

@@ -5,6 +5,7 @@ import type { OperationInProfile } from "@shared/types/operation-profiles";
 import { renderLiquidTemplate, type PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
 import { buildGatewayStreamRequest } from "../../llm/llm-gateway-adapter";
 import { getProviderConfig, getTokenPlaintext } from "../../llm/llm-repository";
+import { compileLlmJsonSchemaSpec } from "../../operations/llm-json-schema-spec";
 import { parseLlmOperationParams } from "../../operations/llm-operation-params";
 
 type LlmOperation = Extract<OperationInProfile, { kind: "llm" }>;
@@ -132,14 +133,78 @@ async function sleepWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-function normalizeOutputByMode(text: string, mode: "text" | "json"): string {
-  if (mode === "text") return text;
+function parseJsonOutput(text: string): unknown {
   try {
-    return JSON.stringify(JSON.parse(text));
+    return JSON.parse(text);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw createCodedError("LLM_OUTPUT_PARSE_ERROR", `Failed to parse JSON output: ${message}`);
   }
+}
+
+function extractJsonTextByMode(params: {
+  text: string;
+  mode: "raw" | "markdown_code_block" | "custom_regex";
+  customPattern?: string;
+  customFlags?: string;
+}): string {
+  const raw = params.text.trim();
+  if (params.mode === "raw") return raw;
+
+  if (params.mode === "markdown_code_block") {
+    const match = raw.match(/```(?:json|JSON)?\s*([\s\S]*?)```/);
+    if (!match || typeof match[1] !== "string") {
+      throw createCodedError(
+        "LLM_OUTPUT_EXTRACT_ERROR",
+        "Failed to extract JSON from markdown code block"
+      );
+    }
+    return match[1].trim();
+  }
+
+  if (!params.customPattern) {
+    throw createCodedError(
+      "LLM_OUTPUT_EXTRACT_ERROR",
+      "jsonCustomPattern is required for custom_regex mode"
+    );
+  }
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(params.customPattern, params.customFlags);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw createCodedError("LLM_OUTPUT_EXTRACT_ERROR", `Invalid custom regex: ${message}`);
+  }
+
+  const match = raw.match(regex);
+  if (!match) {
+    throw createCodedError(
+      "LLM_OUTPUT_EXTRACT_ERROR",
+      "Custom regex did not match LLM output"
+    );
+  }
+
+  const firstCaptured = match.slice(1).find((part) => typeof part === "string");
+  const extracted = typeof firstCaptured === "string" ? firstCaptured : match[0];
+  return extracted.trim();
+}
+
+function normalizeOutputByMode(
+  text: string,
+  mode: "text" | "json",
+  jsonParseMode: "raw" | "markdown_code_block" | "custom_regex",
+  jsonCustomPattern?: string,
+  jsonCustomFlags?: string
+): string {
+  if (mode === "text") return text;
+  const extracted = extractJsonTextByMode({
+    text,
+    mode: jsonParseMode,
+    customPattern: jsonCustomPattern,
+    customFlags: jsonCustomFlags,
+  });
+  return JSON.stringify(parseJsonOutput(extracted));
 }
 
 function toRetryReason(code: string): "timeout" | "provider_error" | "rate_limit" | null {
@@ -235,6 +300,7 @@ export async function executeLlmOperation(params: {
 
   let renderedPrompt = "";
   let renderedSystem = "";
+  let parsedJsonOutputSchema: ReturnType<typeof compileLlmJsonSchemaSpec> | null = null;
   try {
     renderedPrompt = String(
       await renderLiquidTemplate({
@@ -255,6 +321,27 @@ export async function executeLlmOperation(params: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw createCodedError("LLM_TEMPLATE_RENDER_ERROR", message);
+  }
+
+  if (llmParams.strictSchemaValidation) {
+    if (llmParams.outputMode !== "json") {
+      throw createCodedError(
+        "LLM_INVALID_PARAMS",
+        "strictSchemaValidation is supported only when outputMode is json"
+      );
+    }
+    if (typeof llmParams.jsonSchema === "undefined") {
+      throw createCodedError(
+        "LLM_INVALID_PARAMS",
+        "strictSchemaValidation requires jsonSchema"
+      );
+    }
+    try {
+      parsedJsonOutputSchema = compileLlmJsonSchemaSpec(llmParams.jsonSchema);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw createCodedError("LLM_INVALID_PARAMS", `Invalid jsonSchema: ${message}`);
+    }
   }
 
   let token: string | null = null;
@@ -300,7 +387,28 @@ export async function executeLlmOperation(params: {
         abortSignal: params.abortSignal,
         timeoutMs: llmParams.timeoutMs,
       });
-      const rendered = normalizeOutputByMode(text, llmParams.outputMode);
+      let rendered = normalizeOutputByMode(
+        text,
+        llmParams.outputMode,
+        llmParams.jsonParseMode,
+        llmParams.jsonCustomPattern,
+        llmParams.jsonCustomFlags
+      );
+      if (llmParams.outputMode === "json" && parsedJsonOutputSchema && llmParams.strictSchemaValidation) {
+        const parsedJson = parseJsonOutput(rendered);
+        const result = parsedJsonOutputSchema.safeParse(parsedJson);
+        if (!result.success) {
+          const firstIssue = result.error.issues[0];
+          const issuePath = firstIssue?.path?.length
+            ? firstIssue.path.join(".")
+            : "$";
+          throw createCodedError(
+            "LLM_OUTPUT_SCHEMA_ERROR",
+            `JSON schema validation failed at ${issuePath}: ${firstIssue?.message ?? "invalid output"}`
+          );
+        }
+        rendered = JSON.stringify(result.data);
+      }
       return {
         rendered,
         debugSummary: `llm:${llmParams.outputMode}:${rendered.length}:attempts=${attempt + 1}`,

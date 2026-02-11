@@ -65,6 +65,11 @@ function makeLlmOp(params: {
   hooks?: LlmOp["config"]["hooks"];
   dependsOn?: string[];
   outputMode?: "text" | "json";
+  jsonParseMode?: "raw" | "markdown_code_block" | "custom_regex";
+  jsonCustomPattern?: string;
+  jsonCustomFlags?: string;
+  strictSchemaValidation?: boolean;
+  jsonSchema?: unknown;
   timeoutMs?: number;
   retry?: { maxAttempts: number; backoffMs?: number; retryOn?: Array<"timeout" | "provider_error" | "rate_limit"> };
 }): LlmOp {
@@ -85,6 +90,11 @@ function makeLlmOp(params: {
           credentialRef: "token-1",
           prompt: params.prompt,
           outputMode: params.outputMode,
+          jsonParseMode: params.jsonParseMode,
+          jsonCustomPattern: params.jsonCustomPattern,
+          jsonCustomFlags: params.jsonCustomFlags,
+          strictSchemaValidation: params.strictSchemaValidation,
+          jsonSchema: params.jsonSchema,
           timeoutMs: params.timeoutMs,
           retry: params.retry,
         },
@@ -671,6 +681,320 @@ describe("executeOperationsPhase", () => {
 
     expect(out[0]?.status).toBe("error");
     expect(out[0]?.error?.code).toBe("LLM_OUTPUT_PARSE_ERROR");
+  });
+
+  test("json parse mode markdown_code_block extracts JSON from fenced block", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "```json\n{\"alpha\":1}\n```" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-md",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-md",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "markdown_code_block",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      value: "{\"alpha\":1}",
+    });
+  });
+
+  test("json parse mode markdown_code_block fails when fenced block is missing", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "{\"alpha\":1}" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-md-missing",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-md-missing",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "markdown_code_block",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_OUTPUT_EXTRACT_ERROR");
+  });
+
+  test("json parse mode custom_regex extracts JSON by capture group", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "<result>{\"alpha\":1,\"ok\":true}</result>" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-custom",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-custom",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "custom_regex",
+          jsonCustomPattern: "<result>([\\s\\S]*?)</result>",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      value: "{\"alpha\":1,\"ok\":true}",
+    });
+  });
+
+  test("json parse mode custom_regex uses full match when no capture groups are provided", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "prefix {\"alpha\":1,\"ok\":true} suffix" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-custom-fullmatch",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-custom-fullmatch",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "custom_regex",
+          jsonCustomPattern: "\\{[\\s\\S]*\\}",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      value: "{\"alpha\":1,\"ok\":true}",
+    });
+  });
+
+  test("json parse mode custom_regex fails when pattern does not match", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "no wrapper here" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-custom-fail",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-custom-fail",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "custom_regex",
+          jsonCustomPattern: "<result>([\\s\\S]*?)</result>",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_OUTPUT_EXTRACT_ERROR");
+  });
+
+  test("json parse mode custom_regex fails for invalid regex pattern at runtime", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "{\"alpha\":1}" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-custom-invalid-pattern",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-custom-invalid-pattern",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          jsonParseMode: "custom_regex",
+          jsonCustomPattern: "(",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_OUTPUT_EXTRACT_ERROR");
+  });
+
+  test("strict json schema validation passes for matching output", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        {
+          type: "delta",
+          text: '{"project_name":"A","budget":100,"team":{"leader":"Lead","members_count":2},"tasks":[{"id":1,"title":"T"}]}',
+        },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-schema-ok",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-schema-ok",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          strictSchemaValidation: true,
+          jsonSchema: {
+            project_name: "string: Название проекта",
+            budget: "number: Бюджет",
+            team: {
+              leader: "string: Имя тимлида",
+              members_count: 10,
+            },
+            tasks: [
+              {
+                id: "number: ID задачи",
+                title: "string: Заголовок",
+              },
+            ],
+          },
+          output: artifactOutput("llm_json_schema"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      tag: "llm_json_schema",
+    });
+  });
+
+  test("strict json schema validation fails for non-matching output", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        {
+          type: "delta",
+          text: '{"project_name":"A","team":{"leader":"Lead","members_count":2},"tasks":[{"id":1,"title":"T"}]}',
+        },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-schema-fail",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-schema-fail",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          strictSchemaValidation: true,
+          jsonSchema: {
+            project_name: "string: Название проекта",
+            budget: "number: Бюджет",
+            team: {
+              leader: "string: Имя тимлида",
+              members_count: 10,
+            },
+            tasks: [
+              {
+                id: "number: ID задачи",
+                title: "string: Заголовок",
+              },
+            ],
+          },
+          output: artifactOutput("llm_json_schema"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_OUTPUT_SCHEMA_ERROR");
   });
 
   test("retries llm call on provider_error and succeeds on second attempt", async () => {

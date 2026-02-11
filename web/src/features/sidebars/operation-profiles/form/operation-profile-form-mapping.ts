@@ -28,6 +28,11 @@ export type FormLlmKindParams = {
 	prompt: string;
 	strictVariables: boolean;
 	outputMode: 'text' | 'json';
+	jsonParseMode: 'raw' | 'markdown_code_block' | 'custom_regex';
+	jsonCustomPattern: string;
+	jsonCustomFlags: string;
+	jsonSchemaText: string;
+	strictSchemaValidation: boolean;
 	samplerPresetId: string;
 	samplers: LlmOperationSamplers;
 	timeoutMs: number;
@@ -87,6 +92,11 @@ export function makeDefaultLlmKindParams(
 		prompt: '',
 		strictVariables: false,
 		outputMode: 'text',
+		jsonParseMode: 'raw',
+		jsonCustomPattern: '',
+		jsonCustomFlags: '',
+		jsonSchemaText: '',
+		strictSchemaValidation: false,
 		samplerPresetId: '',
 		samplers: {},
 		timeoutMs: 60000,
@@ -194,6 +204,10 @@ function normalizeLlmKindParams(params: unknown): FormLlmKindParams {
 	const base = makeDefaultLlmKindParams(output);
 	const providerId = llmParamsRaw.providerId === 'openai_compatible' ? 'openai_compatible' : 'openrouter';
 	const outputMode = llmParamsRaw.outputMode === 'json' ? 'json' : 'text';
+	const jsonParseMode =
+		llmParamsRaw.jsonParseMode === 'markdown_code_block' || llmParamsRaw.jsonParseMode === 'custom_regex'
+			? llmParamsRaw.jsonParseMode
+			: 'raw';
 	const retryRaw = llmParamsRaw.retry && typeof llmParamsRaw.retry === 'object' ? llmParamsRaw.retry : {};
 
 	return {
@@ -206,6 +220,14 @@ function normalizeLlmKindParams(params: unknown): FormLlmKindParams {
 		prompt: typeof llmParamsRaw.prompt === 'string' ? llmParamsRaw.prompt : '',
 		strictVariables: llmParamsRaw.strictVariables === true,
 		outputMode,
+		jsonParseMode,
+		jsonCustomPattern: typeof llmParamsRaw.jsonCustomPattern === 'string' ? llmParamsRaw.jsonCustomPattern : '',
+		jsonCustomFlags: typeof llmParamsRaw.jsonCustomFlags === 'string' ? llmParamsRaw.jsonCustomFlags : '',
+		jsonSchemaText:
+			typeof llmParamsRaw.jsonSchema === 'undefined'
+				? ''
+				: JSON.stringify(llmParamsRaw.jsonSchema, null, 2),
+		strictSchemaValidation: llmParamsRaw.strictSchemaValidation === true,
 		samplerPresetId: typeof llmParamsRaw.samplerPresetId === 'string' ? llmParamsRaw.samplerPresetId : '',
 		samplers: pickNumericSamplers(llmParamsRaw.samplers),
 		timeoutMs:
@@ -303,6 +325,9 @@ export function fromOperationProfileForm(
 				const model = params.model.trim();
 				const system = params.system.trim();
 				const samplerPresetId = params.samplerPresetId.trim();
+				const jsonCustomPattern = params.jsonCustomPattern.trim();
+				const jsonCustomFlags = params.jsonCustomFlags.trim();
+				const jsonSchemaText = params.jsonSchemaText.trim();
 				const timeoutMs = Number.isFinite(params.timeoutMs) ? Math.max(1, Math.floor(params.timeoutMs)) : undefined;
 				const retryMaxAttempts = Number.isFinite(params.retry.maxAttempts)
 					? Math.max(1, Math.floor(params.retry.maxAttempts))
@@ -313,6 +338,15 @@ export function fromOperationProfileForm(
 				const retryOn = normalizeRetryOn(params.retry.retryOn);
 				const samplers = pickNumericSamplers(params.samplers);
 				const hasSamplers = Object.keys(samplers).length > 0;
+				let parsedJsonSchema: unknown = undefined;
+				if (jsonSchemaText.length > 0) {
+					try {
+						parsedJsonSchema = JSON.parse(jsonSchemaText) as unknown;
+					} catch (error) {
+						if (options?.validateJson) throw error;
+						parsedJsonSchema = undefined;
+					}
+				}
 
 				return {
 					opId: op.opId,
@@ -335,6 +369,17 @@ export function fromOperationProfileForm(
 								prompt: params.prompt,
 								strictVariables: params.strictVariables ? true : undefined,
 								outputMode: params.outputMode,
+								jsonParseMode: params.outputMode === 'json' ? params.jsonParseMode : undefined,
+								jsonCustomPattern:
+									params.outputMode === 'json' && params.jsonParseMode === 'custom_regex' && jsonCustomPattern.length > 0
+										? jsonCustomPattern
+										: undefined,
+								jsonCustomFlags:
+									params.outputMode === 'json' && params.jsonParseMode === 'custom_regex' && jsonCustomFlags.length > 0
+										? jsonCustomFlags
+										: undefined,
+								jsonSchema: typeof parsedJsonSchema === 'undefined' ? undefined : parsedJsonSchema,
+								strictSchemaValidation: params.strictSchemaValidation ? true : undefined,
 								samplerPresetId: samplerPresetId.length > 0 ? samplerPresetId : undefined,
 								samplers: hasSamplers ? samplers : undefined,
 								timeoutMs,

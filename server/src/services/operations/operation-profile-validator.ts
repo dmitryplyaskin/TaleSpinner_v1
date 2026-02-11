@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
 import { validateLiquidTemplate } from "../chat-core/prompt-template-renderer";
+import { compileLlmJsonSchemaSpec } from "./llm-json-schema-spec";
 import { llmOperationParamsSchema } from "./llm-operation-params";
 
 import type {
@@ -336,6 +337,37 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
           throw new HttpError(
             400,
             `LLM system template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+            "VALIDATION_ERROR",
+            { opId: op.opId }
+          );
+        }
+      }
+
+      if (llmParams.strictSchemaValidation && llmParams.outputMode !== "json") {
+        throw new HttpError(
+          400,
+          "LLM strictSchemaValidation requires outputMode=json",
+          "VALIDATION_ERROR",
+          { opId: op.opId }
+        );
+      }
+
+      if (llmParams.strictSchemaValidation && typeof llmParams.jsonSchema === "undefined") {
+        throw new HttpError(
+          400,
+          "LLM strictSchemaValidation requires jsonSchema",
+          "VALIDATION_ERROR",
+          { opId: op.opId }
+        );
+      }
+
+      if (typeof llmParams.jsonSchema !== "undefined") {
+        try {
+          compileLlmJsonSchemaSpec(llmParams.jsonSchema);
+        } catch (error) {
+          throw new HttpError(
+            400,
+            `LLM jsonSchema не валидна: ${error instanceof Error ? error.message : String(error)}`,
             "VALIDATION_ERROR",
             { opId: op.opId }
           );

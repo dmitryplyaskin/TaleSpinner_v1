@@ -96,6 +96,7 @@ export type OperationTemplateParams = {
 };
 
 export type LlmOperationRetryOn = "timeout" | "provider_error" | "rate_limit";
+export type LlmJsonParseMode = "raw" | "markdown_code_block" | "custom_regex";
 
 export type LlmOperationSamplers = {
   temperature?: number;
@@ -121,6 +122,11 @@ export type LlmOperationParams = {
   prompt: string;
   strictVariables?: boolean;
   outputMode?: "text" | "json";
+  jsonSchema?: unknown;
+  strictSchemaValidation?: boolean;
+  jsonParseMode?: LlmJsonParseMode;
+  jsonCustomPattern?: string;
+  jsonCustomFlags?: string;
   samplerPresetId?: string;
   samplers?: LlmOperationSamplers;
   timeoutMs?: number;
