@@ -308,6 +308,46 @@ describe("runChatGenerationV3", () => {
     await consume;
   });
 
+  test("passes operation.finished result payload through run events", async () => {
+    mocks.executeOperationsPhase.mockImplementation(async (params: any) => {
+      if (params.hook === "before_main_llm") {
+        params.onOperationFinished?.({
+          hook: "before_main_llm",
+          opId: "op-with-result",
+          name: "Op with result",
+          status: "done",
+          result: {
+            effects: [{ type: "artifact.upsert", opId: "op-with-result", tag: "x", value: "ok" }],
+            debugSummary: "artifact.upsert:2",
+          },
+        });
+      }
+      return [];
+    });
+    mocks.commitEffectsPhase.mockImplementation(async (params: any) => ({
+      report: { hook: params.hook, status: "done", effects: [] },
+      requiredError: false,
+    }));
+    mocks.runMainLlmPhase.mockResolvedValue({ status: "done" });
+
+    const events: any[] = [];
+    for await (const evt of runChatGenerationV3(makeRequest())) {
+      events.push(evt);
+    }
+
+    const finished = events.find(
+      (evt) => evt.type === "operation.finished" && evt.data?.opId === "op-with-result"
+    );
+    expect(finished?.data?.status).toBe("done");
+    expect(finished?.data?.result?.debugSummary).toBe("artifact.upsert:2");
+    expect(finished?.data?.result?.effects?.[0]).toMatchObject({
+      type: "artifact.upsert",
+      opId: "op-with-result",
+      tag: "x",
+      value: "ok",
+    });
+  });
+
   test("streams main_llm.reasoning_delta while main phase is running", async () => {
     const mainGate = deferred<void>();
     mocks.executeOperationsPhase.mockResolvedValue([]);

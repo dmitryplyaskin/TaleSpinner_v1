@@ -1,17 +1,21 @@
 import { runOrchestrator } from "@core/operation-orchestrator";
-import type { OperationHook, OperationInProfile, OperationTrigger } from "@shared/types/operation-profiles";
+
 
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
-import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
-import type { TaskResult } from "../../../core/operation-orchestrator/types";
 import {
   mapOperationOutputToEffectType,
+  type OperationFinishedEventData,
   type OperationExecutionResult,
   type PromptDraftMessage,
   type RuntimeEffect,
 } from "../contracts";
+
 import { applyPromptEffect } from "./effect-handlers/prompt-effects";
 import { executeLlmOperation } from "./llm-operation-executor";
+
+import type { TaskResult } from "../../../core/operation-orchestrator/types";
+import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
+import type { OperationHook, OperationInProfile, OperationTrigger } from "@shared/types/operation-profiles";
 
 type PreviewState = {
   messages: PromptDraftMessage[];
@@ -271,14 +275,7 @@ export async function executeOperationsPhase(params: {
   templateContext: PromptTemplateRenderContext;
   abortSignal?: AbortSignal;
   onOperationStarted?: (data: { hook: OperationHook; opId: string; name: string }) => void;
-  onOperationFinished?: (data: {
-    hook: OperationHook;
-    opId: string;
-    name: string;
-    status: "done" | "skipped" | "error" | "aborted";
-    skipReason?: string;
-    error?: { code: string; message: string };
-  }) => void;
+  onOperationFinished?: (data: OperationFinishedEventData) => void;
   onTemplateDebug?: (data: {
     hook: OperationHook;
     opId: string;
@@ -316,6 +313,7 @@ export async function executeOperationsPhase(params: {
   );
 
   const effectsByOpId = new Map<string, RuntimeEffect[]>();
+  const taskResultByOpId = new Map<string, NonNullable<OperationFinishedEventData["result"]>>();
   const baseState: PreviewState = {
     messages: params.baseMessages.map((m) => ({ ...m })),
     artifacts: Object.fromEntries(
@@ -385,6 +383,12 @@ export async function executeOperationsPhase(params: {
           }
           const effects: RuntimeEffect[] = [effect];
           effectsByOpId.set(op.opId, effects);
+          taskResultByOpId.set(op.opId, {
+            effects,
+            debugSummary:
+              debugSummary ??
+              `${mapOperationOutputToEffectType(op.config.params.output)}:${resolvedRendered.length}`,
+          });
           return {
             effects,
             debugSummary:
@@ -405,11 +409,16 @@ export async function executeOperationsPhase(params: {
         if (evt.type === "orch.task.finished") {
           const op = executableOps.find((item) => item.opId === evt.data.taskId);
           if (!op) return;
+          const result =
+            evt.data.status === "done"
+              ? taskResultByOpId.get(op.opId)
+              : undefined;
           params.onOperationFinished?.({
             hook: params.hook,
             opId: op.opId,
             name: op.name,
             status: evt.data.status,
+            result,
           });
           return;
         }

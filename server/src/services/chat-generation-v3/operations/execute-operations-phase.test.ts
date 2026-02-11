@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { OperationInProfile, OperationOutput } from "@shared/types/operation-profiles";
+import { executeOperationsPhase } from "./execute-operations-phase";
 
 import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
-import { executeOperationsPhase } from "./execute-operations-phase";
+import type { OperationInProfile, OperationOutput } from "@shared/types/operation-profiles";
+
 
 const mocks = vi.hoisted(() => ({
   llmGatewayStream: vi.fn(),
@@ -243,6 +244,49 @@ describe("executeOperationsPhase", () => {
       tag: "greeting",
       value: "hello",
     });
+  });
+
+  test("emits operation.finished with operation result payload", async () => {
+    const finishedEvents = collectEvents<{
+      opId: string;
+      status: string;
+      result?: { effects: Array<{ type: string; tag?: string; value?: string }>; debugSummary?: string };
+    }>();
+
+    await executeOperationsPhase({
+      runId: "run-1-finished-payload",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeTemplateOp({
+          opId: "a",
+          order: 10,
+          template: "hello",
+          output: artifactOutput("greeting"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+      onOperationFinished: (event) => {
+        finishedEvents.push({
+          opId: event.opId,
+          status: event.status,
+          result: event.result as any,
+        });
+      },
+    });
+
+    const finished = finishedEvents.items.find((event) => event.opId === "a");
+    expect(finished?.status).toBe("done");
+    expect(finished?.result?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      tag: "greeting",
+      value: "hello",
+    });
+    expect(finished?.result?.debugSummary).toBe("artifact.upsert:5");
   });
 
   test("replays dependency artifacts for A->B chain", async () => {

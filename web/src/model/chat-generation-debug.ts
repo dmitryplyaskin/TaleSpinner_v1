@@ -1,3 +1,5 @@
+import { createEvent, createStore } from 'effector';
+
 import { isAppDebugEnabled } from './app-debug';
 
 type SseEnvelopeLike = {
@@ -31,6 +33,150 @@ type RunStats = {
 		reasoningChars: number;
 	};
 };
+
+export type ChatGenerationLogFilterId =
+	| 'runLifecycle'
+	| 'operationStarted'
+	| 'operationFinished'
+	| 'operationCommits'
+	| 'mainLlmLifecycle'
+	| 'streamText'
+	| 'streamReasoning'
+	| 'streamMeta'
+	| 'streamDone'
+	| 'streamErrors'
+	| 'debugSnapshots'
+	| 'templateDebug'
+	| 'other';
+
+export type ChatGenerationLogFilters = Record<ChatGenerationLogFilterId, boolean>;
+
+export type ChatGenerationLogFilterDefinition = {
+	id: ChatGenerationLogFilterId;
+	labelKey: string;
+	descriptionKey: string;
+};
+
+const CHAT_GENERATION_DEBUG_LOG_FILTERS_STORAGE_KEY = 'chat_generation_debug_log_filters_v1';
+
+const CHAT_GENERATION_LOG_FILTER_IDS: ChatGenerationLogFilterId[] = [
+	'runLifecycle',
+	'operationStarted',
+	'operationFinished',
+	'operationCommits',
+	'mainLlmLifecycle',
+	'streamText',
+	'streamReasoning',
+	'streamMeta',
+	'streamDone',
+	'streamErrors',
+	'debugSnapshots',
+	'templateDebug',
+	'other',
+];
+
+const CHAT_GENERATION_LOG_FILTER_ID_SET = new Set<ChatGenerationLogFilterId>(CHAT_GENERATION_LOG_FILTER_IDS);
+
+const DEFAULT_CHAT_GENERATION_LOG_FILTERS: ChatGenerationLogFilters = {
+	runLifecycle: true,
+	operationStarted: true,
+	operationFinished: true,
+	operationCommits: true,
+	mainLlmLifecycle: true,
+	streamText: true,
+	streamReasoning: true,
+	streamMeta: true,
+	streamDone: true,
+	streamErrors: true,
+	debugSnapshots: true,
+	templateDebug: true,
+	other: true,
+};
+
+const OPERATION_AND_SNAPSHOTS_PRESET: ChatGenerationLogFilters = {
+	runLifecycle: true,
+	operationStarted: false,
+	operationFinished: true,
+	operationCommits: false,
+	mainLlmLifecycle: false,
+	streamText: false,
+	streamReasoning: false,
+	streamMeta: false,
+	streamDone: false,
+	streamErrors: true,
+	debugSnapshots: true,
+	templateDebug: false,
+	other: false,
+};
+
+export const CHAT_GENERATION_LOG_FILTER_DEFINITIONS: ChatGenerationLogFilterDefinition[] = [
+	{
+		id: 'runLifecycle',
+		labelKey: 'appSettings.debug.logs.runLifecycle.label',
+		descriptionKey: 'appSettings.debug.logs.runLifecycle.description',
+	},
+	{
+		id: 'operationStarted',
+		labelKey: 'appSettings.debug.logs.operationStarted.label',
+		descriptionKey: 'appSettings.debug.logs.operationStarted.description',
+	},
+	{
+		id: 'operationFinished',
+		labelKey: 'appSettings.debug.logs.operationFinished.label',
+		descriptionKey: 'appSettings.debug.logs.operationFinished.description',
+	},
+	{
+		id: 'operationCommits',
+		labelKey: 'appSettings.debug.logs.operationCommits.label',
+		descriptionKey: 'appSettings.debug.logs.operationCommits.description',
+	},
+	{
+		id: 'mainLlmLifecycle',
+		labelKey: 'appSettings.debug.logs.mainLlmLifecycle.label',
+		descriptionKey: 'appSettings.debug.logs.mainLlmLifecycle.description',
+	},
+	{
+		id: 'streamText',
+		labelKey: 'appSettings.debug.logs.streamText.label',
+		descriptionKey: 'appSettings.debug.logs.streamText.description',
+	},
+	{
+		id: 'streamReasoning',
+		labelKey: 'appSettings.debug.logs.streamReasoning.label',
+		descriptionKey: 'appSettings.debug.logs.streamReasoning.description',
+	},
+	{
+		id: 'streamMeta',
+		labelKey: 'appSettings.debug.logs.streamMeta.label',
+		descriptionKey: 'appSettings.debug.logs.streamMeta.description',
+	},
+	{
+		id: 'streamDone',
+		labelKey: 'appSettings.debug.logs.streamDone.label',
+		descriptionKey: 'appSettings.debug.logs.streamDone.description',
+	},
+	{
+		id: 'streamErrors',
+		labelKey: 'appSettings.debug.logs.streamErrors.label',
+		descriptionKey: 'appSettings.debug.logs.streamErrors.description',
+	},
+	{
+		id: 'debugSnapshots',
+		labelKey: 'appSettings.debug.logs.debugSnapshots.label',
+		descriptionKey: 'appSettings.debug.logs.debugSnapshots.description',
+	},
+	{
+		id: 'templateDebug',
+		labelKey: 'appSettings.debug.logs.templateDebug.label',
+		descriptionKey: 'appSettings.debug.logs.templateDebug.description',
+	},
+	{
+		id: 'other',
+		labelKey: 'appSettings.debug.logs.other.label',
+		descriptionKey: 'appSettings.debug.logs.other.description',
+	},
+];
+
 const runStatsById = new Map<string, RunStats>();
 let announced = false;
 
@@ -56,8 +202,69 @@ function toPreview(value: unknown, max = 120): string {
 	return `${text.slice(0, max)}...`;
 }
 
+function isFilterId(value: string): value is ChatGenerationLogFilterId {
+	return CHAT_GENERATION_LOG_FILTER_ID_SET.has(value as ChatGenerationLogFilterId);
+}
+
+function allFilters(enabled: boolean): ChatGenerationLogFilters {
+	return Object.fromEntries(CHAT_GENERATION_LOG_FILTER_IDS.map((id) => [id, enabled])) as ChatGenerationLogFilters;
+}
+
+function normalizeFilters(raw: unknown): ChatGenerationLogFilters {
+	const fallback = { ...DEFAULT_CHAT_GENERATION_LOG_FILTERS };
+	if (!isRecord(raw)) return fallback;
+
+	const next = { ...fallback };
+	for (const [key, value] of Object.entries(raw)) {
+		if (!isFilterId(key)) continue;
+		if (typeof value !== 'boolean') continue;
+		next[key] = value;
+	}
+	return next;
+}
+
+function readInitialLogFilters(): ChatGenerationLogFilters {
+	if (typeof window === 'undefined') return { ...DEFAULT_CHAT_GENERATION_LOG_FILTERS };
+	try {
+		const raw = window.localStorage.getItem(CHAT_GENERATION_DEBUG_LOG_FILTERS_STORAGE_KEY);
+		if (!raw) return { ...DEFAULT_CHAT_GENERATION_LOG_FILTERS };
+		return normalizeFilters(JSON.parse(raw));
+	} catch {
+		return { ...DEFAULT_CHAT_GENERATION_LOG_FILTERS };
+	}
+}
+
+function persistLogFilters(value: ChatGenerationLogFilters): void {
+	if (typeof window === 'undefined') return;
+	try {
+		window.localStorage.setItem(CHAT_GENERATION_DEBUG_LOG_FILTERS_STORAGE_KEY, JSON.stringify(value));
+	} catch {
+		// ignore storage access errors
+	}
+}
+
 function isDebugEnabled(): boolean {
 	return isAppDebugEnabled();
+}
+
+function getFilterIdForEventType(type: string): ChatGenerationLogFilterId {
+	if (type === 'run.started' || type === 'run.phase_changed' || type === 'run.finished' || type === 'run.summary') {
+		return 'runLifecycle';
+	}
+	if (type === 'operation.started') return 'operationStarted';
+	if (type === 'operation.finished') return 'operationFinished';
+	if (type === 'commit.effect_applied' || type === 'commit.effect_skipped' || type === 'commit.effect_error') {
+		return 'operationCommits';
+	}
+	if (type === 'main_llm.started' || type === 'main_llm.finished') return 'mainLlmLifecycle';
+	if (type === 'llm.stream.delta' || type === 'main_llm.delta') return 'streamText';
+	if (type === 'llm.stream.reasoning_delta' || type === 'main_llm.reasoning_delta') return 'streamReasoning';
+	if (type === 'llm.stream.meta') return 'streamMeta';
+	if (type === 'llm.stream.done') return 'streamDone';
+	if (type === 'llm.stream.error') return 'streamErrors';
+	if (type === 'run.debug.state_snapshot' || type === 'run.debug.main_llm_input') return 'debugSnapshots';
+	if (type === 'operation.debug.template') return 'templateDebug';
+	return 'other';
 }
 
 function ensureRunStats(runId: string, generationId: string | null, ts: number): RunStats {
@@ -147,11 +354,37 @@ function updateRunStats(type: string, data: Record<string, unknown> | null, ts: 
 			commits: { ...stats.commits },
 			mainLlm: { ...stats.mainLlm },
 			startedAtTs: stats.startedAtTs,
-			// keep stats copy, duration computed in logger
-		} as RunStats & { finishedAtTs?: number; durationMs?: number };
+		};
 	}
 
 	return null;
+}
+
+function summarizeEffect(effect: Record<string, unknown>): Record<string, unknown> {
+	const type = getString(effect, 'type');
+	const preview: Record<string, unknown> = {
+		type,
+		opId: getString(effect, 'opId'),
+	};
+
+	if (type === 'artifact.upsert') {
+		preview.tag = getString(effect, 'tag');
+		preview.valuePreview = toPreview(effect.value, 100);
+		return preview;
+	}
+
+	if (type === 'prompt.system_update' || type === 'prompt.append_after_last_user' || type === 'prompt.insert_at_depth') {
+		preview.payloadPreview = toPreview(effect.payload, 100);
+		preview.role = getString(effect, 'role');
+		return preview;
+	}
+
+	if (type === 'turn.user.replace_text' || type === 'turn.assistant.replace_text') {
+		preview.textPreview = toPreview(effect.text, 100);
+		return preview;
+	}
+
+	return preview;
 }
 
 function summarizeEvent(type: string, data: Record<string, unknown> | null): Record<string, unknown> {
@@ -202,6 +435,10 @@ function summarizeEvent(type: string, data: Record<string, unknown> | null): Rec
 
 	if (type === 'operation.finished') {
 		const error = data && isRecord(data.error) ? data.error : null;
+		const result = data && isRecord(data.result) ? data.result : null;
+		const effects = result && Array.isArray(result.effects)
+			? result.effects.filter((effect): effect is Record<string, unknown> => isRecord(effect))
+			: [];
 		return {
 			...base,
 			hook: getString(data, 'hook'),
@@ -211,6 +448,9 @@ function summarizeEvent(type: string, data: Record<string, unknown> | null): Rec
 			skipReason: getString(data, 'skipReason'),
 			errorCode: error ? getString(error, 'code') : null,
 			errorMessage: error ? getString(error, 'message') : null,
+			resultDebugSummary: result ? getString(result, 'debugSummary') : null,
+			resultEffectsCount: effects.length,
+			resultEffects: effects.map((effect) => summarizeEffect(effect)),
 		};
 	}
 
@@ -264,6 +504,37 @@ function summarizeEvent(type: string, data: Record<string, unknown> | null): Rec
 	return { ...base, data };
 }
 
+export const setChatGenerationLogFilter = createEvent<{ id: ChatGenerationLogFilterId; enabled: boolean }>();
+export const setChatGenerationLogFilters = createEvent<Partial<ChatGenerationLogFilters>>();
+export const resetChatGenerationLogFilters = createEvent();
+export const enableAllChatGenerationLogFilters = createEvent();
+export const disableAllChatGenerationLogFilters = createEvent();
+export const applyOperationAndSnapshotsLogPreset = createEvent();
+
+export const $chatGenerationLogFilters = createStore<ChatGenerationLogFilters>(readInitialLogFilters())
+	.on(setChatGenerationLogFilter, (state, { id, enabled }) => ({ ...state, [id]: enabled }))
+	.on(setChatGenerationLogFilters, (state, patch) => {
+		const next = { ...state };
+		for (const [key, value] of Object.entries(patch)) {
+			if (!isFilterId(key)) continue;
+			if (typeof value !== 'boolean') continue;
+			next[key] = value;
+		}
+		return next;
+	})
+	.on(resetChatGenerationLogFilters, () => ({ ...DEFAULT_CHAT_GENERATION_LOG_FILTERS }))
+	.on(enableAllChatGenerationLogFilters, () => allFilters(true))
+	.on(disableAllChatGenerationLogFilters, () => allFilters(false))
+	.on(applyOperationAndSnapshotsLogPreset, () => ({ ...OPERATION_AND_SNAPSHOTS_PRESET }));
+
+$chatGenerationLogFilters.watch((filters) => {
+	persistLogFilters(filters);
+});
+
+export function shouldLogChatGenerationEvent(type: string): boolean {
+	return Boolean($chatGenerationLogFilters.getState()[getFilterIdForEventType(type)]);
+}
+
 export function logChatGenerationSseEvent(params: {
 	scope: 'chat-core' | 'entry-parts';
 	envelope: SseEnvelopeLike;
@@ -274,22 +545,24 @@ export function logChatGenerationSseEvent(params: {
 	const data = isRecord(params.envelope.data) ? params.envelope.data : null;
 	const ts = typeof params.envelope.ts === 'number' ? params.envelope.ts : Date.now();
 
+	const finishedStats = updateRunStats(type, data, ts);
+
 	if (!announced) {
 		console.warn(`[chat-gen-debug] enabled (scope=${params.scope}). Toggle in App settings -> Debug`);
 		announced = true;
 	}
 
-	const summary = summarizeEvent(type, data);
-	const label = `[chat-gen:${params.scope}] ${type}`;
-
-	if (type === 'llm.stream.error' || type === 'commit.effect_error') {
-		console.error(label, summary);
-	} else {
-		console.warn(label, summary);
+	if (shouldLogChatGenerationEvent(type)) {
+		const summary = summarizeEvent(type, data);
+		const label = `[chat-gen:${params.scope}] ${type}`;
+		if (type === 'llm.stream.error' || type === 'commit.effect_error') {
+			console.error(label, summary);
+		} else {
+			console.warn(label, summary);
+		}
 	}
 
-	const finishedStats = updateRunStats(type, data, ts);
-	if (finishedStats && type === 'run.finished') {
+	if (finishedStats && type === 'run.finished' && shouldLogChatGenerationEvent('run.summary')) {
 		console.warn(`[chat-gen:${params.scope}] run.summary`, {
 			runId: finishedStats.runId,
 			generationId: finishedStats.generationId,

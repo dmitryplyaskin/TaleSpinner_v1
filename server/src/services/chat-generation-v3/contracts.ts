@@ -169,6 +169,19 @@ export type OperationExecutionResult = {
   skipReason?: string;
 };
 
+export type OperationFinishedEventData = {
+  hook: OperationHook;
+  opId: string;
+  name: string;
+  status: OperationExecutionStatus;
+  skipReason?: string;
+  error?: { code: string; message: string };
+  result?: {
+    effects: RuntimeEffect[];
+    debugSummary?: string;
+  };
+};
+
 export type CommitEffectReport = {
   opId: string;
   effectType: RuntimeEffect["type"];
@@ -259,14 +272,7 @@ export type RunEvent =
       runId: string;
       seq: number;
       type: "operation.finished";
-      data: {
-        hook: OperationHook;
-        opId: string;
-        name: string;
-        status: OperationExecutionStatus;
-        skipReason?: string;
-        error?: { code: string; message: string };
-      };
+      data: OperationFinishedEventData;
     }
   | {
       runId: string;
