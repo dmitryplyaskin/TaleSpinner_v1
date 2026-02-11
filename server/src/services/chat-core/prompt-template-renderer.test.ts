@@ -10,6 +10,9 @@ function makeContext() {
     messages: [],
     rag: {},
     art: {},
+    outlet: {
+      default: "OUTLET_TEXT",
+    },
     now: new Date("2026-02-10T00:00:00.000Z").toISOString(),
   };
 }
@@ -17,6 +20,7 @@ function makeContext() {
 describe("prompt-template-renderer", () => {
   test("validateLiquidTemplate accepts valid templates and rejects invalid", () => {
     expect(() => validateLiquidTemplate("Hello {{ user.name }}")).not.toThrow();
+    expect(() => validateLiquidTemplate("{{outlet::default}}")).not.toThrow();
     expect(() => validateLiquidTemplate("{{ broken ")).toThrow();
   });
 
@@ -67,5 +71,37 @@ describe("prompt-template-renderer", () => {
     });
 
     expect(rendered).toBe("{{ broken ");
+  });
+
+  test("supports ST outlet macro syntax", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "X={{outlet::default}}",
+      context: makeContext(),
+    });
+
+    expect(rendered).toBe("X=OUTLET_TEXT");
+  });
+
+  test("trim macro removes surrounding blank lines between WI blocks", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "Start\n\n{{ wiBefore }}\n{{ trim }}\n\n{{ wiAfter }}\n\nEnd",
+      context: {
+        ...makeContext(),
+        wiBefore: "BEFORE",
+        wiAfter: "AFTER",
+      },
+    });
+
+    expect(rendered).toBe("Start\n\nBEFORE\nAFTER\n\nEnd");
+  });
+
+  test("strictVariables mode works with trim macro", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "A\n{{trim}}\nB",
+      context: makeContext(),
+      options: { strictVariables: true },
+    });
+
+    expect(rendered).toBe("A\nB");
   });
 });

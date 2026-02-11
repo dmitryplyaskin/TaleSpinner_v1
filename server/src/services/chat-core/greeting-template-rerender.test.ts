@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   updatePartPayloadText: vi.fn(),
   updateVariantDerived: vi.fn(),
   buildPromptTemplateRenderContext: vi.fn(),
+  resolveAndApplyWorldInfoToTemplateContext: vi.fn(),
   renderLiquidTemplate: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("../chat-entry-parts/parts-repository", () => ({
 
 vi.mock("./prompt-template-context", () => ({
   buildPromptTemplateRenderContext: mocks.buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext: mocks.resolveAndApplyWorldInfoToTemplateContext,
 }));
 
 vi.mock("./prompt-template-renderer", () => ({
@@ -93,6 +95,18 @@ describe("rerenderGreetingTemplatesIfPreplay", () => {
       },
     ]);
     mocks.buildPromptTemplateRenderContext.mockResolvedValue(makeContext());
+    mocks.resolveAndApplyWorldInfoToTemplateContext.mockResolvedValue({
+      worldInfoBefore: "",
+      worldInfoAfter: "",
+      depthEntries: [],
+      outletEntries: {},
+      anTop: [],
+      anBottom: [],
+      emTop: [],
+      emBottom: [],
+      warnings: [],
+      activatedCount: 0,
+    });
     mocks.renderLiquidTemplate.mockResolvedValue("Hi Alice");
     mocks.updatePartPayloadText.mockResolvedValue(undefined);
     mocks.updateVariantDerived.mockResolvedValue(undefined);

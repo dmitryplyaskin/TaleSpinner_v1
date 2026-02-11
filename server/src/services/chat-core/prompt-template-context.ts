@@ -1,10 +1,43 @@
 import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
+import { resolveWorldInfoRuntimeForChat } from "../world-info/world-info-runtime";
 
 import { getChatById } from "./chats-repository";
 import { getEntityProfileById } from "./entity-profiles-repository";
 import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
+import type { WorldInfoDepthEntry } from "../world-info/world-info-types";
+import type { OperationTrigger } from "@shared/types/operation-profiles";
+
+export type PromptTemplateWorldInfoInput = {
+  worldInfoBefore?: string;
+  worldInfoAfter?: string;
+  anchorBefore?: string;
+  anchorAfter?: string;
+  wiBefore?: string;
+  wiAfter?: string;
+  loreBefore?: string;
+  loreAfter?: string;
+  depthEntries?: WorldInfoDepthEntry[];
+  outletEntries?: Record<string, string[]>;
+  anTop?: string[];
+  anBottom?: string[];
+  emTop?: string[];
+  emBottom?: string[];
+};
+
+export type PromptTemplateResolvedWorldInfo = {
+  worldInfoBefore: string;
+  worldInfoAfter: string;
+  depthEntries: WorldInfoDepthEntry[];
+  outletEntries: Record<string, string[]>;
+  anTop: string[];
+  anBottom: string[];
+  emTop: string[];
+  emBottom: string[];
+  warnings: string[];
+  activatedCount: number;
+};
 
 function isRecord(val: unknown): val is Record<string, unknown> {
   return typeof val === "object" && val !== null && !Array.isArray(val);
@@ -26,16 +59,160 @@ function asString(val: unknown): string {
   return "";
 }
 
+function asStringArray(val: unknown): string[] {
+  if (!Array.isArray(val)) return [];
+  return val.filter((item): item is string => typeof item === "string");
+}
+
+function normalizeOutletEntries(
+  value: unknown
+): Record<string, string[]> {
+  if (!isRecord(value)) return {};
+  const out: Record<string, string[]> = {};
+  for (const [key, rawItems] of Object.entries(value)) {
+    const normalizedKey = key.trim();
+    if (!normalizedKey) continue;
+    out[normalizedKey] = asStringArray(rawItems);
+  }
+  return out;
+}
+
+function buildOutletJoinedValues(
+  outletEntries: Record<string, string[]>
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(outletEntries).map(([key, items]) => [key, items.join("\n")])
+  );
+}
+
+function createEmptyResolvedWorldInfo(): PromptTemplateResolvedWorldInfo {
+  return {
+    worldInfoBefore: "",
+    worldInfoAfter: "",
+    depthEntries: [],
+    outletEntries: {},
+    anTop: [],
+    anBottom: [],
+    emTop: [],
+    emBottom: [],
+    warnings: [],
+    activatedCount: 0,
+  };
+}
+
+export function applyWorldInfoToTemplateContext(
+  base: PromptTemplateRenderContext,
+  worldInfo?: PromptTemplateWorldInfoInput
+): PromptTemplateRenderContext {
+  const worldInfoBefore = asString(
+    worldInfo?.worldInfoBefore ??
+      worldInfo?.wiBefore ??
+      worldInfo?.loreBefore ??
+      worldInfo?.anchorBefore
+  );
+  const worldInfoAfter = asString(
+    worldInfo?.worldInfoAfter ??
+      worldInfo?.wiAfter ??
+      worldInfo?.loreAfter ??
+      worldInfo?.anchorAfter
+  );
+
+  base.anchorBefore = asString(worldInfo?.anchorBefore ?? worldInfoBefore);
+  base.anchorAfter = asString(worldInfo?.anchorAfter ?? worldInfoAfter);
+  base.wiBefore = asString(worldInfo?.wiBefore ?? worldInfoBefore);
+  base.wiAfter = asString(worldInfo?.wiAfter ?? worldInfoAfter);
+  base.loreBefore = asString(worldInfo?.loreBefore ?? worldInfoBefore);
+  base.loreAfter = asString(worldInfo?.loreAfter ?? worldInfoAfter);
+
+  const outletEntries = normalizeOutletEntries(worldInfo?.outletEntries);
+  base.outletEntries = outletEntries;
+  base.outlet = buildOutletJoinedValues(outletEntries);
+
+  base.anTop = asStringArray(worldInfo?.anTop);
+  base.anBottom = asStringArray(worldInfo?.anBottom);
+  base.emTop = asStringArray(worldInfo?.emTop);
+  base.emBottom = asStringArray(worldInfo?.emBottom);
+
+  return base;
+}
+
+const WI_PLACEHOLDER_RE =
+  /\b(?:wiBefore|wiAfter|loreBefore|loreAfter|anchorBefore|anchorAfter)\b/;
+
+export function hasWorldInfoTemplatePlaceholders(templateText: string): boolean {
+  return WI_PLACEHOLDER_RE.test(templateText);
+}
+
+export async function resolveWorldInfoForTemplateContext(params: {
+  ownerId: string;
+  chatId?: string;
+  branchId?: string;
+  entityProfileId?: string;
+  trigger?: OperationTrigger;
+  history: Array<{ role: string; content: string }>;
+  scanSeed?: string;
+  dryRun?: boolean;
+}): Promise<PromptTemplateResolvedWorldInfo> {
+  if (!params.chatId) return createEmptyResolvedWorldInfo();
+
+  try {
+    const resolved = await resolveWorldInfoRuntimeForChat({
+      ownerId: params.ownerId,
+      chatId: params.chatId,
+      branchId: params.branchId,
+      entityProfileId: params.entityProfileId,
+      trigger: params.trigger ?? "generate",
+      history: params.history,
+      scanSeed:
+        params.scanSeed ??
+        `${params.ownerId}:${params.chatId}:${params.branchId ?? "auto"}:${params.trigger ?? "generate"}:${Date.now()}`,
+      dryRun: params.dryRun ?? true,
+    });
+
+    return {
+      worldInfoBefore: resolved.worldInfoBefore,
+      worldInfoAfter: resolved.worldInfoAfter,
+      depthEntries: resolved.depthEntries,
+      outletEntries: resolved.outletEntries,
+      anTop: resolved.anTop,
+      anBottom: resolved.anBottom,
+      emTop: resolved.emTop,
+      emBottom: resolved.emBottom,
+      warnings: [...resolved.debug.warnings],
+      activatedCount: resolved.activatedEntries.length,
+    };
+  } catch {
+    return createEmptyResolvedWorldInfo();
+  }
+}
+
+export async function resolveAndApplyWorldInfoToTemplateContext(params: {
+  context: PromptTemplateRenderContext;
+  ownerId: string;
+  chatId?: string;
+  branchId?: string;
+  entityProfileId?: string;
+  trigger?: OperationTrigger;
+  scanSeed?: string;
+  dryRun?: boolean;
+}): Promise<PromptTemplateResolvedWorldInfo> {
+  const resolved = await resolveWorldInfoForTemplateContext({
+    ownerId: params.ownerId,
+    chatId: params.chatId,
+    branchId: params.branchId,
+    entityProfileId: params.entityProfileId,
+    trigger: params.trigger,
+    history: params.context.messages,
+    scanSeed: params.scanSeed,
+    dryRun: params.dryRun,
+  });
+  applyWorldInfoToTemplateContext(params.context, resolved);
+  return resolved;
+}
+
 function enrichTemplateContext(
   base: PromptTemplateRenderContext,
-  worldInfo?: {
-    anchorBefore?: string;
-    anchorAfter?: string;
-    wiBefore?: string;
-    wiAfter?: string;
-    loreBefore?: string;
-    loreAfter?: string;
-  }
+  worldInfo?: PromptTemplateWorldInfoInput
 ): PromptTemplateRenderContext {
   const charObj = isRecord(base.char) ? base.char : {};
   const userObj = isRecord(base.user) ? base.user : {};
@@ -43,10 +220,10 @@ function enrichTemplateContext(
   // Make `{{char}}` and `{{user}}` behave like SillyTavern macros (name strings),
   // without breaking existing templates that expect `{{char.name}}` / `{{user.name}}`.
   const charName = asString(charObj.name).trim();
-  if (charName) defineToString(charObj, charName);
+  defineToString(charObj, charName);
 
   const userName = asString(userObj.name).trim();
-  if (userName) defineToString(userObj, userName);
+  defineToString(userObj, userName);
 
   // SillyTavern-style top-level aliases (best-effort).
   // Many of these are used by ST "Story String" templates.
@@ -55,15 +232,8 @@ function enrichTemplateContext(
   base.personality = asString(charObj.personality);
   base.system = asString(charObj.system_prompt);
 
-  // We don't have a 1:1 "persona description" field yet; `prefix` is the closest concept.
-  base.persona = asString(userObj.prefix);
-
-  base.anchorBefore = worldInfo?.anchorBefore ?? "";
-  base.anchorAfter = worldInfo?.anchorAfter ?? "";
-  base.wiBefore = worldInfo?.wiBefore ?? "";
-  base.wiAfter = worldInfo?.wiAfter ?? "";
-  base.loreBefore = worldInfo?.loreBefore ?? "";
-  base.loreAfter = worldInfo?.loreAfter ?? "";
+  // ST-style persona description alias.
+  base.persona = asString(userObj.contentTypeDefault) || asString(userObj.prefix);
 
   // Example messages: we store CC field as `mes_example`.
   base.mesExamplesRaw = asString(charObj.mes_example);
@@ -71,7 +241,7 @@ function enrichTemplateContext(
 
   base.char = charObj;
   base.user = userObj;
-  return base;
+  return applyWorldInfoToTemplateContext(base, worldInfo);
 }
 
 export async function buildPromptTemplateRenderContext(params: {
@@ -82,14 +252,7 @@ export async function buildPromptTemplateRenderContext(params: {
   historyLimit?: number;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
-  worldInfo?: {
-    anchorBefore?: string;
-    anchorAfter?: string;
-    wiBefore?: string;
-    wiAfter?: string;
-    loreBefore?: string;
-    loreAfter?: string;
-  };
+  worldInfo?: PromptTemplateWorldInfoInput;
 }): Promise<PromptTemplateRenderContext> {
   const ownerId = params.ownerId ?? "global";
 

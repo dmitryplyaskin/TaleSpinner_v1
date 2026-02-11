@@ -25,7 +25,10 @@ import {
   listEntityProfiles,
   updateEntityProfile,
 } from "../services/chat-core/entity-profiles-repository";
-import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
+import {
+  buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext,
+} from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-repository";
 import { createEntryWithVariant } from "../services/chat-entry-parts/entries-repository";
@@ -399,6 +402,15 @@ router.post(
         branchId: mainBranch.id,
         entityProfileId: params.id,
         historyLimit: 50,
+      });
+      await resolveAndApplyWorldInfoToTemplateContext({
+        context: greetingTemplateContext,
+        ownerId,
+        chatId: chat.id,
+        branchId: mainBranch.id,
+        entityProfileId: params.id,
+        trigger: "generate",
+        dryRun: true,
       });
 
       // --- New model: seed entry-parts so chat window (v2) renders immediately.

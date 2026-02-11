@@ -2,7 +2,10 @@ import { listEntries, hasActiveUserEntriesInBranch } from "../chat-entry-parts/e
 import { updatePartPayloadText } from "../chat-entry-parts/parts-repository";
 import { listEntryVariants, updateVariantDerived } from "../chat-entry-parts/variants-repository";
 
-import { buildPromptTemplateRenderContext } from "./prompt-template-context";
+import {
+  buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext,
+} from "./prompt-template-context";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
 
 import type { Entry, Part, Variant } from "@shared/types/chat-entry-parts";
@@ -106,6 +109,15 @@ export async function rerenderGreetingTemplatesIfPreplay(params: {
     branchId: params.branchId,
     entityProfileId: params.entityProfileId,
     historyLimit: 50,
+  });
+  await resolveAndApplyWorldInfoToTemplateContext({
+    context: templateContext,
+    ownerId: params.ownerId,
+    chatId: params.chatId,
+    branchId: params.branchId,
+    entityProfileId: params.entityProfileId,
+    trigger: "generate",
+    dryRun: true,
   });
   const selectedUserId = extractUserId(templateContext.user);
 

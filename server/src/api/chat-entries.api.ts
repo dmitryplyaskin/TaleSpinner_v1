@@ -10,7 +10,10 @@ import { chatIdParamsSchema } from "../chat-core/schemas";
 import { getChatById } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
 import { rerenderGreetingTemplatesIfPreplay } from "../services/chat-core/greeting-template-rerender";
-import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
+import {
+  buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext,
+} from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
 import { getSelectedUserPerson } from "../services/chat-core/user-persons-repository";
 import { getBranchCurrentTurn, incrementBranchTurn } from "../services/chat-entry-parts/branch-turn-repository";
@@ -425,6 +428,15 @@ router.post(
       branchId,
       entityProfileId: chat.entityProfileId,
       historyLimit: 50,
+    });
+    await resolveAndApplyWorldInfoToTemplateContext({
+      context: templateContext,
+      ownerId,
+      chatId: params.id,
+      branchId,
+      entityProfileId: chat.entityProfileId,
+      trigger: "generate",
+      dryRun: true,
     });
     const { renderedContent, changed } = await renderUserInputWithLiquid({
       content: body.content ?? "",
@@ -936,11 +948,22 @@ router.post(
     }
 
     const ownerId = body.ownerId ?? "global";
+    const chat = await getChatById(entry.chatId);
     const templateContext = await buildPromptTemplateRenderContext({
       ownerId,
       chatId: entry.chatId,
       branchId: entry.branchId,
+      entityProfileId: chat?.entityProfileId ?? undefined,
       historyLimit: 50,
+    });
+    await resolveAndApplyWorldInfoToTemplateContext({
+      context: templateContext,
+      ownerId,
+      chatId: entry.chatId,
+      branchId: entry.branchId,
+      entityProfileId: chat?.entityProfileId ?? undefined,
+      trigger: "generate",
+      dryRun: true,
     });
     const { renderedContent, changed } = await renderUserInputWithLiquid({
       content: body.content,

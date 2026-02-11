@@ -12,17 +12,20 @@ import {
   updatePromptTemplateBodySchema,
 } from "../chat-core/schemas";
 import {
+  buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext,
+} from "../services/chat-core/prompt-template-context";
+import {
+  renderLiquidTemplate,
+  validateLiquidTemplate,
+} from "../services/chat-core/prompt-template-renderer";
+import {
   createPromptTemplate,
   deletePromptTemplate,
   getPromptTemplateById,
   listPromptTemplates,
   updatePromptTemplate,
 } from "../services/chat-core/prompt-templates-repository";
-import { buildPromptTemplateRenderContext } from "../services/chat-core/prompt-template-context";
-import {
-  renderLiquidTemplate,
-  validateLiquidTemplate,
-} from "../services/chat-core/prompt-template-renderer";
 
 const router = express.Router();
 
@@ -69,6 +72,15 @@ router.post(
       branchId: body.branchId,
       entityProfileId: body.entityProfileId,
       historyLimit: body.historyLimit ?? 50,
+    });
+    await resolveAndApplyWorldInfoToTemplateContext({
+      context,
+      ownerId: body.ownerId ?? "global",
+      chatId: body.chatId,
+      branchId: body.branchId,
+      entityProfileId: body.entityProfileId,
+      trigger: "generate",
+      dryRun: true,
     });
 
     const rendered = await renderLiquidTemplate({

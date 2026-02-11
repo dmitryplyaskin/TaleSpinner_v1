@@ -137,6 +137,11 @@ export async function buildPromptDraft(params: {
   excludeEntryIds?: string[];
   preHistorySystemMessages?: string[];
   postHistorySystemMessages?: string[];
+  depthInsertions?: Array<{
+    depth: number;
+    role: "system" | "user" | "assistant";
+    content: string;
+  }>;
   worldInfoMeta?: PromptSnapshotV1["meta"]["worldInfo"];
   /**
    * Optional active PipelineProfile spec (v1) to provide deterministic ordering
@@ -160,6 +165,18 @@ export async function buildPromptDraft(params: {
   }
   // Pipelines/artifacts were removed. Keep prompt drafting minimal and deterministic.
   const systemPrompt = params.systemPrompt ?? "";
+  const historyWithDepthInsertions = history.map((m) => ({ role: m.role, content: m.content }));
+  for (const insertion of params.depthInsertions ?? []) {
+    const normalizedDepth =
+      Number.isFinite(insertion.depth) && insertion.depth > 0
+        ? Math.floor(insertion.depth)
+        : 0;
+    const insertAt = Math.max(0, historyWithDepthInsertions.length - normalizedDepth);
+    historyWithDepthInsertions.splice(insertAt, 0, {
+      role: insertion.role,
+      content: insertion.content,
+    });
+  }
 
   const draft: PromptDraft = {
     messages: [
@@ -168,7 +185,7 @@ export async function buildPromptDraft(params: {
         role: "system" as const,
         content,
       })),
-      ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...historyWithDepthInsertions.map((m) => ({ role: m.role, content: m.content })),
       ...(params.postHistorySystemMessages ?? []).map((content) => ({
         role: "system" as const,
         content,
