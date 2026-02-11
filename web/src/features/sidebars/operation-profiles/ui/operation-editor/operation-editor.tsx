@@ -8,7 +8,14 @@ import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
-import { makeDefaultArtifactOutput, type FormOtherKindParams, type FormTemplateParams } from '../../form/operation-profile-form-mapping';
+import {
+	makeDefaultArtifactOutput,
+	makeDefaultLlmKindParams,
+	makeDefaultOtherKindParams,
+	type FormLlmKindParams,
+	type FormOtherKindParams,
+	type FormTemplateParams,
+} from '../../form/operation-profile-form-mapping';
 
 import { OperationSectionsAccordion } from './operation-sections-accordion';
 
@@ -138,10 +145,13 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 								return;
 							}
 
-							const nextParams: FormOtherKindParams = {
-								paramsJson: '{\n  \n}',
-								output: safeOutput as FormOtherKindParams['output'],
-							};
+							if (nextKind === 'llm') {
+								const nextParams: FormLlmKindParams = makeDefaultLlmKindParams(safeOutput as FormLlmKindParams['output']);
+								setValue(`operations.${index}.config.params`, nextParams, { shouldDirty: true });
+								return;
+							}
+
+							const nextParams: FormOtherKindParams = makeDefaultOtherKindParams(safeOutput as FormOtherKindParams['output']);
 							setValue(`operations.${index}.config.params`, nextParams, { shouldDirty: true });
 						}}
 						comboboxProps={{ withinPortal: false }}

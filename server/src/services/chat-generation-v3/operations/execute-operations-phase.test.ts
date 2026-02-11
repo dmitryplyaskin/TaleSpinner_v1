@@ -1,11 +1,49 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { OperationInProfile, OperationOutput } from "@shared/types/operation-profiles";
 
 import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
 import { executeOperationsPhase } from "./execute-operations-phase";
 
+const mocks = vi.hoisted(() => ({
+  llmGatewayStream: vi.fn(),
+  getProviderConfig: vi.fn(),
+  getTokenPlaintext: vi.fn(),
+  buildGatewayStreamRequest: vi.fn(),
+}));
+
+vi.mock("@core/llm-gateway", () => ({
+  llmGateway: {
+    stream: mocks.llmGatewayStream,
+  },
+}));
+
+vi.mock("../../llm/llm-repository", () => ({
+  getProviderConfig: mocks.getProviderConfig,
+  getTokenPlaintext: mocks.getTokenPlaintext,
+}));
+
+vi.mock("../../llm/llm-gateway-adapter", () => ({
+  buildGatewayStreamRequest: mocks.buildGatewayStreamRequest,
+}));
+
 type TemplateOp = Extract<OperationInProfile, { kind: "template" }>;
+type LlmOp = Extract<OperationInProfile, { kind: "llm" }>;
+
+function streamOf(
+  events: Array<
+    | { type: "delta"; text: string }
+    | { type: "reasoning_delta"; text: string }
+    | { type: "error"; message: string }
+    | { type: "done"; status: "done" | "aborted" | "error"; warnings?: string[] }
+  >
+): AsyncGenerator<any> {
+  return (async function* () {
+    for (const event of events) {
+      yield event;
+    }
+  })();
+}
 
 function makeTemplateContext(): PromptTemplateRenderContext {
   return {
@@ -16,6 +54,43 @@ function makeTemplateContext(): PromptTemplateRenderContext {
     rag: {},
     art: {},
     now: new Date("2026-02-10T00:00:00.000Z").toISOString(),
+  };
+}
+
+function makeLlmOp(params: {
+  opId: string;
+  order: number;
+  prompt: string;
+  output: OperationOutput;
+  hooks?: LlmOp["config"]["hooks"];
+  dependsOn?: string[];
+  outputMode?: "text" | "json";
+  timeoutMs?: number;
+  retry?: { maxAttempts: number; backoffMs?: number; retryOn?: Array<"timeout" | "provider_error" | "rate_limit"> };
+}): LlmOp {
+  return {
+    opId: params.opId,
+    name: params.opId,
+    kind: "llm",
+    config: {
+      enabled: true,
+      required: false,
+      hooks: params.hooks ?? ["before_main_llm"],
+      triggers: ["generate", "regenerate"],
+      order: params.order,
+      dependsOn: params.dependsOn,
+      params: {
+        params: {
+          providerId: "openrouter",
+          credentialRef: "token-1",
+          prompt: params.prompt,
+          outputMode: params.outputMode,
+          timeoutMs: params.timeoutMs,
+          retry: params.retry,
+        },
+        output: params.output,
+      },
+    },
   };
 }
 
@@ -105,6 +180,29 @@ function collectEvents<T>() {
     },
   };
 }
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.getProviderConfig.mockResolvedValue({
+    providerId: "openrouter",
+    config: {},
+  });
+  mocks.getTokenPlaintext.mockResolvedValue("secret");
+  mocks.buildGatewayStreamRequest.mockImplementation((params: any) => ({
+    provider: { id: params.providerId, token: params.token },
+    model: "m",
+    messages: params.messages,
+    sampling: {},
+    extra: {},
+    abortSignal: params.abortSignal,
+  }));
+  mocks.llmGatewayStream.mockImplementation(() =>
+    streamOf([
+      { type: "delta", text: "ok" },
+      { type: "done", status: "done" },
+    ])
+  );
+});
 
 describe("executeOperationsPhase", () => {
   test("executes simple template->artifact happy path", async () => {
@@ -466,6 +564,232 @@ describe("executeOperationsPhase", () => {
       status: "skipped",
       skipReason: "unsupported_kind",
     });
+  });
+
+  test("executes llm->artifact happy path", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "LLM RESULT" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-1",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-a",
+          order: 10,
+          prompt: "hello from llm",
+          output: artifactOutput("llm_tag"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      opId: "llm-a",
+      status: "done",
+    });
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      tag: "llm_tag",
+      value: "LLM RESULT",
+    });
+  });
+
+  test("strict json mode normalizes parsed JSON output", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: '{"alpha":1,"beta":[2,3]}' },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-ok",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      tag: "llm_json",
+      value: '{"alpha":1,"beta":[2,3]}',
+    });
+  });
+
+  test("strict json mode fails with parse error when response is not JSON", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "not-a-json" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-json-fail",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-json-fail",
+          order: 10,
+          prompt: "json please",
+          outputMode: "json",
+          output: artifactOutput("llm_json"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_OUTPUT_PARSE_ERROR");
+  });
+
+  test("retries llm call on provider_error and succeeds on second attempt", async () => {
+    mocks.llmGatewayStream
+      .mockImplementationOnce(() =>
+        streamOf([
+          { type: "error", message: "provider exploded" },
+          { type: "done", status: "error" },
+        ])
+      )
+      .mockImplementationOnce(() =>
+        streamOf([
+          { type: "delta", text: "RECOVERED" },
+          { type: "done", status: "done" },
+        ])
+      );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-retry",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-retry",
+          order: 10,
+          prompt: "retry me",
+          retry: { maxAttempts: 2, retryOn: ["provider_error"] },
+          output: artifactOutput("llm_retry"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("done");
+    expect(out[0]?.effects[0]).toMatchObject({
+      value: "RECOVERED",
+    });
+    expect(mocks.llmGatewayStream).toHaveBeenCalledTimes(2);
+  });
+
+  test("returns timeout error when llm attempt exceeds timeoutMs", async () => {
+    mocks.llmGatewayStream.mockImplementation((req: any) =>
+      (async function* () {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        if (req.abortSignal?.aborted) {
+          yield { type: "done", status: "aborted" as const };
+          return;
+        }
+        yield { type: "delta", text: "late" as const };
+        yield { type: "done", status: "done" as const };
+      })()
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-timeout",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-timeout",
+          order: 10,
+          prompt: "slow request",
+          timeoutMs: 1,
+          output: artifactOutput("llm_timeout"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]?.status).toBe("error");
+    expect(out[0]?.error?.code).toBe("LLM_TIMEOUT");
+  });
+
+  test("replays dependency effects into llm prompt context", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "OK" },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "run-llm-deps",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeTemplateOp({
+          opId: "tmpl-seed",
+          order: 10,
+          template: "ALPHA",
+          output: artifactOutput("seed"),
+        }),
+        makeLlmOp({
+          opId: "llm-dep",
+          order: 20,
+          dependsOn: ["tmpl-seed"],
+          prompt: "seen={{art.seed.value}}",
+          output: artifactOutput("llm_seen"),
+        }),
+      ],
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    const reqArgs = mocks.buildGatewayStreamRequest.mock.calls[0]?.[0];
+    expect(reqArgs?.messages).toMatchObject([{ role: "user", content: "seen=ALPHA" }]);
+    const llmOut = out.find((x) => x.opId === "llm-dep");
+    expect(llmOut?.status).toBe("done");
   });
 
   test("is deterministic in concurrent mode under repeated runs", async () => {

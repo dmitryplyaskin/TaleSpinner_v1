@@ -11,6 +11,7 @@ import {
   type RuntimeEffect,
 } from "../contracts";
 import { applyPromptEffect } from "./effect-handlers/prompt-effects";
+import { executeLlmOperation } from "./llm-operation-executor";
 
 type PreviewState = {
   messages: PromptDraftMessage[];
@@ -305,8 +306,14 @@ export async function executeOperationsPhase(params: {
 
   if (filtered.length === 0) return [];
 
-  const templateOps = filtered.filter((op): op is Extract<OperationInProfile, { kind: "template" }> => op.kind === "template");
-  const nonTemplate = filtered.filter((op) => op.kind !== "template");
+  const executableOps = filtered.filter(
+    (op): op is Extract<OperationInProfile, { kind: "template" | "llm" }> =>
+      op.kind === "template" || op.kind === "llm"
+  );
+  const unsupportedOps = filtered.filter(
+    (op): op is Exclude<OperationInProfile, Extract<OperationInProfile, { kind: "template" | "llm" }>> =>
+      op.kind !== "template" && op.kind !== "llm"
+  );
 
   const effectsByOpId = new Map<string, RuntimeEffect[]>();
   const baseState: PreviewState = {
@@ -324,7 +331,7 @@ export async function executeOperationsPhase(params: {
       trigger: params.trigger,
       executionMode: params.executionMode,
       signal: params.abortSignal,
-      tasks: templateOps.map((op) => ({
+      tasks: executableOps.map((op) => ({
         taskId: op.opId,
         name: op.name,
         enabled: op.config.enabled,
@@ -334,35 +341,55 @@ export async function executeOperationsPhase(params: {
         run: async () => {
           const depPreview = replayDependencyEffects(baseState, op.config.dependsOn ?? [], effectsByOpId);
           const liquidContext = buildTemplateContext(params.templateContext, depPreview);
-          const rendered = normalizeText(
-            await renderLiquidTemplate({
-              templateText: op.config.params.template,
-              context: liquidContext,
-              options: { strictVariables: Boolean(op.config.params.strictVariables) },
-            })
-          );
+          let resolvedRendered = "";
+          let debugSummary: string | undefined;
+
+          if (op.kind === "template") {
+            resolvedRendered = normalizeText(
+              await renderLiquidTemplate({
+                templateText: op.config.params.template,
+                context: liquidContext,
+                options: { strictVariables: Boolean(op.config.params.strictVariables) },
+              })
+            );
+          }
+
+          if (op.kind === "llm") {
+            const llmResult = await executeLlmOperation({
+              op,
+              liquidContext,
+              abortSignal: params.abortSignal,
+            });
+            resolvedRendered = normalizeText(llmResult.rendered);
+            debugSummary = llmResult.debugSummary;
+          }
+
           const effect = toRuntimeEffect({
             opId: op.opId,
             output: op.config.params.output,
-            rendered,
+            rendered: resolvedRendered,
           });
-          params.onTemplateDebug?.({
-            hook: params.hook,
-            opId: op.opId,
-            name: op.name,
-            template: op.config.params.template,
-            rendered,
-            effect,
-            liquidContext: buildLiquidContextSnapshot({
-              base: liquidContext,
-              state: depPreview,
-            }),
-          });
+          if (op.kind === "template") {
+            params.onTemplateDebug?.({
+              hook: params.hook,
+              opId: op.opId,
+              name: op.name,
+              template: op.config.params.template,
+              rendered: resolvedRendered,
+              effect,
+              liquidContext: buildLiquidContextSnapshot({
+                base: liquidContext,
+                state: depPreview,
+              }),
+            });
+          }
           const effects: RuntimeEffect[] = [effect];
           effectsByOpId.set(op.opId, effects);
           return {
             effects,
-            debugSummary: `${mapOperationOutputToEffectType(op.config.params.output)}:${rendered.length}`,
+            debugSummary:
+              debugSummary ??
+              `${mapOperationOutputToEffectType(op.config.params.output)}:${resolvedRendered.length}`,
           };
         },
       })),
@@ -370,13 +397,13 @@ export async function executeOperationsPhase(params: {
     {
       onEvent: (evt) => {
         if (evt.type === "orch.task.started") {
-          const op = templateOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOps.find((item) => item.opId === evt.data.taskId);
           if (!op) return;
           params.onOperationStarted?.({ hook: params.hook, opId: op.opId, name: op.name });
           return;
         }
         if (evt.type === "orch.task.finished") {
-          const op = templateOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOps.find((item) => item.opId === evt.data.taskId);
           if (!op) return;
           params.onOperationFinished?.({
             hook: params.hook,
@@ -387,7 +414,7 @@ export async function executeOperationsPhase(params: {
           return;
         }
         if (evt.type === "orch.task.skipped") {
-          const op = templateOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOps.find((item) => item.opId === evt.data.taskId);
           if (!op) return;
           params.onOperationFinished?.({
             hook: params.hook,
@@ -401,15 +428,15 @@ export async function executeOperationsPhase(params: {
     }
   );
 
-  const templateResults = orchestration.tasks
+  const executableResults = orchestration.tasks
     .map((task) => {
-      const op = templateOps.find((item) => item.opId === task.taskId);
+      const op = executableOps.find((item) => item.opId === task.taskId);
       if (!op) return null;
       return mapTaskResult({ hook: params.hook, op, task });
     })
     .filter((item): item is OperationExecutionResult => Boolean(item));
 
-  const nonTemplateResults: OperationExecutionResult[] = nonTemplate.map((op) => ({
+  const nonTemplateResults: OperationExecutionResult[] = unsupportedOps.map((op) => ({
     opId: op.opId,
     name: op.name,
     required: op.config.required,
@@ -421,7 +448,7 @@ export async function executeOperationsPhase(params: {
     skipReason: "unsupported_kind",
   }));
 
-  const all = [...templateResults, ...nonTemplateResults].sort((a, b) => {
+  const all = [...executableResults, ...nonTemplateResults].sort((a, b) => {
     if (a.order !== b.order) return a.order - b.order;
     return a.opId.localeCompare(b.opId);
   });

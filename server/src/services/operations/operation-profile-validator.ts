@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
 import { validateLiquidTemplate } from "../chat-core/prompt-template-renderer";
+import { llmOperationParamsSchema } from "./llm-operation-params";
 
 import type {
   ArtifactPersistence,
@@ -128,9 +129,18 @@ const operationConfigOtherSchema = z.object({
   params: otherKindParamsSchema,
 });
 
-const operationKindSchema = z.enum(
-  ["template", "llm", "rag", "tool", "compute", "transform", "legacy"] satisfies OperationKind[]
-);
+const operationConfigLlmSchema = z.object({
+  enabled: z.boolean(),
+  required: z.boolean(),
+  hooks: z.array(operationHookSchema).min(1),
+  triggers: z.array(operationTriggerSchema).min(1).optional(),
+  order: z.number().finite(),
+  dependsOn: z.array(uuidSchema).optional(),
+  params: z.object({
+    params: llmOperationParamsSchema,
+    output: operationOutputSchema,
+  }),
+});
 
 const operationInProfileSchema: z.ZodType<OperationInProfile> = z.discriminatedUnion("kind", [
   z.object({
@@ -144,14 +154,20 @@ const operationInProfileSchema: z.ZodType<OperationInProfile> = z.discriminatedU
     opId: uuidSchema,
     name: z.string().trim().min(1),
     description: z.string().trim().min(1).optional(),
+    kind: z.literal("llm"),
+    config: operationConfigLlmSchema,
+  }),
+  z.object({
+    opId: uuidSchema,
+    name: z.string().trim().min(1),
+    description: z.string().trim().min(1).optional(),
     kind: z.enum([
-      "llm",
       "rag",
       "tool",
       "compute",
       "transform",
       "legacy",
-    ] satisfies Exclude<OperationKind, "template">[]),
+    ] satisfies Exclude<OperationKind, "template" | "llm">[]),
     config: operationConfigOtherSchema,
   }),
 ]);
@@ -298,6 +314,32 @@ function validateCrossRules(input: ValidatedOperationProfileInput): void {
           "VALIDATION_ERROR",
           { opId: op.opId }
         );
+      }
+    }
+
+    if (op.kind === "llm") {
+      const llmParams = llmOperationParamsSchema.parse(op.config.params.params);
+      try {
+        validateLiquidTemplate(llmParams.prompt);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          `LLM prompt template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+          "VALIDATION_ERROR",
+          { opId: op.opId }
+        );
+      }
+      if (typeof llmParams.system === "string" && llmParams.system.length > 0) {
+        try {
+          validateLiquidTemplate(llmParams.system);
+        } catch (error) {
+          throw new HttpError(
+            400,
+            `LLM system template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+            "VALIDATION_ERROR",
+            { opId: op.opId }
+          );
+        }
       }
     }
   }

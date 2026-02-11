@@ -95,12 +95,44 @@ export type OperationTemplateParams = {
   output: OperationOutput;
 };
 
-export type OperationOtherKindParams = {
+export type LlmOperationRetryOn = "timeout" | "provider_error" | "rate_limit";
+
+export type LlmOperationSamplers = {
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  seed?: number;
+  maxTokens?: number;
+};
+
+export type LlmOperationRetry = {
+  maxAttempts: number;
+  backoffMs?: number;
+  retryOn?: LlmOperationRetryOn[];
+};
+
+export type LlmOperationParams = {
+  providerId: "openrouter" | "openai_compatible";
+  credentialRef: string;
+  model?: string;
+  system?: string;
+  prompt: string;
+  strictVariables?: boolean;
+  outputMode?: "text" | "json";
+  samplerPresetId?: string;
+  samplers?: LlmOperationSamplers;
+  timeoutMs?: number;
+  retry?: LlmOperationRetry;
+};
+
+export type OperationOtherKindParams<TParams extends Record<string, unknown> = Record<string, unknown>> = {
   /**
    * Draft UI for non-template operations:
    * kind-specific params live here as a plain JSON object.
    */
-  params: Record<string, unknown>;
+  params: TParams;
   output: OperationOutput;
 };
 
@@ -124,13 +156,25 @@ export type TemplateOperationInProfile = {
   config: OperationConfig<OperationTemplateParams>;
 };
 
-export type NonTemplateOperationInProfile = {
+export type LlmOperationInProfile = {
   opId: string; // UUID
   name: string;
   description?: string;
-  kind: Exclude<OperationKind, "template">;
+  kind: "llm";
+  config: OperationConfig<OperationOtherKindParams<LlmOperationParams>>;
+};
+
+export type GenericNonTemplateOperationInProfile = {
+  opId: string; // UUID
+  name: string;
+  description?: string;
+  kind: Exclude<OperationKind, "template" | "llm">;
   config: OperationConfig<OperationOtherKindParams>;
 };
+
+export type NonTemplateOperationInProfile =
+  | LlmOperationInProfile
+  | GenericNonTemplateOperationInProfile;
 
 export type OperationInProfile = TemplateOperationInProfile | NonTemplateOperationInProfile;
 

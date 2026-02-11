@@ -1,15 +1,16 @@
-import { ActionIcon, Flex, NumberInput, Paper, Select, SimpleGrid, Slider, Text, Tooltip } from '@mantine/core';
+import { Flex, Select } from '@mantine/core';
 import { type SamplerItemSettingsType, type SamplersItemType } from '@shared/types/samplers';
 import { useUnit } from 'effector-react';
 import React, { useEffect } from 'react';
-import { FormProvider, useController, useForm, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuCopy, LuInfo, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
+import { LuCopy, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
 
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { SamplerSettingsGrid } from '../../llm-provider/sampler-settings-grid';
 
-import { getLlmSettingsFields, type LLMSettingField } from '../../../model/llm-settings';
+import { getLlmSettingsFields } from '../../../model/llm-settings';
 
 
 
@@ -107,65 +108,8 @@ export const SamplerSettingsTab: React.FC = () => {
 			</Flex>
 
 			<FormProvider {...methods}>
-				<SimpleGrid cols={3} spacing="md">
-					{llmSettingsFields.map((field) => (
-						<Item key={field.key} field={field} methods={methods} />
-					))}
-				</SimpleGrid>
+				<SamplerSettingsGrid control={methods.control} fields={llmSettingsFields} />
 			</FormProvider>
 		</Flex>
-	);
-};
-
-type ItemProps = {
-	field: LLMSettingField;
-	methods: UseFormReturn<SamplerItemSettingsType>;
-};
-
-const Item: React.FC<ItemProps> = ({ field, methods }) => {
-	const { t } = useTranslation();
-	const formField = useController({
-		name: field.key,
-		control: methods.control,
-	});
-
-	return (
-		<Paper key={field.key} withBorder radius="md" p="md" style={{ gridColumn: `span ${field.width}` }}>
-			<Flex align="flex-start" justify="space-between" mb="xs">
-				<Flex align="center" gap="xs" style={{ flex: 1, minWidth: 0 }}>
-					<Text size="sm" fw={500}>
-						{field.label}
-					</Text>
-					<Tooltip label={field.tooltip} position="bottom" withArrow>
-						<ActionIcon variant="subtle" aria-label={t('common.info')}>
-							<LuInfo />
-						</ActionIcon>
-					</Tooltip>
-				</Flex>
-			</Flex>
-
-			<Slider
-				min={field.min}
-				max={field.max}
-				step={field.step}
-				value={Number(formField.field.value ?? 0)}
-				onChange={(value) => {
-					formField.field.onChange(value);
-				}}
-			/>
-			<NumberInput
-				mt="xs"
-				min={field.min}
-				max={field.max}
-				step={field.step}
-				value={Number(formField.field.value ?? 0)}
-				onChange={(value) => {
-					formField.field.onChange(typeof value === 'number' ? value : 0);
-				}}
-				onBlur={() => {
-					formField.field.onBlur();
-				}}
-			/>
-		</Paper>
 	);
 };

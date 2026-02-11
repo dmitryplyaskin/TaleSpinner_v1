@@ -14,6 +14,55 @@ function makeBaseInput(): OperationProfileUpsertInput {
   };
 }
 
+function makeArtifactsOutput() {
+  return {
+    type: "artifacts" as const,
+    writeArtifact: {
+      tag: "llm_output",
+      persistence: "run_only" as const,
+      usage: "internal" as const,
+      semantics: "intermediate",
+    },
+  };
+}
+
+function makeLlmOperation(
+  overrides?: Partial<
+    Extract<OperationProfileUpsertInput["operations"][number], { kind: "llm" }>
+  >
+): Extract<OperationProfileUpsertInput["operations"][number], { kind: "llm" }> {
+  return {
+    opId: "6ff77029-5037-4d21-8ace-c9836f58a14b",
+    name: "llm-op",
+    kind: "llm",
+    config: {
+      enabled: true,
+      required: false,
+      hooks: ["before_main_llm"],
+      order: 10,
+      params: {
+        params: {
+          providerId: "openrouter",
+          credentialRef: "token-1",
+          model: "openai/gpt-4.1-mini",
+          system: "You are assistant",
+          prompt: "Hello {{user_input}}",
+          strictVariables: false,
+          outputMode: "text",
+          samplerPresetId: "preset-1",
+          samplers: { temperature: 0.2, topP: 1, maxTokens: 400 },
+          timeoutMs: 10_000,
+          retry: { maxAttempts: 2, backoffMs: 100, retryOn: ["provider_error"] },
+        },
+        output: makeArtifactsOutput(),
+      },
+      triggers: ["generate", "regenerate"],
+      dependsOn: [],
+    },
+    ...overrides,
+  };
+}
+
 describe("operation profile validator hardening", () => {
   test("rejects prompt_time when before_main_llm hook is absent", () => {
     const input = makeBaseInput();
@@ -157,5 +206,115 @@ describe("operation profile validator hardening", () => {
     ] as any;
 
     expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Template не компилируется/);
+  });
+
+  test("accepts valid llm operation config", () => {
+    const input = makeBaseInput();
+    input.operations = [makeLlmOperation()];
+
+    const validated = validateOperationProfileUpsertInput(input);
+    expect(validated.operations).toHaveLength(1);
+    expect(validated.operations[0]?.kind).toBe("llm");
+  });
+
+  test("rejects llm config with invalid provider", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              providerId: "bad_provider" as any,
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
+  });
+
+  test("rejects llm config with empty credentialRef", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              credentialRef: "",
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
+  });
+
+  test("rejects llm config with invalid retry / outputMode", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              outputMode: "xml" as any,
+              retry: { maxAttempts: 0 },
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/Validation error/);
+  });
+
+  test("rejects llm prompt template that does not compile", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              prompt: "{{ bad ",
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/LLM prompt template не компилируется/);
+  });
+
+  test("rejects llm system template that does not compile", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      makeLlmOperation({
+        config: {
+          ...makeLlmOperation().config,
+          params: {
+            ...makeLlmOperation().config.params,
+            params: {
+              ...makeLlmOperation().config.params.params,
+              system: "{{ bad ",
+            },
+          },
+        },
+      }),
+    ];
+
+    expect(() => validateOperationProfileUpsertInput(input)).toThrow(/LLM system template не компилируется/);
   });
 });
