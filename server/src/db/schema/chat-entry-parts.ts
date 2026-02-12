@@ -3,7 +3,7 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { chats, chatBranches } from "./chat-core";
 
 /**
- * Chat Entries / Variants / Parts (docs/chat-entry-parts-spec-2026-02-01.md)
+ * Chat Entries / Variants / Parts (knowledge-base/chat-entry-parts-spec-2026-02-01.md)
  *
  * This is a new normalized storage model. Legacy chat-core tables remain for now,
  * but are no longer the canonical store for chat content once v2 endpoints are used.

@@ -1,0 +1,120 @@
+---
+title: API Endpoints
+sidebar_position: 2
+description: Автогенерируемый инвентарь backend endpoint-ов из server/src/api.
+---
+
+# API Endpoints
+
+Этот файл генерируется скриптом `docs/scripts/generate-api-reference.mjs`.
+
+Источники:
+
+- `server/src/api/_routes_.ts`
+- `server/src/api/**/*.ts`
+
+## Endpoint inventory
+
+| Method | Path | Source file | Handler section |
+| --- | --- | --- | --- |
+| DELETE | /api/chats/:id | `server/src/api/chats.core.api.ts` | L91 |
+| GET | /api/chats/:id | `server/src/api/chats.core.api.ts` | L29 |
+| PUT | /api/chats/:id | `server/src/api/chats.core.api.ts` | L76 |
+| GET | /api/chats/:id/branches | `server/src/api/chats.core.api.ts` | L103 |
+| POST | /api/chats/:id/branches | `server/src/api/chats.core.api.ts` | L115 |
+| DELETE | /api/chats/:id/branches/:branchId | `server/src/api/chats.core.api.ts` | L178 |
+| PUT | /api/chats/:id/branches/:branchId | `server/src/api/chats.core.api.ts` | L159 |
+| POST | /api/chats/:id/branches/:branchId/activate | `server/src/api/chats.core.api.ts` | L135 |
+| GET | /api/chats/:id/entries | `server/src/api/chat-entries.api.ts` | L363 |
+| POST | /api/chats/:id/entries | `server/src/api/chat-entries.api.ts` | L410 |
+| POST | /api/chats/:id/entries/continue | `server/src/api/chat-entries.api.ts` | L595 |
+| PUT | /api/chats/:id/prompt-template | `server/src/api/chats.core.api.ts` | L44 |
+| ALL | /api/config/openrouter | `server/src/api/llm.api.ts` | L290 |
+| GET | /api/entity-profiles | `server/src/api/entity-profiles.core.api.ts` | L219 |
+| POST | /api/entity-profiles | `server/src/api/entity-profiles.core.api.ts` | L227 |
+| DELETE | /api/entity-profiles/:id | `server/src/api/entity-profiles.core.api.ts` | L335 |
+| GET | /api/entity-profiles/:id | `server/src/api/entity-profiles.core.api.ts` | L244 |
+| PUT | /api/entity-profiles/:id | `server/src/api/entity-profiles.core.api.ts` | L257 |
+| GET | /api/entity-profiles/:id/chats | `server/src/api/entity-profiles.core.api.ts` | L355 |
+| POST | /api/entity-profiles/:id/chats | `server/src/api/entity-profiles.core.api.ts` | L368 |
+| GET | /api/entity-profiles/:id/export | `server/src/api/entity-profiles.core.api.ts` | L300 |
+| POST | /api/entity-profiles/import | `server/src/api/entity-profiles.import.api.ts` | L61 |
+| POST | /api/entries/:id/manual-edit | `server/src/api/chat-entries.api.ts` | L902 |
+| POST | /api/entries/:id/prompt-visibility | `server/src/api/chat-entries.api.ts` | L1073 |
+| POST | /api/entries/:id/regenerate | `server/src/api/chat-entries.api.ts` | L724 |
+| POST | /api/entries/:id/soft-delete | `server/src/api/chat-entries.api.ts` | L1059 |
+| GET | /api/entries/:id/variants | `server/src/api/chat-entries.api.ts` | L839 |
+| POST | /api/entries/:id/variants/:variantId/select | `server/src/api/chat-entries.api.ts` | L856 |
+| POST | /api/entries/:id/variants/:variantId/soft-delete | `server/src/api/chat-entries.api.ts` | L1006 |
+| POST | /api/entries/soft-delete-bulk | `server/src/api/chat-entries.api.ts` | L1046 |
+| GET | /api/files/metadata/:filename | `server/src/api/files/routes.ts` | L71 |
+| POST | /api/files/upload | `server/src/api/files/routes.ts` | L53 |
+| POST | /api/files/upload-card | `server/src/api/files/routes.ts` | L59 |
+| POST | /api/files/upload-image | `server/src/api/files/routes.ts` | L65 |
+| POST | /api/generations/:id/abort | `server/src/api/generations.core.api.ts` | L16 |
+| GET | /api/llm-preset-settings | `server/src/api/llm-presets.api.ts` | L185 |
+| PUT | /api/llm-preset-settings | `server/src/api/llm-presets.api.ts` | L201 |
+| GET | /api/llm-presets | `server/src/api/llm-presets.api.ts` | L77 |
+| POST | /api/llm-presets | `server/src/api/llm-presets.api.ts` | L93 |
+| DELETE | /api/llm-presets/:id | `server/src/api/llm-presets.api.ts` | L132 |
+| PUT | /api/llm-presets/:id | `server/src/api/llm-presets.api.ts` | L108 |
+| POST | /api/llm-presets/:id/apply | `server/src/api/llm-presets.api.ts` | L150 |
+| GET | /api/llm/models | `server/src/api/llm.api.ts` | L249 |
+| GET | /api/llm/providers | `server/src/api/llm.api.ts` | L47 |
+| GET | /api/llm/providers/:providerId/config | `server/src/api/llm.api.ts` | L158 |
+| PATCH | /api/llm/providers/:providerId/config | `server/src/api/llm.api.ts` | L168 |
+| GET | /api/llm/runtime | `server/src/api/llm.api.ts` | L62 |
+| PATCH | /api/llm/runtime | `server/src/api/llm.api.ts` | L80 |
+| GET | /api/llm/tokens | `server/src/api/llm.api.ts` | L187 |
+| POST | /api/llm/tokens | `server/src/api/llm.api.ts` | L205 |
+| DELETE | /api/llm/tokens/:id | `server/src/api/llm.api.ts` | L240 |
+| PATCH | /api/llm/tokens/:id | `server/src/api/llm.api.ts` | L226 |
+| GET | /api/operation-profiles | `server/src/api/operation-profiles.core.api.ts` | L36 |
+| POST | /api/operation-profiles | `server/src/api/operation-profiles.core.api.ts` | L44 |
+| DELETE | /api/operation-profiles/:id | `server/src/api/operation-profiles.core.api.ts` | L114 |
+| GET | /api/operation-profiles/:id | `server/src/api/operation-profiles.core.api.ts` | L88 |
+| PUT | /api/operation-profiles/:id | `server/src/api/operation-profiles.core.api.ts` | L99 |
+| GET | /api/operation-profiles/:id/export | `server/src/api/operation-profiles.core.api.ts` | L128 |
+| GET | /api/operation-profiles/active | `server/src/api/operation-profiles.core.api.ts` | L58 |
+| PUT | /api/operation-profiles/active | `server/src/api/operation-profiles.core.api.ts` | L70 |
+| POST | /api/operation-profiles/import | `server/src/api/operation-profiles.core.api.ts` | L155 |
+| POST | /api/parts/:id/soft-delete | `server/src/api/chat-entries.api.ts` | L1106 |
+| GET | /api/prompt-templates | `server/src/api/prompt-templates.core.api.ts` | L42 |
+| POST | /api/prompt-templates | `server/src/api/prompt-templates.core.api.ts` | L95 |
+| DELETE | /api/prompt-templates/:id | `server/src/api/prompt-templates.core.api.ts` | L150 |
+| PUT | /api/prompt-templates/:id | `server/src/api/prompt-templates.core.api.ts` | L120 |
+| POST | /api/prompt-templates/prerender | `server/src/api/prompt-templates.core.api.ts` | L54 |
+| GET | /api/settings/user-persons | `server/src/api/user-persons.core.api.ts` | L103 |
+| POST | /api/settings/user-persons | `server/src/api/user-persons.core.api.ts` | L115 |
+| GET | /api/ui-theme-presets | `server/src/api/ui-theme.core.api.ts` | L39 |
+| POST | /api/ui-theme-presets | `server/src/api/ui-theme.core.api.ts` | L49 |
+| DELETE | /api/ui-theme-presets/:id | `server/src/api/ui-theme.core.api.ts` | L88 |
+| PUT | /api/ui-theme-presets/:id | `server/src/api/ui-theme.core.api.ts` | L64 |
+| GET | /api/ui-theme-presets/:id/export | `server/src/api/ui-theme.core.api.ts` | L99 |
+| POST | /api/ui-theme-presets/import | `server/src/api/ui-theme.core.api.ts` | L117 |
+| GET | /api/ui-theme-settings | `server/src/api/ui-theme.core.api.ts` | L131 |
+| PUT | /api/ui-theme-settings | `server/src/api/ui-theme.core.api.ts` | L141 |
+| GET | /api/user-persons | `server/src/api/user-persons.core.api.ts` | L27 |
+| POST | /api/user-persons | `server/src/api/user-persons.core.api.ts` | L50 |
+| DELETE | /api/user-persons/:id | `server/src/api/user-persons.core.api.ts` | L91 |
+| GET | /api/user-persons/:id | `server/src/api/user-persons.core.api.ts` | L39 |
+| PUT | /api/user-persons/:id | `server/src/api/user-persons.core.api.ts` | L71 |
+| GET | /api/world-info/bindings | `server/src/api/world-info.core.api.ts` | L343 |
+| PUT | /api/world-info/bindings | `server/src/api/world-info.core.api.ts` | L357 |
+| GET | /api/world-info/books | `server/src/api/world-info.core.api.ts` | L167 |
+| POST | /api/world-info/books | `server/src/api/world-info.core.api.ts` | L177 |
+| DELETE | /api/world-info/books/:id | `server/src/api/world-info.core.api.ts` | L226 |
+| GET | /api/world-info/books/:id | `server/src/api/world-info.core.api.ts` | L188 |
+| PUT | /api/world-info/books/:id | `server/src/api/world-info.core.api.ts` | L199 |
+| POST | /api/world-info/books/:id/duplicate | `server/src/api/world-info.core.api.ts` | L237 |
+| GET | /api/world-info/books/:id/export | `server/src/api/world-info.core.api.ts` | L303 |
+| POST | /api/world-info/books/import | `server/src/api/world-info.core.api.ts` | L254 |
+| POST | /api/world-info/resolve | `server/src/api/world-info.core.api.ts` | L382 |
+| GET | /api/world-info/settings | `server/src/api/world-info.core.api.ts` | L322 |
+| PUT | /api/world-info/settings | `server/src/api/world-info.core.api.ts` | L332 |
+| USE | /media | `server/src/api/static.api.ts` | L19 |
+
+## Notes
+
+- Для роутов из `_routes_.ts` путь нормализуется с префиксом `/api`.
+- Для router chaining (`router.route(...).get(...).delete(...)`) каждый метод включается отдельно.

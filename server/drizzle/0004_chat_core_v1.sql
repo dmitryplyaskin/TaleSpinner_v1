@@ -1,5 +1,5 @@
 -- Chat Core v1 (greenfield for legacy chats/messages)
--- Based on docs/chat-core-spec.md (no RAG tables in this migration)
+-- Based on knowledge-base/chat-core-spec.md (no RAG tables in this migration)
 
 DROP TABLE IF EXISTS `chat_messages`;
 --> statement-breakpoint

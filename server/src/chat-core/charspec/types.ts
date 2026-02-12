@@ -8,7 +8,7 @@ export type NormalizedCharSpecSource = {
  *
  * Notes:
  * - This is intentionally a "best-effort" flattening of SillyTavern V1/V2/V3 into a stable shape.
- * - Keep `name` at top-level because templates expect `{{char.name}}` (docs/chat-core-spec.md).
+ * - Keep `name` at top-level because templates expect `{{char.name}}` (knowledge-base/chat-core-spec.md).
  */
 export type NormalizedCharSpec = {
   name: string;

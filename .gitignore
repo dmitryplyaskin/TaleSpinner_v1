@@ -1,6 +1,7 @@
 # Зависимости
 /node_modules
 /frontend/node_modules
+/docs/node_modules
 /.pnp
 .pnp.js
 
@@ -23,6 +24,7 @@ lerna-debug.log*
 # Выходные файлы сборки
 /build
 /dist
+/docs/build
 /.next/
 /out/
 /coverage
@@ -32,6 +34,8 @@ lerna-debug.log*
 *.tsbuildinfo
 .turbo
 .cache
+/docs/.cache
+/docs/.docusaurus
 
 # VS Code
 .vscode

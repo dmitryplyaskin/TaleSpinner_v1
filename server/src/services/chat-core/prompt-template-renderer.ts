@@ -212,7 +212,7 @@ export async function renderLiquidTemplate(params: {
   );
 
   // Additional passes: render again only if the output still looks like a template.
-  // Important: if the output contains `{{` for non-template reasons (e.g. docs/code),
+  // Important: if the output contains `{{` for non-template reasons (e.g. documentation/code),
   // the next parse may throw — in that case we stop and return the previous output.
   for (let pass = 2; pass <= maxPasses; pass++) {
     if (!mightContainLiquidSyntax(current)) break;

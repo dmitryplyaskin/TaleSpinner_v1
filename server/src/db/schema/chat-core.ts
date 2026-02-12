@@ -6,7 +6,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 /**
- * Chat Core v1 (docs/chat-core-spec.md)
+ * Chat Core v1 (knowledge-base/chat-core-spec.md)
  *
  * Notes:
  * - `owner_id` is a single-user / future multi-tenant hook. In v1 default is "global".
