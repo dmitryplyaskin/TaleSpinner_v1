@@ -1,32 +1,63 @@
 ---
 title: World Info
 sidebar_position: 3
-description: World Info user-facing capabilities and runtime integration.
+description: Add lore context in a controlled way without prompt overload.
 ---
 
 # World Info
 
-World Info injects structured knowledge (books and entries) into prompt context based on conversation state.
+World Info in TaleSpinner is used for controlled knowledge injection: lore, world rules, glossary, character facts.
 
-## User-facing capabilities
+## When to use World Info
 
-- list books,
-- create/duplicate/delete books,
-- import/export,
-- world info settings,
-- bindings by scope (`global/chat/entity_profile/persona`).
+Enable it when:
 
-Frontend model: `web/src/model/world-info/index.ts`.
+- model forgets important world facts,
+- chat has many terms/entities,
+- you need stable long-session consistency.
 
-## Backend processing
+## Quick scenario: first World Info book
 
-- API: `server/src/api/world-info.core.api.ts`
-- Runtime resolve: `server/src/services/world-info/world-info-runtime.ts`
-- Types: `server/src/services/world-info/world-info-types.ts`
+1. Open left menu `World Info`.
+2. Create a book or import an existing one (`.json` / `.png`).
+3. Select the book from list.
+4. Enable binding to current chat (`Bind to chat`).
+5. Save settings and send a test prompt.
 
-## Binding scopes and roles
+Expected result: responses follow your lore more consistently.
 
-- Scope: `global`, `chat`, `entity_profile`, `persona`
-- Binding role: `primary`, `additional`
+## TaleSpinner strength
 
-See `server/src/services/world-info/world-info-types.ts`.
+Books can be bound across multiple scopes:
+
+- `global`
+- `chat`
+- `entity_profile`
+- `persona`
+
+This is more manageable than one monolithic lorebook.
+
+## Import from other ecosystems
+
+Supported formats:
+
+- `st_native`
+- `character_book`
+- `agnai`
+- `risu`
+- `novel`
+- `auto` (format auto-detect)
+
+## Practical tips
+
+- Start with small thematic books, not one huge dump.
+- Use chat-binding for local scenarios instead of global binding.
+- Keep only necessary books enabled.
+
+## Common issue
+
+## Too many active books
+
+Symptom: responses become noisy or less precise.
+
+Fix: disable extra bindings and keep only relevant lore.

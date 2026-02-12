@@ -1,42 +1,57 @@
 ---
 title: Chat Basics
 sidebar_position: 2
-description: Core user actions in chat flow.
+description: Daily chat workflow with less manual cleanup.
 ---
 
 # Chat Basics
 
-The following user flow is based on the current implementation.
+This guide focuses on everyday workflow: keep dialogs clean, controllable, and reproducible.
 
-## 1. Select or create a profile
+## Recommended workflow
 
-- Main shell is rendered in `web/src/App.tsx`.
-- If no profile is selected, UI offers profile creation.
-- Profile and chat logic lives in `web/src/model/chat-core/index.ts`.
+## 1. One profile = one context
 
-## 2. Chat and branch management
+Use separate profile per role/character/scenario.
 
-Supported operations:
+Why: less accidental context leakage between tasks.
 
-- create/delete chats,
-- create/activate/rename/delete branches,
-- bind prompt template to chat.
+## 2. One storyline = one branch
 
-See `web/src/model/chat-core/index.ts` and backend API in `server/src/api/chats.core.api.ts`.
+For alternate paths, create a new branch instead of rewriting current one.
 
-## 3. Send message and stream response
+Why: easier comparison and rollback.
 
-- Sending and streaming are implemented in `web/src/model/chat-entry-parts/index.ts`.
-- SSE events are handled via `llm.stream.*`.
-- Supported modes: `send`, `continue`, `regenerate`, `abort`.
+## 3. Use generation modes intentionally
 
-## 4. Variants and manual edits
+- `Send` - standard turn.
+- `Continue` - continue from the latest user turn.
+- `Regenerate` - regenerate selected assistant response.
+- `Abort` - stop current stream immediately.
 
-Supported actions:
+## 4. Keep history clean
 
-- select response variant,
-- delete variant,
-- manual edit,
-- soft-delete entries/parts.
+- remove weak variants,
+- edit messages surgically,
+- hide messages from prompt if they should not affect next outputs.
 
-See `web/src/model/chat-entry-parts/index.ts`.
+This reduces noise and improves predictability.
+
+## Practical scenario
+
+1. Create chat `Scene 1`.
+2. Reach a key story fork.
+3. Create branch `Scene 1A`.
+4. Explore alternative route in that branch.
+5. If response is weak: `Regenerate`.
+6. If history gets noisy: delete/hide irrelevant items.
+
+## Common mistakes
+
+## Everything stays in one branch
+
+Result: hard to explain quality drift.
+
+## Heavy manual rewriting instead of using variants
+
+Result: unnecessary effort. Usually faster to switch/regenerate variants first.
