@@ -106,6 +106,7 @@ describe("rerenderGreetingTemplatesIfPreplay", () => {
       emBottom: [],
       warnings: [],
       activatedCount: 0,
+      activatedEntries: [],
     });
     mocks.renderLiquidTemplate.mockResolvedValue("Hi Alice");
     mocks.updatePartPayloadText.mockResolvedValue(undefined);

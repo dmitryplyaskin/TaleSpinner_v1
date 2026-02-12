@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   runMainLlmPhase: vi.fn(),
   finalizeRun: vi.fn(),
   updateGenerationPromptData: vi.fn(),
+  updateGenerationDebugJson: vi.fn(),
 }));
 
 vi.mock("./prepare/resolve-run-context", () => ({
@@ -36,6 +37,7 @@ vi.mock("./persist/finalize-run", () => ({
 
 vi.mock("../chat-core/generations-repository", () => ({
   updateGenerationPromptData: mocks.updateGenerationPromptData,
+  updateGenerationDebugJson: mocks.updateGenerationDebugJson,
 }));
 
 vi.mock("../chat-core/generation-runtime", () => ({
@@ -126,6 +128,19 @@ beforeEach(() => {
       rag: {},
       art: {},
       now: new Date().toISOString(),
+    },
+    worldInfoDiagnostics: {
+      worldInfoBefore: "",
+      worldInfoAfter: "",
+      depthEntries: [],
+      outletEntries: {},
+      anTop: [],
+      anBottom: [],
+      emTop: [],
+      emBottom: [],
+      warnings: [],
+      activatedCount: 0,
+      activatedEntries: [],
     },
   });
 });

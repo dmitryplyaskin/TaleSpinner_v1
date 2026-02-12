@@ -1,7 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
-import { safeJsonStringifyForLog, safeJsonStringify } from "../../chat-core/json";
+import {
+  safeJsonParse,
+  safeJsonStringify,
+  safeJsonStringifyForLog,
+} from "../../chat-core/json";
 import { initDb } from "../../db/client";
 import { llmGenerations } from "../../db/schema";
 
@@ -41,6 +45,7 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
     finishedAt: null,
     promptHash: null,
     promptSnapshotJson: null,
+    debugJson: null,
     phaseReportJson: null,
     commitReportJson: null,
     promptTokens: null,
@@ -63,6 +68,12 @@ export type GenerationDto = {
   error: string | null;
 };
 
+export type GenerationWithDebugDto = GenerationDto & {
+  promptHash: string | null;
+  promptSnapshot: unknown | null;
+  debug: unknown | null;
+};
+
 function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
   return {
     id: row.id,
@@ -74,6 +85,18 @@ function rowToDto(row: typeof llmGenerations.$inferSelect): GenerationDto {
     startedAt: row.startedAt,
     finishedAt: row.finishedAt ?? null,
     error: row.error ?? null,
+  };
+}
+
+function rowToWithDebugDto(
+  row: typeof llmGenerations.$inferSelect
+): GenerationWithDebugDto {
+  const base = rowToDto(row);
+  return {
+    ...base,
+    promptHash: row.promptHash ?? null,
+    promptSnapshot: safeJsonParse(row.promptSnapshotJson, null),
+    debug: safeJsonParse(row.debugJson, null),
   };
 }
 
@@ -138,6 +161,18 @@ export async function updateGenerationPromptData(params: {
   await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
 }
 
+export async function getGenerationByIdWithDebug(
+  id: string
+): Promise<GenerationWithDebugDto | null> {
+  const db = await initDb();
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(eq(llmGenerations.id, id))
+    .limit(1);
+  return rows[0] ? rowToWithDebugDto(rows[0]) : null;
+}
+
 export async function updateGenerationRunReports(params: {
   id: string;
   phaseReport?: unknown | null;
@@ -168,5 +203,44 @@ export async function updateGenerationRunReports(params: {
 
   if (Object.keys(set).length === 0) return;
   await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
+}
+
+export async function updateGenerationDebugJson(params: {
+  id: string;
+  debug?: unknown | null;
+}): Promise<void> {
+  if (typeof params.debug === "undefined") return;
+  const db = await initDb();
+  await db
+    .update(llmGenerations)
+    .set({
+      debugJson:
+        params.debug === null
+          ? null
+          : safeJsonStringifyForLog(params.debug, {
+              maxChars: 450_000,
+              fallback: "{}",
+            }),
+    })
+    .where(eq(llmGenerations.id, params.id));
+}
+
+export async function getLatestGenerationByChatBranchWithDebug(params: {
+  chatId: string;
+  branchId: string;
+}): Promise<GenerationWithDebugDto | null> {
+  const db = await initDb();
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(
+      and(
+        eq(llmGenerations.chatId, params.chatId),
+        eq(llmGenerations.branchId, params.branchId)
+      )
+    )
+    .orderBy(desc(llmGenerations.startedAt), desc(llmGenerations.id))
+    .limit(1);
+  return rows[0] ? rowToWithDebugDto(rows[0]) : null;
 }
 

@@ -13,6 +13,7 @@ import {
 	openDeleteEntryConfirm,
 	openDeletePartConfirm,
 	openDeleteVariantConfirm,
+	openPromptInspectorRequested,
 	regenerateRequested,
 	selectVariantRequested,
 	setEntryPromptVisibilityRequested,
@@ -103,6 +104,10 @@ const MessageInner: React.FC<MessageProps> = ({
 	const isUser = data.entry.role === 'user';
 	const isAssistant = data.entry.role === 'assistant';
 	const isPromptExcluded = typeof data.entry.meta === 'object' && data.entry.meta !== null && (data.entry.meta as any).excludedFromPrompt === true;
+	const variantDerived = isRecord(data.variant?.derived) ? data.variant.derived : null;
+	const promptGenerationId =
+		variantDerived && typeof variantDerived.generationId === 'string' ? variantDerived.generationId : null;
+	const canOpenPromptInspector = Boolean(isAssistant && promptGenerationId);
 	const assistantName = currentProfile?.name || t('chat.message.assistantFallback');
 	const assistantAvatarSrc = resolveAssetUrl(currentProfile?.avatarAssetId ?? undefined);
 	const personaSnapshot = useMemo(() => readPersonaSnapshot(data.entry.meta), [data.entry.meta]);
@@ -291,6 +296,14 @@ const MessageInner: React.FC<MessageProps> = ({
 		});
 	};
 
+	const handleOpenPromptInspector = () => {
+		if (!isAssistant || !data.variant) return;
+		openPromptInspectorRequested({
+			entryId: data.entry.entryId,
+			variantId: data.variant.variantId,
+		});
+	};
+
 	const handleAssistantAvatarClick = () => {
 		if (!assistantAvatarSrc || !onAvatarPreviewRequested) return;
 		onAvatarPreviewRequested({ src: assistantAvatarSrc, name: assistantName, kind: 'assistant' });
@@ -373,7 +386,10 @@ const MessageInner: React.FC<MessageProps> = ({
 											isEditing={isEditingMainPart}
 											canDeleteVariant={canDeleteVariant}
 											isPromptExcluded={isPromptExcluded}
+											showPromptInspectorAction={isAssistant}
+											canOpenPromptInspector={canOpenPromptInspector}
 											onTogglePromptVisibility={handleTogglePromptVisibility}
+											onOpenPromptInspector={handleOpenPromptInspector}
 											onOpenEdit={handleOpenEdit}
 											onCancelEdit={handleCancelEdit}
 											onConfirmEdit={handleConfirmEdit}

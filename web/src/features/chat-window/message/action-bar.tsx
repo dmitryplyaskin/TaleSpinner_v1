@@ -1,7 +1,7 @@
 import { Box, Flex, Paper } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuEllipsis, LuEye, LuEyeOff, LuPen, LuTrash, LuX } from 'react-icons/lu';
+import { LuCheck, LuEllipsis, LuEye, LuEyeOff, LuFileSearch, LuPen, LuTrash, LuX } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 
@@ -9,7 +9,10 @@ type ActionBarProps = {
 	isEditing: boolean;
 	canDeleteVariant: boolean;
 	isPromptExcluded: boolean;
+	showPromptInspectorAction: boolean;
+	canOpenPromptInspector: boolean;
 	onTogglePromptVisibility: () => void;
+	onOpenPromptInspector: () => void;
 	onOpenEdit: () => void;
 	onCancelEdit: () => void;
 	onConfirmEdit: () => void;
@@ -21,7 +24,10 @@ export const ActionBar = ({
 	isEditing,
 	canDeleteVariant,
 	isPromptExcluded,
+	showPromptInspectorAction,
+	canOpenPromptInspector,
 	onTogglePromptVisibility,
+	onOpenPromptInspector,
 	onOpenEdit,
 	onCancelEdit,
 	onConfirmEdit,
@@ -35,7 +41,8 @@ export const ActionBar = ({
 		if (isEditing) setActionsOpen(false);
 	}, [isEditing]);
 
-	const expandedWidth = canDeleteVariant ? 74 : 48;
+	const hiddenActionsCount = (canDeleteVariant ? 1 : 0) + 2 + (showPromptInspectorAction ? 1 : 0);
+	const expandedWidth = hiddenActionsCount > 0 ? hiddenActionsCount * 26 - 4 : 0;
 
 	return (
 		<Flex gap={6} align="center">
@@ -93,6 +100,25 @@ export const ActionBar = ({
 										onTogglePromptVisibility();
 									}}
 								/>
+								{showPromptInspectorAction && (
+									<IconButtonWithTooltip
+										size="xs"
+										variant="ghost"
+										colorPalette={canOpenPromptInspector ? 'cyan' : 'gray'}
+										icon={<LuFileSearch />}
+										tooltip={
+											canOpenPromptInspector
+												? t('chat.actions.viewPrompt')
+												: t('chat.actions.viewPromptUnavailable')
+										}
+										aria-label={t('chat.actions.viewPrompt')}
+										onClick={() => {
+											if (!canOpenPromptInspector) return;
+											setActionsOpen(false);
+											onOpenPromptInspector();
+										}}
+									/>
+								)}
 							</Flex>
 						</Box>
 						<IconButtonWithTooltip

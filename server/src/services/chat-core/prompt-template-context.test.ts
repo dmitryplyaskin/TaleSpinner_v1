@@ -31,6 +31,7 @@ vi.mock("./prompt-template-renderer", () => ({
 import {
   applyWorldInfoToTemplateContext,
   buildPromptTemplateRenderContext,
+  deriveWorldInfoActivationReasons,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "./prompt-template-context";
 
@@ -175,10 +176,23 @@ describe("prompt-template-context", () => {
       anBottom: [],
       emTop: [],
       emBottom: ["EM {{char}}"],
-      activatedEntries: [{}, {}, {}],
+      activatedEntries: [
+        {
+          hash: "h1",
+          bookId: "b",
+          bookName: "Book",
+          uid: 1,
+          comment: "Entry 1",
+          content: "Entry {{char}}",
+          decorators: { activate: true, dontActivate: false },
+          constant: false,
+        },
+      ],
       debug: {
         warnings: [],
-        matchedKeys: {},
+        matchedKeys: {
+          h1: ["dragon"],
+        },
         skips: [],
         budget: { limit: 1, used: 0, overflowed: false },
       },
@@ -202,6 +216,8 @@ describe("prompt-template-context", () => {
     expect(resolved.worldInfoAfter).toBe("After Lilly");
     expect(resolved.depthEntries[0]?.content).toBe("Depth Lilly");
     expect(resolved.outletEntries.default?.[0]).toBe("Outlet Lilly");
+    expect(resolved.activatedEntries[0]?.content).toBe("Entry Lilly");
+    expect(resolved.activatedEntries[0]?.reasons).toEqual(["decorator_activate", "key_match"]);
     expect(context.wiBefore).toBe("Before Lilly");
     expect(context.outletEntries?.default).toEqual(["Outlet Lilly"]);
   });
@@ -216,7 +232,18 @@ describe("prompt-template-context", () => {
       anBottom: [],
       emTop: [],
       emBottom: [],
-      activatedEntries: [{}, {}],
+      activatedEntries: [
+        {
+          hash: "h2",
+          bookId: "b",
+          bookName: "Book",
+          uid: 2,
+          comment: "Entry 2",
+          content: "FAIL_ME {{char}}",
+          decorators: { activate: false, dontActivate: false },
+          constant: true,
+        },
+      ],
       debug: {
         warnings: [],
         matchedKeys: {},
@@ -244,5 +271,18 @@ describe("prompt-template-context", () => {
     expect(resolved.worldInfoBefore).toBe("FAIL_ME {{char}}");
     expect(resolved.warnings.some((item) => item.includes("world_info_liquid_render_error:worldInfoBefore:boom"))).toBe(true);
     expect(context.wiBefore).toBe("FAIL_ME {{char}}");
+    expect(resolved.activatedEntries[0]?.reasons).toEqual(["constant"]);
+  });
+
+  test("derives activation reasons with runtime fallback", () => {
+    expect(
+      deriveWorldInfoActivationReasons({
+        entry: {
+          decorators: { activate: false, dontActivate: false },
+          constant: false,
+        },
+        matchedKeys: [],
+      })
+    ).toEqual(["runtime_activation"]);
   });
 });

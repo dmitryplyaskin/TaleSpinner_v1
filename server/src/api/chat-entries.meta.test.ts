@@ -3,7 +3,11 @@ import { describe, expect, test } from "vitest";
 import { HttpError } from "@core/middleware/error-handler";
 
 import {
+  buildLatestWorldInfoActivationsFromGeneration,
+  buildPromptDiagnosticsFromDebug,
+  buildPromptDiagnosticsFromSnapshot,
   buildUserEntryMeta,
+  emptyLatestWorldInfoActivationsResponse,
   mergeEntryPromptVisibilityMeta,
   renderUserInputWithLiquid,
   resolveContinueUserTurnTarget,
@@ -303,6 +307,150 @@ describe("renderUserInputWithLiquid", () => {
     expect(rendered).toEqual({
       renderedContent: "",
       changed: true,
+    });
+  });
+});
+
+describe("prompt diagnostics helpers", () => {
+  test("buildPromptDiagnosticsFromDebug returns normalized payload", () => {
+    const data = buildPromptDiagnosticsFromDebug({
+      generation: {
+        id: "gen-1",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        messageId: null,
+        variantId: "variant-1",
+        status: "done",
+        startedAt: new Date("2026-02-12T12:00:00.000Z"),
+        finishedAt: new Date("2026-02-12T12:00:05.000Z"),
+        error: null,
+        promptHash: "hash-1",
+        promptSnapshot: null,
+        debug: {
+          estimator: "chars_div4",
+          prompt: {
+            messages: [{ role: "system", content: "sys" }],
+            approxTokens: {
+              total: 3,
+              byRole: { system: 3, user: 0, assistant: 0 },
+              sections: {
+                systemInstruction: 3,
+                chatHistory: 0,
+                worldInfoBefore: 0,
+                worldInfoAfter: 0,
+                worldInfoDepth: 0,
+                worldInfoOutlets: 0,
+                worldInfoAN: 0,
+                worldInfoEM: 0,
+              },
+            },
+          },
+        },
+      },
+      entryId: "entry-1",
+      variantId: "variant-1",
+    });
+
+    expect(data).toEqual(
+      expect.objectContaining({
+        generationId: "gen-1",
+        entryId: "entry-1",
+        variantId: "variant-1",
+        estimator: "chars_div4",
+        prompt: expect.objectContaining({
+          messages: [{ role: "system", content: "sys" }],
+        }),
+      })
+    );
+  });
+
+  test("buildPromptDiagnosticsFromSnapshot falls back when debug is missing", () => {
+    const data = buildPromptDiagnosticsFromSnapshot({
+      generation: {
+        id: "gen-2",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        messageId: null,
+        variantId: "variant-1",
+        status: "done",
+        startedAt: new Date("2026-02-12T12:10:00.000Z"),
+        finishedAt: new Date("2026-02-12T12:10:05.000Z"),
+        error: null,
+        promptHash: "hash-2",
+        debug: null,
+        promptSnapshot: {
+          v: 1,
+          messages: [
+            { role: "system", content: "sys" },
+            { role: "user", content: "hello" },
+          ],
+          truncated: false,
+          meta: {
+            historyLimit: 50,
+            historyReturnedCount: 1,
+            worldInfo: {
+              activatedCount: 1,
+              beforeChars: 24,
+              afterChars: 0,
+              warnings: [],
+            },
+          },
+        },
+      },
+      entryId: "entry-1",
+      variantId: "variant-1",
+    });
+
+    expect(data?.prompt.approxTokens.sections.worldInfoBefore).toBeGreaterThan(0);
+    expect(data?.prompt.messages).toHaveLength(2);
+  });
+
+  test("buildLatestWorldInfoActivationsFromGeneration extracts entries", () => {
+    const data = buildLatestWorldInfoActivationsFromGeneration({
+      id: "gen-3",
+      chatId: "chat-1",
+      branchId: "branch-1",
+      messageId: null,
+      variantId: "variant-1",
+      status: "done",
+      startedAt: new Date("2026-02-12T13:00:00.000Z"),
+      finishedAt: new Date("2026-02-12T13:00:05.000Z"),
+      error: null,
+      promptHash: "hash-3",
+      promptSnapshot: null,
+      debug: {
+        worldInfo: {
+          activatedCount: 1,
+          warnings: ["w1"],
+          entries: [
+            {
+              hash: "h1",
+              bookId: "book-1",
+              bookName: "Book",
+              uid: 7,
+              comment: "Entry",
+              content: "Lore",
+              matchedKeys: ["dragon"],
+              reasons: ["key_match"],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(data?.generationId).toBe("gen-3");
+    expect(data?.entries[0]?.matchedKeys).toEqual(["dragon"]);
+    expect(data?.warnings).toEqual(["w1"]);
+  });
+
+  test("emptyLatestWorldInfoActivationsResponse returns null-like payload", () => {
+    expect(emptyLatestWorldInfoActivationsResponse()).toEqual({
+      generationId: null,
+      startedAt: null,
+      status: null,
+      activatedCount: 0,
+      warnings: [],
+      entries: [],
     });
   });
 });

@@ -5,6 +5,7 @@ import { toaster } from '@ui/toaster';
 import { abortGeneration } from '../../api/chat-core';
 import {
 	deleteEntryVariant,
+	getEntryPromptDiagnostics,
 	listChatEntries,
 	listEntryVariants,
 	manualEditEntry,
@@ -23,7 +24,7 @@ import { logChatGenerationSseEvent } from '../chat-generation-debug';
 import { userPersonsModel } from '../user-persons';
 
 import type { SseEnvelope } from '../../api/chat-core';
-import type { ChatEntryWithVariantDto } from '../../api/chat-entry-parts';
+import type { ChatEntryWithVariantDto, PromptDiagnosticsResponse } from '../../api/chat-entry-parts';
 import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 
 function nowIso(): string {
@@ -80,6 +81,92 @@ sample({
 		return selected.filter((id) => available.has(id));
 	},
 	target: $bulkDeleteSelectedEntryIds,
+});
+
+export type PromptInspectorState = {
+	open: boolean;
+	entryId: string | null;
+	variantId: string | null;
+	loading: boolean;
+	error: string | null;
+	data: PromptDiagnosticsResponse | null;
+};
+
+export const openPromptInspectorRequested = createEvent<{ entryId: string; variantId?: string | null }>();
+export const closePromptInspectorRequested = createEvent();
+const setPromptInspectorRequest = createEvent<{ entryId: string; variantId: string | null }>();
+const resetPromptInspectorData = createEvent();
+
+export const loadPromptInspectorFx = createEffect(async (params: { entryId: string; variantId: string | null }) => {
+	return getEntryPromptDiagnostics({
+		entryId: params.entryId,
+		variantId: params.variantId ?? undefined,
+	});
+});
+
+export const $promptInspectorState = createStore<PromptInspectorState>({
+	open: false,
+	entryId: null,
+	variantId: null,
+	loading: false,
+	error: null,
+	data: null,
+})
+	.on(setPromptInspectorRequest, (_state, payload) => ({
+		open: true,
+		entryId: payload.entryId,
+		variantId: payload.variantId,
+		loading: true,
+		error: null,
+		data: null,
+	}))
+	.on(loadPromptInspectorFx.doneData, (state, data) => ({
+		...state,
+		loading: false,
+		error: null,
+		data,
+	}))
+	.on(loadPromptInspectorFx.failData, (state, error) => ({
+		...state,
+		loading: false,
+		error: error instanceof Error ? error.message : String(error),
+		data: null,
+	}))
+	.on(closePromptInspectorRequested, (state) => ({
+		...state,
+		open: false,
+	}))
+	.on(resetPromptInspectorData, () => ({
+		open: false,
+		entryId: null,
+		variantId: null,
+		loading: false,
+		error: null,
+		data: null,
+	}))
+	.on(setOpenedChat, () => ({
+		open: false,
+		entryId: null,
+		variantId: null,
+		loading: false,
+		error: null,
+		data: null,
+	}));
+
+sample({
+	clock: openPromptInspectorRequested,
+	fn: ({ entryId, variantId }) => ({ entryId, variantId: variantId ?? null }),
+	target: setPromptInspectorRequest,
+});
+
+sample({
+	clock: setPromptInspectorRequest,
+	target: loadPromptInspectorFx,
+});
+
+sample({
+	clock: closePromptInspectorRequested,
+	target: resetPromptInspectorData,
 });
 
 export const $isChatStreaming = createStore(false);

@@ -7,7 +7,10 @@ import { renderLiquidTemplate } from "./prompt-template-renderer";
 import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
-import type { WorldInfoDepthEntry } from "../world-info/world-info-types";
+import type {
+  PreparedWorldInfoEntry,
+  WorldInfoDepthEntry,
+} from "../world-info/world-info-types";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
 export type PromptTemplateWorldInfoInput = {
@@ -38,6 +41,24 @@ export type PromptTemplateResolvedWorldInfo = {
   emBottom: string[];
   warnings: string[];
   activatedCount: number;
+  activatedEntries: PromptTemplateResolvedWorldInfoActivationEntry[];
+};
+
+export type PromptTemplateResolvedWorldInfoActivationReason =
+  | "decorator_activate"
+  | "constant"
+  | "key_match"
+  | "runtime_activation";
+
+export type PromptTemplateResolvedWorldInfoActivationEntry = {
+  hash: string;
+  bookId: string;
+  bookName: string;
+  uid: number;
+  comment: string;
+  content: string;
+  matchedKeys: string[];
+  reasons: PromptTemplateResolvedWorldInfoActivationReason[];
 };
 
 function isRecord(val: unknown): val is Record<string, unknown> {
@@ -98,6 +119,7 @@ function createEmptyResolvedWorldInfo(): PromptTemplateResolvedWorldInfo {
     emBottom: [],
     warnings: [],
     activatedCount: 0,
+    activatedEntries: [],
   };
 }
 
@@ -127,6 +149,37 @@ function cloneTemplateContextForWorldInfoRender(
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+export function deriveWorldInfoActivationReasons(params: {
+  entry: Pick<PreparedWorldInfoEntry, "decorators" | "constant">;
+  matchedKeys: string[];
+}): PromptTemplateResolvedWorldInfoActivationReason[] {
+  const reasons: PromptTemplateResolvedWorldInfoActivationReason[] = [];
+  if (params.entry.decorators.activate) reasons.push("decorator_activate");
+  if (params.entry.constant) reasons.push("constant");
+  if (params.matchedKeys.length > 0) reasons.push("key_match");
+  if (reasons.length === 0) reasons.push("runtime_activation");
+  return reasons;
+}
+
+function mapActivatedWorldInfoEntries(params: {
+  activatedEntries: PreparedWorldInfoEntry[];
+  matchedKeysByHash: Record<string, string[]>;
+}): PromptTemplateResolvedWorldInfoActivationEntry[] {
+  return params.activatedEntries.map((entry) => {
+    const matchedKeys = asStringArray(params.matchedKeysByHash[entry.hash]);
+    return {
+      hash: entry.hash,
+      bookId: entry.bookId,
+      bookName: entry.bookName,
+      uid: entry.uid,
+      comment: entry.comment,
+      content: entry.content,
+      matchedKeys,
+      reasons: deriveWorldInfoActivationReasons({ entry, matchedKeys }),
+    };
+  });
 }
 
 async function renderWorldInfoTextWithLiquid(params: {
@@ -241,6 +294,17 @@ async function renderResolvedWorldInfoWithLiquid(params: {
       })
     )
   );
+  const activatedEntries = await Promise.all(
+    params.resolved.activatedEntries.map(async (entry, idx) => ({
+      ...entry,
+      content: await renderWorldInfoTextWithLiquid({
+        content: entry.content,
+        context: renderContext,
+        warnings,
+        warningKey: `activatedEntries.${idx}`,
+      }),
+    }))
+  );
 
   return {
     ...params.resolved,
@@ -252,6 +316,7 @@ async function renderResolvedWorldInfoWithLiquid(params: {
     anBottom,
     emTop,
     emBottom,
+    activatedEntries,
     warnings,
   };
 }
@@ -329,6 +394,10 @@ export async function resolveWorldInfoForTemplateContext(params: {
       emBottom: resolved.emBottom,
       warnings: [...resolved.debug.warnings],
       activatedCount: resolved.activatedEntries.length,
+      activatedEntries: mapActivatedWorldInfoEntries({
+        activatedEntries: resolved.activatedEntries,
+        matchedKeysByHash: resolved.debug.matchedKeys,
+      }),
     };
   } catch {
     return createEmptyResolvedWorldInfo();

@@ -1,7 +1,10 @@
 import crypto from "crypto";
 
 import { unregisterGeneration, registerGeneration } from "../chat-core/generation-runtime";
-import { updateGenerationPromptData } from "../chat-core/generations-repository";
+import {
+  updateGenerationDebugJson,
+  updateGenerationPromptData,
+} from "../chat-core/generations-repository";
 
 import { ProfileSessionArtifactStore } from "./artifacts/profile-session-artifact-store";
 import { RunArtifactStore } from "./artifacts/run-artifact-store";
@@ -24,6 +27,43 @@ import type {
   RunState,
 } from "./contracts";
 import type { GenerateMessage } from "@shared/types/generate";
+
+type PromptDiagnosticsSectionTokens = {
+  systemInstruction: number;
+  chatHistory: number;
+  worldInfoBefore: number;
+  worldInfoAfter: number;
+  worldInfoDepth: number;
+  worldInfoOutlets: number;
+  worldInfoAN: number;
+  worldInfoEM: number;
+};
+
+type PromptDiagnosticsDebugJson = {
+  estimator: "chars_div4";
+  prompt: {
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+    approxTokens: {
+      total: number;
+      byRole: { system: number; user: number; assistant: number };
+      sections: PromptDiagnosticsSectionTokens;
+    };
+  };
+  worldInfo: {
+    activatedCount: number;
+    warnings: string[];
+    entries: Array<{
+      hash: string;
+      bookId: string;
+      bookName: string;
+      uid: number;
+      comment: string;
+      content: string;
+      matchedKeys: string[];
+      reasons: string[];
+    }>;
+  };
+};
 
 function draftToLlmMessages(draft: PromptDraftMessage[]): GenerateMessage[] {
   return draft
@@ -121,6 +161,95 @@ function clonePromptDraftMessages(messages: PromptDraftMessage[]): PromptDraftMe
 
 function cloneLlmMessages(messages: GenerateMessage[]): GenerateMessage[] {
   return messages.map((m) => ({ role: m.role, content: m.content }));
+}
+
+function approxTokensByChars(chars: number): number {
+  if (!Number.isFinite(chars)) return 0;
+  const normalized = Math.max(0, Math.floor(chars));
+  if (normalized === 0) return 0;
+  return Math.ceil(normalized / 4);
+}
+
+function approxTokensByText(text: string): number {
+  return approxTokensByChars(String(text ?? "").length);
+}
+
+function sumTextLengths(values: string[]): number {
+  return values.reduce((acc, value) => acc + String(value ?? "").length, 0);
+}
+
+function buildPromptDiagnosticsDebugJson(params: {
+  llmMessages: GenerateMessage[];
+  systemPrompt: string;
+  templateHistoryMessages: Array<{ role: string; content: string }>;
+  worldInfoDiagnostics: Awaited<ReturnType<typeof buildBasePrompt>>["worldInfoDiagnostics"];
+}): PromptDiagnosticsDebugJson {
+  const byRole = params.llmMessages.reduce(
+    (acc, message) => {
+      const tokens = approxTokensByText(message.content);
+      if (message.role === "system") acc.system += tokens;
+      if (message.role === "user") acc.user += tokens;
+      if (message.role === "assistant") acc.assistant += tokens;
+      return acc;
+    },
+    { system: 0, user: 0, assistant: 0 }
+  );
+  const total = byRole.system + byRole.user + byRole.assistant;
+
+  const worldInfoDepthChars = params.worldInfoDiagnostics.depthEntries.reduce(
+    (acc, item) => acc + String(item.content ?? "").length,
+    0
+  );
+  const worldInfoOutletChars = Object.values(
+    params.worldInfoDiagnostics.outletEntries
+  ).reduce((acc, entries) => acc + sumTextLengths(entries), 0);
+  const worldInfoAnChars =
+    sumTextLengths(params.worldInfoDiagnostics.anTop) +
+    sumTextLengths(params.worldInfoDiagnostics.anBottom);
+  const worldInfoEmChars =
+    sumTextLengths(params.worldInfoDiagnostics.emTop) +
+    sumTextLengths(params.worldInfoDiagnostics.emBottom);
+  const chatHistoryChars = params.templateHistoryMessages.reduce(
+    (acc, item) => acc + String(item.content ?? "").length,
+    0
+  );
+
+  const sections: PromptDiagnosticsSectionTokens = {
+    systemInstruction: approxTokensByText(params.systemPrompt),
+    chatHistory: approxTokensByChars(chatHistoryChars),
+    worldInfoBefore: approxTokensByText(params.worldInfoDiagnostics.worldInfoBefore),
+    worldInfoAfter: approxTokensByText(params.worldInfoDiagnostics.worldInfoAfter),
+    worldInfoDepth: approxTokensByChars(worldInfoDepthChars),
+    worldInfoOutlets: approxTokensByChars(worldInfoOutletChars),
+    worldInfoAN: approxTokensByChars(worldInfoAnChars),
+    worldInfoEM: approxTokensByChars(worldInfoEmChars),
+  };
+
+  return {
+    estimator: "chars_div4",
+    prompt: {
+      messages: cloneLlmMessages(params.llmMessages),
+      approxTokens: {
+        total,
+        byRole,
+        sections,
+      },
+    },
+    worldInfo: {
+      activatedCount: params.worldInfoDiagnostics.activatedCount,
+      warnings: [...params.worldInfoDiagnostics.warnings],
+      entries: params.worldInfoDiagnostics.activatedEntries.map((entry) => ({
+        hash: entry.hash,
+        bookId: entry.bookId,
+        bookName: entry.bookName,
+        uid: entry.uid,
+        comment: entry.comment,
+        content: entry.content,
+        matchedKeys: [...entry.matchedKeys],
+        reasons: [...entry.reasons],
+      })),
+    },
+  };
 }
 
 export async function* runChatGenerationV3(
@@ -360,29 +489,40 @@ export async function* runChatGenerationV3(
     }
     yield* flushEvents();
 
-    if (!beforeBarrierFailed) {
-      runState.llmMessages = draftToLlmMessages(runState.effectivePromptDraft);
-      runState.promptHash = hashPromptMessages(runState.llmMessages);
-      runState.promptSnapshot = buildRedactedSnapshot(runState.llmMessages, {
-        historyLimit: context.historyLimit,
-        historyReturnedCount: basePrompt.prompt.historyReturnedCount,
-        worldInfoMeta: basePrompt.prompt.promptSnapshot.meta.worldInfo,
-      });
+    runState.llmMessages = draftToLlmMessages(runState.effectivePromptDraft);
+    runState.promptHash = hashPromptMessages(runState.llmMessages);
+    runState.promptSnapshot = buildRedactedSnapshot(runState.llmMessages, {
+      historyLimit: context.historyLimit,
+      historyReturnedCount: basePrompt.prompt.historyReturnedCount,
+      worldInfoMeta: basePrompt.prompt.promptSnapshot.meta.worldInfo,
+    });
 
-      await updateGenerationPromptData({
-        id: context.generationId,
+    await updateGenerationPromptData({
+      id: context.generationId,
+      promptHash: runState.promptHash,
+      promptSnapshot: runState.promptSnapshot,
+    });
+    const promptDiagnosticsDebug = buildPromptDiagnosticsDebugJson({
+      llmMessages: runState.llmMessages,
+      systemPrompt: basePrompt.prompt.systemPrompt,
+      templateHistoryMessages: basePrompt.templateContext.messages,
+      worldInfoDiagnostics: basePrompt.worldInfoDiagnostics,
+    });
+    await updateGenerationDebugJson({
+      id: context.generationId,
+      debug: promptDiagnosticsDebug,
+    });
+
+    if (debugEnabled && runState.promptHash) {
+      emit("run.debug.main_llm_input", {
         promptHash: runState.promptHash,
-        promptSnapshot: runState.promptSnapshot,
+        basePromptDraft: clonePromptDraftMessages(runState.basePromptDraft),
+        effectivePromptDraft: clonePromptDraftMessages(runState.effectivePromptDraft),
+        llmMessages: cloneLlmMessages(runState.llmMessages),
       });
+    }
 
-      if (debugEnabled && runState.promptHash) {
-        emit("run.debug.main_llm_input", {
-          promptHash: runState.promptHash,
-          basePromptDraft: clonePromptDraftMessages(runState.basePromptDraft),
-          effectivePromptDraft: clonePromptDraftMessages(runState.effectivePromptDraft),
-          llmMessages: cloneLlmMessages(runState.llmMessages),
-        });
-      }
+    if (!beforeBarrierFailed) {
 
       // main llm
       emit("run.phase_changed", { phase: "run_main_llm" });

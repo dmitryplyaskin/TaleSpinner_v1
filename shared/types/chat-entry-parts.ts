@@ -45,6 +45,7 @@ export type Variant = {
   parts: Part[];
 
   derived?: {
+    generationId?: string;
     promptHash?: string;
     [key: string]: unknown;
   };

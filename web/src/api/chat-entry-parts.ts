@@ -62,6 +62,50 @@ export type ChatEntryWithVariantDto = {
 	variant: Variant | null;
 };
 
+export type PromptDiagnosticsResponse = {
+	generationId: string;
+	entryId: string;
+	variantId: string;
+	startedAt: string;
+	status: 'streaming' | 'done' | 'aborted' | 'error';
+	estimator: 'chars_div4';
+	prompt: {
+		messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+		approxTokens: {
+			total: number;
+			byRole: { system: number; user: number; assistant: number };
+			sections: {
+				systemInstruction: number;
+				chatHistory: number;
+				worldInfoBefore: number;
+				worldInfoAfter: number;
+				worldInfoDepth: number;
+				worldInfoOutlets: number;
+				worldInfoAN: number;
+				worldInfoEM: number;
+			};
+		};
+	};
+};
+
+export type LatestWorldInfoActivationsResponse = {
+	generationId: string | null;
+	startedAt: string | null;
+	status: 'streaming' | 'done' | 'aborted' | 'error' | null;
+	activatedCount: number;
+	warnings: string[];
+	entries: Array<{
+		hash: string;
+		bookId: string;
+		bookName: string;
+		uid: number;
+		comment: string;
+		content: string;
+		matchedKeys: string[];
+		reasons: string[];
+	}>;
+};
+
 export async function listChatEntries(params: {
 	chatId: string;
 	branchId?: string;
@@ -272,6 +316,28 @@ export async function setEntryPromptVisibility(params: {
 			method: 'POST',
 			body: JSON.stringify({ includeInPrompt: params.includeInPrompt }),
 		},
+	);
+}
+
+export async function getEntryPromptDiagnostics(params: {
+	entryId: string;
+	variantId?: string;
+}): Promise<PromptDiagnosticsResponse> {
+	const qs = new URLSearchParams();
+	if (params.variantId) qs.set('variantId', params.variantId);
+	return apiJson<PromptDiagnosticsResponse>(
+		`/entries/${encodeURIComponent(params.entryId)}/prompt-diagnostics${qs.toString() ? `?${qs.toString()}` : ''}`,
+	);
+}
+
+export async function getLatestWorldInfoActivations(params: {
+	chatId: string;
+	branchId?: string;
+}): Promise<LatestWorldInfoActivationsResponse> {
+	const qs = new URLSearchParams();
+	if (params.branchId) qs.set('branchId', params.branchId);
+	return apiJson<LatestWorldInfoActivationsResponse>(
+		`/chats/${encodeURIComponent(params.chatId)}/world-info/latest-activations${qs.toString() ? `?${qs.toString()}` : ''}`,
 	);
 }
 

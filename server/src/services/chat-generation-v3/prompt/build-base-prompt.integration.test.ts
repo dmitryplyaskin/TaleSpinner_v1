@@ -44,6 +44,7 @@ beforeEach(() => {
     emBottom: [],
     warnings: [],
     activatedCount: 2,
+    activatedEntries: [],
   });
   mocks.pickPromptTemplateForChat.mockResolvedValue(null);
   mocks.listProjectedPromptMessages.mockResolvedValue({
@@ -105,6 +106,7 @@ describe("buildBasePrompt explicit-only WI integration", () => {
           emBottom: [],
           warnings: [],
           activatedCount: 1,
+          activatedEntries: [],
         };
       }
     );
@@ -127,4 +129,3 @@ describe("buildBasePrompt explicit-only WI integration", () => {
     ).toBe(1);
   });
 });
-

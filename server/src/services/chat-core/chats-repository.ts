@@ -164,16 +164,17 @@ export async function createChat(params: {
   const chatId = uuidv4();
   const mainBranchId = uuidv4();
 
-  await db.transaction(async (tx) => {
-    const templateRows = await tx
+  await db.transaction((tx) => {
+    const templateRows = tx
       .select({ id: promptTemplates.id })
       .from(promptTemplates)
       .where(eq(promptTemplates.ownerId, ownerId))
       .orderBy(desc(promptTemplates.updatedAt))
-      .limit(1);
+      .limit(1)
+      .all();
     const defaultPromptTemplateId = templateRows[0]?.id ?? null;
 
-    await tx.insert(chats).values({
+    tx.insert(chats).values({
       id: chatId,
       ownerId,
       entityProfileId: params.entityProfileId,
@@ -193,9 +194,9 @@ export async function createChat(params: {
       originChatId: null,
       originBranchId: null,
       originMessageId: null,
-    });
+    }).run();
 
-    await tx.insert(chatBranches).values({
+    tx.insert(chatBranches).values({
       id: mainBranchId,
       ownerId,
       chatId: chatId,
@@ -206,12 +207,13 @@ export async function createChat(params: {
       forkedFromMessageId: null,
       forkedFromVariantId: null,
       metaJson: null,
-    });
+    }).run();
 
-    await tx
+    tx
       .update(chats)
       .set({ activeBranchId: mainBranchId, updatedAt: ts })
-      .where(eq(chats.id, chatId));
+      .where(eq(chats.id, chatId))
+      .run();
   });
 
   const createdChat = await getChatById(chatId);
@@ -484,8 +486,8 @@ export async function createAssistantMessageWithVariant(params: {
   const assistantMessageId = uuidv4();
   const variantId = uuidv4();
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatMessages).values({
+  await db.transaction((tx) => {
+    tx.insert(chatMessages).values({
       id: assistantMessageId,
       ownerId: params.ownerId ?? "global",
       chatId: params.chatId,
@@ -497,9 +499,9 @@ export async function createAssistantMessageWithVariant(params: {
       blocksJson: "[]",
       metaJson: null,
       activeVariantId: variantId,
-    });
+    }).run();
 
-    await tx.insert(messageVariants).values({
+    tx.insert(messageVariants).values({
       id: variantId,
       ownerId: params.ownerId ?? "global",
       messageId: assistantMessageId,
@@ -509,7 +511,7 @@ export async function createAssistantMessageWithVariant(params: {
       blocksJson: "[]",
       metaJson: null,
       isSelected: true,
-    });
+    }).run();
   });
 
   return { assistantMessageId, variantId, createdAt: ts };
@@ -533,8 +535,8 @@ export async function createImportedAssistantMessage(params: {
   const variantId = uuidv4();
   const text = params.promptText ?? "";
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatMessages).values({
+  await db.transaction((tx) => {
+    tx.insert(chatMessages).values({
       id: assistantMessageId,
       ownerId: params.ownerId ?? "global",
       chatId: params.chatId,
@@ -549,9 +551,9 @@ export async function createImportedAssistantMessage(params: {
           ? null
           : safeJsonStringify(params.meta),
       activeVariantId: variantId,
-    });
+    }).run();
 
-    await tx.insert(messageVariants).values({
+    tx.insert(messageVariants).values({
       id: variantId,
       ownerId: params.ownerId ?? "global",
       messageId: assistantMessageId,
@@ -561,16 +563,17 @@ export async function createImportedAssistantMessage(params: {
       blocksJson: "[]",
       metaJson: safeJsonStringify({ importedAt: ts.toISOString() }),
       isSelected: true,
-    });
+    }).run();
 
-    await tx
+    tx
       .update(chats)
       .set({
         lastMessageAt: ts,
         lastMessagePreview: buildPreview(text),
         updatedAt: ts,
       })
-      .where(eq(chats.id, params.chatId));
+      .where(eq(chats.id, params.chatId))
+      .run();
   });
 
   return { assistantMessageId, variantId, createdAt: ts };

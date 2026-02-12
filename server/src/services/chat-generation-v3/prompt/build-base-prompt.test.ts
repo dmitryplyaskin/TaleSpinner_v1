@@ -46,6 +46,7 @@ beforeEach(() => {
     emBottom: [],
     warnings: ["w1"],
     activatedCount: 3,
+    activatedEntries: [],
   });
   mocks.pickPromptTemplateForChat.mockResolvedValue(null);
   mocks.buildPromptDraft.mockResolvedValue({
@@ -102,6 +103,7 @@ describe("buildBasePrompt world-info integration", () => {
           emBottom: [],
           warnings: ["w1"],
           activatedCount: 3,
+          activatedEntries: [],
         };
       }
     );

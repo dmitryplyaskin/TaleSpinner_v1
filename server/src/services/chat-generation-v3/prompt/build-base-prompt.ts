@@ -6,10 +6,28 @@ import {
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
 import { pickPromptTemplateForChat } from "../../chat-core/prompt-templates-repository";
 
+import type {
+  PromptTemplateResolvedWorldInfo,
+  PromptTemplateResolvedWorldInfoActivationEntry,
+} from "../../chat-core/prompt-template-context";
 import type { PromptBuildOutput } from "../contracts";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
 const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
+
+export type PromptWorldInfoDiagnostics = {
+  worldInfoBefore: string;
+  worldInfoAfter: string;
+  depthEntries: PromptTemplateResolvedWorldInfo["depthEntries"];
+  outletEntries: PromptTemplateResolvedWorldInfo["outletEntries"];
+  anTop: string[];
+  anBottom: string[];
+  emTop: string[];
+  emBottom: string[];
+  warnings: string[];
+  activatedCount: number;
+  activatedEntries: PromptTemplateResolvedWorldInfoActivationEntry[];
+};
 
 export async function buildBasePrompt(params: {
   ownerId: string;
@@ -21,7 +39,11 @@ export async function buildBasePrompt(params: {
   scanSeed?: string;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
-}): Promise<{ prompt: PromptBuildOutput; templateContext: Awaited<ReturnType<typeof buildPromptTemplateRenderContext>> }> {
+}): Promise<{
+  prompt: PromptBuildOutput;
+  templateContext: Awaited<ReturnType<typeof buildPromptTemplateRenderContext>>;
+  worldInfoDiagnostics: PromptWorldInfoDiagnostics;
+}> {
   const templateContext = await buildPromptTemplateRenderContext({
     ownerId: params.ownerId,
     chatId: params.chatId,
@@ -99,5 +121,18 @@ export async function buildBasePrompt(params: {
       draftMessages: builtPrompt.draft.messages,
     },
     templateContext,
+    worldInfoDiagnostics: {
+      worldInfoBefore: resolvedWorldInfo.worldInfoBefore,
+      worldInfoAfter: resolvedWorldInfo.worldInfoAfter,
+      depthEntries: resolvedWorldInfo.depthEntries,
+      outletEntries: resolvedWorldInfo.outletEntries,
+      anTop: resolvedWorldInfo.anTop,
+      anBottom: resolvedWorldInfo.anBottom,
+      emTop: resolvedWorldInfo.emTop,
+      emBottom: resolvedWorldInfo.emBottom,
+      warnings: [...resolvedWorldInfo.warnings],
+      activatedCount: resolvedWorldInfo.activatedCount,
+      activatedEntries: [...resolvedWorldInfo.activatedEntries],
+    },
   };
 }

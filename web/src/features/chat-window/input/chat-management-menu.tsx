@@ -2,7 +2,7 @@ import { ActionIcon, Badge, Box, Group, Menu, Paper, Stack, Text, TextInput } fr
 import { useUnit } from 'effector-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuFolderGit2, LuMessageSquare, LuPencil, LuPlus, LuSettings2, LuTrash2, LuX } from 'react-icons/lu';
+import { LuBookOpenText, LuCheck, LuFolderGit2, LuMessageSquare, LuPencil, LuPlus, LuSettings2, LuTrash2, LuX } from 'react-icons/lu';
 
 import {
 	$branches,
@@ -24,6 +24,8 @@ import { Dialog } from '@ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { Z_INDEX } from '@ui/z-index';
 
+import { getLatestWorldInfoActivations, type LatestWorldInfoActivationsResponse } from '../../../api/chat-entry-parts';
+
 function normalizeName(value: string): string {
 	return value.trim();
 }
@@ -42,6 +44,10 @@ export const ChatManagementMenu = () => {
 
 	const [chatsModalOpen, setChatsModalOpen] = useState(false);
 	const [branchesModalOpen, setBranchesModalOpen] = useState(false);
+	const [worldInfoModalOpen, setWorldInfoModalOpen] = useState(false);
+	const [worldInfoLoading, setWorldInfoLoading] = useState(false);
+	const [worldInfoError, setWorldInfoError] = useState<string | null>(null);
+	const [worldInfoData, setWorldInfoData] = useState<LatestWorldInfoActivationsResponse | null>(null);
 	const [editingChatId, setEditingChatId] = useState<string | null>(null);
 	const [editingChatName, setEditingChatName] = useState('');
 	const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
@@ -51,6 +57,25 @@ export const ChatManagementMenu = () => {
 
 	const canManageBranches = Boolean(currentChatId);
 	const hasCurrentBranch = Boolean(currentBranchId);
+
+	const loadLatestWorldInfoActivations = async () => {
+		if (!currentChatId) return;
+		setWorldInfoModalOpen(true);
+		setWorldInfoLoading(true);
+		setWorldInfoError(null);
+		try {
+			const data = await getLatestWorldInfoActivations({
+				chatId: currentChatId,
+				branchId: currentBranchId ?? undefined,
+			});
+			setWorldInfoData(data);
+		} catch (error) {
+			setWorldInfoData(null);
+			setWorldInfoError(error instanceof Error ? error.message : String(error));
+		} finally {
+			setWorldInfoLoading(false);
+		}
+	};
 
 	const sortedChats = useMemo(
 		() => [...chats].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
@@ -130,6 +155,9 @@ export const ChatManagementMenu = () => {
 						onClick={() => startBulkDeleteMode()}
 					>
 						{t('chat.management.bulkDelete')}
+					</Menu.Item>
+					<Menu.Item leftSection={<LuBookOpenText />} disabled={!currentChatId} onClick={() => void loadLatestWorldInfoActivations()}>
+						{t('chat.management.latestWorldInfoActivations')}
 					</Menu.Item>
 				</Menu.Dropdown>
 			</Menu>
@@ -389,6 +417,106 @@ export const ChatManagementMenu = () => {
 								</Paper>
 							);
 						})
+					)}
+				</Stack>
+			</Dialog>
+
+			<Dialog
+				open={worldInfoModalOpen}
+				onOpenChange={(open) => {
+					setWorldInfoModalOpen(open);
+					if (!open) {
+						setWorldInfoData(null);
+						setWorldInfoError(null);
+						setWorldInfoLoading(false);
+					}
+				}}
+				title={t('chat.management.latestWorldInfoActivationsTitle')}
+				size={720}
+				footer={<></>}
+			>
+				<Stack gap="sm" style={{ maxHeight: '62vh', overflowY: 'auto' }}>
+					{worldInfoLoading && <Text c="dimmed">{t('chat.management.latestWorldInfoLoading')}</Text>}
+					{!worldInfoLoading && worldInfoError && (
+						<Text c="red">
+							{t('chat.management.latestWorldInfoError')}: {worldInfoError}
+						</Text>
+					)}
+					{!worldInfoLoading && !worldInfoError && worldInfoData && worldInfoData.generationId === null && (
+						<Text c="dimmed">{t('chat.management.latestWorldInfoEmpty')}</Text>
+					)}
+					{!worldInfoLoading && !worldInfoError && worldInfoData && worldInfoData.generationId !== null && (
+						<>
+							<Paper withBorder p="sm" radius="md">
+								<Stack gap={2}>
+									<Text size="sm">
+										{t('chat.management.latestWorldInfoGenerationId')}: {worldInfoData.generationId}
+									</Text>
+									<Text size="sm">
+										{t('chat.management.latestWorldInfoStartedAt')}:{' '}
+										{worldInfoData.startedAt ? new Date(worldInfoData.startedAt).toLocaleString() : '-'}
+									</Text>
+									<Text size="sm">
+										{t('chat.management.latestWorldInfoStatus')}: {worldInfoData.status ?? '-'}
+									</Text>
+									<Text size="sm">
+										{t('chat.management.latestWorldInfoActivatedCount')}: {worldInfoData.activatedCount}
+									</Text>
+								</Stack>
+							</Paper>
+
+							{worldInfoData.warnings.length > 0 && (
+								<Paper withBorder p="sm" radius="md">
+									<Text size="sm" fw={600} mb={6}>
+										{t('chat.management.latestWorldInfoWarnings')}
+									</Text>
+									<Stack gap={4}>
+										{worldInfoData.warnings.map((warning) => (
+											<Text key={warning} size="sm" c="orange.7">
+												{warning}
+											</Text>
+										))}
+									</Stack>
+								</Paper>
+							)}
+
+							{worldInfoData.entries.length === 0 ? (
+								<Text c="dimmed">{t('chat.management.latestWorldInfoNoEntries')}</Text>
+							) : (
+								worldInfoData.entries.map((entry) => (
+									<Paper key={`${entry.hash}-${entry.uid}`} withBorder p="sm" radius="md">
+										<Stack gap={6}>
+											<Group justify="space-between" align="center">
+												<Text fw={600} size="sm">
+													{entry.comment?.trim() || `${entry.bookName} #${entry.uid}`}
+												</Text>
+												<Badge size="xs" variant="light" color="cyan">
+													{entry.bookName}
+												</Badge>
+											</Group>
+											<Text size="xs" c="dimmed">
+												uid: {entry.uid} • hash: {entry.hash}
+											</Text>
+											<Group gap={6}>
+												{entry.reasons.map((reason) => (
+													<Badge key={reason} size="xs" variant="filled" color="blue">
+														{reason}
+													</Badge>
+												))}
+												{entry.matchedKeys.map((key) => (
+													<Badge key={key} size="xs" variant="light" color="gray">
+														{key}
+													</Badge>
+												))}
+											</Group>
+											<Text size="sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+												{entry.content}
+											</Text>
+										</Stack>
+									</Paper>
+								))
+							)}
+						</>
 					)}
 				</Stack>
 			</Dialog>

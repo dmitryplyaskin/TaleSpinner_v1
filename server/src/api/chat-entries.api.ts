@@ -9,6 +9,10 @@ import { initSse, type SseWriter } from "@core/sse/sse";
 import { chatIdParamsSchema } from "../chat-core/schemas";
 import { getChatById } from "../services/chat-core/chats-repository";
 import { abortGeneration } from "../services/chat-core/generation-runtime";
+import {
+  getGenerationByIdWithDebug,
+  getLatestGenerationByChatBranchWithDebug,
+} from "../services/chat-core/generations-repository";
 import { rerenderGreetingTemplatesIfPreplay } from "../services/chat-core/greeting-template-rerender";
 import {
   buildPromptTemplateRenderContext,
@@ -39,6 +43,7 @@ import {
   getVariantById,
   listEntryVariants,
   selectActiveVariant,
+  updateVariantDerived,
 } from "../services/chat-entry-parts/variants-repository";
 import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
 
@@ -77,6 +82,329 @@ const TEMPLATE_MAX_PASSES = 3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+type PromptDiagnosticsRole = "system" | "user" | "assistant";
+
+type PromptDiagnosticsResponse = {
+  generationId: string;
+  entryId: string;
+  variantId: string;
+  startedAt: string;
+  status: "streaming" | "done" | "aborted" | "error";
+  estimator: "chars_div4";
+  prompt: {
+    messages: Array<{ role: PromptDiagnosticsRole; content: string }>;
+    approxTokens: {
+      total: number;
+      byRole: { system: number; user: number; assistant: number };
+      sections: {
+        systemInstruction: number;
+        chatHistory: number;
+        worldInfoBefore: number;
+        worldInfoAfter: number;
+        worldInfoDepth: number;
+        worldInfoOutlets: number;
+        worldInfoAN: number;
+        worldInfoEM: number;
+      };
+    };
+  };
+};
+
+type LatestWorldInfoActivationsResponse = {
+  generationId: string | null;
+  startedAt: string | null;
+  status: "streaming" | "done" | "aborted" | "error" | null;
+  activatedCount: number;
+  warnings: string[];
+  entries: Array<{
+    hash: string;
+    bookId: string;
+    bookName: string;
+    uid: number;
+    comment: string;
+    content: string;
+    matchedKeys: string[];
+    reasons: string[];
+  }>;
+};
+
+function approxTokensByChars(chars: number): number {
+  if (!Number.isFinite(chars)) return 0;
+  const normalized = Math.max(0, Math.floor(chars));
+  if (normalized === 0) return 0;
+  return Math.ceil(normalized / 4);
+}
+
+function approxTokensByText(text: string): number {
+  return approxTokensByChars(String(text ?? "").length);
+}
+
+function normalizePromptRole(value: unknown): PromptDiagnosticsRole | null {
+  if (value === "system" || value === "user" || value === "assistant") return value;
+  return null;
+}
+
+function normalizePromptMessages(
+  value: unknown
+): Array<{ role: PromptDiagnosticsRole; content: string }> {
+  if (!Array.isArray(value)) return [];
+  const out: Array<{ role: PromptDiagnosticsRole; content: string }> = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const role = normalizePromptRole(item.role);
+    if (!role) continue;
+    if (typeof item.content !== "string") continue;
+    out.push({ role, content: item.content });
+  }
+  return out;
+}
+
+function computeApproxByRole(messages: Array<{ role: PromptDiagnosticsRole; content: string }>): {
+  total: number;
+  byRole: { system: number; user: number; assistant: number };
+} {
+  const byRole = { system: 0, user: 0, assistant: 0 };
+  for (const message of messages) {
+    byRole[message.role] += approxTokensByText(message.content);
+  }
+  return {
+    total: byRole.system + byRole.user + byRole.assistant,
+    byRole,
+  };
+}
+
+export function buildPromptDiagnosticsFromDebug(params: {
+  generation: Awaited<ReturnType<typeof getGenerationByIdWithDebug>>;
+  entryId: string;
+  variantId: string;
+}): PromptDiagnosticsResponse | null {
+  const generation = params.generation;
+  if (!generation || !isRecord(generation.debug)) return null;
+  const debug = generation.debug;
+  if (!isRecord(debug.prompt)) return null;
+  const prompt = debug.prompt;
+  const messages = normalizePromptMessages(prompt.messages);
+  const approx = computeApproxByRole(messages);
+
+  const approxTokensRaw = isRecord(prompt.approxTokens) ? prompt.approxTokens : {};
+  const byRoleRaw = isRecord(approxTokensRaw.byRole) ? approxTokensRaw.byRole : {};
+  const sectionsRaw = isRecord(approxTokensRaw.sections) ? approxTokensRaw.sections : {};
+
+  const byRole = {
+    system:
+      typeof byRoleRaw.system === "number"
+        ? Math.max(0, Math.floor(byRoleRaw.system))
+        : approx.byRole.system,
+    user:
+      typeof byRoleRaw.user === "number"
+        ? Math.max(0, Math.floor(byRoleRaw.user))
+        : approx.byRole.user,
+    assistant:
+      typeof byRoleRaw.assistant === "number"
+        ? Math.max(0, Math.floor(byRoleRaw.assistant))
+        : approx.byRole.assistant,
+  };
+  const total =
+    typeof approxTokensRaw.total === "number"
+      ? Math.max(0, Math.floor(approxTokensRaw.total))
+      : byRole.system + byRole.user + byRole.assistant;
+
+  const sections = {
+    systemInstruction:
+      typeof sectionsRaw.systemInstruction === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.systemInstruction))
+        : 0,
+    chatHistory:
+      typeof sectionsRaw.chatHistory === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.chatHistory))
+        : 0,
+    worldInfoBefore:
+      typeof sectionsRaw.worldInfoBefore === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoBefore))
+        : 0,
+    worldInfoAfter:
+      typeof sectionsRaw.worldInfoAfter === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoAfter))
+        : 0,
+    worldInfoDepth:
+      typeof sectionsRaw.worldInfoDepth === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoDepth))
+        : 0,
+    worldInfoOutlets:
+      typeof sectionsRaw.worldInfoOutlets === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoOutlets))
+        : 0,
+    worldInfoAN:
+      typeof sectionsRaw.worldInfoAN === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoAN))
+        : 0,
+    worldInfoEM:
+      typeof sectionsRaw.worldInfoEM === "number"
+        ? Math.max(0, Math.floor(sectionsRaw.worldInfoEM))
+        : 0,
+  };
+
+  return {
+    generationId: generation.id,
+    entryId: params.entryId,
+    variantId: params.variantId,
+    startedAt: generation.startedAt.toISOString(),
+    status: generation.status,
+    estimator: "chars_div4",
+    prompt: {
+      messages,
+      approxTokens: {
+        total,
+        byRole,
+        sections,
+      },
+    },
+  };
+}
+
+export function buildPromptDiagnosticsFromSnapshot(params: {
+  generation: Awaited<ReturnType<typeof getGenerationByIdWithDebug>>;
+  entryId: string;
+  variantId: string;
+}): PromptDiagnosticsResponse | null {
+  const generation = params.generation;
+  if (!generation || !isRecord(generation.promptSnapshot)) return null;
+  const snapshot = generation.promptSnapshot;
+  const messages = normalizePromptMessages(snapshot.messages);
+  if (messages.length === 0) return null;
+
+  const approx = computeApproxByRole(messages);
+  const firstSystemMessage = messages.find((message) => message.role === "system");
+  const systemInstruction = firstSystemMessage
+    ? approxTokensByText(firstSystemMessage.content)
+    : 0;
+  const chatHistory = Math.max(0, approx.total - systemInstruction);
+
+  const worldInfoMeta =
+    isRecord(snapshot.meta) && isRecord(snapshot.meta.worldInfo)
+      ? snapshot.meta.worldInfo
+      : null;
+  const worldInfoBeforeChars =
+    worldInfoMeta && typeof worldInfoMeta.beforeChars === "number"
+      ? worldInfoMeta.beforeChars
+      : 0;
+  const worldInfoAfterChars =
+    worldInfoMeta && typeof worldInfoMeta.afterChars === "number"
+      ? worldInfoMeta.afterChars
+      : 0;
+
+  return {
+    generationId: generation.id,
+    entryId: params.entryId,
+    variantId: params.variantId,
+    startedAt: generation.startedAt.toISOString(),
+    status: generation.status,
+    estimator: "chars_div4",
+    prompt: {
+      messages,
+      approxTokens: {
+        total: approx.total,
+        byRole: approx.byRole,
+        sections: {
+          systemInstruction,
+          chatHistory,
+          worldInfoBefore: approxTokensByChars(worldInfoBeforeChars),
+          worldInfoAfter: approxTokensByChars(worldInfoAfterChars),
+          worldInfoDepth: 0,
+          worldInfoOutlets: 0,
+          worldInfoAN: 0,
+          worldInfoEM: 0,
+        },
+      },
+    },
+  };
+}
+
+export function emptyLatestWorldInfoActivationsResponse(): LatestWorldInfoActivationsResponse {
+  return {
+    generationId: null,
+    startedAt: null,
+    status: null,
+    activatedCount: 0,
+    warnings: [],
+    entries: [],
+  };
+}
+
+export function buildLatestWorldInfoActivationsFromGeneration(
+  generation: Awaited<ReturnType<typeof getLatestGenerationByChatBranchWithDebug>>
+): LatestWorldInfoActivationsResponse | null {
+  if (!generation || !isRecord(generation.debug)) return null;
+  const debug = generation.debug;
+  if (!isRecord(debug.worldInfo)) return null;
+  const worldInfo = debug.worldInfo;
+  const entriesRaw = Array.isArray(worldInfo.entries) ? worldInfo.entries : [];
+
+  const entries: LatestWorldInfoActivationsResponse["entries"] = entriesRaw
+    .map((raw) => {
+      if (!isRecord(raw)) return null;
+      if (
+        typeof raw.hash !== "string" ||
+        typeof raw.bookId !== "string" ||
+        typeof raw.bookName !== "string" ||
+        typeof raw.uid !== "number" ||
+        typeof raw.comment !== "string" ||
+        typeof raw.content !== "string"
+      ) {
+        return null;
+      }
+      return {
+        hash: raw.hash,
+        bookId: raw.bookId,
+        bookName: raw.bookName,
+        uid: Math.floor(raw.uid),
+        comment: raw.comment,
+        content: raw.content,
+        matchedKeys: asStringArray(raw.matchedKeys),
+        reasons: asStringArray(raw.reasons),
+      };
+    })
+    .filter((item): item is LatestWorldInfoActivationsResponse["entries"][number] => Boolean(item));
+
+  const activatedCountRaw =
+    typeof worldInfo.activatedCount === "number" ? Math.floor(worldInfo.activatedCount) : entries.length;
+
+  return {
+    generationId: generation.id,
+    startedAt: generation.startedAt.toISOString(),
+    status: generation.status,
+    activatedCount: Math.max(0, activatedCountRaw),
+    warnings: asStringArray(worldInfo.warnings),
+    entries,
+  };
+}
+
+async function linkVariantToGeneration(params: {
+  variantId: string;
+  generationId: string;
+}): Promise<void> {
+  const variant = await getVariantById({ variantId: params.variantId });
+  if (!variant) return;
+
+  const derived = isRecord(variant.derived) ? { ...variant.derived } : {};
+  derived.generationId = params.generationId;
+
+  const generation = await getGenerationByIdWithDebug(params.generationId);
+  if (generation?.promptHash) {
+    derived.promptHash = generation.promptHash;
+  }
+
+  await updateVariantDerived({
+    variantId: params.variantId,
+    derived,
+  });
 }
 
 export function buildUserEntryMeta(params: {
@@ -576,6 +904,12 @@ router.post(
           },
         }),
       });
+      if (generationId) {
+        await linkVariantToGeneration({
+          variantId: assistant.variant.variantId,
+          generationId,
+        });
+      }
 
     } finally {
       sse.close();
@@ -705,6 +1039,12 @@ router.post(
           },
         }),
       });
+      if (generationId) {
+        await linkVariantToGeneration({
+          variantId: assistant.variant.variantId,
+          generationId,
+        });
+      }
 
     } finally {
       sse.close();
@@ -824,6 +1164,12 @@ router.post(
           },
         }),
       });
+      if (generationId) {
+        await linkVariantToGeneration({
+          variantId: newVariant.variantId,
+          generationId,
+        });
+      }
 
       // Always run best-effort cleanup for empty generation variants.
       // This removes both the current aborted-empty variant and older empty leftovers.
@@ -833,6 +1179,87 @@ router.post(
     }
 
     return;
+  })
+);
+
+const promptDiagnosticsQuerySchema = z.object({
+  variantId: z.string().min(1).optional(),
+});
+
+router.get(
+  "/entries/:id/prompt-diagnostics",
+  validate({ params: entryIdParamsSchema, query: promptDiagnosticsQuerySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const query = promptDiagnosticsQuerySchema.parse(req.query);
+
+    const entry = await getEntryById({ entryId: params.id });
+    if (!entry) throw new HttpError(404, "Entry не найден", "NOT_FOUND");
+    if (entry.role !== "assistant") {
+      throw new HttpError(400, "Prompt diagnostics доступны только для assistant entry", "VALIDATION_ERROR");
+    }
+
+    const variantId = query.variantId ?? entry.activeVariantId;
+    const variant = await getVariantById({ variantId });
+    if (!variant || variant.entryId !== entry.entryId) {
+      throw new HttpError(404, "Variant не найден", "NOT_FOUND");
+    }
+
+    const derived = isRecord(variant.derived) ? variant.derived : {};
+    const generationId =
+      typeof derived.generationId === "string" ? derived.generationId : null;
+    if (!generationId) {
+      throw new HttpError(404, "Prompt diagnostics не найдены для варианта", "NOT_FOUND");
+    }
+
+    const generation = await getGenerationByIdWithDebug(generationId);
+    if (!generation) {
+      throw new HttpError(404, "Generation не найдена", "NOT_FOUND");
+    }
+
+    const fromDebug = buildPromptDiagnosticsFromDebug({
+      generation,
+      entryId: entry.entryId,
+      variantId: variant.variantId,
+    });
+    if (fromDebug) return { data: fromDebug };
+
+    const fromSnapshot = buildPromptDiagnosticsFromSnapshot({
+      generation,
+      entryId: entry.entryId,
+      variantId: variant.variantId,
+    });
+    if (fromSnapshot) return { data: fromSnapshot };
+
+    throw new HttpError(404, "Prompt diagnostics недоступны", "NOT_FOUND");
+  })
+);
+
+const latestWorldInfoActivationsQuerySchema = z.object({
+  branchId: z.string().min(1).optional(),
+});
+
+router.get(
+  "/chats/:id/world-info/latest-activations",
+  validate({ params: chatIdParamsSchema, query: latestWorldInfoActivationsQuerySchema }),
+  asyncHandler(async (req: Request) => {
+    const params = req.params as unknown as { id: string };
+    const query = latestWorldInfoActivationsQuerySchema.parse(req.query);
+
+    const chat = await getChatById(params.id);
+    if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
+
+    const branchId = query.branchId ?? chat.activeBranchId;
+    if (!branchId) {
+      return { data: emptyLatestWorldInfoActivationsResponse() };
+    }
+
+    const generation = await getLatestGenerationByChatBranchWithDebug({
+      chatId: chat.id,
+      branchId,
+    });
+    const response = buildLatestWorldInfoActivationsFromGeneration(generation);
+    return { data: response ?? emptyLatestWorldInfoActivationsResponse() };
   })
 );
 
