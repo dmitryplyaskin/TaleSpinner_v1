@@ -3,6 +3,7 @@ import { resolveWorldInfoRuntimeForChat } from "../world-info/world-info-runtime
 
 import { getChatById } from "./chats-repository";
 import { getEntityProfileById } from "./entity-profiles-repository";
+import { renderLiquidTemplate } from "./prompt-template-renderer";
 import { getSelectedUserPerson } from "./user-persons-repository";
 
 import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
@@ -100,6 +101,161 @@ function createEmptyResolvedWorldInfo(): PromptTemplateResolvedWorldInfo {
   };
 }
 
+function cloneTemplateContextForWorldInfoRender(
+  context: PromptTemplateRenderContext,
+  worldInfo: PromptTemplateResolvedWorldInfo
+): PromptTemplateRenderContext {
+  const cloned: PromptTemplateRenderContext = {
+    ...context,
+    messages: Array.isArray(context.messages)
+      ? context.messages.map((m) => ({ role: m.role, content: m.content }))
+      : [],
+    outlet: context.outlet ? { ...context.outlet } : {},
+    outletEntries: context.outletEntries
+      ? Object.fromEntries(
+          Object.entries(context.outletEntries).map(([key, items]) => [key, [...items]])
+        )
+      : {},
+    anTop: context.anTop ? [...context.anTop] : [],
+    anBottom: context.anBottom ? [...context.anBottom] : [],
+    emTop: context.emTop ? [...context.emTop] : [],
+    emBottom: context.emBottom ? [...context.emBottom] : [],
+  };
+  applyWorldInfoToTemplateContext(cloned, worldInfo);
+  return cloned;
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function renderWorldInfoTextWithLiquid(params: {
+  content: string;
+  context: PromptTemplateRenderContext;
+  warnings: string[];
+  warningKey: string;
+}): Promise<string> {
+  if (params.content.length === 0) return params.content;
+  try {
+    return String(
+      await renderLiquidTemplate({
+        templateText: params.content,
+        context: params.context,
+      })
+    );
+  } catch (error) {
+    params.warnings.push(
+      `world_info_liquid_render_error:${params.warningKey}:${toErrorMessage(error)}`
+    );
+    return params.content;
+  }
+}
+
+async function renderResolvedWorldInfoWithLiquid(params: {
+  resolved: PromptTemplateResolvedWorldInfo;
+  context: PromptTemplateRenderContext;
+}): Promise<PromptTemplateResolvedWorldInfo> {
+  const warnings = [...params.resolved.warnings];
+  const renderContext = cloneTemplateContextForWorldInfoRender(
+    params.context,
+    params.resolved
+  );
+
+  const worldInfoBefore = await renderWorldInfoTextWithLiquid({
+    content: params.resolved.worldInfoBefore,
+    context: renderContext,
+    warnings,
+    warningKey: "worldInfoBefore",
+  });
+  const worldInfoAfter = await renderWorldInfoTextWithLiquid({
+    content: params.resolved.worldInfoAfter,
+    context: renderContext,
+    warnings,
+    warningKey: "worldInfoAfter",
+  });
+  const depthEntries = await Promise.all(
+    params.resolved.depthEntries.map(async (entry, idx) => ({
+      ...entry,
+      content: await renderWorldInfoTextWithLiquid({
+        content: entry.content,
+        context: renderContext,
+        warnings,
+        warningKey: `depthEntries.${idx}`,
+      }),
+    }))
+  );
+  const outletEntries = Object.fromEntries(
+    await Promise.all(
+      Object.entries(params.resolved.outletEntries).map(async ([key, items]) => {
+        const renderedItems = await Promise.all(
+          items.map((content, idx) =>
+            renderWorldInfoTextWithLiquid({
+              content,
+              context: renderContext,
+              warnings,
+              warningKey: `outletEntries.${key}.${idx}`,
+            })
+          )
+        );
+        return [key, renderedItems];
+      })
+    )
+  );
+  const anTop = await Promise.all(
+    params.resolved.anTop.map((content, idx) =>
+      renderWorldInfoTextWithLiquid({
+        content,
+        context: renderContext,
+        warnings,
+        warningKey: `anTop.${idx}`,
+      })
+    )
+  );
+  const anBottom = await Promise.all(
+    params.resolved.anBottom.map((content, idx) =>
+      renderWorldInfoTextWithLiquid({
+        content,
+        context: renderContext,
+        warnings,
+        warningKey: `anBottom.${idx}`,
+      })
+    )
+  );
+  const emTop = await Promise.all(
+    params.resolved.emTop.map((content, idx) =>
+      renderWorldInfoTextWithLiquid({
+        content,
+        context: renderContext,
+        warnings,
+        warningKey: `emTop.${idx}`,
+      })
+    )
+  );
+  const emBottom = await Promise.all(
+    params.resolved.emBottom.map((content, idx) =>
+      renderWorldInfoTextWithLiquid({
+        content,
+        context: renderContext,
+        warnings,
+        warningKey: `emBottom.${idx}`,
+      })
+    )
+  );
+
+  return {
+    ...params.resolved,
+    worldInfoBefore,
+    worldInfoAfter,
+    depthEntries,
+    outletEntries,
+    anTop,
+    anBottom,
+    emTop,
+    emBottom,
+    warnings,
+  };
+}
+
 export function applyWorldInfoToTemplateContext(
   base: PromptTemplateRenderContext,
   worldInfo?: PromptTemplateWorldInfoInput
@@ -134,13 +290,6 @@ export function applyWorldInfoToTemplateContext(
   base.emBottom = asStringArray(worldInfo?.emBottom);
 
   return base;
-}
-
-const WI_PLACEHOLDER_RE =
-  /\b(?:wiBefore|wiAfter|loreBefore|loreAfter|anchorBefore|anchorAfter)\b/;
-
-export function hasWorldInfoTemplatePlaceholders(templateText: string): boolean {
-  return WI_PLACEHOLDER_RE.test(templateText);
 }
 
 export async function resolveWorldInfoForTemplateContext(params: {
@@ -196,7 +345,7 @@ export async function resolveAndApplyWorldInfoToTemplateContext(params: {
   scanSeed?: string;
   dryRun?: boolean;
 }): Promise<PromptTemplateResolvedWorldInfo> {
-  const resolved = await resolveWorldInfoForTemplateContext({
+  const resolvedRaw = await resolveWorldInfoForTemplateContext({
     ownerId: params.ownerId,
     chatId: params.chatId,
     branchId: params.branchId,
@@ -205,6 +354,10 @@ export async function resolveAndApplyWorldInfoToTemplateContext(params: {
     history: params.context.messages,
     scanSeed: params.scanSeed,
     dryRun: params.dryRun,
+  });
+  const resolved = await renderResolvedWorldInfoWithLiquid({
+    resolved: resolvedRaw,
+    context: params.context,
   });
   applyWorldInfoToTemplateContext(params.context, resolved);
   return resolved;

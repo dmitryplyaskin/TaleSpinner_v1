@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   buildPromptTemplateRenderContext: vi.fn(),
   resolveAndApplyWorldInfoToTemplateContext: vi.fn(),
-  hasWorldInfoTemplatePlaceholders: vi.fn(),
   pickPromptTemplateForChat: vi.fn(),
   renderLiquidTemplate: vi.fn(),
   buildPromptDraft: vi.fn(),
@@ -12,7 +11,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../chat-core/prompt-template-context", () => ({
   buildPromptTemplateRenderContext: mocks.buildPromptTemplateRenderContext,
   resolveAndApplyWorldInfoToTemplateContext: mocks.resolveAndApplyWorldInfoToTemplateContext,
-  hasWorldInfoTemplatePlaceholders: mocks.hasWorldInfoTemplatePlaceholders,
 }));
 vi.mock("../../chat-core/prompt-templates-repository", () => ({
   pickPromptTemplateForChat: mocks.pickPromptTemplateForChat,
@@ -49,7 +47,6 @@ beforeEach(() => {
     warnings: ["w1"],
     activatedCount: 3,
   });
-  mocks.hasWorldInfoTemplatePlaceholders.mockReturnValue(false);
   mocks.pickPromptTemplateForChat.mockResolvedValue(null);
   mocks.buildPromptDraft.mockResolvedValue({
     draft: { messages: [{ role: "system", content: "sys" }] },
@@ -67,7 +64,7 @@ beforeEach(() => {
 });
 
 describe("buildBasePrompt world-info integration", () => {
-  test("passes world info before/after/depth to draft builder", async () => {
+  test("passes world info meta but does not auto-inject WI channels into draft", async () => {
     await buildBasePrompt({
       ownerId: "global",
       chatId: "chat",
@@ -77,21 +74,37 @@ describe("buildBasePrompt world-info integration", () => {
       trigger: "generate",
     });
 
-    expect(mocks.buildPromptDraft).toHaveBeenCalledWith(
+    const params = mocks.buildPromptDraft.mock.calls[0]?.[0];
+    expect(params.preHistorySystemMessages).toBeUndefined();
+    expect(params.postHistorySystemMessages).toBeUndefined();
+    expect(params.depthInsertions).toBeUndefined();
+    expect(params.worldInfoMeta).toEqual(
       expect.objectContaining({
-        preHistorySystemMessages: ["BEFORE"],
-        postHistorySystemMessages: ["AFTER"],
-        depthInsertions: [{ depth: 2, role: "system", content: "DEPTH" }],
-        worldInfoMeta: expect.objectContaining({
-          activatedCount: 3,
-          beforeChars: 6,
-          afterChars: 5,
-        }),
+        activatedCount: 3,
+        beforeChars: 6,
+        afterChars: 5,
       })
     );
   });
 
-  test("skips auto before/after insertion when template has explicit WI placeholders", async () => {
+  test("renders system prompt from template with WI context placeholders", async () => {
+    mocks.resolveAndApplyWorldInfoToTemplateContext.mockImplementation(
+      async ({ context }: { context: { wiBefore?: string } }) => {
+        context.wiBefore = "BEFORE";
+        return {
+          worldInfoBefore: "BEFORE",
+          worldInfoAfter: "AFTER",
+          depthEntries: [{ depth: 2, role: 0, content: "DEPTH", bookId: "b", uid: 1 }],
+          outletEntries: {},
+          anTop: [],
+          anBottom: [],
+          emTop: [],
+          emBottom: [],
+          warnings: ["w1"],
+          activatedCount: 3,
+        };
+      }
+    );
     mocks.pickPromptTemplateForChat.mockResolvedValue({
       id: "tpl-1",
       ownerId: "global",
@@ -102,8 +115,10 @@ describe("buildBasePrompt world-info integration", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    mocks.hasWorldInfoTemplatePlaceholders.mockReturnValue(true);
-    mocks.renderLiquidTemplate.mockResolvedValue("base");
+    mocks.renderLiquidTemplate.mockImplementation(
+      async ({ context }: { context: { wiBefore?: string } }) =>
+        `${context.wiBefore ?? ""}\nbase`
+    );
 
     await buildBasePrompt({
       ownerId: "global",
@@ -116,8 +131,7 @@ describe("buildBasePrompt world-info integration", () => {
 
     expect(mocks.buildPromptDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        preHistorySystemMessages: [],
-        postHistorySystemMessages: [],
+        systemPrompt: "BEFORE\nbase",
       })
     );
   });

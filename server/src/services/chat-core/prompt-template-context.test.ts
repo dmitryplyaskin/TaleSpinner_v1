@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getChatById: vi.fn(),
   listProjectedPromptMessages: vi.fn(),
   resolveWorldInfoRuntimeForChat: vi.fn(),
+  renderLiquidTemplate: vi.fn(),
 }));
 
 vi.mock("./user-persons-repository", () => ({
@@ -23,10 +24,14 @@ vi.mock("../chat-entry-parts/prompt-history", () => ({
 vi.mock("../world-info/world-info-runtime", () => ({
   resolveWorldInfoRuntimeForChat: mocks.resolveWorldInfoRuntimeForChat,
 }));
+vi.mock("./prompt-template-renderer", () => ({
+  renderLiquidTemplate: mocks.renderLiquidTemplate,
+}));
 
 import {
   applyWorldInfoToTemplateContext,
   buildPromptTemplateRenderContext,
+  resolveAndApplyWorldInfoToTemplateContext,
 } from "./prompt-template-context";
 
 beforeEach(() => {
@@ -36,6 +41,10 @@ beforeEach(() => {
   mocks.getChatById.mockResolvedValue(null);
   mocks.listProjectedPromptMessages.mockResolvedValue({ currentTurn: 0, entryCount: 0, messages: [] });
   mocks.resolveWorldInfoRuntimeForChat.mockResolvedValue(null);
+  mocks.renderLiquidTemplate.mockImplementation(
+    async ({ templateText, context }: { templateText: string; context: { char?: unknown } }) =>
+      templateText.replace(/{{char}}/g, String(context.char ?? ""))
+  );
 });
 
 describe("prompt-template-context", () => {
@@ -144,5 +153,96 @@ describe("prompt-template-context", () => {
     expect(context.anBottom).toEqual(["an-bottom"]);
     expect(context.emTop).toEqual(["em-top"]);
     expect(context.emBottom).toEqual(["em-bottom"]);
+  });
+
+  test("renders resolved world-info channels with Liquid before applying to context", async () => {
+    mocks.getSelectedUserPerson.mockResolvedValue({
+      id: "u-1",
+      name: "Alice",
+      prefix: "Prefix fallback",
+      contentTypeDefault: "Persona description",
+    });
+    mocks.getEntityProfileById.mockResolvedValue({
+      id: "c-1",
+      spec: { name: "Lilly" },
+    });
+    mocks.resolveWorldInfoRuntimeForChat.mockResolvedValue({
+      worldInfoBefore: "Before {{char}}",
+      worldInfoAfter: "After {{char}}",
+      depthEntries: [{ depth: 2, role: 0, content: "Depth {{char}}", bookId: "b", uid: 1 }],
+      outletEntries: { default: ["Outlet {{char}}"] },
+      anTop: ["AN {{char}}"],
+      anBottom: [],
+      emTop: [],
+      emBottom: ["EM {{char}}"],
+      activatedEntries: [{}, {}, {}],
+      debug: {
+        warnings: [],
+        matchedKeys: {},
+        skips: [],
+        budget: { limit: 1, used: 0, overflowed: false },
+      },
+    });
+
+    const context = await buildPromptTemplateRenderContext({
+      ownerId: "global",
+      entityProfileId: "c-1",
+    });
+    const resolved = await resolveAndApplyWorldInfoToTemplateContext({
+      context,
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      entityProfileId: "c-1",
+      trigger: "generate",
+      dryRun: true,
+    });
+
+    expect(resolved.worldInfoBefore).toBe("Before Lilly");
+    expect(resolved.worldInfoAfter).toBe("After Lilly");
+    expect(resolved.depthEntries[0]?.content).toBe("Depth Lilly");
+    expect(resolved.outletEntries.default?.[0]).toBe("Outlet Lilly");
+    expect(context.wiBefore).toBe("Before Lilly");
+    expect(context.outletEntries?.default).toEqual(["Outlet Lilly"]);
+  });
+
+  test("falls back to raw world-info text and warning on Liquid render failure", async () => {
+    mocks.resolveWorldInfoRuntimeForChat.mockResolvedValue({
+      worldInfoBefore: "FAIL_ME {{char}}",
+      worldInfoAfter: "ok",
+      depthEntries: [],
+      outletEntries: {},
+      anTop: [],
+      anBottom: [],
+      emTop: [],
+      emBottom: [],
+      activatedEntries: [{}, {}],
+      debug: {
+        warnings: [],
+        matchedKeys: {},
+        skips: [],
+        budget: { limit: 1, used: 0, overflowed: false },
+      },
+    });
+    mocks.renderLiquidTemplate.mockImplementation(
+      async ({ templateText }: { templateText: string }) => {
+        if (templateText.includes("FAIL_ME")) throw new Error("boom");
+        return templateText;
+      }
+    );
+
+    const context = await buildPromptTemplateRenderContext({ ownerId: "global" });
+    const resolved = await resolveAndApplyWorldInfoToTemplateContext({
+      context,
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      trigger: "generate",
+      dryRun: true,
+    });
+
+    expect(resolved.worldInfoBefore).toBe("FAIL_ME {{char}}");
+    expect(resolved.warnings.some((item) => item.includes("world_info_liquid_render_error:worldInfoBefore:boom"))).toBe(true);
+    expect(context.wiBefore).toBe("FAIL_ME {{char}}");
   });
 });

@@ -43,30 +43,76 @@ const engine = new Liquid({
 const DEFAULT_MAX_PASSES = 5;
 const DEFAULT_MAX_OUTPUT_CHARS = 200_000;
 const TRIM_SENTINEL = "__TS_LIQUID_TRIM_SENTINEL__";
-const OUTLET_MACRO_RE = /{{\s*outlet::([^}]+?)\s*}}/g;
-const TRIM_MACRO_RE = /{{\s*trim\s*}}/g;
+const MACRO_TAG_RE = /{{\s*([^{}]*?)\s*}}/g;
 
 function sanitizeOutletKey(value: string): string {
   // Keep keys printable and stable for object lookup.
   return value.trim().replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
-function preprocessSillyTavernTemplateSyntax(templateText: string): {
+function clampRngValue(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value <= 0) return 0;
+  if (value >= 1) return 0.999_999_999_999;
+  return value;
+}
+
+function pickRandomOption(options: string[], rng: () => number): string {
+  const idx = Math.floor(clampRngValue(rng()) * options.length);
+  return options[idx] ?? options[0] ?? "";
+}
+
+function resolveRandomMacro(rawMacroBody: string, rng: () => number): string | null {
+  const prefix = "random::";
+  if (!rawMacroBody.startsWith(prefix)) return null;
+  const tail = rawMacroBody.slice(prefix.length);
+  if (!tail) return null;
+
+  const options = tail
+    .split("::")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  if (options.length === 0) return null;
+
+  return pickRandomOption(options, rng);
+}
+
+function preprocessSillyTavernTemplateSyntax(
+  templateText: string,
+  options?: { rng?: () => number }
+): {
   text: string;
   hasTrimSentinel: boolean;
 } {
-  let next = templateText.replace(OUTLET_MACRO_RE, (_, rawKey: string) => {
-    const key = sanitizeOutletKey(rawKey);
-    return `{{ outlet['${key}'] }}`;
-  });
-
+  const rng = options?.rng ?? Math.random;
   let hasTrimSentinel = false;
-  next = next.replace(TRIM_MACRO_RE, () => {
-    hasTrimSentinel = true;
-    return TRIM_SENTINEL;
+  const text = templateText.replace(MACRO_TAG_RE, (full: string, rawMacroBody: string) => {
+    const macroBody = rawMacroBody.trim();
+    if (!macroBody) return full;
+
+    if (macroBody === "trim") {
+      hasTrimSentinel = true;
+      return TRIM_SENTINEL;
+    }
+
+    if (macroBody.startsWith("outlet::")) {
+      const rawKey = macroBody.slice("outlet::".length);
+      if (!rawKey.trim()) return full;
+      const key = sanitizeOutletKey(rawKey);
+      return `{{ outlet['${key}'] }}`;
+    }
+
+    if (macroBody.startsWith("random::")) {
+      const selected = resolveRandomMacro(macroBody, rng);
+      if (selected !== null) return selected;
+      // Keep malformed random macro literal in output.
+      return `{% raw %}${full}{% endraw %}`;
+    }
+
+    return full;
   });
 
-  return { text: next, hasTrimSentinel };
+  return { text, hasTrimSentinel };
 }
 
 function isBlankLine(line: string): boolean {
@@ -117,7 +163,9 @@ function mightContainLiquidSyntax(text: string): boolean {
 
 export function validateLiquidTemplate(templateText: string): void {
   // Throws on syntax errors. Variables/filters are not strict in v1.
-  const preprocessed = preprocessSillyTavernTemplateSyntax(templateText);
+  const preprocessed = preprocessSillyTavernTemplateSyntax(templateText, {
+    rng: () => 0,
+  });
   engine.parse(preprocessed.text);
 }
 
@@ -138,6 +186,11 @@ export async function renderLiquidTemplate(params: {
      * If the rendered output exceeds this limit, recursion stops.
      */
     maxOutputChars?: number;
+    /**
+     * Optional RNG used by ST-compatible random macros like `{{random::A::B}}`.
+     * Useful for deterministic tests.
+     */
+    rng?: () => number;
   };
 }): Promise<string> {
   const renderEngine = params.options?.strictVariables
@@ -147,7 +200,9 @@ export async function renderLiquidTemplate(params: {
   const maxOutputChars = params.options?.maxOutputChars ?? DEFAULT_MAX_OUTPUT_CHARS;
   let sawTrimSentinel = false;
 
-  const firstPassPreprocessed = preprocessSillyTavernTemplateSyntax(params.templateText);
+  const firstPassPreprocessed = preprocessSillyTavernTemplateSyntax(params.templateText, {
+    rng: params.options?.rng,
+  });
   sawTrimSentinel = sawTrimSentinel || firstPassPreprocessed.hasTrimSentinel;
 
   // Pass 1: render the original template (syntax has typically been validated earlier).
@@ -163,7 +218,9 @@ export async function renderLiquidTemplate(params: {
     if (current.length > maxOutputChars) break;
 
     try {
-      const passPreprocessed = preprocessSillyTavernTemplateSyntax(current);
+      const passPreprocessed = preprocessSillyTavernTemplateSyntax(current, {
+        rng: params.options?.rng,
+      });
       sawTrimSentinel = sawTrimSentinel || passPreprocessed.hasTrimSentinel;
       const next = normalizeToString(
         await renderEngine.parseAndRender(passPreprocessed.text, params.context)

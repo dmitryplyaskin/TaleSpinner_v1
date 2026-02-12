@@ -21,6 +21,7 @@ describe("prompt-template-renderer", () => {
   test("validateLiquidTemplate accepts valid templates and rejects invalid", () => {
     expect(() => validateLiquidTemplate("Hello {{ user.name }}")).not.toThrow();
     expect(() => validateLiquidTemplate("{{outlet::default}}")).not.toThrow();
+    expect(() => validateLiquidTemplate("{{random::A::B}}")).not.toThrow();
     expect(() => validateLiquidTemplate("{{ broken ")).toThrow();
   });
 
@@ -103,5 +104,30 @@ describe("prompt-template-renderer", () => {
     });
 
     expect(rendered).toBe("A\nB");
+  });
+
+  test("supports ST random macro syntax with deterministic rng", async () => {
+    const first = await renderLiquidTemplate({
+      templateText: "Pick={{random::A::B::C}}",
+      context: makeContext(),
+      options: { rng: () => 0 },
+    });
+    const last = await renderLiquidTemplate({
+      templateText: "Pick={{random::A::B::C}}",
+      context: makeContext(),
+      options: { rng: () => 0.999999 },
+    });
+
+    expect(first).toBe("Pick=A");
+    expect(last).toBe("Pick=C");
+  });
+
+  test("keeps malformed random macro as literal without throwing", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "Bad={{random::   }}",
+      context: makeContext(),
+    });
+
+    expect(rendered).toBe("Bad={{random::   }}");
   });
 });

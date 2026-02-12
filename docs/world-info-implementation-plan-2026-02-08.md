@@ -31,9 +31,9 @@ _Дата: 2026-02-08 (draft)_
     - `world-info-runtime.ts`
     - `world-info-converters.ts`
 - Интеграция в генерацию:
-  - `build-base-prompt.ts`: вызов WI runtime и прокидка `pre/post` injections;
-  - `prompt-template-context.ts`: `wiBefore/wiAfter/loreBefore/loreAfter/anchor*` теперь заполняются runtime-значениями;
-  - `prompt-draft-builder.ts`: поддержка `preHistorySystemMessages/postHistorySystemMessages`;
+  - `build-base-prompt.ts`: вызов WI runtime; implicit WI prompt injections отключены (explicit template only);
+  - `prompt-template-context.ts`: `wiBefore/wiAfter/loreBefore/loreAfter/anchor*` заполняются runtime-значениями и рендерятся через Liquid;
+  - `prompt-draft-builder.ts`: legacy поддержка `preHistorySystemMessages/postHistorySystemMessages` сохранена, но WI их не использует;
   - `contracts.ts` + `run-chat-generation-v3.ts`: `promptSnapshot.meta.worldInfo`.
 - Тесты:
   - добавлены unit-тесты для matcher/groups/scanner/timed/converters;
@@ -52,7 +52,7 @@ _Дата: 2026-02-08 (draft)_
 - Integration tests уровня API:
   - CRUD + bindings + resolve через реальные HTTP endpoints.
 - Integration tests уровня генерации:
-  - проверить end-to-end, что `generate/regenerate` стабильно включают `wiBefore/wiAfter` в llm messages (не только unit-моком).
+  - проверить end-to-end explicit-only поведение: WI попадает в prompt только при явных placeholders в template.
 - Этап 6/7 из roadmap пока не выполнены:
   - `atDepth/outlet` инъекции в prompt draft;
   - UI экран/редактор (MVP sidebar сделан; требуется дальнейшая декомпозиция и UX-полировка);
@@ -546,26 +546,16 @@ Dry-run:
 3. Записать в context:
    - `wiBefore`, `wiAfter`, `loreBefore`, `loreAfter`, `anchorBefore`, `anchorAfter`.
 4. Рендерить Liquid template.
-5. В `buildPromptDraft(...)` передать:
-   - `preHistorySystemMessages = [worldInfoBefore]`
-   - `postHistorySystemMessages = [worldInfoAfter]`
+5. В `buildPromptDraft(...)` НЕ передавать WI как неявные pre/post/depth injections.
 6. Сохранить debug summary в `llm_generations.prompt_snapshot.meta.worldInfo`.
 
 ## 9.2 Изменение prompt-draft-builder
 
-Добавить параметры:
-- `preHistorySystemMessages?: string[]`
-- `postHistorySystemMessages?: string[]`
-
-Сборка draft:
-1. `systemPrompt`
-2. `preHistorySystemMessages`
-3. history
-4. `postHistorySystemMessages`
+Параметры `preHistorySystemMessages/postHistorySystemMessages` остаются для совместимости, но WI их не использует.
 
 `depthEntries` в v1:
 - сохранить в runtime result и debug;
-- инжектить в prompt на следующем этапе (см. этап 6 roadmap).
+- не инжектить неявно (explicit template only policy).
 
 ## 9.3 Trigger mapping
 
@@ -685,7 +675,7 @@ Dry-run:
 
 - API books/settings/bindings.
 - dry-run resolve выдает ожидаемые activated entries.
-- generation pipeline получает `wiBefore/wiAfter` и отправляет их в llm messages.
+- generation pipeline применяет explicit-only политику: WI в llm messages только через явный template.
 
 ## 12.3 Smoke сценарии
 
