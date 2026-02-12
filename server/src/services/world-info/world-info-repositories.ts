@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
@@ -171,31 +171,31 @@ export async function listWorldInfoBooks(params: {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
   const limit = Math.max(1, Math.min(200, params.limit ?? 50));
+  const query = params.query?.trim().toLowerCase() ?? "";
   const where = [eq(worldInfoBooks.ownerId, ownerId), isNull(worldInfoBooks.deletedAt)];
   if (typeof params.before === "number") {
     where.push(lt(worldInfoBooks.updatedAt, new Date(params.before)));
   }
+  if (query) {
+    const pattern = `%${query}%`;
+    where.push(
+      sql`(
+        lower(${worldInfoBooks.name}) like ${pattern}
+        or lower(${worldInfoBooks.slug}) like ${pattern}
+        or lower(coalesce(${worldInfoBooks.description}, '')) like ${pattern}
+      )`
+    );
+  }
 
-  const baseRows = await db
+  const rows = await db
     .select()
     .from(worldInfoBooks)
     .where(and(...where))
     .orderBy(desc(worldInfoBooks.updatedAt), desc(worldInfoBooks.id))
     .limit(limit + 1);
 
-  const filtered = params.query
-    ? baseRows.filter((row) => {
-        const q = params.query!.toLowerCase();
-        return (
-          row.name.toLowerCase().includes(q) ||
-          row.slug.toLowerCase().includes(q) ||
-          (row.description ?? "").toLowerCase().includes(q)
-        );
-      })
-    : baseRows;
-
-  const page = filtered.slice(0, limit);
-  const next = filtered.length > limit ? page[page.length - 1]?.updatedAt ?? null : null;
+  const page = rows.slice(0, limit);
+  const next = rows.length > limit ? page[page.length - 1]?.updatedAt ?? null : null;
   return {
     items: page.map(rowToBookSummaryDto),
     nextCursor: next ? next.getTime() : null,
@@ -482,63 +482,85 @@ export async function replaceWorldInfoBindings(params: {
   const ownerId = params.ownerId ?? "global";
   const scopeId = params.scope === "global" ? null : (params.scopeId ?? null);
   const ts = new Date();
+  await db.transaction(async (tx) => {
+    const where = [
+      eq(worldInfoBindings.ownerId, ownerId),
+      eq(worldInfoBindings.scope, params.scope),
+      scopeId === null
+        ? isNull(worldInfoBindings.scopeId)
+        : eq(worldInfoBindings.scopeId, scopeId),
+    ];
+    const existingRows = await tx
+      .select()
+      .from(worldInfoBindings)
+      .where(and(...where))
+      .orderBy(worldInfoBindings.displayOrder, worldInfoBindings.createdAt);
+    const existing = existingRows.map(rowToBindingDto);
+    const existingByBookId = new Map(existing.map((item) => [item.bookId, item]));
 
-  const existing = await listWorldInfoBindings({
-    ownerId,
-    scope: params.scope,
-    scopeId,
-  });
-  const existingByBookId = new Map(existing.map((item) => [item.bookId, item]));
+    const incomingBookIds = new Set<string>();
+    const updates: Promise<unknown>[] = [];
+    const inserts: Array<typeof worldInfoBindings.$inferInsert> = [];
 
-  const incomingBookIds = new Set<string>();
-  for (const [idx, item] of params.items.entries()) {
-    incomingBookIds.add(item.bookId);
-    const found = existingByBookId.get(item.bookId);
-    if (found) {
-      await db
-        .update(worldInfoBindings)
-        .set({
-          bindingRole: item.bindingRole ?? found.bindingRole,
-          displayOrder: item.displayOrder ?? idx,
-          enabled: item.enabled ?? true,
-          metaJson:
-            typeof item.meta === "undefined"
-              ? safeJsonStringify(found.meta, "null")
-              : item.meta === null
-                ? null
-                : safeJsonStringify(item.meta, "{}"),
-          updatedAt: ts,
-        })
-        .where(eq(worldInfoBindings.id, found.id));
-      continue;
+    for (const [idx, item] of params.items.entries()) {
+      incomingBookIds.add(item.bookId);
+      const found = existingByBookId.get(item.bookId);
+      if (found) {
+        updates.push(
+          tx
+            .update(worldInfoBindings)
+            .set({
+              bindingRole: item.bindingRole ?? found.bindingRole,
+              displayOrder: item.displayOrder ?? idx,
+              enabled: item.enabled ?? true,
+              metaJson:
+                typeof item.meta === "undefined"
+                  ? safeJsonStringify(found.meta, "null")
+                  : item.meta === null
+                    ? null
+                    : safeJsonStringify(item.meta, "{}"),
+              updatedAt: ts,
+            })
+            .where(eq(worldInfoBindings.id, found.id))
+        );
+        continue;
+      }
+
+      inserts.push({
+        id: uuidv4(),
+        ownerId,
+        scope: params.scope,
+        scopeId,
+        bookId: item.bookId,
+        bindingRole: item.bindingRole ?? "additional",
+        displayOrder: item.displayOrder ?? idx,
+        enabled: item.enabled ?? true,
+        metaJson:
+          typeof item.meta === "undefined"
+            ? null
+            : item.meta === null
+              ? null
+              : safeJsonStringify(item.meta, "{}"),
+        createdAt: ts,
+        updatedAt: ts,
+      });
     }
 
-    await db.insert(worldInfoBindings).values({
-      id: uuidv4(),
-      ownerId,
-      scope: params.scope,
-      scopeId,
-      bookId: item.bookId,
-      bindingRole: item.bindingRole ?? "additional",
-      displayOrder: item.displayOrder ?? idx,
-      enabled: item.enabled ?? true,
-      metaJson:
-        typeof item.meta === "undefined"
-          ? null
-          : item.meta === null
-            ? null
-            : safeJsonStringify(item.meta, "{}"),
-      createdAt: ts,
-      updatedAt: ts,
-    });
-  }
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
 
-  const toDelete = existing.filter((item) => !incomingBookIds.has(item.bookId));
-  if (toDelete.length > 0) {
-    await db
-      .delete(worldInfoBindings)
-      .where(inArray(worldInfoBindings.id, toDelete.map((item) => item.id)));
-  }
+    if (inserts.length > 0) {
+      await tx.insert(worldInfoBindings).values(inserts);
+    }
+
+    const toDelete = existing.filter((item) => !incomingBookIds.has(item.bookId));
+    if (toDelete.length > 0) {
+      await tx
+        .delete(worldInfoBindings)
+        .where(inArray(worldInfoBindings.id, toDelete.map((item) => item.id)));
+    }
+  });
 
   return listWorldInfoBindings({ ownerId, scope: params.scope, scopeId });
 }
@@ -584,6 +606,42 @@ export async function upsertWorldInfoTimedEffect(params: {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
   const ts = new Date();
+  const id = uuidv4();
+  await db
+    .insert(worldInfoTimedEffects)
+    .values({
+      id,
+      ownerId,
+      chatId: params.chatId,
+      branchId: params.branchId,
+      entryHash: params.entryHash,
+      bookId: params.bookId ?? null,
+      entryUid: params.entryUid ?? null,
+      effectType: params.effectType,
+      startMessageIndex: params.startMessageIndex,
+      endMessageIndex: params.endMessageIndex,
+      protected: params.protected ?? false,
+      createdAt: ts,
+      updatedAt: ts,
+    })
+    .onConflictDoUpdate({
+      target: [
+        worldInfoTimedEffects.ownerId,
+        worldInfoTimedEffects.chatId,
+        worldInfoTimedEffects.branchId,
+        worldInfoTimedEffects.entryHash,
+        worldInfoTimedEffects.effectType,
+      ],
+      set: {
+        bookId: params.bookId ?? null,
+        entryUid: params.entryUid ?? null,
+        startMessageIndex: params.startMessageIndex,
+        endMessageIndex: params.endMessageIndex,
+        protected: params.protected ?? false,
+        updatedAt: ts,
+      },
+    });
+
   const rows = await db
     .select()
     .from(worldInfoTimedEffects)
@@ -597,50 +655,11 @@ export async function upsertWorldInfoTimedEffect(params: {
       )
     )
     .limit(1);
-
-  const existing = rows[0];
-  if (existing) {
-    await db
-      .update(worldInfoTimedEffects)
-      .set({
-        bookId: params.bookId ?? null,
-        entryUid: params.entryUid ?? null,
-        startMessageIndex: params.startMessageIndex,
-        endMessageIndex: params.endMessageIndex,
-        protected: params.protected ?? false,
-        updatedAt: ts,
-      })
-      .where(eq(worldInfoTimedEffects.id, existing.id));
-    const updated = await db
-      .select()
-      .from(worldInfoTimedEffects)
-      .where(eq(worldInfoTimedEffects.id, existing.id))
-      .limit(1);
-    return rowToTimedEffectDto(updated[0]);
+  const row = rows[0];
+  if (!row) {
+    throw new Error("Failed to upsert world info timed effect");
   }
-
-  const id = uuidv4();
-  await db.insert(worldInfoTimedEffects).values({
-    id,
-    ownerId,
-    chatId: params.chatId,
-    branchId: params.branchId,
-    entryHash: params.entryHash,
-    bookId: params.bookId ?? null,
-    entryUid: params.entryUid ?? null,
-    effectType: params.effectType,
-    startMessageIndex: params.startMessageIndex,
-    endMessageIndex: params.endMessageIndex,
-    protected: params.protected ?? false,
-    createdAt: ts,
-    updatedAt: ts,
-  });
-  const created = await db
-    .select()
-    .from(worldInfoTimedEffects)
-    .where(eq(worldInfoTimedEffects.id, id))
-    .limit(1);
-  return rowToTimedEffectDto(created[0]);
+  return rowToTimedEffectDto(row);
 }
 
 export async function getBranchMessageIndex(params: {
@@ -648,30 +667,35 @@ export async function getBranchMessageIndex(params: {
   branchId: string;
 }): Promise<number> {
   const db = await initDb();
-  const entryRows = await db
-    .select({ id: chatEntries.entryId })
-    .from(chatEntries)
-    .where(
-      and(
-        eq(chatEntries.chatId, params.chatId),
-        eq(chatEntries.branchId, params.branchId),
-        eq(chatEntries.softDeleted, false)
-      )
-    );
-  const legacyRows = await db
-    .select({ metaJson: chatMessages.metaJson })
-    .from(chatMessages)
-    .where(
-      and(
-        eq(chatMessages.chatId, params.chatId),
-        eq(chatMessages.branchId, params.branchId)
-      )
-    );
-  const legacyCount = legacyRows.filter((row) => {
-    const meta = safeJsonParse(row.metaJson, null) as null | Record<string, unknown>;
-    return !(meta?.deleted === true || typeof meta?.deletedAt === "string");
-  }).length;
-  return Math.max(entryRows.length, legacyCount);
+  const [entryCountRows, legacyCountRows] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatEntries)
+      .where(
+        and(
+          eq(chatEntries.chatId, params.chatId),
+          eq(chatEntries.branchId, params.branchId),
+          eq(chatEntries.softDeleted, false)
+        )
+      ),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.chatId, params.chatId),
+          eq(chatMessages.branchId, params.branchId),
+          sql`not (
+            instr(lower(coalesce(${chatMessages.metaJson}, '')), '"deleted":true') > 0
+            or instr(lower(coalesce(${chatMessages.metaJson}, '')), '"deletedat":"') > 0
+          )`
+        )
+      ),
+  ]);
+
+  const entryCount = Number(entryCountRows[0]?.count ?? 0);
+  const legacyCount = Number(legacyCountRows[0]?.count ?? 0);
+  return Math.max(entryCount, legacyCount);
 }
 
 export function getBookDataEntries(book: WorldInfoBookDto): Record<string, unknown> {

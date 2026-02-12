@@ -12,11 +12,12 @@ import { createDataPath } from "../../utils";
 export class BaseService<T extends BaseEntity> {
   protected readonly dir: string;
   protected readonly logger?: Logger;
+  private readonly ready: Promise<void>;
 
   constructor(dirName: string, options?: ServiceOptions) {
     this.dir = options?.dataDir || createDataPath(dirName);
     this.logger = options?.logger;
-    this.ensureDirectory();
+    this.ready = this.ensureDirectory();
   }
 
   protected async ensureDirectory(): Promise<void> {
@@ -31,6 +32,10 @@ export class BaseService<T extends BaseEntity> {
     }
   }
 
+  protected async ensureReady(): Promise<void> {
+    await this.ready;
+  }
+
   protected createUUID(): string {
     return uuidv4();
   }
@@ -40,6 +45,7 @@ export class BaseService<T extends BaseEntity> {
   }
 
   protected async readEntity(id: string): Promise<T> {
+    await this.ensureReady();
     try {
       const filePath = this.getFilePath(id);
       const content = await fs.readFile(filePath, "utf8");
@@ -55,6 +61,7 @@ export class BaseService<T extends BaseEntity> {
   }
 
   protected async writeEntity(id: string, data: T): Promise<void> {
+    await this.ensureReady();
     try {
       const filePath = this.getFilePath(id);
       await fs.writeFile(filePath, JSON.stringify(data, null, 2));
@@ -65,6 +72,7 @@ export class BaseService<T extends BaseEntity> {
   }
 
   protected async deleteEntity(id: string): Promise<void> {
+    await this.ensureReady();
     try {
       const filePath = this.getFilePath(id);
       await fs.unlink(filePath);
@@ -79,6 +87,7 @@ export class BaseService<T extends BaseEntity> {
   }
 
   async getAll(): Promise<T[]> {
+    await this.ensureReady();
     try {
       const files = await fs.readdir(this.dir);
       const jsonFiles = files

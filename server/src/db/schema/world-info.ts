@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { chatBranches, chats } from "./chat-core";
 
@@ -25,6 +26,14 @@ export const worldInfoBooks = sqliteTable(
       t.ownerId,
       t.updatedAt
     ),
+    ownerSlugDeletedIdx: index("world_info_books_owner_slug_deleted_idx").on(
+      t.ownerId,
+      t.slug,
+      t.deletedAt
+    ),
+    ownerSlugActiveUnique: uniqueIndex("world_info_books_owner_slug_active_uq")
+      .on(t.ownerId, t.slug)
+      .where(sql`${t.deletedAt} is null`),
   })
 );
 
@@ -75,6 +84,12 @@ export const worldInfoBindings = sqliteTable(
       t.scopeId,
       t.displayOrder
     ),
+    scopeBookUnique: uniqueIndex("world_info_bindings_scope_book_uq").on(
+      t.ownerId,
+      t.scope,
+      t.scopeId,
+      t.bookId
+    ),
   })
 );
 
@@ -106,5 +121,8 @@ export const worldInfoTimedEffects = sqliteTable(
       t.effectType,
       t.endMessageIndex
     ),
+    ownerChatBranchEntryEffectUnique: uniqueIndex(
+      "world_info_timed_effects_unique_entry_effect_uq"
+    ).on(t.ownerId, t.chatId, t.branchId, t.entryHash, t.effectType),
   })
 );

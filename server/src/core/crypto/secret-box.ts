@@ -5,6 +5,8 @@ const KEY_LEN = 32;
 const IV_LEN = 12; // recommended length for GCM
 const TAG_LEN = 16;
 const SCRYPT_SALT = "talespinner.llm_tokens.v1";
+let cachedMasterKey: string | null = null;
+let cachedDerivedKey: Buffer | null = null;
 
 function getMasterKey(): string {
   const key = process.env.TOKENS_MASTER_KEY;
@@ -13,11 +15,18 @@ function getMasterKey(): string {
       "TOKENS_MASTER_KEY is not set. Token encryption is required."
     );
   }
-  return key;
+  return key.trim();
 }
 
 function deriveKey(masterKey: string): Buffer {
-  return crypto.scryptSync(masterKey, SCRYPT_SALT, KEY_LEN);
+  if (cachedMasterKey === masterKey && cachedDerivedKey) {
+    return cachedDerivedKey;
+  }
+
+  const derived = crypto.scryptSync(masterKey, SCRYPT_SALT, KEY_LEN);
+  cachedMasterKey = masterKey;
+  cachedDerivedKey = derived;
+  return derived;
 }
 
 export function encryptSecret(plaintext: string): string {

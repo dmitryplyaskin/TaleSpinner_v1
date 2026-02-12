@@ -52,6 +52,15 @@ function nowDate(): Date {
   return new Date();
 }
 
+function parseConfigJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch (error) {
+    console.warn("Failed to parse provider config JSON. Falling back to {}", { error });
+    return {};
+  }
+}
+
 async function db(): Promise<Db> {
   return initDb();
 }
@@ -266,7 +275,7 @@ export async function getProviderConfig(
     return { providerId, config: {} };
   }
 
-  const config = JSON.parse(rows[0].configJson) as unknown;
+  const config = parseConfigJson(rows[0].configJson);
   return { providerId, config };
 }
 

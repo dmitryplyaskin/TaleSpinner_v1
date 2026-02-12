@@ -75,6 +75,11 @@ router.post("/generate", async (req: Request, res: Response) => {
 
     const abortController = new AbortController();
     activeStreams.set(streamId, abortController);
+    const onClose = () => {
+      abortController.abort();
+      activeStreams.delete(streamId);
+    };
+    req.on("close", onClose);
 
     const messageStream = streamGlobalChat({
       messages,
@@ -108,6 +113,7 @@ router.post("/generate", async (req: Request, res: Response) => {
 
       res.write("data: [DONE]\n\n");
     } finally {
+      req.off("close", onClose);
       activeStreams.delete(streamId);
     }
 

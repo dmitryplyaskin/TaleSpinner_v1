@@ -196,10 +196,16 @@ function mapTaskResult(params: {
 }): OperationExecutionResult {
   const { task, op } = params;
   if (task.status === "done") {
+    const rawResult = (task as { result?: unknown }).result;
     const result =
-      typeof (task as { result?: unknown }).result === "object" && (task as { result?: unknown }).result !== null
-        ? ((task as { result?: any }).result as { effects?: RuntimeEffect[]; debugSummary?: string })
-        : { effects: [] };
+      rawResult && typeof rawResult === "object"
+        ? (rawResult as { effects?: unknown; debugSummary?: unknown })
+        : {};
+    const effects = Array.isArray(result.effects)
+      ? (result.effects as RuntimeEffect[])
+      : [];
+    const debugSummary =
+      typeof result.debugSummary === "string" ? result.debugSummary : undefined;
 
     return {
       opId: op.opId,
@@ -209,8 +215,8 @@ function mapTaskResult(params: {
       status: "done",
       order: op.config.order,
       dependsOn: op.config.dependsOn ?? [],
-      effects: Array.isArray(result.effects) ? result.effects : [],
-      debugSummary: result.debugSummary,
+      effects,
+      debugSummary,
     };
   }
 
@@ -295,7 +301,7 @@ export async function executeOperationsPhase(params: {
   }) => void;
 }): Promise<OperationExecutionResult[]> {
   const filtered = params.operations.filter((op) => {
-    if (!op.config.enabled) return true;
+    if (!op.config.enabled) return false;
     if (!op.config.hooks.includes(params.hook)) return false;
     const triggers = op.config.triggers ?? ["generate", "regenerate"];
     return triggers.includes(params.trigger);
@@ -307,6 +313,7 @@ export async function executeOperationsPhase(params: {
     (op): op is Extract<OperationInProfile, { kind: "template" | "llm" }> =>
       op.kind === "template" || op.kind === "llm"
   );
+  const executableOpsById = new Map(executableOps.map((op) => [op.opId, op]));
   const unsupportedOps = filtered.filter(
     (op): op is Exclude<OperationInProfile, Extract<OperationInProfile, { kind: "template" | "llm" }>> =>
       op.kind !== "template" && op.kind !== "llm"
@@ -401,13 +408,13 @@ export async function executeOperationsPhase(params: {
     {
       onEvent: (evt) => {
         if (evt.type === "orch.task.started") {
-          const op = executableOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOpsById.get(evt.data.taskId);
           if (!op) return;
           params.onOperationStarted?.({ hook: params.hook, opId: op.opId, name: op.name });
           return;
         }
         if (evt.type === "orch.task.finished") {
-          const op = executableOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOpsById.get(evt.data.taskId);
           if (!op) return;
           const result =
             evt.data.status === "done"
@@ -423,7 +430,7 @@ export async function executeOperationsPhase(params: {
           return;
         }
         if (evt.type === "orch.task.skipped") {
-          const op = executableOps.find((item) => item.opId === evt.data.taskId);
+          const op = executableOpsById.get(evt.data.taskId);
           if (!op) return;
           params.onOperationFinished?.({
             hook: params.hook,
@@ -439,7 +446,7 @@ export async function executeOperationsPhase(params: {
 
   const executableResults = orchestration.tasks
     .map((task) => {
-      const op = executableOps.find((item) => item.opId === task.taskId);
+      const op = executableOpsById.get(task.taskId);
       if (!op) return null;
       return mapTaskResult({ hook: params.hook, op, task });
     })

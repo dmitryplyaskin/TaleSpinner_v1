@@ -149,39 +149,47 @@ export class OpenAiCompatibleProvider implements LlmProviderAdapter {
 }
 
 function extractReasoningText(chunk: ChatCompletionChunk): string {
-  const delta: any = chunk?.choices?.[0]?.delta;
-  if (!delta || typeof delta !== "object") return "";
+  const delta = asRecord(chunk?.choices?.[0]?.delta);
+  if (!delta) return "";
 
   const out: string[] = [];
   const pushIfString = (value: unknown): void => {
     if (typeof value === "string" && value.length > 0) out.push(value);
   };
 
-  pushIfString(delta.reasoning);
-  pushIfString(delta.reasoning_content);
+  pushIfString(delta["reasoning"]);
+  pushIfString(delta["reasoning_content"]);
 
-  const reasoningObj = delta.reasoning;
-  if (reasoningObj && typeof reasoningObj === "object") {
-    pushIfString((reasoningObj as any).text);
-    const content = (reasoningObj as any).content;
+  const reasoningObj = asRecord(delta["reasoning"]);
+  if (reasoningObj) {
+    pushIfString(reasoningObj["text"]);
+    const content = reasoningObj["content"];
     if (Array.isArray(content)) {
       for (const item of content) {
-        if (!item || typeof item !== "object") continue;
-        pushIfString((item as any).text);
+        const record = asRecord(item);
+        if (!record) continue;
+        pushIfString(record["text"]);
       }
     }
   }
 
-  if (Array.isArray(delta.content)) {
-    for (const item of delta.content) {
-      if (!item || typeof item !== "object") continue;
-      const itemType = typeof (item as any).type === "string" ? (item as any).type : "";
+  const deltaContent = delta["content"];
+  if (Array.isArray(deltaContent)) {
+    for (const item of deltaContent) {
+      const record = asRecord(item);
+      if (!record) continue;
+      const itemType = typeof record["type"] === "string" ? record["type"] : "";
       if (itemType.includes("reasoning")) {
-        pushIfString((item as any).text);
+        pushIfString(record["text"]);
       }
     }
   }
 
   return out.join("");
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
 }
 

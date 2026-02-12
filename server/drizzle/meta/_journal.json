@@ -120,6 +120,13 @@
       "when": 1770850000000,
       "tag": "0020_llm_presets",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1770900000000,
+      "tag": "0021_world_info_indexes",
+      "breakpoints": true
     }
   ]
 }

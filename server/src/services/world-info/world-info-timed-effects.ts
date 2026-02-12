@@ -43,6 +43,7 @@ export async function loadTimedEffectsState(params: {
   const activeSticky = new Set<string>();
   const activeCooldown = new Set<string>();
   const deleteIds: string[] = [];
+  const cooldownUpserts: Array<Promise<unknown>> = [];
   const warnings: string[] = [];
 
   for (const row of rows) {
@@ -51,18 +52,20 @@ export async function loadTimedEffectsState(params: {
       if (row.effectType === "sticky") {
         const entry = params.entriesByHash.get(row.entryHash);
         if (entry && typeof entry.cooldown === "number" && entry.cooldown > 0) {
-          await upsertWorldInfoTimedEffect({
-            ownerId: params.ownerId,
-            chatId: params.chatId,
-            branchId: params.branchId,
-            entryHash: row.entryHash,
-            bookId: entry.bookId,
-            entryUid: entry.uid,
-            effectType: "cooldown",
-            startMessageIndex: params.messageIndex,
-            endMessageIndex: params.messageIndex + entry.cooldown,
-            protected: true,
-          });
+          cooldownUpserts.push(
+            upsertWorldInfoTimedEffect({
+              ownerId: params.ownerId,
+              chatId: params.chatId,
+              branchId: params.branchId,
+              entryHash: row.entryHash,
+              bookId: entry.bookId,
+              entryUid: entry.uid,
+              effectType: "cooldown",
+              startMessageIndex: params.messageIndex,
+              endMessageIndex: params.messageIndex + entry.cooldown,
+              protected: true,
+            })
+          );
         }
       }
       continue;
@@ -74,6 +77,9 @@ export async function loadTimedEffectsState(params: {
 
   if (deleteIds.length > 0) {
     await deleteWorldInfoTimedEffectsByIds(deleteIds);
+  }
+  if (cooldownUpserts.length > 0) {
+    await Promise.all(cooldownUpserts);
   }
 
   return { activeSticky, activeCooldown, warnings };
@@ -88,32 +94,40 @@ export async function applyTimedEffectsForActivatedEntries(params: {
   dryRun: boolean;
 }): Promise<void> {
   if (params.dryRun) return;
+  const upserts: Array<Promise<unknown>> = [];
   for (const entry of params.activatedEntries) {
     if (typeof entry.sticky === "number" && entry.sticky > 0) {
-      await upsertWorldInfoTimedEffect({
-        ownerId: params.ownerId,
-        chatId: params.chatId,
-        branchId: params.branchId,
-        entryHash: entry.hash,
-        bookId: entry.bookId,
-        entryUid: entry.uid,
-        effectType: "sticky",
-        startMessageIndex: params.messageIndex,
-        endMessageIndex: params.messageIndex + entry.sticky,
-      });
+      upserts.push(
+        upsertWorldInfoTimedEffect({
+          ownerId: params.ownerId,
+          chatId: params.chatId,
+          branchId: params.branchId,
+          entryHash: entry.hash,
+          bookId: entry.bookId,
+          entryUid: entry.uid,
+          effectType: "sticky",
+          startMessageIndex: params.messageIndex,
+          endMessageIndex: params.messageIndex + entry.sticky,
+        })
+      );
     }
     if (typeof entry.cooldown === "number" && entry.cooldown > 0) {
-      await upsertWorldInfoTimedEffect({
-        ownerId: params.ownerId,
-        chatId: params.chatId,
-        branchId: params.branchId,
-        entryHash: entry.hash,
-        bookId: entry.bookId,
-        entryUid: entry.uid,
-        effectType: "cooldown",
-        startMessageIndex: params.messageIndex,
-        endMessageIndex: params.messageIndex + entry.cooldown,
-      });
+      upserts.push(
+        upsertWorldInfoTimedEffect({
+          ownerId: params.ownerId,
+          chatId: params.chatId,
+          branchId: params.branchId,
+          entryHash: entry.hash,
+          bookId: entry.bookId,
+          entryUid: entry.uid,
+          effectType: "cooldown",
+          startMessageIndex: params.messageIndex,
+          endMessageIndex: params.messageIndex + entry.cooldown,
+        })
+      );
     }
+  }
+  if (upserts.length > 0) {
+    await Promise.all(upserts);
   }
 }

@@ -60,6 +60,7 @@ describe("runMainLlmPhase", () => {
 
     async function* abortedStream() {
       abortController.abort();
+      yield* [] as Array<{ content: string; reasoning: string; error: null }>;
       return;
     }
 

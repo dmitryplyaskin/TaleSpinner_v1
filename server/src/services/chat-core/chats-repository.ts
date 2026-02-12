@@ -164,54 +164,55 @@ export async function createChat(params: {
   const chatId = uuidv4();
   const mainBranchId = uuidv4();
 
-  const templateRows = await db
-    .select({ id: promptTemplates.id })
-    .from(promptTemplates)
-    .where(eq(promptTemplates.ownerId, ownerId))
-    .orderBy(desc(promptTemplates.updatedAt))
-    .limit(1);
-  const defaultPromptTemplateId = templateRows[0]?.id ?? null;
+  await db.transaction(async (tx) => {
+    const templateRows = await tx
+      .select({ id: promptTemplates.id })
+      .from(promptTemplates)
+      .where(eq(promptTemplates.ownerId, ownerId))
+      .orderBy(desc(promptTemplates.updatedAt))
+      .limit(1);
+    const defaultPromptTemplateId = templateRows[0]?.id ?? null;
 
-  // Keep this simple and reliable for now (atomicity can be added later via proper tx API).
-  await db.insert(chats).values({
-    id: chatId,
-    ownerId,
-    entityProfileId: params.entityProfileId,
-    title: params.title,
-    activeBranchId: null,
-    promptTemplateId: defaultPromptTemplateId,
-    status: "active",
-    createdAt: ts,
-    updatedAt: ts,
-    lastMessageAt: null,
-    lastMessagePreview: null,
-    version: 0,
-    metaJson:
-      typeof params.meta === "undefined"
-        ? null
-        : safeJsonStringify(params.meta),
-    originChatId: null,
-    originBranchId: null,
-    originMessageId: null,
+    await tx.insert(chats).values({
+      id: chatId,
+      ownerId,
+      entityProfileId: params.entityProfileId,
+      title: params.title,
+      activeBranchId: null,
+      promptTemplateId: defaultPromptTemplateId,
+      status: "active",
+      createdAt: ts,
+      updatedAt: ts,
+      lastMessageAt: null,
+      lastMessagePreview: null,
+      version: 0,
+      metaJson:
+        typeof params.meta === "undefined"
+          ? null
+          : safeJsonStringify(params.meta),
+      originChatId: null,
+      originBranchId: null,
+      originMessageId: null,
+    });
+
+    await tx.insert(chatBranches).values({
+      id: mainBranchId,
+      ownerId,
+      chatId: chatId,
+      title: "main",
+      createdAt: ts,
+      updatedAt: ts,
+      parentBranchId: null,
+      forkedFromMessageId: null,
+      forkedFromVariantId: null,
+      metaJson: null,
+    });
+
+    await tx
+      .update(chats)
+      .set({ activeBranchId: mainBranchId, updatedAt: ts })
+      .where(eq(chats.id, chatId));
   });
-
-  await db.insert(chatBranches).values({
-    id: mainBranchId,
-    ownerId,
-    chatId: chatId,
-    title: "main",
-    createdAt: ts,
-    updatedAt: ts,
-    parentBranchId: null,
-    forkedFromMessageId: null,
-    forkedFromVariantId: null,
-    metaJson: null,
-  });
-
-  await db
-    .update(chats)
-    .set({ activeBranchId: mainBranchId, updatedAt: ts })
-    .where(eq(chats.id, chatId));
 
   const createdChat = await getChatById(chatId);
   const branches = await listChatBranches({ chatId });
@@ -483,30 +484,32 @@ export async function createAssistantMessageWithVariant(params: {
   const assistantMessageId = uuidv4();
   const variantId = uuidv4();
 
-  await db.insert(chatMessages).values({
-    id: assistantMessageId,
-    ownerId: params.ownerId ?? "global",
-    chatId: params.chatId,
-    branchId: params.branchId,
-    role: "assistant",
-    createdAt: ts,
-    promptText: "",
-    format: null,
-    blocksJson: "[]",
-    metaJson: null,
-    activeVariantId: variantId,
-  });
+  await db.transaction(async (tx) => {
+    await tx.insert(chatMessages).values({
+      id: assistantMessageId,
+      ownerId: params.ownerId ?? "global",
+      chatId: params.chatId,
+      branchId: params.branchId,
+      role: "assistant",
+      createdAt: ts,
+      promptText: "",
+      format: null,
+      blocksJson: "[]",
+      metaJson: null,
+      activeVariantId: variantId,
+    });
 
-  await db.insert(messageVariants).values({
-    id: variantId,
-    ownerId: params.ownerId ?? "global",
-    messageId: assistantMessageId,
-    createdAt: ts,
-    kind: "generation",
-    promptText: "",
-    blocksJson: "[]",
-    metaJson: null,
-    isSelected: true,
+    await tx.insert(messageVariants).values({
+      id: variantId,
+      ownerId: params.ownerId ?? "global",
+      messageId: assistantMessageId,
+      createdAt: ts,
+      kind: "generation",
+      promptText: "",
+      blocksJson: "[]",
+      metaJson: null,
+      isSelected: true,
+    });
   });
 
   return { assistantMessageId, variantId, createdAt: ts };
@@ -530,44 +533,45 @@ export async function createImportedAssistantMessage(params: {
   const variantId = uuidv4();
   const text = params.promptText ?? "";
 
-  await db.insert(chatMessages).values({
-    id: assistantMessageId,
-    ownerId: params.ownerId ?? "global",
-    chatId: params.chatId,
-    branchId: params.branchId,
-    role: "assistant",
-    createdAt: ts,
-    promptText: text,
-    format: null,
-    blocksJson: "[]",
-    metaJson:
-      typeof params.meta === "undefined"
-        ? null
-        : safeJsonStringify(params.meta),
-    activeVariantId: variantId,
-  });
+  await db.transaction(async (tx) => {
+    await tx.insert(chatMessages).values({
+      id: assistantMessageId,
+      ownerId: params.ownerId ?? "global",
+      chatId: params.chatId,
+      branchId: params.branchId,
+      role: "assistant",
+      createdAt: ts,
+      promptText: text,
+      format: null,
+      blocksJson: "[]",
+      metaJson:
+        typeof params.meta === "undefined"
+          ? null
+          : safeJsonStringify(params.meta),
+      activeVariantId: variantId,
+    });
 
-  await db.insert(messageVariants).values({
-    id: variantId,
-    ownerId: params.ownerId ?? "global",
-    messageId: assistantMessageId,
-    createdAt: ts,
-    kind: "import",
-    promptText: text,
-    blocksJson: "[]",
-    metaJson: safeJsonStringify({ importedAt: ts.toISOString() }),
-    isSelected: true,
-  });
+    await tx.insert(messageVariants).values({
+      id: variantId,
+      ownerId: params.ownerId ?? "global",
+      messageId: assistantMessageId,
+      createdAt: ts,
+      kind: "import",
+      promptText: text,
+      blocksJson: "[]",
+      metaJson: safeJsonStringify({ importedAt: ts.toISOString() }),
+      isSelected: true,
+    });
 
-  // Update chat preview fields (best-effort)
-  await db
-    .update(chats)
-    .set({
-      lastMessageAt: ts,
-      lastMessagePreview: buildPreview(text),
-      updatedAt: ts,
-    })
-    .where(eq(chats.id, params.chatId));
+    await tx
+      .update(chats)
+      .set({
+        lastMessageAt: ts,
+        lastMessagePreview: buildPreview(text),
+        updatedAt: ts,
+      })
+      .where(eq(chats.id, params.chatId));
+  });
 
   return { assistantMessageId, variantId, createdAt: ts };
 }

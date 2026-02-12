@@ -42,6 +42,7 @@ vi.mock("./llm-gateway-adapter", () => ({
 import { HttpError } from "@core/middleware/error-handler";
 
 import {
+  __resetTokenTouchThrottleForTests,
   getModels,
   getProvidersForUi,
   getTokensForUi,
@@ -50,6 +51,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  __resetTokenTouchThrottleForTests();
   mocks.getRuntime.mockResolvedValue({
     scope: "global",
     scopeId: "global",
@@ -159,6 +161,7 @@ describe("llm-service", () => {
         "X-Title": "TaleSpinner",
         Authorization: "Bearer secret",
       },
+      timeout: 7000,
     });
     expect(out).toEqual([
       { id: "m1", name: "Model 1" },
@@ -182,6 +185,7 @@ describe("llm-service", () => {
       headers: {
         Authorization: "Bearer secret",
       },
+      timeout: 7000,
     });
     expect(out).toEqual([
       { id: "m1", name: "Model 1" },
@@ -190,7 +194,9 @@ describe("llm-service", () => {
   });
 
   test("getModels returns [] on fetch errors", async () => {
-    mocks.axiosGet.mockRejectedValueOnce(new Error("network down"));
+    mocks.axiosGet
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockRejectedValueOnce(new Error("network down"));
 
     await expect(
       getModels({
@@ -199,6 +205,7 @@ describe("llm-service", () => {
         scopeId: "global",
       })
     ).resolves.toEqual([]);
+    expect(mocks.axiosGet).toHaveBeenCalledTimes(2);
   });
 
   test("streamGlobalChat throws HttpError when active token is missing", async () => {
@@ -425,5 +432,26 @@ describe("llm-service", () => {
     }
 
     expect(received).toEqual([{ content: "first", reasoning: "", error: null }]);
+  });
+
+  test("streamGlobalChat throttles touchTokenLastUsed for repeated immediate calls", async () => {
+    mocks.llmGatewayStream.mockImplementation(async function* () {
+      yield { type: "done", status: "done" as const };
+    });
+
+    await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "first" }],
+        settings: {},
+      })
+    );
+    await collect(
+      streamGlobalChat({
+        messages: [{ role: "user", content: "second" }],
+        settings: {},
+      })
+    );
+
+    expect(mocks.touchTokenLastUsed).toHaveBeenCalledTimes(1);
   });
 });

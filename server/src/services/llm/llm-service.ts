@@ -54,6 +54,11 @@ type TokenPolicy = {
   fallbackOnError: boolean;
 };
 
+const MODELS_REQUEST_TIMEOUT_MS = 7000;
+const MODELS_REQUEST_RETRIES = 1;
+const TOKEN_LAST_USED_TOUCH_INTERVAL_MS = 60_000;
+const tokenLastTouchedAt = new Map<string, number>();
+
 function resolveTokenPolicy(providerId: LlmProviderId, config: unknown): TokenPolicy {
   if (providerId === "openrouter") {
     const parsed = openRouterConfigSchema.safeParse(config ?? {});
@@ -100,6 +105,46 @@ function buildTokenAttemptOrder(params: {
   return ordered;
 }
 
+async function fetchModelsWithRetry(
+  url: string,
+  headers: Record<string, string>
+): Promise<Array<{ id: string; name?: string }>> {
+  let attempt = 0;
+  let lastError: unknown = null;
+
+  while (attempt <= MODELS_REQUEST_RETRIES) {
+    try {
+      const response = await axios.get(url, {
+        headers,
+        timeout: MODELS_REQUEST_TIMEOUT_MS,
+      });
+      return (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
+    } catch (error) {
+      lastError = error;
+      if (attempt === MODELS_REQUEST_RETRIES) {
+        throw error;
+      }
+      attempt += 1;
+    }
+  }
+
+  throw lastError;
+}
+
+async function touchTokenLastUsedThrottled(tokenId: string): Promise<void> {
+  const now = Date.now();
+  const prev = tokenLastTouchedAt.get(tokenId) ?? 0;
+  if (now - prev < TOKEN_LAST_USED_TOUCH_INTERVAL_MS) {
+    return;
+  }
+  await touchTokenLastUsed(tokenId);
+  tokenLastTouchedAt.set(tokenId, now);
+}
+
+export function __resetTokenTouchThrottleForTests(): void {
+  tokenLastTouchedAt.clear();
+}
+
 export async function getModels(params: {
   providerId: LlmProviderId;
   scope: LlmScope;
@@ -121,15 +166,11 @@ export async function getModels(params: {
   const config = await getProviderConfig(params.providerId);
   try {
     if (params.providerId === "openrouter") {
-      const response = await axios.get("https://openrouter.ai/api/v1/models", {
-        headers: {
-          "HTTP-Referer": "http://localhost:5000",
-          "X-Title": "TaleSpinner",
-          Authorization: `Bearer ${token}`,
-        },
+      const raw = await fetchModelsWithRetry("https://openrouter.ai/api/v1/models", {
+        "HTTP-Referer": "http://localhost:5000",
+        "X-Title": "TaleSpinner",
+        Authorization: `Bearer ${token}`,
       });
-
-      const raw = (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
       return raw
         .filter((m) => typeof m?.id === "string" && m.id.length > 0)
         .map((m) => ({ id: m.id, name: m.name ?? m.id }));
@@ -143,13 +184,9 @@ export async function getModels(params: {
 
     if (!providerSpec.baseUrl) return [];
 
-    const response = await axios.get(`${providerSpec.baseUrl}/models`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const raw = await fetchModelsWithRetry(`${providerSpec.baseUrl}/models`, {
+      Authorization: `Bearer ${token}`,
     });
-
-    const raw = (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
     return raw
       .filter((m) => typeof m?.id === "string" && m.id.length > 0)
       .map((m) => ({ id: m.id, name: m.name ?? m.id }));
@@ -205,7 +242,7 @@ export async function* streamGlobalChat(params: {
       continue;
     }
 
-    await touchTokenLastUsed(tokenId);
+    await touchTokenLastUsedThrottled(tokenId);
 
     const req = buildGatewayStreamRequest({
       providerId,

@@ -4,7 +4,7 @@ import path from "path";
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 
-
+import { resolveSafePath } from "@core/files/safe-path";
 import { type AsyncRequestHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import fileService from "@services/file-service";
@@ -14,6 +14,14 @@ import { type CardUploadResponse, type ProcessedCardFile, type UploadedFile } fr
 interface CharacterComment {
   keyword: string;
   text: string;
+}
+
+function readFilenameOrThrow(raw: unknown): string {
+  const filename = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof filename !== "string" || filename.trim().length === 0) {
+    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
+  }
+  return filename;
 }
 
 function findCharacterData(metadata: sharp.Metadata): string | null {
@@ -68,12 +76,7 @@ export const uploadFiles: AsyncRequestHandler = async (req) => {
 };
 
 export const getFile: AsyncRequestHandler = async (req) => {
-  const filenameParam = req.params.filename;
-  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
-
-  if (!filename) {
-    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
-  }
+  const filename = readFilenameOrThrow(req.params.filename);
 
   if (!(await fileService.fileExists(filename))) {
     throw new HttpError(404, "Файл не найден", "NOT_FOUND");
@@ -90,12 +93,7 @@ export const getFile: AsyncRequestHandler = async (req) => {
 };
 
 export const getFileMetadata: AsyncRequestHandler = async (req) => {
-  const filenameParam = req.params.filename;
-  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
-
-  if (!filename) {
-    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
-  }
+  const filename = readFilenameOrThrow(req.params.filename);
 
   if (!(await fileService.fileExists(filename))) {
     throw new HttpError(404, "Файл не найден", "NOT_FOUND");
@@ -114,12 +112,7 @@ export const getFileMetadata: AsyncRequestHandler = async (req) => {
 };
 
 export const deleteFile: AsyncRequestHandler = async (req) => {
-  const filenameParam = req.params.filename;
-  const filename = Array.isArray(filenameParam) ? filenameParam[0] : filenameParam;
-
-  if (!filename) {
-    throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
-  }
+  const filename = readFilenameOrThrow(req.params.filename);
 
   if (!(await fileService.fileExists(filename))) {
     throw new HttpError(404, "Файл не найден", "NOT_FOUND");
@@ -154,7 +147,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
     try {
       const fileExtension = path.extname(file.originalname).toLowerCase();
       const filename = `${uuidv4()}${fileExtension}`;
-      const filePath = path.join(cardImagesPath, filename);
+      const filePath = resolveSafePath(cardImagesPath, filename);
 
       if (fileExtension === ".png") {
         const image = sharp(file.buffer);
@@ -247,7 +240,7 @@ export const uploadImage: AsyncRequestHandler = async (req) => {
   }
 
   const filename = `${uuidv4()}${fileExtension}`;
-  const filePath = path.join(imageFolder, filename);
+  const filePath = resolveSafePath(imageFolder, filename);
 
   // Сохраняем файл
   await fs.writeFile(filePath, req.file.buffer);
