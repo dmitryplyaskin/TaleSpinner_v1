@@ -112,4 +112,55 @@ describe("template operations runtime", () => {
 
     expect(out.assistantText).toBe("normalized");
   });
+
+  test("provides promptSystem alias from current prompt draft", async () => {
+    const profile = makeProfile([
+      {
+        opId: "4b7c0a14-5528-4f65-beb0-f8a65ef6a1f2",
+        name: "copy system",
+        kind: "template",
+        config: {
+          enabled: true,
+          required: false,
+          hooks: ["before_main_llm"],
+          triggers: ["generate"],
+          order: 10,
+          params: {
+            template: "{{promptSystem}}",
+            output: {
+              type: "artifacts",
+              writeArtifact: {
+                tag: "sys_copy",
+                persistence: "run_only",
+                usage: "internal",
+                semantics: "intermediate",
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    const out = await applyTemplateOperationsToPromptDraft({
+      runId: "run-3",
+      profile,
+      trigger: "generate",
+      draftMessages: [
+        { role: "system", content: "sys one" },
+        { role: "user", content: "hello" },
+        { role: "system", content: "sys two" },
+      ],
+      templateContext: {
+        char: {},
+        user: {},
+        chat: {},
+        messages: [],
+        rag: {},
+        art: {},
+        now: new Date().toISOString(),
+      },
+    });
+
+    expect(out.artifacts.sys_copy?.value).toBe("sys one\n\nsys two");
+  });
 });

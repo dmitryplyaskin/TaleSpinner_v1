@@ -19,6 +19,7 @@ export interface PromptTemplateRenderContext {
   scenario?: string;
   personality?: string;
   system?: string;
+  promptSystem?: string;
   persona?: string;
   wiBefore?: string;
   wiAfter?: string;

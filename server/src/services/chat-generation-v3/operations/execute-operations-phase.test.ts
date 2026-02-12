@@ -527,6 +527,7 @@ describe("executeOperationsPhase", () => {
     const debugEvents = collectEvents<{
       opId: string;
       liquidContext: {
+        promptSystem: string;
         messages: Array<{ role: "system" | "developer" | "user" | "assistant"; content: string }>;
         art: Record<string, { value: string; history: string[] }>;
       };
@@ -584,8 +585,47 @@ describe("executeOperationsPhase", () => {
 
     const bDebug = debugEvents.items.find((item) => item.opId === "b");
     expect(bDebug?.rendered).toBe("PROMPT|NOTE");
+    expect(bDebug?.liquidContext.promptSystem).toBe("sys");
     expect(bDebug?.liquidContext.messages[2]).toEqual({ role: "developer", content: "PROMPT" });
     expect(bDebug?.liquidContext.art.note?.value).toBe("NOTE");
+  });
+
+  test("exposes promptSystem to template operations with dependency replay", async () => {
+    const out = await executeOperationsPhase({
+      runId: "run-prompt-system",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeTemplateOp({
+          opId: "sys-replace",
+          order: 10,
+          template: "NEW_SYS",
+          output: {
+            type: "prompt_time",
+            promptTime: { kind: "system_update", mode: "replace" },
+          },
+        }),
+        makeTemplateOp({
+          opId: "read-system",
+          order: 20,
+          dependsOn: ["sys-replace"],
+          template: "{{promptSystem}}",
+          output: artifactOutput("seen"),
+        }),
+      ],
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    const byId = new Map(out.map((item) => [item.opId, item] as const));
+    expect(byId.get("read-system")?.effects[0]).toMatchObject({
+      type: "artifact.upsert",
+      tag: "seen",
+      value: "NEW_SYS",
+    });
   });
 
   test("keeps template execution working when profile contains unsupported kind", async () => {

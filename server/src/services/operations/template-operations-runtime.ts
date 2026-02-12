@@ -20,6 +20,14 @@ type RuntimeState = {
   assistantText: string;
 };
 
+function resolvePromptSystem(messages: PromptDraftMessage[]): string {
+  return messages
+    .filter((m) => m.role === "system")
+    .map((m) => m.content)
+    .filter((content) => content.trim().length > 0)
+    .join("\n\n");
+}
+
 function normalizeText(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
 }
@@ -112,6 +120,7 @@ function buildOperationContext(
 ): PromptTemplateRenderContext {
   return {
     ...base,
+    promptSystem: resolvePromptSystem(state.messages),
     art: { ...(base.art ?? {}), ...state.art },
     messages: state.messages.map((m) => ({ role: m.role, content: m.content })),
   };

@@ -364,6 +364,7 @@ export type RunEvent =
           chat: unknown;
           rag: unknown;
           now: string;
+          promptSystem: string;
           messages: Array<{ role: PromptDraftRole; content: string }>;
           art: Record<string, { value: string; history: string[] }>;
         };
