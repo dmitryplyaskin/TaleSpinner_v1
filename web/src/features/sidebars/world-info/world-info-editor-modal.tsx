@@ -6,6 +6,7 @@ import { LuArrowDown, LuArrowUp, LuCopy, LuPlus, LuTrash2 } from 'react-icons/lu
 
 import { Dialog } from '@ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { LiquidDocsButton } from '@ui/liquid-template-docs';
 import { toaster } from '@ui/toaster';
 
 import type { WorldInfoBookDto, WorldInfoGenerationTrigger } from '../../../api/world-info';
@@ -572,7 +573,23 @@ export const WorldInfoEditorModal = ({ opened, book, saving, onClose, onSave }: 
 											<Switch label={t('worldInfo.editor.fields.ignoreBudget')} checked={activeEntry.draft.ignoreBudget} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, ignoreBudget: event.currentTarget.checked } }))} />
 											<NumberInput label={t('worldInfo.editor.fields.delayUntilRecursion')} min={0} value={activeEntry.draft.delayUntilRecursion} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, delayUntilRecursion: Math.max(0, Number(value) || 0) } }))} />
 										</Group>
-										<Textarea label={t('worldInfo.editor.fields.content')} minRows={8} autosize value={activeEntry.draft.content} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, content: event.currentTarget.value } }))} />
+										<Textarea
+											label={
+												<Group gap={6} wrap="nowrap" align="center">
+													{t('worldInfo.editor.fields.content')}
+													<LiquidDocsButton context="world_info_entry" />
+												</Group>
+											}
+											minRows={8}
+											autosize
+											value={activeEntry.draft.content}
+											onChange={(event) =>
+												mutateActiveEntry((entry) => ({
+													...entry,
+													draft: { ...entry.draft, content: event.currentTarget.value },
+												}))
+											}
+										/>
 										<Group grow align="end">
 											<TextInput label={t('worldInfo.editor.fields.group')} value={activeEntry.draft.group} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, group: event.currentTarget.value } }))} />
 											<Switch label={t('worldInfo.editor.fields.groupOverride')} checked={activeEntry.draft.groupOverride} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, groupOverride: event.currentTarget.checked } }))} />

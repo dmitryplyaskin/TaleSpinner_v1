@@ -24,6 +24,7 @@ export const TemplateKindSection: React.FC<Props> = ({ index }) => {
 				name={`operations.${index}.config.params.template`}
 				label={t('operationProfiles.kindSection.template.templateText')}
 				infoTip={t('operationProfiles.kindSection.template.templateTextInfo')}
+				liquidDocsContext="operation_template"
 				textareaProps={{ minRows: 6, maxRows: 16, autosize: false, placeholder: '{{user_input}}' }}
 			/>
 		</Stack>

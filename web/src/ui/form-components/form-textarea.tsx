@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { LuExpand } from 'react-icons/lu';
 
 import { InfoTip } from '@ui/info-tip';
+import { LiquidDocsButton, type LiquidDocsContextId } from '@ui/liquid-template-docs';
 
 import { IconButtonWithTooltip } from '../icon-button-with-tooltip';
 
@@ -18,6 +19,7 @@ type FormTextareaProps = {
 	fieldProps?: Omit<InputWrapperProps, 'children'>;
 	containerProps?: UseControllerProps;
 	infoTip?: React.ReactNode;
+	liquidDocsContext?: LiquidDocsContextId;
 };
 
 export const FormTextarea: React.FC<FormTextareaProps> = ({
@@ -28,6 +30,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 	fieldProps,
 	containerProps,
 	infoTip,
+	liquidDocsContext,
 }) => {
 	const { t } = useTranslation();
 	const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
@@ -57,6 +60,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 				tooltip={t('dialogs.textarea.openFullscreen')}
 				onClick={() => setIsFullscreenOpen(true)}
 			/>
+			{liquidDocsContext && <LiquidDocsButton context={liquidDocsContext} />}
 			{infoTip && <InfoTip content={infoTip} />}
 		</Group>
 	);

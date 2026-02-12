@@ -10,6 +10,7 @@ import {
 	updatePromptTemplateRequested,
 } from '@model/prompt-templates';
 import { FormInput } from '@ui/form-components';
+import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { prerenderPromptTemplate } from '../../../api/prompt-templates';
 
@@ -79,7 +80,12 @@ export const PromptTemplateEditor = () => {
 				<FormInput name="name" label={t('templates.fields.name')} placeholder={t('templates.placeholders.name')} />
 
 				<Textarea
-					label={t('templates.fields.templateText')}
+					label={
+						<Group gap={6} wrap="nowrap" align="center">
+							{t('templates.fields.templateText')}
+							<LiquidDocsButton context="prompt_template" />
+						</Group>
+					}
 					description={t('templates.fields.templateTextDescription')}
 					value={methods.watch('templateText')}
 					onChange={(e) => methods.setValue('templateText', e.currentTarget.value, { shouldDirty: true })}

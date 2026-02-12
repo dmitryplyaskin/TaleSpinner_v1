@@ -18,6 +18,7 @@ import { Dialog } from '@ui/dialog';
 import { FormInput, FormTextarea } from '@ui/form-components';
 import { TextareaFullscreenDialog } from '@ui/form-components/components/textarea-fullscreen-dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { BACKEND_ORIGIN } from '../../../api/chat-core';
 import { AvatarUpload } from '../../common/avatar-upload';
@@ -139,6 +140,7 @@ const GreetingItemField = ({
 							disabled={disabled}
 							onClick={() => setFullscreenOpen(true)}
 						/>
+						<LiquidDocsButton context="entity_profile" />
 						<IconButtonWithTooltip
 							icon={<LuArrowUp />}
 							tooltip={moveUpLabel}
@@ -468,6 +470,7 @@ export const EntityProfileEditorModal = ({
 									<FormTextarea
 										name="description"
 										label={t('agentCards.editor.fields.description')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<Controller
@@ -491,21 +494,25 @@ export const EntityProfileEditorModal = ({
 									<FormTextarea
 										name="firstMes"
 										label={t('agentCards.editor.fields.firstMes')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormTextarea
 										name="mesExample"
 										label={t('agentCards.editor.fields.mesExample')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormTextarea
 										name="personality"
 										label={t('agentCards.editor.fields.personality')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormTextarea
 										name="scenario"
 										label={t('agentCards.editor.fields.scenario')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 								</Stack>
@@ -562,16 +569,19 @@ export const EntityProfileEditorModal = ({
 									<FormTextarea
 										name="systemPrompt"
 										label={t('agentCards.editor.fields.systemPrompt')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormTextarea
 										name="postHistoryInstructions"
 										label={t('agentCards.editor.fields.postHistoryInstructions')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormTextarea
 										name="creatorNotes"
 										label={t('agentCards.editor.fields.creatorNotes')}
+										liquidDocsContext="entity_profile"
 										textareaProps={{ minRows: 4, autosize: true }}
 									/>
 									<FormInput name="creator" label={t('agentCards.editor.fields.creator')} />
@@ -619,12 +629,14 @@ export const EntityProfileEditorModal = ({
 									<FormTextarea
 										name="extensionsJson"
 										label={t('agentCards.editor.fields.extensionsJson')}
+										liquidDocsContext="entity_profile"
 										fieldProps={{ description: t('agentCards.editor.fields.extensionsJsonDescription') }}
 										textareaProps={{ minRows: 8, autosize: true }}
 									/>
 									<FormTextarea
 										name="characterBookJson"
 										label={t('agentCards.editor.fields.characterBookJson')}
+										liquidDocsContext="entity_profile"
 										fieldProps={{ description: t('agentCards.editor.fields.characterBookJsonDescription') }}
 										textareaProps={{ minRows: 8, autosize: true }}
 									/>

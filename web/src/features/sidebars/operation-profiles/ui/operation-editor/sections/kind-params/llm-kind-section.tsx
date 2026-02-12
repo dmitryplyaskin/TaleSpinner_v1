@@ -185,12 +185,14 @@ export const LlmKindSection: React.FC<Props> = ({ index }) => {
 					name={`operations.${index}.config.params.system`}
 					label={t('operationProfiles.kindSection.llm.system')}
 					infoTip={t('operationProfiles.kindSection.llm.systemInfo')}
+					liquidDocsContext="operation_llm"
 					textareaProps={{ minRows: 4, maxRows: 12, autosize: false }}
 				/>
 				<FormTextarea
 					name={`operations.${index}.config.params.prompt`}
 					label={t('operationProfiles.kindSection.llm.prompt')}
 					infoTip={t('operationProfiles.kindSection.llm.promptInfo')}
+					liquidDocsContext="operation_llm"
 					textareaProps={{ minRows: 8, maxRows: 20, autosize: false }}
 				/>
 			</Stack>

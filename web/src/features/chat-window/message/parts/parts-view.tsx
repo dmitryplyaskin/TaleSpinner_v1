@@ -6,6 +6,7 @@ import { LuCheck, LuPen, LuTrash, LuX } from 'react-icons/lu';
 
 import { $appDebugEnabled } from '@model/app-debug';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { getUiProjection } from './projection';
 import { renderPart } from './renderers';
@@ -148,12 +149,17 @@ const PartsViewInner: React.FC<Props> = ({
 						})()}
 						<Box>
 							{editingPartId === p.partId && isEditablePart(p) && onDraftTextChange ? (
-								<Textarea
-									value={draftText}
-									onChange={(event) => onDraftTextChange(event.currentTarget.value)}
-									autosize
-									minRows={estimateInitialEditRows(draftText)}
-								/>
+								<>
+									<Group justify="flex-end" gap={4} mb={4}>
+										<LiquidDocsButton context="chat_manual_edit" size="xs" />
+									</Group>
+									<Textarea
+										value={draftText}
+										onChange={(event) => onDraftTextChange(event.currentTarget.value)}
+										autosize
+										minRows={estimateInitialEditRows(draftText)}
+									/>
+								</>
 							) : (
 								renderPart(p, { plainTextForMarkdown: preferPlainText })
 							)}
