@@ -1,5 +1,10 @@
 import type { PromptDraftMessage, RuntimeEffect } from "../../contracts";
 
+function resolveMinInsertIndex(messages: PromptDraftMessage[]): number {
+  const firstSystemIdx = messages.findIndex((message) => message.role === "system");
+  return firstSystemIdx >= 0 ? firstSystemIdx + 1 : 0;
+}
+
 export function applyPromptEffect(
   messages: PromptDraftMessage[],
   effect:
@@ -31,8 +36,9 @@ export function applyPromptEffect(
     return next;
   }
 
-  const raw = next.length + effect.depthFromEnd;
-  const insertAt = Math.min(next.length, Math.max(0, raw));
+  const raw = next.length - Math.abs(effect.depthFromEnd);
+  const minInsertAt = resolveMinInsertIndex(next);
+  const insertAt = Math.min(next.length, Math.max(minInsertAt, raw));
   next.splice(insertAt, 0, { role: effect.role, content: effect.payload });
   return next;
 }

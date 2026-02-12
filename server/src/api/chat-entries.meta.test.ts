@@ -9,6 +9,7 @@ import {
   buildUserEntryMeta,
   emptyLatestWorldInfoActivationsResponse,
   mergeEntryPromptVisibilityMeta,
+  pickPreviousUserEntries,
   renderUserInputWithLiquid,
   resolveContinueUserTurnTarget,
 } from "./chat-entries.api";
@@ -193,6 +194,87 @@ describe("buildUserEntryMeta", () => {
       userMainPartId: "part-new",
     });
   });
+
+  test("pickPreviousUserEntries returns users before anchor from nearest to oldest", () => {
+    const entries: Entry[] = [
+      {
+        entryId: "system-1",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "system",
+        createdAt: 1,
+        activeVariantId: "variant-system",
+      },
+      {
+        entryId: "user-1",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "user",
+        createdAt: 2,
+        activeVariantId: "variant-user-1",
+      },
+      {
+        entryId: "assistant-1",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "assistant",
+        createdAt: 3,
+        activeVariantId: "variant-assistant-1",
+      },
+      {
+        entryId: "user-2",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "user",
+        createdAt: 4,
+        activeVariantId: "variant-user-2",
+      },
+      {
+        entryId: "assistant-target",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "assistant",
+        createdAt: 5,
+        activeVariantId: "variant-assistant-target",
+      },
+    ];
+
+    const picked = pickPreviousUserEntries({
+      entries,
+      anchorEntryId: "assistant-target",
+    });
+
+    expect(picked.map((entry) => entry.entryId)).toEqual(["user-2", "user-1"]);
+  });
+
+  test("pickPreviousUserEntries skips soft-deleted user entries", () => {
+    const entries: Entry[] = [
+      {
+        entryId: "user-deleted",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "user",
+        createdAt: 1,
+        activeVariantId: "variant-user-deleted",
+        softDeleted: true,
+      },
+      {
+        entryId: "assistant-target",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        role: "assistant",
+        createdAt: 2,
+        activeVariantId: "variant-assistant-target",
+      },
+    ];
+
+    const picked = pickPreviousUserEntries({
+      entries,
+      anchorEntryId: "assistant-target",
+    });
+
+    expect(picked).toEqual([]);
+  });
 });
 
 describe("mergeEntryPromptVisibilityMeta", () => {
@@ -360,8 +442,74 @@ describe("prompt diagnostics helpers", () => {
         prompt: expect.objectContaining({
           messages: [{ role: "system", content: "sys" }],
         }),
+        turnCanonicalizations: [],
       })
     );
+  });
+
+  test("buildPromptDiagnosticsFromDebug includes user turn canonicalization history", () => {
+    const data = buildPromptDiagnosticsFromDebug({
+      generation: {
+        id: "gen-1",
+        chatId: "chat-1",
+        branchId: "branch-1",
+        messageId: null,
+        variantId: "variant-1",
+        status: "done",
+        startedAt: new Date("2026-02-12T12:00:00.000Z"),
+        finishedAt: new Date("2026-02-12T12:00:05.000Z"),
+        error: null,
+        promptHash: "hash-1",
+        promptSnapshot: null,
+        debug: {
+          estimator: "chars_div4",
+          prompt: {
+            messages: [{ role: "system", content: "sys" }],
+            approxTokens: {
+              total: 3,
+              byRole: { system: 3, user: 0, assistant: 0 },
+              sections: {
+                systemInstruction: 3,
+                chatHistory: 0,
+                worldInfoBefore: 0,
+                worldInfoAfter: 0,
+                worldInfoDepth: 0,
+                worldInfoOutlets: 0,
+                worldInfoAN: 0,
+                worldInfoEM: 0,
+              },
+            },
+          },
+          operations: {
+            turnUserCanonicalization: [
+              {
+                hook: "before_main_llm",
+                opId: "canon-op",
+                userEntryId: "user-entry-1",
+                userMainPartId: "part-1",
+                beforeText: "raw",
+                afterText: "normalized",
+                committedAt: "2026-02-12T12:00:01.000Z",
+              },
+            ],
+          },
+        },
+      },
+      entryId: "entry-1",
+      variantId: "variant-1",
+    });
+
+    expect(data?.turnCanonicalizations).toEqual([
+      {
+        hook: "before_main_llm",
+        opId: "canon-op",
+        userEntryId: "user-entry-1",
+        userMainPartId: "part-1",
+        beforeText: "raw",
+        afterText: "normalized",
+        committedAt: "2026-02-12T12:00:01.000Z",
+      },
+    ]);
   });
 
   test("buildPromptDiagnosticsFromSnapshot falls back when debug is missing", () => {

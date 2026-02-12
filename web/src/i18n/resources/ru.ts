@@ -140,6 +140,14 @@ const ru = {
 					worldInfoAN: 'World Info AN',
 					worldInfoEM: 'World Info EM',
 				},
+				turnCanonicalization: {
+					title: 'Канонизация user turn',
+					before: 'До',
+					after: 'После',
+					hook: 'Хук',
+					opId: 'Операция',
+					committedAt: 'Время применения',
+				},
 			},
 			variants: {
 				previous: 'Предыдущий вариант',
@@ -802,7 +810,7 @@ const ru = {
 				mode: 'Режим',
 				sourceOptional: 'Источник (опционально)',
 				role: 'Роль',
-				depthFromEnd: 'depthFromEnd',
+				depthFromEnd: 'atDepth',
 				target: 'Цель',
 			},
 			tooltips: {
@@ -822,7 +830,8 @@ const ru = {
 				mode: 'prepend => payload + system; append => system + payload; replace => system = payload.',
 				sourceOptional: 'Необязательная метка источника для отладки/объяснимости.',
 				role: 'Роль для синтетического prompt-сообщения.',
-				depthFromEnd: '0 — вставить в самый конец; -N — вставить на глубине (ближе к концу).',
+				depthFromEnd:
+					'0 — вставить в конец; N — вставить на глубине N от конца. Большие значения ограничиваются позицией сразу после основной system-инструкции.',
 				target: 'before_main_llm допускает только target=user; after_main_llm допускает user или assistant.',
 			},
 			outputType: {

@@ -58,7 +58,7 @@ describe("applyPromptEffect", () => {
       {
         type: "prompt.append_after_last_user",
         opId: "op",
-        role: "developer",
+        role: "system",
         payload: "DEV",
       }
     );
@@ -83,28 +83,28 @@ describe("applyPromptEffect", () => {
     const tail = applyPromptEffect(base, {
       type: "prompt.insert_at_depth",
       opId: "op",
-      role: "developer",
+      role: "system",
       depthFromEnd: 0,
       payload: "TAIL",
     });
     const beforeTail = applyPromptEffect(base, {
       type: "prompt.insert_at_depth",
       opId: "op",
-      role: "developer",
-      depthFromEnd: -1,
+      role: "system",
+      depthFromEnd: 1,
       payload: "BEFORE_TAIL",
     });
-    const clampedHead = applyPromptEffect(base, {
+    const clampedAfterSystem = applyPromptEffect(base, {
       type: "prompt.insert_at_depth",
       opId: "op",
-      role: "developer",
-      depthFromEnd: -999,
-      payload: "HEAD",
+      role: "system",
+      depthFromEnd: 999,
+      payload: "AFTER_SYSTEM",
     });
 
     expect(tail.map((m) => m.content)).toEqual(["S", "U", "A", "TAIL"]);
     expect(beforeTail.map((m) => m.content)).toEqual(["S", "U", "BEFORE_TAIL", "A"]);
-    expect(clampedHead.map((m) => m.content)).toEqual(["HEAD", "S", "U", "A"]);
+    expect(clampedAfterSystem.map((m) => m.content)).toEqual(["S", "AFTER_SYSTEM", "U", "A"]);
   });
 
   test("does not mutate input messages array", () => {
@@ -116,7 +116,7 @@ describe("applyPromptEffect", () => {
     const out = applyPromptEffect(base, {
       type: "prompt.append_after_last_user",
       opId: "op",
-      role: "developer",
+      role: "system",
       payload: "X",
     });
 

@@ -35,6 +35,17 @@ function normalizeText(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
 }
 
+function normalizePromptTimeRole(value: unknown): PromptDraftMessage["role"] {
+  if (value === "assistant" || value === "user" || value === "system") return value;
+  if (value === "developer") return "system";
+  return "system";
+}
+
+function normalizeDepthFromEnd(value: unknown): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.abs(Math.floor(n));
+}
+
 function clonePreview(state: PreviewState): PreviewState {
   return {
     messages: state.messages.map((m) => ({ ...m })),
@@ -86,7 +97,7 @@ function toRuntimeEffect(params: {
     return {
       type: "prompt.append_after_last_user",
       opId,
-      role: output.promptTime.role,
+      role: normalizePromptTimeRole(output.promptTime.role),
       payload: rendered,
       source: output.promptTime.source,
     };
@@ -95,8 +106,8 @@ function toRuntimeEffect(params: {
   return {
     type: "prompt.insert_at_depth",
     opId,
-    role: output.promptTime.role,
-    depthFromEnd: output.promptTime.depthFromEnd,
+    role: normalizePromptTimeRole(output.promptTime.role),
+    depthFromEnd: normalizeDepthFromEnd(output.promptTime.depthFromEnd),
     payload: rendered,
     source: output.promptTime.source,
   };

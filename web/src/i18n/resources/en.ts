@@ -140,6 +140,14 @@ const en = {
 					worldInfoAN: 'World Info AN',
 					worldInfoEM: 'World Info EM',
 				},
+				turnCanonicalization: {
+					title: 'Turn canonicalization (user)',
+					before: 'Before',
+					after: 'After',
+					hook: 'Hook',
+					opId: 'Operation',
+					committedAt: 'Committed at',
+				},
 			},
 			variants: {
 				previous: 'Previous variant',
@@ -802,7 +810,7 @@ const en = {
 				mode: 'Mode',
 				sourceOptional: 'Source (optional)',
 				role: 'Role',
-				depthFromEnd: 'depthFromEnd',
+				depthFromEnd: 'atDepth',
 				target: 'Target',
 			},
 			tooltips: {
@@ -822,7 +830,8 @@ const en = {
 				mode: '`prepend` => payload + system; `append` => system + payload; `replace` => system = payload.',
 				sourceOptional: 'Optional source label for debugging/explainability.',
 				role: 'Role for synthetic prompt message.',
-				depthFromEnd: '0 inserts at very end; -N inserts at depth (closer to end).',
+				depthFromEnd:
+					'0 inserts at the end; N inserts N messages from the end. Large values clamp right after the main system instruction.',
 				target: '`before_main_llm` allows only target=user; `after_main_llm` allows user or assistant.',
 			},
 			outputType: {

@@ -196,6 +196,22 @@ export async function updatePartPayloadText(params: {
     .where(eq(variantParts.partId, params.partId));
 }
 
+export async function getPartPayloadTextById(params: {
+  partId: string;
+}): Promise<string | null> {
+  const db = await initDb();
+  const rows = await db
+    .select({ payloadJson: variantParts.payloadJson })
+    .from(variantParts)
+    .where(eq(variantParts.partId, params.partId))
+    .limit(1);
+
+  const existing = safeJsonParse<StoredPayload | null>(rows[0]?.payloadJson, null);
+  if (!existing) return null;
+  if (typeof existing.value === "string") return existing.value;
+  return safeJsonStringify(existing.value, "");
+}
+
 export async function applyManualEditToPart(params: {
   partId: string;
   payloadText: string;

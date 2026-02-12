@@ -495,7 +495,7 @@ describe("executeOperationsPhase", () => {
           template: "A",
           output: {
             type: "prompt_time",
-            promptTime: { kind: "append_after_last_user", role: "developer" },
+            promptTime: { kind: "append_after_last_user", role: "system" },
           },
         }),
         makeTemplateOp({
@@ -528,7 +528,7 @@ describe("executeOperationsPhase", () => {
       opId: string;
       liquidContext: {
         promptSystem: string;
-        messages: Array<{ role: "system" | "developer" | "user" | "assistant"; content: string }>;
+        messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
         art: Record<string, { value: string; history: string[] }>;
       };
       rendered: string;
@@ -545,7 +545,7 @@ describe("executeOperationsPhase", () => {
           template: "PROMPT",
           output: {
             type: "prompt_time",
-            promptTime: { kind: "append_after_last_user", role: "developer" },
+            promptTime: { kind: "append_after_last_user", role: "system" },
           },
         }),
         makeTemplateOp({
@@ -585,8 +585,8 @@ describe("executeOperationsPhase", () => {
 
     const bDebug = debugEvents.items.find((item) => item.opId === "b");
     expect(bDebug?.rendered).toBe("PROMPT|NOTE");
-    expect(bDebug?.liquidContext.promptSystem).toBe("sys");
-    expect(bDebug?.liquidContext.messages[2]).toEqual({ role: "developer", content: "PROMPT" });
+    expect(bDebug?.liquidContext.promptSystem).toBe("sys\n\nPROMPT");
+    expect(bDebug?.liquidContext.messages[2]).toEqual({ role: "system", content: "PROMPT" });
     expect(bDebug?.liquidContext.art.note?.value).toBe("NOTE");
   });
 
@@ -1236,7 +1236,7 @@ describe("executeOperationsPhase", () => {
         template: "J={{art.joined.value}}",
         output: {
           type: "prompt_time",
-          promptTime: { kind: "append_after_last_user", role: "developer" },
+          promptTime: { kind: "append_after_last_user", role: "system" },
         },
       }),
     ];

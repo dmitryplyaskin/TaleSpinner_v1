@@ -33,7 +33,18 @@ const artifactTagSchema = z
   .min(1)
   .regex(/^[a-z][a-z0-9_]*$/, "tag must match ^[a-z][a-z0-9_]*$");
 
-const promptTimeRoleSchema = z.enum(["system", "developer", "user", "assistant"] satisfies PromptTimeMessageRole[]);
+function normalizePromptTimeRole(value: "system" | "developer" | "user" | "assistant"): PromptTimeMessageRole {
+  return value === "developer" ? "system" : value;
+}
+
+function normalizeDepthFromEnd(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.abs(Math.floor(value));
+}
+
+const promptTimeRoleSchema = z
+  .enum(["system", "developer", "user", "assistant"])
+  .transform((value): PromptTimeMessageRole => normalizePromptTimeRole(value));
 
 const artifactWriteTargetSchema = z.object({
   tag: artifactTagSchema,
@@ -55,7 +66,7 @@ const promptTimeEffectSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("insert_at_depth"),
-    depthFromEnd: z.number().int(),
+    depthFromEnd: z.number().finite().transform((value) => normalizeDepthFromEnd(value)),
     role: promptTimeRoleSchema,
     source: z.string().trim().min(1).optional(),
   }),

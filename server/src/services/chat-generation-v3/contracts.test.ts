@@ -55,7 +55,7 @@ describe("mapOperationOutputToEffectType", () => {
         type: "prompt_time",
         promptTime: {
           kind: "append_after_last_user",
-          role: "developer",
+          role: "system",
         },
       })
     ).toBe("prompt.append_after_last_user");
@@ -65,7 +65,7 @@ describe("mapOperationOutputToEffectType", () => {
         type: "prompt_time",
         promptTime: {
           kind: "insert_at_depth",
-          depthFromEnd: -1,
+          depthFromEnd: 1,
           role: "assistant",
         },
       })

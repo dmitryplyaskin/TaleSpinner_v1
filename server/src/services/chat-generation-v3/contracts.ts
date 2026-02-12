@@ -10,7 +10,7 @@ import type {
   OperationTrigger,
 } from "@shared/types/operation-profiles";
 
-export type PromptDraftRole = "system" | "developer" | "user" | "assistant";
+export type PromptDraftRole = "system" | "user" | "assistant";
 
 export type PromptDraftMessage = {
   role: PromptDraftRole;
@@ -195,6 +195,16 @@ export type CommitPhaseReport = {
   effects: CommitEffectReport[];
 };
 
+export type TurnUserCanonicalizationRecord = {
+  hook: OperationHook;
+  opId: string;
+  userEntryId: string;
+  userMainPartId: string;
+  beforeText: string;
+  afterText: string;
+  committedAt: string;
+};
+
 export type PhaseReport = {
   phase:
     | "prepare_run_context"
@@ -222,6 +232,7 @@ export type RunState = {
   persistedArtifactsSnapshot: Record<string, ArtifactValue>;
   operationResultsByHook: Record<OperationHook, OperationExecutionResult[]>;
   commitReportsByHook: Partial<Record<OperationHook, CommitPhaseReport>>;
+  turnUserCanonicalizationHistory: TurnUserCanonicalizationRecord[];
   phaseReports: PhaseReport[];
   promptHash: string | null;
   promptSnapshot: PromptSnapshotV1 | null;
@@ -346,6 +357,12 @@ export type RunEvent =
         assistantReasoningText: string;
         artifacts: Record<string, ArtifactValue>;
       };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "run.debug.turn_user_canonicalization";
+      data: TurnUserCanonicalizationRecord;
     }
   | {
       runId: string;

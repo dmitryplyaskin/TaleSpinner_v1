@@ -25,6 +25,7 @@ import type {
   RunRequest,
   RunResult,
   RunState,
+  TurnUserCanonicalizationRecord,
 } from "./contracts";
 import type { GenerateMessage } from "@shared/types/generate";
 
@@ -63,11 +64,14 @@ type PromptDiagnosticsDebugJson = {
       reasons: string[];
     }>;
   };
+  operations: {
+    turnUserCanonicalization: TurnUserCanonicalizationRecord[];
+  };
 };
 
 function draftToLlmMessages(draft: PromptDraftMessage[]): GenerateMessage[] {
   return draft
-    .map((m) => ({ role: (m.role === "developer" ? "system" : m.role) as GenerateMessage["role"], content: m.content.trim() }))
+    .map((m) => ({ role: m.role as GenerateMessage["role"], content: m.content.trim() }))
     .filter((m) => m.content.length > 0);
 }
 
@@ -183,6 +187,7 @@ function buildPromptDiagnosticsDebugJson(params: {
   systemPrompt: string;
   templateHistoryMessages: Array<{ role: string; content: string }>;
   worldInfoDiagnostics: Awaited<ReturnType<typeof buildBasePrompt>>["worldInfoDiagnostics"];
+  turnUserCanonicalization: TurnUserCanonicalizationRecord[];
 }): PromptDiagnosticsDebugJson {
   const byRole = params.llmMessages.reduce(
     (acc, message) => {
@@ -247,6 +252,11 @@ function buildPromptDiagnosticsDebugJson(params: {
         content: entry.content,
         matchedKeys: [...entry.matchedKeys],
         reasons: [...entry.reasons],
+      })),
+    },
+    operations: {
+      turnUserCanonicalization: params.turnUserCanonicalization.map((record) => ({
+        ...record,
       })),
     },
   };
@@ -383,6 +393,7 @@ export async function* runChatGenerationV3(
         after_main_llm: [],
       },
       commitReportsByHook: {},
+      turnUserCanonicalizationHistory: [],
       phaseReports: [],
       promptHash: null,
       promptSnapshot: null,
@@ -455,6 +466,9 @@ export async function* runChatGenerationV3(
         runState,
         runArtifactStore,
         userTurnTarget: request.userTurnTarget,
+        onUserTurnCanonicalized: debugEnabled
+          ? (data) => emit("run.debug.turn_user_canonicalization", data)
+          : undefined,
         onCommitEvent: (evt) => emit(evt.type, evt.data),
       })
     );
@@ -507,6 +521,7 @@ export async function* runChatGenerationV3(
       systemPrompt: basePrompt.prompt.systemPrompt,
       templateHistoryMessages: basePrompt.templateContext.messages,
       worldInfoDiagnostics: basePrompt.worldInfoDiagnostics,
+      turnUserCanonicalization: runState.turnUserCanonicalizationHistory,
     });
     await updateGenerationDebugJson({
       id: context.generationId,
@@ -605,6 +620,9 @@ export async function* runChatGenerationV3(
             runState,
             runArtifactStore,
             userTurnTarget: request.userTurnTarget,
+            onUserTurnCanonicalized: debugEnabled
+              ? (data) => emit("run.debug.turn_user_canonicalization", data)
+              : undefined,
             onCommitEvent: (evt) => emit(evt.type, evt.data),
           })
         );

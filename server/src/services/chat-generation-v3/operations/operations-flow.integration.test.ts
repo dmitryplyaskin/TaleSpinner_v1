@@ -42,6 +42,7 @@ function makeRunState(): RunState {
       after_main_llm: [],
     },
     commitReportsByHook: {},
+    turnUserCanonicalizationHistory: [],
     phaseReports: [],
     promptHash: null,
     promptSnapshot: null,
@@ -141,7 +142,7 @@ describe("operations flow integration (execute + commit)", () => {
           type: "prompt_time",
           promptTime: {
             kind: "append_after_last_user",
-            role: "developer",
+            role: "system",
             source: "art.world_state",
           },
         },
@@ -177,7 +178,7 @@ describe("operations flow integration (execute + commit)", () => {
     expect(runState.effectivePromptDraft.map((m) => `${m.role}:${m.content}`)).toEqual([
       "system:sys",
       "user:u",
-      "developer:note=WORLD",
+      "system:note=WORLD",
     ]);
 
     runState.assistantText = "raw";

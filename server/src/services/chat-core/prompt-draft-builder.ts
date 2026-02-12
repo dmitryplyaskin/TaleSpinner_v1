@@ -6,7 +6,7 @@ import type { GenerateMessage } from "@shared/types/generate";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
 
-type PromptDraftRole = "system" | "developer" | "user" | "assistant";
+type PromptDraftRole = "system" | "user" | "assistant";
 
 type PromptDraftMessage = {
   role: PromptDraftRole;
@@ -68,12 +68,11 @@ function normalizeDraftMessage(msg: PromptDraftMessage): PromptDraftMessage | nu
 }
 
 function draftToLlmMessages(draft: PromptDraft): GenerateMessage[] {
-  // v1 rule: map developer -> system for the actual LLM API.
   return (draft.messages ?? [])
     .map(normalizeDraftMessage)
     .filter((m): m is PromptDraftMessage => Boolean(m))
     .map((m) => ({
-      role: (m.role === "developer" ? "system" : m.role) as GenerateMessage["role"],
+      role: m.role as GenerateMessage["role"],
       content: m.content,
     }));
 }

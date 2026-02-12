@@ -30,6 +30,7 @@ function makeRunState(): RunState {
       after_main_llm: [],
     },
     commitReportsByHook: {},
+    turnUserCanonicalizationHistory: [],
     phaseReports: [],
     promptHash: null,
     promptSnapshot: null,
@@ -92,7 +93,7 @@ describe("commit effects phase", () => {
           {
             type: "prompt.append_after_last_user",
             opId: "b",
-            role: "developer",
+            role: "system",
             payload: "B",
           },
         ],
@@ -105,7 +106,7 @@ describe("commit effects phase", () => {
           {
             type: "prompt.append_after_last_user",
             opId: "a",
-            role: "developer",
+            role: "system",
             payload: "A",
           },
         ],
@@ -234,7 +235,9 @@ describe("commit effects phase", () => {
   });
 
   test("invokes user turn persistence handler and reports applied event", async () => {
-    const persistSpy = vi.spyOn(turnEffects, "persistUserTurnText").mockResolvedValue(undefined);
+    const persistSpy = vi
+      .spyOn(turnEffects, "persistUserTurnText")
+      .mockResolvedValue({ previousText: "original user" });
     const state = makeRunState();
     state.operationResultsByHook.after_main_llm = [
       makeDoneResult({
@@ -272,6 +275,16 @@ describe("commit effects phase", () => {
       },
       text: "normalized user",
     });
+    expect(state.turnUserCanonicalizationHistory).toEqual([
+      expect.objectContaining({
+        hook: "after_main_llm",
+        opId: "user",
+        userEntryId: "user-entry-1",
+        userMainPartId: "user-main-part-1",
+        beforeText: "original user",
+        afterText: "normalized user",
+      }),
+    ]);
     expect(result.report.effects[0]).toMatchObject({
       opId: "user",
       effectType: "turn.user.replace_text",
@@ -285,6 +298,70 @@ describe("commit effects phase", () => {
         effectType: "turn.user.replace_text",
       },
     });
+  });
+
+  test("applies user canonicalization to current prompt draft in before_main_llm", async () => {
+    const persistSpy = vi
+      .spyOn(turnEffects, "persistUserTurnText")
+      .mockResolvedValue({ previousText: "u" });
+    const onUserTurnCanonicalized = vi.fn();
+    const state = makeRunState();
+    state.operationResultsByHook.before_main_llm = [
+      makeDoneResult({
+        opId: "user-before",
+        order: 10,
+        hook: "before_main_llm",
+        effects: [{ type: "turn.user.replace_text", opId: "user-before", text: "updated now" }],
+      }),
+    ];
+
+    const result = await commitEffectsPhase({
+      hook: "before_main_llm",
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      profile: null,
+      sessionKey: null,
+      runState: state,
+      runArtifactStore: new RunArtifactStore(),
+      userTurnTarget: {
+        mode: "entry_parts",
+        userEntryId: "user-entry-before",
+        userMainPartId: "user-main-part-before",
+      },
+      onUserTurnCanonicalized,
+    });
+
+    expect(result.requiredError).toBe(false);
+    expect(persistSpy).toHaveBeenCalledWith({
+      target: {
+        mode: "entry_parts",
+        userEntryId: "user-entry-before",
+        userMainPartId: "user-main-part-before",
+      },
+      text: "updated now",
+    });
+    expect(state.effectivePromptDraft).toEqual([
+      { role: "system", content: "sys" },
+      { role: "user", content: "updated now" },
+    ]);
+    expect(state.turnUserCanonicalizationHistory).toEqual([
+      expect.objectContaining({
+        hook: "before_main_llm",
+        opId: "user-before",
+        userEntryId: "user-entry-before",
+        userMainPartId: "user-main-part-before",
+        beforeText: "u",
+        afterText: "updated now",
+      }),
+    ]);
+    expect(onUserTurnCanonicalized).toHaveBeenCalledWith(
+      expect.objectContaining({
+        opId: "user-before",
+        beforeText: "u",
+        afterText: "updated now",
+      })
+    );
   });
 
   test("marks required error when user turn persistence handler fails", async () => {
@@ -453,7 +530,7 @@ describe("commit effects phase", () => {
           {
             type: "prompt.append_after_last_user",
             opId: "err",
-            role: "developer",
+            role: "system",
             payload: "should-not-apply",
           },
         ],
@@ -532,7 +609,7 @@ describe("commit effects phase", () => {
           {
             type: "prompt.append_after_last_user",
             opId: "b",
-            role: "developer",
+            role: "system",
             payload: "B",
           },
         ],
@@ -545,7 +622,7 @@ describe("commit effects phase", () => {
           {
             type: "prompt.append_after_last_user",
             opId: "a",
-            role: "developer",
+            role: "system",
             payload: "A",
           },
         ],

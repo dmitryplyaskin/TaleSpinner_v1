@@ -7,6 +7,7 @@ import type {
   OperationExecutionResult,
   RuntimeEffect,
   RunState,
+  TurnUserCanonicalizationRecord,
   UserTurnTarget,
 } from "../contracts";
 import { applyArtifactEffect } from "./effect-handlers/artifact-effects";
@@ -84,6 +85,15 @@ function resolveDeterministicCommitOrder(
   });
 }
 
+function applyUserTurnToPromptDraft(runState: RunState, text: string): void {
+  const lastUserIdx = runState.effectivePromptDraft.map((message) => message.role).lastIndexOf("user");
+  if (lastUserIdx < 0) return;
+  runState.effectivePromptDraft[lastUserIdx] = {
+    role: "user",
+    content: text,
+  };
+}
+
 export async function commitEffectsPhase(params: {
   hook: OperationHook;
   ownerId: string;
@@ -94,6 +104,7 @@ export async function commitEffectsPhase(params: {
   runState: RunState;
   runArtifactStore: RunArtifactStore;
   userTurnTarget?: UserTurnTarget;
+  onUserTurnCanonicalized?: (payload: TurnUserCanonicalizationRecord) => void;
   onCommitEvent?: (event: {
     type: "commit.effect_applied" | "commit.effect_skipped" | "commit.effect_error";
     data: { hook: OperationHook; opId: string; effectType: RuntimeEffect["type"]; message?: string };
@@ -176,10 +187,24 @@ export async function commitEffectsPhase(params: {
         }
 
         if (effect.type === "turn.user.replace_text") {
-          await persistUserTurnText({
+          const persisted = await persistUserTurnText({
             target: params.userTurnTarget,
             text: effect.text,
           });
+          applyUserTurnToPromptDraft(params.runState, effect.text);
+          if (params.userTurnTarget) {
+            const record: TurnUserCanonicalizationRecord = {
+              hook: params.hook,
+              opId: opResult.opId,
+              userEntryId: params.userTurnTarget.userEntryId,
+              userMainPartId: params.userTurnTarget.userMainPartId,
+              beforeText: persisted.previousText ?? "",
+              afterText: effect.text,
+              committedAt: new Date().toISOString(),
+            };
+            params.runState.turnUserCanonicalizationHistory.push(record);
+            params.onUserTurnCanonicalized?.(record);
+          }
           effectsReport.push({
             opId: opResult.opId,
             effectType: effect.type,

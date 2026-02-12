@@ -10,7 +10,7 @@ import type { PromptTemplateRenderContext } from "../chat-core/prompt-template-r
 import { renderLiquidTemplate } from "../chat-core/prompt-template-renderer";
 
 export type PromptDraftMessage = {
-  role: "system" | "developer" | "user" | "assistant";
+  role: "system" | "user" | "assistant";
   content: string;
 };
 
@@ -30,6 +30,17 @@ function resolvePromptSystem(messages: PromptDraftMessage[]): string {
 
 function normalizeText(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
+}
+
+function normalizePromptTimeRole(value: unknown): PromptDraftMessage["role"] {
+  if (value === "assistant" || value === "user" || value === "system") return value;
+  if (value === "developer") return "system";
+  return "system";
+}
+
+function resolveMinInsertIndex(messages: PromptDraftMessage[]): number {
+  const firstSystemIdx = messages.findIndex((message) => message.role === "system");
+  return firstSystemIdx >= 0 ? firstSystemIdx + 1 : 0;
 }
 
 function applyPromptTimeEffect(
@@ -57,13 +68,14 @@ function applyPromptTimeEffect(
   if (promptTime.kind === "append_after_last_user") {
     const lastUserIdx = state.messages.map((m) => m.role).lastIndexOf("user");
     const insertAt = lastUserIdx >= 0 ? lastUserIdx + 1 : state.messages.length;
-    state.messages.splice(insertAt, 0, { role: promptTime.role, content: payload });
+    state.messages.splice(insertAt, 0, { role: normalizePromptTimeRole(promptTime.role), content: payload });
     return;
   }
 
-  const raw = state.messages.length + promptTime.depthFromEnd;
-  const insertAt = Math.min(state.messages.length, Math.max(0, raw));
-  state.messages.splice(insertAt, 0, { role: promptTime.role, content: payload });
+  const raw = state.messages.length - Math.abs(promptTime.depthFromEnd);
+  const minInsertAt = resolveMinInsertIndex(state.messages);
+  const insertAt = Math.min(state.messages.length, Math.max(minInsertAt, raw));
+  state.messages.splice(insertAt, 0, { role: normalizePromptTimeRole(promptTime.role), content: payload });
 }
 
 function applyTurnCanonicalizationEffect(

@@ -118,6 +118,52 @@ export function makeDefaultOtherKindParams(
 	};
 }
 
+function normalizePromptTimeRole(value: unknown): 'system' | 'user' | 'assistant' {
+	if (value === 'user' || value === 'assistant' || value === 'system') return value;
+	if (value === 'developer') return 'system';
+	return 'system';
+}
+
+function normalizeDepthFromEnd(value: unknown): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+	return Math.max(0, Math.floor(Math.abs(value)));
+}
+
+function normalizeOperationOutput(output: unknown, fallback: OperationOutput): OperationOutput {
+	if (!output || typeof output !== 'object') return fallback;
+	const raw = output as Record<string, unknown>;
+	if (raw.type !== 'prompt_time') return output as OperationOutput;
+
+	const promptTime = raw.promptTime;
+	if (!promptTime || typeof promptTime !== 'object') return fallback;
+	const pt = promptTime as Record<string, unknown>;
+
+	if (pt.kind === 'append_after_last_user') {
+		return {
+			type: 'prompt_time',
+			promptTime: {
+				kind: 'append_after_last_user',
+				role: normalizePromptTimeRole(pt.role),
+				source: typeof pt.source === 'string' ? pt.source : undefined,
+			},
+		};
+	}
+
+	if (pt.kind === 'insert_at_depth') {
+		return {
+			type: 'prompt_time',
+			promptTime: {
+				kind: 'insert_at_depth',
+				depthFromEnd: normalizeDepthFromEnd(pt.depthFromEnd),
+				role: normalizePromptTimeRole(pt.role),
+				source: typeof pt.source === 'string' ? pt.source : undefined,
+			},
+		};
+	}
+
+	return output as OperationOutput;
+}
+
 function normalizeTemplateParams(params: unknown): OperationTemplateParams {
 	if (!params || typeof params !== 'object') {
 		return {
@@ -131,7 +177,13 @@ function normalizeTemplateParams(params: unknown): OperationTemplateParams {
 	}
 
 	const p = params as any;
-	if (p.output && typeof p.output === 'object') return p as OperationTemplateParams;
+	if (p.output && typeof p.output === 'object') {
+		return {
+			template: typeof p.template === 'string' ? p.template : '',
+			strictVariables: Boolean(p.strictVariables),
+			output: normalizeOperationOutput(p.output, makeDefaultArtifactOutput()),
+		};
+	}
 
 	// Legacy compatibility: params.writeArtifact -> params.output.type="artifacts"
 	if (p.writeArtifact && typeof p.writeArtifact === 'object') {
@@ -165,7 +217,7 @@ function normalizeOtherKindParams(params: unknown): FormOtherKindParams {
 	if (!params || typeof params !== 'object') return makeDefaultOtherKindParams(defaultOutput);
 
 	const p = params as any;
-	const output: OperationOutput = p.output && typeof p.output === 'object' ? (p.output as OperationOutput) : defaultOutput;
+	const output: OperationOutput = normalizeOperationOutput(p.output, defaultOutput);
 	const rawParams = p.params && typeof p.params === 'object' && !Array.isArray(p.params) ? (p.params as Record<string, unknown>) : {};
 	return { paramsJson: JSON.stringify(rawParams, null, 2), output };
 }
@@ -199,7 +251,7 @@ function normalizeLlmKindParams(params: unknown): FormLlmKindParams {
 	const raw = params as any;
 	const llmParamsRaw = raw.params && typeof raw.params === 'object' ? raw.params : {};
 	const output: OperationOutput =
-		raw.output && typeof raw.output === 'object' ? (raw.output as OperationOutput) : makeDefaultArtifactOutput();
+		normalizeOperationOutput(raw.output, makeDefaultArtifactOutput());
 
 	const base = makeDefaultLlmKindParams(output);
 	const providerId = llmParamsRaw.providerId === 'openai_compatible' ? 'openai_compatible' : 'openrouter';

@@ -86,6 +86,15 @@ export type PromptDiagnosticsResponse = {
 			};
 		};
 	};
+	turnCanonicalizations: Array<{
+		hook: 'before_main_llm' | 'after_main_llm';
+		opId: string;
+		userEntryId: string;
+		userMainPartId: string;
+		beforeText: string;
+		afterText: string;
+		committedAt: string;
+	}>;
 };
 
 export type LatestWorldInfoActivationsResponse = {

@@ -111,6 +111,75 @@ describe("operation profile validator hardening", () => {
     );
   });
 
+  test("normalizes legacy prompt_time role developer to system", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      {
+        opId: "db3fc30f-27c9-4005-af10-0442e00fbe6c",
+        name: "legacy-role",
+        kind: "template",
+        config: {
+          enabled: true,
+          required: false,
+          hooks: ["before_main_llm"],
+          order: 10,
+          params: {
+            template: "hello",
+            output: {
+              type: "prompt_time",
+              promptTime: { kind: "append_after_last_user", role: "developer", source: "legacy" },
+            },
+          },
+        },
+      },
+    ] as any;
+
+    const out = validateOperationProfileUpsertInput(input);
+    const output = (out.operations[0] as any)?.config?.params?.output;
+    expect(output).toMatchObject({
+      type: "prompt_time",
+      promptTime: {
+        kind: "append_after_last_user",
+        role: "system",
+      },
+    });
+  });
+
+  test("normalizes prompt_time insert_at_depth to positive integer depth", () => {
+    const input = makeBaseInput();
+    input.operations = [
+      {
+        opId: "cfcd1a36-ee7b-4a48-99f2-32abae39f6f0",
+        name: "legacy-depth",
+        kind: "template",
+        config: {
+          enabled: true,
+          required: false,
+          hooks: ["before_main_llm"],
+          order: 10,
+          params: {
+            template: "hello",
+            output: {
+              type: "prompt_time",
+              promptTime: { kind: "insert_at_depth", depthFromEnd: -4.9, role: "assistant" },
+            },
+          },
+        },
+      },
+    ] as any;
+
+    const out = validateOperationProfileUpsertInput(input);
+    const output = (out.operations[0] as any)?.config?.params?.output;
+    expect(output).toMatchObject({
+      type: "prompt_time",
+      promptTime: {
+        kind: "insert_at_depth",
+        depthFromEnd: 5,
+        role: "assistant",
+      },
+    });
+  });
+
   test("rejects assistant canonicalization without after_main_llm hook", () => {
     const input = makeBaseInput();
     input.operations = [

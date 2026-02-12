@@ -21,7 +21,7 @@ export type OperationKind =
   | "transform"
   | "legacy";
 
-export type PromptTimeMessageRole = "system" | "developer" | "user" | "assistant";
+export type PromptTimeMessageRole = "system" | "user" | "assistant";
 
 export type PromptTimeEffect =
   | {
@@ -41,7 +41,7 @@ export type PromptTimeEffect =
   | {
       kind: "insert_at_depth";
       /**
-       * 0 = insert at tail; -N = insert N messages from the end (closer to tail).
+       * 0 = insert at tail; N = insert N messages from the end (closer to tail).
        */
       depthFromEnd: number;
       role: PromptTimeMessageRole;

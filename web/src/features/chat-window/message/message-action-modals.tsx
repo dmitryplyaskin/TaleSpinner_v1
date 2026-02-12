@@ -23,6 +23,38 @@ function buildRawPrompt(messages: Array<{ role: 'system' | 'user' | 'assistant';
 	return messages.map((item) => `[${item.role.toUpperCase()}]\n${item.content}`).join('\n\n---\n\n');
 }
 
+function buildTurnCanonicalizationRaw(
+	items: Array<{
+		hook: 'before_main_llm' | 'after_main_llm';
+		opId: string;
+		beforeText: string;
+		afterText: string;
+		committedAt: string;
+	}>,
+	labels: {
+		before: string;
+		after: string;
+		hook: string;
+		opId: string;
+		committedAt: string;
+	},
+): string {
+	return items
+		.map((item, idx) =>
+			[
+				`#${idx + 1}`,
+				`${labels.hook}: ${item.hook}`,
+				`${labels.opId}: ${item.opId}`,
+				`${labels.committedAt}: ${item.committedAt}`,
+				`[${labels.before}]`,
+				item.beforeText,
+				`[${labels.after}]`,
+				item.afterText,
+			].join('\n'),
+		)
+		.join('\n\n---\n\n');
+}
+
 export const MessageActionModals = () => {
 	const { t } = useTranslation();
 	const [
@@ -128,6 +160,7 @@ export const MessageActionModals = () => {
 				},
 			]
 		: [];
+	const turnCanonicalizations = promptInspector.data?.turnCanonicalizations ?? [];
 
 	return (
 		<>
@@ -232,21 +265,49 @@ export const MessageActionModals = () => {
 									</Stack>
 								</Tabs.Panel>
 								<Tabs.Panel value="raw" pt="sm">
-									<Paper withBorder p="sm" radius="md">
-										<ScrollArea.Autosize mah={420}>
-											<Text
-												size="sm"
-												style={{
-													whiteSpace: 'pre-wrap',
-													wordBreak: 'break-word',
-													fontFamily:
-														'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-												}}
-											>
-												{buildRawPrompt(promptInspector.data.prompt.messages)}
-											</Text>
-										</ScrollArea.Autosize>
-									</Paper>
+									<Stack gap="sm">
+										<Paper withBorder p="sm" radius="md">
+											<ScrollArea.Autosize mah={420}>
+												<Text
+													size="sm"
+													style={{
+														whiteSpace: 'pre-wrap',
+														wordBreak: 'break-word',
+														fontFamily:
+															'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+													}}
+												>
+													{buildRawPrompt(promptInspector.data.prompt.messages)}
+												</Text>
+											</ScrollArea.Autosize>
+										</Paper>
+										{turnCanonicalizations.length > 0 && (
+											<Paper withBorder p="sm" radius="md">
+												<Text size="sm" fw={600} mb={6}>
+													{t('chat.promptInspector.turnCanonicalization.title')}
+												</Text>
+												<ScrollArea.Autosize mah={260}>
+													<Text
+														size="sm"
+														style={{
+															whiteSpace: 'pre-wrap',
+															wordBreak: 'break-word',
+															fontFamily:
+																'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+														}}
+													>
+														{buildTurnCanonicalizationRaw(turnCanonicalizations, {
+															before: t('chat.promptInspector.turnCanonicalization.before'),
+															after: t('chat.promptInspector.turnCanonicalization.after'),
+															hook: t('chat.promptInspector.turnCanonicalization.hook'),
+															opId: t('chat.promptInspector.turnCanonicalization.opId'),
+															committedAt: t('chat.promptInspector.turnCanonicalization.committedAt'),
+														})}
+													</Text>
+												</ScrollArea.Autosize>
+											</Paper>
+										)}
+									</Stack>
 								</Tabs.Panel>
 							</Tabs>
 						</>

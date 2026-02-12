@@ -15,7 +15,7 @@ export type PipelineErrorCode =
   | "pipeline_generation_error"
   | "pipeline_artifact_conflict";
 
-export type PromptDraftRole = "system" | "developer" | "user" | "assistant";
+export type PromptDraftRole = "system" | "user" | "assistant";
 
 export type PromptDraftMessage = {
   role: PromptDraftRole;

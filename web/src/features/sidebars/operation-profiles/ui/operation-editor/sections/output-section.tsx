@@ -29,7 +29,6 @@ const usageOptions = [
 
 const promptTimeRoleOptions = [
 	{ value: 'system', label: 'system' },
-	{ value: 'developer', label: 'developer' },
 	{ value: 'user', label: 'user' },
 	{ value: 'assistant', label: 'assistant' },
 ];
@@ -55,7 +54,7 @@ function makeDefaultPromptTimeOutput() {
 		type: 'prompt_time' as const,
 		promptTime: {
 			kind: 'append_after_last_user' as const,
-			role: 'developer' as const,
+			role: 'system' as const,
 			source: 'template_output',
 		},
 	};
@@ -181,14 +180,14 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 							if (nextKind === 'append_after_last_user') {
 								setValue(
 									`operations.${index}.config.params.output.promptTime`,
-									{ kind: nextKind, role: 'developer', source: 'template_output' },
+									{ kind: nextKind, role: 'system', source: 'template_output' },
 									{ shouldDirty: true },
 								);
 							}
 							if (nextKind === 'insert_at_depth') {
 								setValue(
 									`operations.${index}.config.params.output.promptTime`,
-									{ kind: nextKind, depthFromEnd: 0, role: 'developer', source: 'template_output' },
+									{ kind: nextKind, depthFromEnd: 0, role: 'system', source: 'template_output' },
 									{ shouldDirty: true },
 								);
 							}
@@ -233,7 +232,7 @@ export const OutputSection: React.FC<Props> = ({ index }) => {
 							name={`operations.${index}.config.params.output.promptTime.depthFromEnd`}
 							label={t('operationProfiles.sectionsLabels.depthFromEnd')}
 							infoTip={t('operationProfiles.tooltips.depthFromEnd')}
-							numberInputProps={{ step: 1 }}
+							numberInputProps={{ min: 0, step: 1 }}
 						/>
 					)}
 

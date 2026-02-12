@@ -115,6 +115,15 @@ type PromptDiagnosticsResponse = {
       };
     };
   };
+  turnCanonicalizations: Array<{
+    hook: "before_main_llm" | "after_main_llm";
+    opId: string;
+    userEntryId: string;
+    userMainPartId: string;
+    beforeText: string;
+    afterText: string;
+    committedAt: string;
+  }>;
 };
 
 type LatestWorldInfoActivationsResponse = {
@@ -166,6 +175,37 @@ function normalizePromptMessages(
   return out;
 }
 
+function normalizeTurnCanonicalizationHistory(
+  value: unknown
+): PromptDiagnosticsResponse["turnCanonicalizations"] {
+  if (!Array.isArray(value)) return [];
+  const out: PromptDiagnosticsResponse["turnCanonicalizations"] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const hook =
+      item.hook === "before_main_llm" || item.hook === "after_main_llm"
+        ? item.hook
+        : null;
+    if (!hook) continue;
+    if (typeof item.opId !== "string") continue;
+    if (typeof item.userEntryId !== "string") continue;
+    if (typeof item.userMainPartId !== "string") continue;
+    if (typeof item.beforeText !== "string") continue;
+    if (typeof item.afterText !== "string") continue;
+    if (typeof item.committedAt !== "string") continue;
+    out.push({
+      hook,
+      opId: item.opId,
+      userEntryId: item.userEntryId,
+      userMainPartId: item.userMainPartId,
+      beforeText: item.beforeText,
+      afterText: item.afterText,
+      committedAt: item.committedAt,
+    });
+  }
+  return out;
+}
+
 function computeApproxByRole(messages: Array<{ role: PromptDiagnosticsRole; content: string }>): {
   total: number;
   byRole: { system: number; user: number; assistant: number };
@@ -192,6 +232,10 @@ export function buildPromptDiagnosticsFromDebug(params: {
   const prompt = debug.prompt;
   const messages = normalizePromptMessages(prompt.messages);
   const approx = computeApproxByRole(messages);
+  const operations = isRecord(debug.operations) ? debug.operations : {};
+  const turnCanonicalizations = normalizeTurnCanonicalizationHistory(
+    operations.turnUserCanonicalization
+  );
 
   const approxTokensRaw = isRecord(prompt.approxTokens) ? prompt.approxTokens : {};
   const byRoleRaw = isRecord(approxTokensRaw.byRole) ? approxTokensRaw.byRole : {};
@@ -266,6 +310,7 @@ export function buildPromptDiagnosticsFromDebug(params: {
         sections,
       },
     },
+    turnCanonicalizations,
   };
 }
 
@@ -324,6 +369,7 @@ export function buildPromptDiagnosticsFromSnapshot(params: {
         },
       },
     },
+    turnCanonicalizations: [],
   };
 }
 
@@ -632,6 +678,68 @@ export function resolveContinueUserTurnTarget(params: {
     userEntryId: params.lastEntry.entryId,
     userMainPartId: userMainPart.partId,
   };
+}
+
+export function pickPreviousUserEntries(params: {
+  entries: Entry[];
+  anchorEntryId: string;
+}): Entry[] {
+  const anchorIndex = params.entries.findIndex((entry) => entry.entryId === params.anchorEntryId);
+  const startIdx = anchorIndex >= 0 ? anchorIndex - 1 : params.entries.length - 1;
+  const result: Entry[] = [];
+
+  for (let i = startIdx; i >= 0; i -= 1) {
+    const entry = params.entries[i];
+    if (!entry || entry.softDeleted) continue;
+    if (entry.role !== "user") continue;
+    result.push(entry);
+  }
+
+  return result;
+}
+
+async function resolveRegenerateUserTurnTarget(params: {
+  chatId: string;
+  branchId: string;
+  assistantEntry: Entry;
+}): Promise<{ mode: "entry_parts"; userEntryId: string; userMainPartId: string } | undefined> {
+  const PAGE_LIMIT = 200;
+  let before = params.assistantEntry.createdAt + 1;
+
+  while (true) {
+    const entries = await listEntries({
+      chatId: params.chatId,
+      branchId: params.branchId,
+      limit: PAGE_LIMIT,
+      before,
+    });
+    if (entries.length === 0) return undefined;
+
+    const userCandidates = pickPreviousUserEntries({
+      entries,
+      anchorEntryId: params.assistantEntry.entryId,
+    });
+    for (const candidate of userCandidates) {
+      const candidateVariant = await getActiveVariantWithParts({ entry: candidate });
+      try {
+        const target = resolveContinueUserTurnTarget({
+          lastEntry: candidate,
+          lastVariant: candidateVariant,
+        });
+        return {
+          mode: "entry_parts",
+          userEntryId: target.userEntryId,
+          userMainPartId: target.userMainPartId,
+        };
+      } catch {
+        // Try the next older user entry candidate.
+      }
+    }
+
+    const oldestEntry = entries[0];
+    if (!oldestEntry) return undefined;
+    before = oldestEntry.createdAt;
+  }
 }
 
 async function createAssistantReasoningPart(params: {
@@ -1096,6 +1204,12 @@ router.post(
     });
 
     try {
+      const userTurnTarget = await resolveRegenerateUserTurnTarget({
+        chatId: entry.chatId,
+        branchId: entry.branchId,
+        assistantEntry: entry,
+      });
+
       const newTurn = await incrementBranchTurn({ branchId: entry.branchId });
 
       const newVariant = await createVariant({
@@ -1135,6 +1249,12 @@ router.post(
       const envBase = {
         chatId: entry.chatId,
         branchId: entry.branchId,
+        ...(userTurnTarget
+          ? {
+              userEntryId: userTurnTarget.userEntryId,
+              userMainPartId: userTurnTarget.userMainPartId,
+            }
+          : {}),
         assistantEntryId: entry.entryId,
         assistantVariantId: newVariant.variantId,
         assistantMainPartId: assistantMainPart.partId,
@@ -1162,6 +1282,7 @@ router.post(
             assistantMainPartId: assistantMainPart.partId,
             assistantReasoningPartId: assistantReasoningPart.partId,
           },
+          userTurnTarget,
         }),
       });
       if (generationId) {

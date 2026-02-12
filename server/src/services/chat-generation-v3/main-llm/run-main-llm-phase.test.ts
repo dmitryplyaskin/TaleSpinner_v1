@@ -45,6 +45,7 @@ function makeRunState(): RunState {
       after_main_llm: [],
     },
     commitReportsByHook: {},
+    turnUserCanonicalizationHistory: [],
     phaseReports: [],
     promptHash: null,
     promptSnapshot: null,
