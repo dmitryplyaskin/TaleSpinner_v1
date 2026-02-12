@@ -5,7 +5,14 @@ import {
   DEFAULT_WORLD_INFO_CHARACTER_FILTER,
   DEFAULT_WORLD_INFO_ENTRY,
 } from "./world-info-defaults";
-import type { WorldInfoBookData, WorldInfoEntry } from "./world-info-types";
+import {
+  worldInfoGenerationTriggers,
+  type WorldInfoBookData,
+  type WorldInfoEntry,
+  type WorldInfoGenerationTrigger,
+  type WorldInfoInsertionStrategy,
+  type WorldInfoSettingsDto,
+} from "./world-info-types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -32,12 +39,192 @@ function asStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+const WORLD_INFO_TRIGGER_SET = new Set<WorldInfoGenerationTrigger>(worldInfoGenerationTriggers);
+const LEGACY_TRIGGER_MAP: Record<string, WorldInfoGenerationTrigger> = {
+  generate: "normal",
+  normal: "normal",
+  continue: "continue",
+  continue_generate: "continue",
+  continue_generation: "continue",
+  impersonate: "impersonate",
+  swipe: "swipe",
+  regenerate: "regenerate",
+  quiet: "quiet",
+};
+
+function normalizeWorldInfoTrigger(value: unknown): WorldInfoGenerationTrigger | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  if (WORLD_INFO_TRIGGER_SET.has(normalized as WorldInfoGenerationTrigger)) {
+    return normalized as WorldInfoGenerationTrigger;
+  }
+  return LEGACY_TRIGGER_MAP[normalized] ?? null;
+}
+
+function normalizeWorldInfoTriggers(input: unknown): WorldInfoGenerationTrigger[] {
+  if (!Array.isArray(input)) return [];
+  const deduped = new Set<WorldInfoGenerationTrigger>();
+  for (const raw of input) {
+    const normalized = normalizeWorldInfoTrigger(raw);
+    if (normalized) deduped.add(normalized);
+  }
+  return Array.from(deduped);
+}
+
+function clampInclusive(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function normalizeCharacterFilter(input: unknown) {
   if (!isRecord(input)) return { ...DEFAULT_WORLD_INFO_CHARACTER_FILTER };
   return {
     isExclude: asBoolean(input.isExclude, false),
     names: asStringArray(input.names),
     tags: asStringArray(input.tags),
+  };
+}
+
+export type WorldInfoSettingsPatchInput = Partial<
+  Omit<WorldInfoSettingsDto, "ownerId" | "createdAt" | "updatedAt">
+> & {
+  minDepthMax?: unknown;
+  minActivationsDepthMax?: unknown;
+  insertionStrategy?: unknown;
+  characterStrategy?: unknown;
+};
+
+function asInsertionStrategy(
+  value: unknown,
+  fallback: WorldInfoInsertionStrategy
+): WorldInfoInsertionStrategy {
+  const num = asNumber(value, fallback);
+  if (num === 0 || num === 1 || num === 2) return num;
+  return fallback;
+}
+
+export function normalizeWorldInfoSettingsPatch(params: {
+  patch: WorldInfoSettingsPatchInput;
+  current: Pick<
+    WorldInfoSettingsDto,
+    | "scanDepth"
+    | "minActivations"
+    | "minDepthMax"
+    | "minActivationsDepthMax"
+    | "budgetPercent"
+    | "budgetCapTokens"
+    | "contextWindowTokens"
+    | "includeNames"
+    | "recursive"
+    | "overflowAlert"
+    | "caseSensitive"
+    | "matchWholeWords"
+    | "useGroupScoring"
+    | "insertionStrategy"
+    | "characterStrategy"
+    | "maxRecursionSteps"
+    | "meta"
+  >;
+}): Omit<WorldInfoSettingsDto, "ownerId" | "createdAt" | "updatedAt"> {
+  const patch = params.patch;
+  const current = params.current;
+
+  const minDepthMaxInput =
+    typeof patch.minDepthMax === "number" && Number.isFinite(patch.minDepthMax)
+      ? patch.minDepthMax
+      : typeof patch.minActivationsDepthMax === "number" &&
+          Number.isFinite(patch.minActivationsDepthMax)
+        ? patch.minActivationsDepthMax
+        : current.minDepthMax;
+  const insertionStrategyInput =
+    typeof patch.insertionStrategy === "number" && Number.isFinite(patch.insertionStrategy)
+      ? patch.insertionStrategy
+      : typeof patch.characterStrategy === "number" && Number.isFinite(patch.characterStrategy)
+        ? patch.characterStrategy
+        : current.insertionStrategy;
+
+  let minActivations = Math.max(
+    0,
+    Math.floor(
+      typeof patch.minActivations === "number" && Number.isFinite(patch.minActivations)
+        ? patch.minActivations
+        : current.minActivations
+    )
+  );
+  let maxRecursionSteps = Math.max(
+    0,
+    Math.floor(
+      typeof patch.maxRecursionSteps === "number" && Number.isFinite(patch.maxRecursionSteps)
+        ? patch.maxRecursionSteps
+        : current.maxRecursionSteps
+    )
+  );
+
+  if (minActivations > 0) {
+    maxRecursionSteps = 0;
+  } else if (maxRecursionSteps > 0) {
+    minActivations = 0;
+  }
+
+  const minDepthMax = Math.max(0, Math.floor(minDepthMaxInput));
+  const insertionStrategy = asInsertionStrategy(
+    insertionStrategyInput,
+    current.insertionStrategy
+  );
+
+  return {
+    scanDepth: Math.max(
+      0,
+      Math.floor(
+        typeof patch.scanDepth === "number" && Number.isFinite(patch.scanDepth)
+          ? patch.scanDepth
+          : current.scanDepth
+      )
+    ),
+    minActivations,
+    minDepthMax,
+    minActivationsDepthMax: minDepthMax,
+    budgetPercent: clampInclusive(
+      Math.floor(
+        typeof patch.budgetPercent === "number" && Number.isFinite(patch.budgetPercent)
+          ? patch.budgetPercent
+          : current.budgetPercent
+      ),
+      1,
+      100
+    ),
+    budgetCapTokens: Math.max(
+      0,
+      Math.floor(
+        typeof patch.budgetCapTokens === "number" && Number.isFinite(patch.budgetCapTokens)
+          ? patch.budgetCapTokens
+          : current.budgetCapTokens
+      )
+    ),
+    contextWindowTokens: Math.max(
+      1,
+      Math.floor(
+        typeof patch.contextWindowTokens === "number" &&
+          Number.isFinite(patch.contextWindowTokens)
+          ? patch.contextWindowTokens
+          : current.contextWindowTokens
+      )
+    ),
+    includeNames: asBoolean(patch.includeNames, current.includeNames),
+    recursive: asBoolean(patch.recursive, current.recursive),
+    overflowAlert: asBoolean(patch.overflowAlert, current.overflowAlert),
+    caseSensitive: asBoolean(patch.caseSensitive, current.caseSensitive),
+    matchWholeWords: asBoolean(patch.matchWholeWords, current.matchWholeWords),
+    useGroupScoring: asBoolean(patch.useGroupScoring, current.useGroupScoring),
+    insertionStrategy,
+    characterStrategy: insertionStrategy,
+    maxRecursionSteps,
+    meta:
+      typeof patch.meta === "undefined"
+        ? current.meta
+        : isRecord(patch.meta) || patch.meta === null
+          ? patch.meta
+          : current.meta,
   };
 }
 
@@ -69,9 +256,10 @@ export function normalizeWorldInfoEntry(input: unknown, fallbackUid: number): Wo
     constant: asBoolean(src.constant, DEFAULT_WORLD_INFO_ENTRY.constant),
     vectorized: asBoolean(src.vectorized, DEFAULT_WORLD_INFO_ENTRY.vectorized),
     selective: asBoolean(src.selective, DEFAULT_WORLD_INFO_ENTRY.selective),
-    selectiveLogic: asNumber(
-      src.selectiveLogic,
-      DEFAULT_WORLD_INFO_ENTRY.selectiveLogic
+    selectiveLogic: clampInclusive(
+      Math.floor(asNumber(src.selectiveLogic, DEFAULT_WORLD_INFO_ENTRY.selectiveLogic)),
+      0,
+      3
     ) as WorldInfoEntry["selectiveLogic"],
     addMemo: asBoolean(src.addMemo, DEFAULT_WORLD_INFO_ENTRY.addMemo),
     order: asNumber(src.order, DEFAULT_WORLD_INFO_ENTRY.order),
@@ -108,7 +296,7 @@ export function normalizeWorldInfoEntry(input: unknown, fallbackUid: number): Wo
       DEFAULT_WORLD_INFO_ENTRY.matchCreatorNotes
     ),
     delayUntilRecursion,
-    probability: Math.max(0, Math.min(100, asNumber(src.probability, 100))),
+    probability: clampInclusive(asNumber(src.probability, 100), 0, 100),
     useProbability: asBoolean(src.useProbability, DEFAULT_WORLD_INFO_ENTRY.useProbability),
     depth: Math.max(0, asNumber(src.depth, DEFAULT_WORLD_INFO_ENTRY.depth)),
     outletName: asString(src.outletName),
@@ -131,7 +319,7 @@ export function normalizeWorldInfoEntry(input: unknown, fallbackUid: number): Wo
     sticky: asNullableNumber(src.sticky),
     cooldown: asNullableNumber(src.cooldown),
     delay: asNullableNumber(src.delay),
-    triggers: asStringArray(src.triggers),
+    triggers: normalizeWorldInfoTriggers(src.triggers),
     characterFilter: normalizeCharacterFilter(src.characterFilter),
     extensions: isRecord(src.extensions) ? src.extensions : {},
   };

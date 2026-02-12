@@ -44,7 +44,7 @@ describe("world-info timed effects", () => {
     expect(isEntryDelayed(delayed, 6)).toBe(false);
   });
 
-  test("loads active sticky/cooldown and marks dry-run warning for expired", async () => {
+  test("dry-run skips sticky/cooldown loading", async () => {
     mocks.listWorldInfoTimedEffects.mockResolvedValue([
       {
         id: "expired",
@@ -87,8 +87,10 @@ describe("world-info timed effects", () => {
       dryRun: true,
     });
 
-    expect(state.activeCooldown.has("h2")).toBe(true);
-    expect(state.warnings.length).toBeGreaterThan(0);
+    expect(state.activeCooldown.size).toBe(0);
+    expect(state.activeSticky.size).toBe(0);
+    expect(state.warnings.length).toBe(0);
+    expect(mocks.listWorldInfoTimedEffects).not.toHaveBeenCalled();
     expect(mocks.deleteWorldInfoTimedEffectsByIds).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,4 @@
-import { Button, Divider, Group, NumberInput, ScrollArea, Select, Stack, Switch, Tabs, TagsInput, Text, TextInput, Textarea } from '@mantine/core';
+import { Accordion, Button, Divider, Group, MultiSelect, NumberInput, ScrollArea, Select, Stack, Switch, TagsInput, Text, TextInput, Textarea } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { Dialog } from '@ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
-import type { WorldInfoBookDto } from '../../../api/world-info';
+import type { WorldInfoBookDto, WorldInfoGenerationTrigger } from '../../../api/world-info';
 
 type EntryDraft = {
 	uid: number;
@@ -33,6 +33,7 @@ type EntryDraft = {
 	matchScenario: boolean;
 	matchCreatorNotes: boolean;
 	constant: boolean;
+	vectorized: boolean;
 	disable: boolean;
 	useProbability: boolean;
 	probability: number;
@@ -46,7 +47,7 @@ type EntryDraft = {
 	sticky: number | null;
 	cooldown: number | null;
 	delay: number | null;
-	triggers: string[];
+	triggers: WorldInfoGenerationTrigger[];
 	role: 0 | 1 | 2;
 	automationId: string;
 	characterFilter: {
@@ -88,8 +89,29 @@ type Props = {
 };
 
 type NullableBoolSelect = 'inherit' | 'true' | 'false';
+type EntryStateMode = 'normal' | 'constant' | 'vectorized';
 
-type EditorTab = 'content' | 'matching' | 'activation' | 'timing' | 'advanced';
+const ST_TRIGGER_OPTIONS: Array<{ value: WorldInfoGenerationTrigger; label: string }> = [
+	{ value: 'normal', label: 'normal' },
+	{ value: 'continue', label: 'continue' },
+	{ value: 'impersonate', label: 'impersonate' },
+	{ value: 'swipe', label: 'swipe' },
+	{ value: 'regenerate', label: 'regenerate' },
+	{ value: 'quiet', label: 'quiet' },
+];
+
+const ST_TRIGGER_SET = new Set<WorldInfoGenerationTrigger>(ST_TRIGGER_OPTIONS.map((item) => item.value));
+const LEGACY_TRIGGER_MAP: Record<string, WorldInfoGenerationTrigger> = {
+	generate: 'normal',
+	normal: 'normal',
+	continue: 'continue',
+	continue_generation: 'continue',
+	continue_generate: 'continue',
+	impersonate: 'impersonate',
+	swipe: 'swipe',
+	regenerate: 'regenerate',
+	quiet: 'quiet',
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -128,6 +150,42 @@ function toNullableBool(value: boolean | null): NullableBoolSelect {
 	return 'inherit';
 }
 
+function normalizeTrigger(value: unknown): WorldInfoGenerationTrigger | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.trim().toLowerCase();
+	if (!normalized) return null;
+	if (ST_TRIGGER_SET.has(normalized as WorldInfoGenerationTrigger)) {
+		return normalized as WorldInfoGenerationTrigger;
+	}
+	return LEGACY_TRIGGER_MAP[normalized] ?? null;
+}
+
+function normalizeTriggerArray(value: unknown): WorldInfoGenerationTrigger[] {
+	if (!Array.isArray(value)) return [];
+	const deduped = new Set<WorldInfoGenerationTrigger>();
+	value.forEach((item) => {
+		const normalized = normalizeTrigger(item);
+		if (normalized) deduped.add(normalized);
+	});
+	return Array.from(deduped);
+}
+
+function getEntryStateMode(draft: EntryDraft): EntryStateMode {
+	if (draft.constant) return 'constant';
+	if (draft.vectorized) return 'vectorized';
+	return 'normal';
+}
+
+function applyEntryStateMode(draft: EntryDraft, mode: EntryStateMode): EntryDraft {
+	if (mode === 'constant') {
+		return { ...draft, constant: true, vectorized: false };
+	}
+	if (mode === 'vectorized') {
+		return { ...draft, constant: false, vectorized: true };
+	}
+	return { ...draft, constant: false, vectorized: false };
+}
+
 function normalizeEntry(raw: unknown, fallbackUid: number): EntryDraft {
 	const source = isRecord(raw) ? raw : {};
 	const filter = isRecord(source.characterFilter) ? source.characterFilter : {};
@@ -137,6 +195,14 @@ function normalizeEntry(raw: unknown, fallbackUid: number): EntryDraft {
 	} catch {
 		extensionsJson = '{}';
 	}
+
+	const delayUntilRecursionRaw = source.delayUntilRecursion;
+	const delayUntilRecursion =
+		typeof delayUntilRecursionRaw === 'boolean'
+			? delayUntilRecursionRaw
+				? 1
+				: 0
+			: Math.max(0, asNumber(delayUntilRecursionRaw, 0));
 
 	return {
 		uid: Math.max(0, asNumber(source.uid, fallbackUid)),
@@ -161,20 +227,21 @@ function normalizeEntry(raw: unknown, fallbackUid: number): EntryDraft {
 		matchScenario: asBoolean(source.matchScenario, false),
 		matchCreatorNotes: asBoolean(source.matchCreatorNotes, false),
 		constant: asBoolean(source.constant, false),
+		vectorized: asBoolean(source.vectorized, false),
 		disable: asBoolean(source.disable, false),
 		useProbability: asBoolean(source.useProbability, true),
 		probability: Math.max(0, Math.min(100, asNumber(source.probability, 100))),
 		ignoreBudget: asBoolean(source.ignoreBudget, false),
 		excludeRecursion: asBoolean(source.excludeRecursion, false),
 		preventRecursion: asBoolean(source.preventRecursion, false),
-		delayUntilRecursion: Math.max(0, asNumber(source.delayUntilRecursion, 0)),
+		delayUntilRecursion,
 		group: asString(source.group),
 		groupOverride: asBoolean(source.groupOverride, false),
 		groupWeight: Math.max(0, asNumber(source.groupWeight, 100)),
 		sticky: asNullableNumber(source.sticky),
 		cooldown: asNullableNumber(source.cooldown),
 		delay: asNullableNumber(source.delay),
-		triggers: asStringArray(source.triggers),
+		triggers: normalizeTriggerArray(source.triggers),
 		role: asNumber(source.role, 0) as EntryDraft['role'],
 		automationId: asString(source.automationId),
 		characterFilter: {
@@ -243,6 +310,7 @@ function toEntryPayload(entry: EntryState): Record<string, unknown> {
 		matchScenario: entry.draft.matchScenario,
 		matchCreatorNotes: entry.draft.matchCreatorNotes,
 		constant: entry.draft.constant,
+		vectorized: entry.draft.vectorized,
 		disable: entry.draft.disable,
 		useProbability: entry.draft.useProbability,
 		probability: entry.draft.probability,
@@ -271,7 +339,6 @@ export const WorldInfoEditorModal = ({ opened, book, saving, onClose, onSave }: 
 	const [snapshot, setSnapshot] = useState('');
 	const [entryId, setEntryId] = useState<string | null>(null);
 	const [search, setSearch] = useState('');
-	const [tab, setTab] = useState<EditorTab>('content');
 
 	useEffect(() => {
 		if (!opened || !book) return;
@@ -280,7 +347,6 @@ export const WorldInfoEditorModal = ({ opened, book, saving, onClose, onSave }: 
 		setSnapshot(toSnapshot(next));
 		setEntryId(next.entries[0]?.id ?? null);
 		setSearch('');
-		setTab('content');
 	}, [book, opened]);
 
 	const visibleEntries = useMemo(() => {
@@ -468,55 +534,87 @@ export const WorldInfoEditorModal = ({ opened, book, saving, onClose, onSave }: 
 									</Group>
 								</Group>
 
-								<Tabs value={tab} onChange={(value) => setTab((value as EditorTab) ?? 'content')}>
-									<Tabs.List style={isMobile ? { overflowX: 'auto', flexWrap: 'nowrap' } : undefined}>
-										<Tabs.Tab value="content">{t('worldInfo.editor.tabs.content')}</Tabs.Tab>
-										<Tabs.Tab value="matching">{t('worldInfo.editor.tabs.matching')}</Tabs.Tab>
-										<Tabs.Tab value="activation">{t('worldInfo.editor.tabs.activation')}</Tabs.Tab>
-										<Tabs.Tab value="timing">{t('worldInfo.editor.tabs.timing')}</Tabs.Tab>
-										<Tabs.Tab value="advanced">{t('worldInfo.editor.tabs.advanced')}</Tabs.Tab>
-									</Tabs.List>
-
-									<Tabs.Panel value="content" pt="md">
-										<Stack gap="sm">
-											<TextInput label={t('worldInfo.editor.fields.comment')} value={activeEntry.draft.comment} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, comment: event.currentTarget.value } }))} />
-											<Textarea label={t('worldInfo.editor.fields.content')} minRows={8} autosize value={activeEntry.draft.content} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, content: event.currentTarget.value } }))} />
-											<Group grow><Select label={t('worldInfo.editor.fields.position')} data={[{ value: '0', label: 'before' }, { value: '1', label: 'after' }, { value: '2', label: 'ANTop' }, { value: '3', label: 'ANBottom' }, { value: '4', label: 'atDepth' }, { value: '5', label: 'EMTop' }, { value: '6', label: 'EMBottom' }, { value: '7', label: 'outlet' }]} value={String(activeEntry.draft.position)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, position: (Number(value) || 0) as EntryDraft['position'] } }))} comboboxProps={{ withinPortal: false }} /><NumberInput label={t('worldInfo.editor.fields.order')} value={activeEntry.draft.order} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, order: Number(value) || 0 } }))} /><NumberInput label={t('worldInfo.editor.fields.depth')} min={0} value={activeEntry.draft.depth} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, depth: Math.max(0, Number(value) || 0) } }))} /></Group>
-											<TextInput label={t('worldInfo.editor.fields.outletName')} value={activeEntry.draft.outletName} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, outletName: event.currentTarget.value } }))} />
-										</Stack>
-									</Tabs.Panel>
-
-									<Tabs.Panel value="matching" pt="md">
-										<Stack gap="sm">
-											<TagsInput label={t('worldInfo.editor.fields.key')} value={activeEntry.draft.key} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, key: value } }))} />
-											<TagsInput label={t('worldInfo.editor.fields.keysecondary')} value={activeEntry.draft.keysecondary} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, keysecondary: value } }))} />
-											<Group grow><Switch label={t('worldInfo.editor.fields.selective')} checked={activeEntry.draft.selective} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, selective: event.currentTarget.checked } }))} /><Select label={t('worldInfo.editor.fields.selectiveLogic')} data={[{ value: '0', label: 'AND_ANY' }, { value: '1', label: 'NOT_ALL' }, { value: '2', label: 'NOT_ANY' }, { value: '3', label: 'AND_ALL' }]} value={String(activeEntry.draft.selectiveLogic)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, selectiveLogic: (Number(value) || 0) as EntryDraft['selectiveLogic'] } }))} comboboxProps={{ withinPortal: false }} /><NumberInput label={t('worldInfo.editor.fields.scanDepth')} min={0} value={activeEntry.draft.scanDepth ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, scanDepth: value === '' ? null : Number(value) || 0 } }))} /></Group>
-											<Group grow><Select label={t('worldInfo.editor.fields.caseSensitive')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.caseSensitive)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, caseSensitive: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} /><Select label={t('worldInfo.editor.fields.matchWholeWords')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.matchWholeWords)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchWholeWords: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} /><Select label={t('worldInfo.editor.fields.useGroupScoring')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.useGroupScoring)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, useGroupScoring: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} /></Group>
-											<Group grow>
-												<Switch label={t('worldInfo.editor.fields.matchPersonaDescription')} checked={activeEntry.draft.matchPersonaDescription} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchPersonaDescription: event.currentTarget.checked } }))} />
-												<Switch label={t('worldInfo.editor.fields.matchCharacterDescription')} checked={activeEntry.draft.matchCharacterDescription} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterDescription: event.currentTarget.checked } }))} />
-												<Switch label={t('worldInfo.editor.fields.matchCharacterPersonality')} checked={activeEntry.draft.matchCharacterPersonality} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterPersonality: event.currentTarget.checked } }))} />
-											</Group>
-											<Group grow>
-												<Switch label={t('worldInfo.editor.fields.matchCharacterDepthPrompt')} checked={activeEntry.draft.matchCharacterDepthPrompt} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterDepthPrompt: event.currentTarget.checked } }))} />
-												<Switch label={t('worldInfo.editor.fields.matchScenario')} checked={activeEntry.draft.matchScenario} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchScenario: event.currentTarget.checked } }))} />
-												<Switch label={t('worldInfo.editor.fields.matchCreatorNotes')} checked={activeEntry.draft.matchCreatorNotes} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCreatorNotes: event.currentTarget.checked } }))} />
-											</Group>
-										</Stack>
-									</Tabs.Panel>
-
-									<Tabs.Panel value="activation" pt="md">
-										<Stack gap="sm"><Group grow><Switch label={t('worldInfo.editor.fields.constant')} checked={activeEntry.draft.constant} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, constant: event.currentTarget.checked } }))} /><Switch label={t('worldInfo.editor.fields.disable')} checked={activeEntry.draft.disable} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, disable: event.currentTarget.checked } }))} /><Switch label={t('worldInfo.editor.fields.ignoreBudget')} checked={activeEntry.draft.ignoreBudget} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, ignoreBudget: event.currentTarget.checked } }))} /></Group><Group grow><Switch label={t('worldInfo.editor.fields.useProbability')} checked={activeEntry.draft.useProbability} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, useProbability: event.currentTarget.checked } }))} /><NumberInput label={t('worldInfo.editor.fields.probability')} min={0} max={100} value={activeEntry.draft.probability} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, probability: Math.max(0, Math.min(100, Number(value) || 0)) } }))} /><NumberInput label={t('worldInfo.editor.fields.delayUntilRecursion')} min={0} value={activeEntry.draft.delayUntilRecursion} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, delayUntilRecursion: Math.max(0, Number(value) || 0) } }))} /></Group><Group grow><Switch label={t('worldInfo.editor.fields.excludeRecursion')} checked={activeEntry.draft.excludeRecursion} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, excludeRecursion: event.currentTarget.checked } }))} /><Switch label={t('worldInfo.editor.fields.preventRecursion')} checked={activeEntry.draft.preventRecursion} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, preventRecursion: event.currentTarget.checked } }))} /><TextInput label={t('worldInfo.editor.fields.group')} value={activeEntry.draft.group} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, group: event.currentTarget.value } }))} /></Group><Group grow><Switch label={t('worldInfo.editor.fields.groupOverride')} checked={activeEntry.draft.groupOverride} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, groupOverride: event.currentTarget.checked } }))} /><NumberInput label={t('worldInfo.editor.fields.groupWeight')} min={0} value={activeEntry.draft.groupWeight} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, groupWeight: Math.max(0, Number(value) || 0) } }))} /></Group></Stack>
-									</Tabs.Panel>
-
-									<Tabs.Panel value="timing" pt="md">
-										<Stack gap="sm"><Group grow><NumberInput label={t('worldInfo.editor.fields.sticky')} min={0} value={activeEntry.draft.sticky ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, sticky: value === '' ? null : Number(value) || 0 } }))} /><NumberInput label={t('worldInfo.editor.fields.cooldown')} min={0} value={activeEntry.draft.cooldown ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, cooldown: value === '' ? null : Number(value) || 0 } }))} /><NumberInput label={t('worldInfo.editor.fields.delay')} min={0} value={activeEntry.draft.delay ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, delay: value === '' ? null : Number(value) || 0 } }))} /></Group><TagsInput label={t('worldInfo.editor.fields.triggers')} value={activeEntry.draft.triggers} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, triggers: value } }))} /></Stack>
-									</Tabs.Panel>
-
-									<Tabs.Panel value="advanced" pt="md">
-										<Stack gap="sm"><Group grow><Select label={t('worldInfo.editor.fields.role')} data={[{ value: '0', label: 'system' }, { value: '1', label: 'user' }, { value: '2', label: 'assistant' }]} value={String(activeEntry.draft.role)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, role: (Number(value) || 0) as EntryDraft['role'] } }))} comboboxProps={{ withinPortal: false }} /><NumberInput label={t('worldInfo.editor.fields.uid')} min={0} value={activeEntry.draft.uid} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, uid: Math.max(0, Number(value) || 0) } }))} /><TextInput label={t('worldInfo.editor.fields.automationId')} value={activeEntry.draft.automationId} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, automationId: event.currentTarget.value } }))} /></Group><Switch label={t('worldInfo.editor.fields.characterFilterExclude')} checked={activeEntry.draft.characterFilter.isExclude} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, isExclude: event.currentTarget.checked } } }))} /><TagsInput label={t('worldInfo.editor.fields.characterFilterNames')} value={activeEntry.draft.characterFilter.names} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, names: value } } }))} /><TagsInput label={t('worldInfo.editor.fields.characterFilterTags')} value={activeEntry.draft.characterFilter.tags} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, tags: value } } }))} /><Textarea label={t('worldInfo.editor.fields.extensionsJson')} minRows={6} autosize value={activeEntry.draft.extensionsJson} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, extensionsJson: event.currentTarget.value } }))} /></Stack>
-									</Tabs.Panel>
-								</Tabs>
+								<ScrollArea style={{ flex: 1 }}>
+									<Stack gap="sm" pb="md">
+										<TextInput label={t('worldInfo.editor.fields.comment')} value={activeEntry.draft.comment} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, comment: event.currentTarget.value } }))} />
+										<Group grow align="end">
+											<Select label={t('worldInfo.editor.fields.strategy')} data={[{ value: 'normal', label: t('worldInfo.editor.strategy.normal') }, { value: 'constant', label: t('worldInfo.editor.strategy.constant') }, { value: 'vectorized', label: t('worldInfo.editor.strategy.vectorized') }]} value={getEntryStateMode(activeEntry.draft)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: applyEntryStateMode(entry.draft, (value as EntryStateMode) ?? 'normal') }))} comboboxProps={{ withinPortal: false }} />
+											<Select label={t('worldInfo.editor.fields.position')} data={[{ value: '0', label: 'before' }, { value: '1', label: 'after' }, { value: '2', label: 'ANTop' }, { value: '3', label: 'ANBottom' }, { value: '4', label: '@depth' }, { value: '5', label: 'EMTop' }, { value: '6', label: 'EMBottom' }, { value: '7', label: 'outlet' }]} value={String(activeEntry.draft.position)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, position: (Number(value) || 0) as EntryDraft['position'] } }))} comboboxProps={{ withinPortal: false }} />
+											<NumberInput label={t('worldInfo.editor.fields.depth')} min={0} value={activeEntry.draft.depth} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, depth: Math.max(0, Number(value) || 0) } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.order')} value={activeEntry.draft.order} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, order: Number(value) || 0 } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.probability')} min={0} max={100} value={activeEntry.draft.probability} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, probability: Math.max(0, Math.min(100, Number(value) || 0)) } }))} />
+										</Group>
+										<Group grow>
+											<Switch label={t('worldInfo.editor.fields.useProbability')} checked={activeEntry.draft.useProbability} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, useProbability: event.currentTarget.checked } }))} />
+											<Switch label={t('worldInfo.editor.fields.disable')} checked={activeEntry.draft.disable} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, disable: event.currentTarget.checked } }))} />
+											{activeEntry.draft.position === 7 ? (
+												<TextInput label={t('worldInfo.editor.fields.outletName')} value={activeEntry.draft.outletName} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, outletName: event.currentTarget.value } }))} />
+											) : (
+												<Select label={t('worldInfo.editor.fields.role')} data={[{ value: '0', label: 'system' }, { value: '1', label: 'user' }, { value: '2', label: 'assistant' }]} value={String(activeEntry.draft.role)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, role: (Number(value) || 0) as EntryDraft['role'] } }))} comboboxProps={{ withinPortal: false }} />
+											)}
+										</Group>
+										<TagsInput label={t('worldInfo.editor.fields.key')} value={activeEntry.draft.key} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, key: value } }))} />
+										<Group grow align="end">
+											<Select label={t('worldInfo.editor.fields.selectiveLogic')} data={[{ value: '0', label: 'AND ANY' }, { value: '1', label: 'NOT ALL' }, { value: '2', label: 'NOT ANY' }, { value: '3', label: 'AND ALL' }]} value={String(activeEntry.draft.selectiveLogic)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, selectiveLogic: (Number(value) || 0) as EntryDraft['selectiveLogic'] } }))} comboboxProps={{ withinPortal: false }} />
+											<Switch label={t('worldInfo.editor.fields.selective')} checked={activeEntry.draft.selective} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, selective: event.currentTarget.checked } }))} />
+										</Group>
+										<TagsInput label={t('worldInfo.editor.fields.keysecondary')} value={activeEntry.draft.keysecondary} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, keysecondary: value } }))} />
+										<Group grow align="end">
+											<NumberInput label={t('worldInfo.editor.fields.scanDepth')} min={0} value={activeEntry.draft.scanDepth ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, scanDepth: value === '' ? null : Number(value) || 0 } }))} />
+											<Select label={t('worldInfo.editor.fields.caseSensitive')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.caseSensitive)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, caseSensitive: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} />
+											<Select label={t('worldInfo.editor.fields.matchWholeWords')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.matchWholeWords)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchWholeWords: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} />
+											<Select label={t('worldInfo.editor.fields.useGroupScoring')} data={[{ value: 'inherit', label: t('worldInfo.editor.inherit') }, { value: 'true', label: t('worldInfo.editor.true') }, { value: 'false', label: t('worldInfo.editor.false') }]} value={toNullableBool(activeEntry.draft.useGroupScoring)} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, useGroupScoring: parseNullableBool((value as NullableBoolSelect) ?? 'inherit') } }))} comboboxProps={{ withinPortal: false }} />
+											<TextInput label={t('worldInfo.editor.fields.automationId')} value={activeEntry.draft.automationId} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, automationId: event.currentTarget.value } }))} />
+										</Group>
+										<Group grow>
+											<Switch label={t('worldInfo.editor.fields.excludeRecursion')} checked={activeEntry.draft.excludeRecursion} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, excludeRecursion: event.currentTarget.checked } }))} />
+											<Switch label={t('worldInfo.editor.fields.preventRecursion')} checked={activeEntry.draft.preventRecursion} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, preventRecursion: event.currentTarget.checked } }))} />
+											<Switch label={t('worldInfo.editor.fields.ignoreBudget')} checked={activeEntry.draft.ignoreBudget} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, ignoreBudget: event.currentTarget.checked } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.delayUntilRecursion')} min={0} value={activeEntry.draft.delayUntilRecursion} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, delayUntilRecursion: Math.max(0, Number(value) || 0) } }))} />
+										</Group>
+										<Textarea label={t('worldInfo.editor.fields.content')} minRows={8} autosize value={activeEntry.draft.content} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, content: event.currentTarget.value } }))} />
+										<Group grow align="end">
+											<TextInput label={t('worldInfo.editor.fields.group')} value={activeEntry.draft.group} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, group: event.currentTarget.value } }))} />
+											<Switch label={t('worldInfo.editor.fields.groupOverride')} checked={activeEntry.draft.groupOverride} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, groupOverride: event.currentTarget.checked } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.groupWeight')} min={0} value={activeEntry.draft.groupWeight} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, groupWeight: Math.max(0, Number(value) || 0) } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.sticky')} min={0} value={activeEntry.draft.sticky ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, sticky: value === '' ? null : Number(value) || 0 } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.cooldown')} min={0} value={activeEntry.draft.cooldown ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, cooldown: value === '' ? null : Number(value) || 0 } }))} />
+											<NumberInput label={t('worldInfo.editor.fields.delay')} min={0} value={activeEntry.draft.delay ?? ''} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, delay: value === '' ? null : Number(value) || 0 } }))} />
+										</Group>
+										<Group grow>
+											<Switch label={t('worldInfo.editor.fields.characterFilterExclude')} checked={activeEntry.draft.characterFilter.isExclude} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, isExclude: event.currentTarget.checked } } }))} />
+											<TagsInput label={t('worldInfo.editor.fields.characterFilterNames')} value={activeEntry.draft.characterFilter.names} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, names: value } } }))} />
+											<TagsInput label={t('worldInfo.editor.fields.characterFilterTags')} value={activeEntry.draft.characterFilter.tags} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, characterFilter: { ...entry.draft.characterFilter, tags: value } } }))} />
+										</Group>
+										<MultiSelect label={t('worldInfo.editor.fields.triggers')} data={ST_TRIGGER_OPTIONS} value={activeEntry.draft.triggers} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, triggers: normalizeTriggerArray(value) } }))} clearable comboboxProps={{ withinPortal: false }} />
+										<Accordion variant="separated">
+											<Accordion.Item value="additional-matching-sources">
+												<Accordion.Control>{t('worldInfo.editor.fields.additionalMatchingSources')}</Accordion.Control>
+												<Accordion.Panel>
+													<Group grow>
+														<Switch label={t('worldInfo.editor.fields.matchPersonaDescription')} checked={activeEntry.draft.matchPersonaDescription} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchPersonaDescription: event.currentTarget.checked } }))} />
+														<Switch label={t('worldInfo.editor.fields.matchCharacterDescription')} checked={activeEntry.draft.matchCharacterDescription} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterDescription: event.currentTarget.checked } }))} />
+														<Switch label={t('worldInfo.editor.fields.matchCharacterPersonality')} checked={activeEntry.draft.matchCharacterPersonality} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterPersonality: event.currentTarget.checked } }))} />
+													</Group>
+													<Group grow>
+														<Switch label={t('worldInfo.editor.fields.matchCharacterDepthPrompt')} checked={activeEntry.draft.matchCharacterDepthPrompt} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCharacterDepthPrompt: event.currentTarget.checked } }))} />
+														<Switch label={t('worldInfo.editor.fields.matchScenario')} checked={activeEntry.draft.matchScenario} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchScenario: event.currentTarget.checked } }))} />
+														<Switch label={t('worldInfo.editor.fields.matchCreatorNotes')} checked={activeEntry.draft.matchCreatorNotes} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, matchCreatorNotes: event.currentTarget.checked } }))} />
+													</Group>
+												</Accordion.Panel>
+											</Accordion.Item>
+											<Accordion.Item value="advanced">
+												<Accordion.Control>{t('worldInfo.editor.fields.advanced')}</Accordion.Control>
+												<Accordion.Panel>
+													<Stack gap="sm">
+														<NumberInput label={t('worldInfo.editor.fields.uid')} min={0} value={activeEntry.draft.uid} onChange={(value) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, uid: Math.max(0, Number(value) || 0) } }))} />
+														<Textarea label={t('worldInfo.editor.fields.extensionsJson')} minRows={6} autosize value={activeEntry.draft.extensionsJson} onChange={(event) => mutateActiveEntry((entry) => ({ ...entry, draft: { ...entry.draft, extensionsJson: event.currentTarget.value } }))} />
+													</Stack>
+												</Accordion.Panel>
+											</Accordion.Item>
+										</Accordion>
+									</Stack>
+								</ScrollArea>
 							</>
 						)}
 					</Stack>

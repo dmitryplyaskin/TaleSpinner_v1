@@ -1,5 +1,3 @@
-import { createHash } from "crypto";
-
 import type { PreparedWorldInfoEntry, WorldInfoSettingsDto } from "./world-info-types";
 
 export type GroupCandidate = {
@@ -17,17 +15,11 @@ function splitGroups(group: string): string[] {
     .filter(Boolean);
 }
 
-function hashToUnitInterval(seed: string): number {
-  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 12);
-  const value = Number.parseInt(hex, 16);
-  const max = 0xffffffffffff;
-  return Math.max(0, Math.min(1, value / max));
-}
-
 function pickWeightedCandidate(candidates: GroupCandidate[], seed: string): GroupCandidate {
+  void seed;
   const totalWeight = candidates.reduce((acc, item) => acc + Math.max(0, item.entry.groupWeight), 0);
   if (totalWeight <= 0) return candidates[0];
-  const r = hashToUnitInterval(seed) * totalWeight;
+  const r = Math.random() * totalWeight;
   let sum = 0;
   for (const candidate of candidates) {
     sum += Math.max(0, candidate.entry.groupWeight);

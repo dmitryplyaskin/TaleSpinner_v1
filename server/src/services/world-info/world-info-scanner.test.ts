@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { DEFAULT_WORLD_INFO_ENTRY, buildDefaultWorldInfoSettings } from "./world-info-defaults";
 import { scanWorldInfoEntries } from "./world-info-scanner";
@@ -114,5 +114,37 @@ describe("world-info scanner", () => {
     const hashes = new Set(out.activatedEntries.map((item) => item.hash));
     expect(hashes.has("a")).toBe(true);
     expect(hashes.has("b")).toBe(true);
+  });
+
+  test("uses random probability roll", () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.9);
+    const s = settings();
+    const probabilistic = makeEntry("p", {
+      constant: true,
+      useProbability: true,
+      probability: 10,
+      content: "prob",
+    });
+    const out = scanWorldInfoEntries({
+      entries: [probabilistic],
+      settings: s,
+      trigger: "normal",
+      history: [],
+      messageIndex: 0,
+      scanSeed: "seed-random",
+      dryRun: true,
+      activeStickyHashes: new Set(),
+      activeCooldownHashes: new Set(),
+      personaDescription: "",
+      characterDescription: "",
+      characterPersonality: "",
+      characterDepthPrompt: "",
+      scenario: "",
+      creatorNotes: "",
+      charName: "",
+      charTags: [],
+    });
+    expect(out.activatedEntries).toHaveLength(0);
+    randomSpy.mockRestore();
   });
 });

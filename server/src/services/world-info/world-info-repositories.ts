@@ -12,7 +12,11 @@ import {
   worldInfoTimedEffects,
 } from "../../db/schema";
 import { buildDefaultWorldInfoSettings } from "./world-info-defaults";
-import { normalizeWorldInfoBookPayload, slugifyWorldInfoName } from "./world-info-normalizer";
+import {
+  normalizeWorldInfoBookPayload,
+  normalizeWorldInfoSettingsPatch,
+  slugifyWorldInfoName,
+} from "./world-info-normalizer";
 import type {
   WorldInfoBindingDto,
   WorldInfoBindingRole,
@@ -61,6 +65,7 @@ function rowToSettingsDto(row: typeof worldInfoSettings.$inferSelect): WorldInfo
     ownerId: row.ownerId,
     scanDepth: row.scanDepth,
     minActivations: row.minActivations,
+    minDepthMax: row.minActivationsDepthMax,
     minActivationsDepthMax: row.minActivationsDepthMax,
     budgetPercent: row.budgetPercent,
     budgetCapTokens: row.budgetCapTokens,
@@ -71,6 +76,7 @@ function rowToSettingsDto(row: typeof worldInfoSettings.$inferSelect): WorldInfo
     caseSensitive: row.caseSensitive,
     matchWholeWords: row.matchWholeWords,
     useGroupScoring: row.useGroupScoring,
+    insertionStrategy: row.characterStrategy as 0 | 1 | 2,
     characterStrategy: row.characterStrategy as 0 | 1 | 2,
     maxRecursionSteps: row.maxRecursionSteps,
     meta: safeJsonParse(row.metaJson, null),
@@ -385,7 +391,7 @@ export async function getWorldInfoSettings(params?: {
     caseSensitive: defaults.caseSensitive,
     matchWholeWords: defaults.matchWholeWords,
     useGroupScoring: defaults.useGroupScoring,
-    characterStrategy: defaults.characterStrategy,
+    characterStrategy: defaults.insertionStrategy,
     maxRecursionSteps: defaults.maxRecursionSteps,
     metaJson: null,
     createdAt: ts,
@@ -409,30 +415,30 @@ export async function patchWorldInfoSettings(params: {
   const current = await getWorldInfoSettings({ ownerId });
   const ts = new Date();
 
+  const normalized = normalizeWorldInfoSettingsPatch({
+    patch: params.patch,
+    current,
+  });
+
   await db
     .update(worldInfoSettings)
     .set({
-      scanDepth: params.patch.scanDepth ?? current.scanDepth,
-      minActivations: params.patch.minActivations ?? current.minActivations,
-      minActivationsDepthMax:
-        params.patch.minActivationsDepthMax ?? current.minActivationsDepthMax,
-      budgetPercent: params.patch.budgetPercent ?? current.budgetPercent,
-      budgetCapTokens: params.patch.budgetCapTokens ?? current.budgetCapTokens,
-      contextWindowTokens: params.patch.contextWindowTokens ?? current.contextWindowTokens,
-      includeNames: params.patch.includeNames ?? current.includeNames,
-      recursive: params.patch.recursive ?? current.recursive,
-      overflowAlert: params.patch.overflowAlert ?? current.overflowAlert,
-      caseSensitive: params.patch.caseSensitive ?? current.caseSensitive,
-      matchWholeWords: params.patch.matchWholeWords ?? current.matchWholeWords,
-      useGroupScoring: params.patch.useGroupScoring ?? current.useGroupScoring,
-      characterStrategy: params.patch.characterStrategy ?? current.characterStrategy,
-      maxRecursionSteps: params.patch.maxRecursionSteps ?? current.maxRecursionSteps,
+      scanDepth: normalized.scanDepth,
+      minActivations: normalized.minActivations,
+      minActivationsDepthMax: normalized.minDepthMax,
+      budgetPercent: normalized.budgetPercent,
+      budgetCapTokens: normalized.budgetCapTokens,
+      contextWindowTokens: normalized.contextWindowTokens,
+      includeNames: normalized.includeNames,
+      recursive: normalized.recursive,
+      overflowAlert: normalized.overflowAlert,
+      caseSensitive: normalized.caseSensitive,
+      matchWholeWords: normalized.matchWholeWords,
+      useGroupScoring: normalized.useGroupScoring,
+      characterStrategy: normalized.insertionStrategy,
+      maxRecursionSteps: normalized.maxRecursionSteps,
       metaJson:
-        typeof params.patch.meta === "undefined"
-          ? safeJsonStringify(current.meta, "null")
-          : params.patch.meta === null
-            ? null
-            : safeJsonStringify(params.patch.meta, "{}"),
+        normalized.meta === null ? null : safeJsonStringify(normalized.meta, "null"),
       updatedAt: ts,
     })
     .where(eq(worldInfoSettings.ownerId, ownerId));

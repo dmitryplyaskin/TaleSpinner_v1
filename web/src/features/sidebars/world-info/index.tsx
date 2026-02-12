@@ -69,6 +69,11 @@ export const WorldInfoSidebar = () => {
 		}
 		setSettingsDraft({
 			scanDepth: settings.scanDepth,
+			minActivations: settings.minActivations,
+			minDepthMax: settings.minDepthMax,
+			maxRecursionSteps: settings.maxRecursionSteps,
+			insertionStrategy: settings.insertionStrategy,
+			overflowAlert: settings.overflowAlert,
 			budgetPercent: settings.budgetPercent,
 			budgetCapTokens: settings.budgetCapTokens,
 			contextWindowTokens: settings.contextWindowTokens,
@@ -106,6 +111,11 @@ export const WorldInfoSidebar = () => {
 		worldInfoSettingsSaveRequested({
 			patch: {
 				scanDepth: settingsDraft.scanDepth,
+				minActivations: settingsDraft.minActivations,
+				minDepthMax: settingsDraft.minDepthMax,
+				maxRecursionSteps: settingsDraft.maxRecursionSteps,
+				insertionStrategy: settingsDraft.insertionStrategy as 0 | 1 | 2 | undefined,
+				overflowAlert: settingsDraft.overflowAlert,
 				budgetPercent: settingsDraft.budgetPercent,
 				budgetCapTokens: settingsDraft.budgetCapTokens,
 				contextWindowTokens: settingsDraft.contextWindowTokens,
@@ -249,10 +259,60 @@ export const WorldInfoSidebar = () => {
 								) : (
 									<Stack gap="sm">
 										<NumberInput label={t('worldInfo.settings.scanDepth')} min={0} value={settingsDraft.scanDepth ?? 0} onChange={(value) => setSettingsDraft((prev) => ({ ...(prev ?? {}), scanDepth: parseNumberInput(value, 0) }))} />
+										<NumberInput
+											label={t('worldInfo.settings.minActivations')}
+											min={0}
+											value={settingsDraft.minActivations ?? 0}
+											onChange={(value) =>
+												setSettingsDraft((prev) => {
+													const minActivations = parseNumberInput(value, 0);
+													return {
+														...(prev ?? {}),
+														minActivations,
+														maxRecursionSteps:
+															minActivations > 0 ? 0 : (prev?.maxRecursionSteps ?? 0),
+													};
+												})
+											}
+										/>
+										<NumberInput label={t('worldInfo.settings.minDepthMax')} min={0} value={settingsDraft.minDepthMax ?? settingsDraft.minActivationsDepthMax ?? 0} onChange={(value) => setSettingsDraft((prev) => ({ ...(prev ?? {}), minDepthMax: parseNumberInput(value, 0) }))} />
+										<NumberInput
+											label={t('worldInfo.settings.maxRecursionSteps')}
+											min={0}
+											value={settingsDraft.maxRecursionSteps ?? 0}
+											onChange={(value) =>
+												setSettingsDraft((prev) => {
+													const maxRecursionSteps = parseNumberInput(value, 0);
+													return {
+														...(prev ?? {}),
+														maxRecursionSteps,
+														minActivations:
+															maxRecursionSteps > 0 ? 0 : (prev?.minActivations ?? 0),
+													};
+												})
+											}
+										/>
+										<Select
+											label={t('worldInfo.settings.insertionStrategy')}
+											data={[
+												{ value: '0', label: t('worldInfo.settings.insertionStrategyEvenly') },
+												{ value: '1', label: t('worldInfo.settings.insertionStrategyCharacterFirst') },
+												{ value: '2', label: t('worldInfo.settings.insertionStrategyGlobalFirst') },
+											]}
+											value={String(settingsDraft.insertionStrategy ?? settingsDraft.characterStrategy ?? 1)}
+											onChange={(value) =>
+												setSettingsDraft((prev) => ({
+													...(prev ?? {}),
+													insertionStrategy: (Number(value) || 0) as 0 | 1 | 2,
+												}))
+											}
+											comboboxProps={{ withinPortal: false }}
+										/>
 										<NumberInput label={t('worldInfo.settings.budgetPercent')} min={1} max={100} value={settingsDraft.budgetPercent ?? 25} onChange={(value) => setSettingsDraft((prev) => ({ ...(prev ?? {}), budgetPercent: parseNumberInput(value, 25) }))} />
 										<NumberInput label={t('worldInfo.settings.budgetCapTokens')} min={0} value={settingsDraft.budgetCapTokens ?? 0} onChange={(value) => setSettingsDraft((prev) => ({ ...(prev ?? {}), budgetCapTokens: parseNumberInput(value, 0) }))} />
 										<NumberInput label={t('worldInfo.settings.contextWindowTokens')} min={1} value={settingsDraft.contextWindowTokens ?? 8192} onChange={(value) => setSettingsDraft((prev) => ({ ...(prev ?? {}), contextWindowTokens: parseNumberInput(value, 8192) }))} />
 										<Switch label={t('worldInfo.settings.recursive')} checked={Boolean(settingsDraft.recursive)} onChange={(event) => setSettingsDraft((prev) => ({ ...(prev ?? {}), recursive: event.currentTarget.checked }))} />
+										<Switch label={t('worldInfo.settings.overflowAlert')} checked={Boolean(settingsDraft.overflowAlert)} onChange={(event) => setSettingsDraft((prev) => ({ ...(prev ?? {}), overflowAlert: event.currentTarget.checked }))} />
 										<Switch label={t('worldInfo.settings.includeNames')} checked={Boolean(settingsDraft.includeNames)} onChange={(event) => setSettingsDraft((prev) => ({ ...(prev ?? {}), includeNames: event.currentTarget.checked }))} />
 										<Switch label={t('worldInfo.settings.caseSensitive')} checked={Boolean(settingsDraft.caseSensitive)} onChange={(event) => setSettingsDraft((prev) => ({ ...(prev ?? {}), caseSensitive: event.currentTarget.checked }))} />
 										<Switch label={t('worldInfo.settings.matchWholeWords')} checked={Boolean(settingsDraft.matchWholeWords)} onChange={(event) => setSettingsDraft((prev) => ({ ...(prev ?? {}), matchWholeWords: event.currentTarget.checked }))} />

@@ -1,8 +1,7 @@
-import { createHash } from "crypto";
-
 import { applyInclusionGroups, type GroupCandidate } from "./world-info-groups";
 import { matchEntryAgainstText } from "./world-info-matcher";
 import { isEntryDelayed } from "./world-info-timed-effects";
+
 import type {
   PreparedWorldInfoEntry,
   WorldInfoResolveDebug,
@@ -12,12 +11,6 @@ import type {
 
 type ScanState = "INITIAL" | "RECURSION" | "MIN_ACTIVATIONS";
 
-function hashToUnit(seed: string): number {
-  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 12);
-  const value = Number.parseInt(hex, 16);
-  return value / 0xffffffffffff;
-}
-
 function estimateTokens(content: string): number {
   return Math.max(1, Math.ceil(content.length / 4));
 }
@@ -26,10 +19,6 @@ function resolveBudgetLimit(settings: WorldInfoSettingsDto): number {
   const base = Math.max(1, Math.round((settings.budgetPercent * settings.contextWindowTokens) / 100));
   if (settings.budgetCapTokens > 0) return Math.min(base, settings.budgetCapTokens);
   return base;
-}
-
-function mapTrigger(trigger: WorldInfoRuntimeTrigger): string {
-  return trigger === "regenerate" ? "regenerate" : "normal";
 }
 
 function resolveDelayUntilRecursionLevel(entry: PreparedWorldInfoEntry): number {
@@ -159,7 +148,6 @@ export function scanWorldInfoEntries(params: WorldInfoScanInput): WorldInfoScanO
   let recursionBuffer = "";
 
   const budgetLimit = debug.budget.limit;
-  const mappedTrigger = mapTrigger(params.trigger);
   const hardLoopLimit = 64;
   let loopCount = 0;
 
@@ -183,7 +171,7 @@ export function scanWorldInfoEntries(params: WorldInfoScanInput): WorldInfoScanO
         debug.skips.push({ hash: entry.hash, reason: "entry_disabled" });
         continue;
       }
-      if (entry.triggers.length > 0 && !entry.triggers.includes(mappedTrigger)) {
+      if (entry.triggers.length > 0 && !entry.triggers.includes(params.trigger)) {
         debug.skips.push({ hash: entry.hash, reason: "trigger_mismatch" });
         continue;
       }
@@ -292,7 +280,7 @@ export function scanWorldInfoEntries(params: WorldInfoScanInput): WorldInfoScanO
     for (const candidate of grouped.selected) {
       const entry = candidate.entry;
       if (entry.useProbability && entry.probability < 100 && !candidate.stickyActive) {
-        const roll = hashToUnit(`${params.scanSeed}:${loopCount}:${entry.hash}`) * 100;
+        const roll = Math.random() * 100;
         if (roll > entry.probability) {
           failedProbability.add(entry.hash);
           debug.skips.push({ hash: entry.hash, reason: "probability_failed" });
@@ -326,7 +314,9 @@ export function scanWorldInfoEntries(params: WorldInfoScanInput): WorldInfoScanO
       params.settings.recursive &&
       recursionAllowedHit &&
       !maxRecursionReached &&
-      (scanState === "INITIAL" || scanState === "RECURSION");
+      (scanState === "INITIAL" ||
+        scanState === "RECURSION" ||
+        (scanState === "MIN_ACTIVATIONS" && recursionBuffer.trim().length > 0));
 
     if (shouldRecurse) {
       scanState = "RECURSION";
@@ -335,7 +325,8 @@ export function scanWorldInfoEntries(params: WorldInfoScanInput): WorldInfoScanO
     }
 
     if (activatedMap.size < params.settings.minActivations) {
-      const maxDepthByMinActivations = params.settings.minActivationsDepthMax;
+      const maxDepthByMinActivations =
+        params.settings.minDepthMax ?? params.settings.minActivationsDepthMax;
       const canIncreaseDepth =
         maxDepthByMinActivations <= 0 || minActivationDepth < maxDepthByMinActivations;
       if (canIncreaseDepth && minActivationDepth < params.history.length) {

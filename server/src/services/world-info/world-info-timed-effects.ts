@@ -3,6 +3,7 @@ import {
   listWorldInfoTimedEffects,
   upsertWorldInfoTimedEffect,
 } from "./world-info-repositories";
+
 import type { PreparedWorldInfoEntry } from "./world-info-types";
 
 export type TimedEffectsState = {
@@ -25,6 +26,14 @@ export async function loadTimedEffectsState(params: {
   entriesByHash: Map<string, PreparedWorldInfoEntry>;
   dryRun: boolean;
 }): Promise<TimedEffectsState> {
+  if (params.dryRun) {
+    return {
+      activeSticky: new Set<string>(),
+      activeCooldown: new Set<string>(),
+      warnings: [],
+    };
+  }
+
   const rows = await listWorldInfoTimedEffects({
     ownerId: params.ownerId,
     chatId: params.chatId,
@@ -39,7 +48,7 @@ export async function loadTimedEffectsState(params: {
   for (const row of rows) {
     if (row.endMessageIndex < params.messageIndex) {
       deleteIds.push(row.id);
-      if (!params.dryRun && row.effectType === "sticky") {
+      if (row.effectType === "sticky") {
         const entry = params.entriesByHash.get(row.entryHash);
         if (entry && typeof entry.cooldown === "number" && entry.cooldown > 0) {
           await upsertWorldInfoTimedEffect({
@@ -63,12 +72,8 @@ export async function loadTimedEffectsState(params: {
     if (row.effectType === "cooldown") activeCooldown.add(row.entryHash);
   }
 
-  if (!params.dryRun && deleteIds.length > 0) {
+  if (deleteIds.length > 0) {
     await deleteWorldInfoTimedEffectsByIds(deleteIds);
-  }
-
-  if (params.dryRun && deleteIds.length > 0) {
-    warnings.push(`dry_run: ${deleteIds.length} expired timed effects were not deleted`);
   }
 
   return { activeSticky, activeCooldown, warnings };

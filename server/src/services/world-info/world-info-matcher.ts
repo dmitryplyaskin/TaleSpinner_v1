@@ -112,6 +112,14 @@ export function matchEntryAgainstText(params: {
     keys: params.entry.keysecondary,
     options,
   });
+  if (!params.entry.selective) {
+    return {
+      matched: true,
+      primaryMatched: primary.matched,
+      secondaryMatched: secondary.matched,
+    };
+  }
+
   const secondaryOk = evaluateSecondaryLogic({
     matchedSecondary: secondary.matched,
     totalSecondary: params.entry.keysecondary.length,

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { DEFAULT_WORLD_INFO_ENTRY, buildDefaultWorldInfoSettings } from "./world-info-defaults";
 import { applyInclusionGroups, type GroupCandidate } from "./world-info-groups";
@@ -42,23 +42,19 @@ describe("world-info groups", () => {
     expect(result.selected[0].entry.hash).toBe("b");
   });
 
-  test("weighted winner is deterministic for same seed", () => {
+  test("weighted winner follows random roll", () => {
     const settings = { ...buildDefaultWorldInfoSettings(), createdAt: new Date(), updatedAt: new Date() };
     const a = entry("a", { group: "g2", groupWeight: 10 });
     const b = entry("b", { group: "g2", groupWeight: 90 });
-    const first = applyInclusionGroups({
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.95);
+    const result = applyInclusionGroups({
       candidates: [candidate(a), candidate(b)],
       settings,
       scanSeed: "seed-1",
       alreadyActivatedGroups: new Set(),
     });
-    const second = applyInclusionGroups({
-      candidates: [candidate(a), candidate(b)],
-      settings,
-      scanSeed: "seed-1",
-      alreadyActivatedGroups: new Set(),
-    });
-    expect(first.selected[0].entry.hash).toBe(second.selected[0].entry.hash);
+    expect(result.selected[0].entry.hash).toBe("b");
+    randomSpy.mockRestore();
   });
 
   test("group scoring keeps only max score candidates", () => {

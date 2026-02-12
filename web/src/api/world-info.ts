@@ -5,6 +5,13 @@ import { apiJson } from './api-json';
 export type WorldInfoScope = 'global' | 'chat' | 'entity_profile' | 'persona';
 export type WorldInfoBindingRole = 'primary' | 'additional';
 export type WorldInfoBookSource = 'native' | 'imported' | 'converted';
+export type WorldInfoGenerationTrigger =
+	| 'normal'
+	| 'continue'
+	| 'impersonate'
+	| 'swipe'
+	| 'regenerate'
+	| 'quiet';
 
 export type WorldInfoBookData = {
 	name?: string;
@@ -42,6 +49,7 @@ export type WorldInfoSettingsDto = {
 	ownerId: string;
 	scanDepth: number;
 	minActivations: number;
+	minDepthMax: number;
 	minActivationsDepthMax: number;
 	budgetPercent: number;
 	budgetCapTokens: number;
@@ -52,6 +60,7 @@ export type WorldInfoSettingsDto = {
 	caseSensitive: boolean;
 	matchWholeWords: boolean;
 	useGroupScoring: boolean;
+	insertionStrategy: 0 | 1 | 2;
 	characterStrategy: 0 | 1 | 2;
 	maxRecursionSteps: number;
 	meta: Record<string, unknown> | null;

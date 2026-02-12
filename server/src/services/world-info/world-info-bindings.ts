@@ -1,4 +1,5 @@
 import { getWorldInfoBooksByIds, listWorldInfoBindings } from "./world-info-repositories";
+
 import type {
   WorldInfoBindingDto,
   WorldInfoBookDto,
@@ -46,7 +47,7 @@ export async function resolveActiveWorldInfoBooks(params: {
   chatId: string;
   entityProfileId: string;
   personaId: string | null;
-  settings: Pick<WorldInfoSettingsDto, "characterStrategy">;
+  settings: Pick<WorldInfoSettingsDto, "insertionStrategy" | "characterStrategy">;
 }): Promise<{
   orderedBooks: WorldInfoBookDto[];
   orderedBindings: WorldInfoBindingDto[];
@@ -72,9 +73,10 @@ export async function resolveActiveWorldInfoBooks(params: {
   const entitySorted = sortBindings(entityBindings);
 
   let mixedGlobalEntity: WorldInfoBindingDto[] = [];
-  if (params.settings.characterStrategy === 2) {
+  const insertionStrategy = params.settings.insertionStrategy ?? params.settings.characterStrategy;
+  if (insertionStrategy === 2) {
     mixedGlobalEntity = [...globalSorted, ...entitySorted];
-  } else if (params.settings.characterStrategy === 1) {
+  } else if (insertionStrategy === 1) {
     mixedGlobalEntity = [...entitySorted, ...globalSorted];
   } else {
     mixedGlobalEntity = interleaveBindings(entitySorted, globalSorted);

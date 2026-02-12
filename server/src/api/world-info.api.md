@@ -39,7 +39,11 @@ Base: `/api/world-info`
 - `GET /settings?ownerId`
   - Returns: `{ data: WorldInfoSettingsDto }`
 - `PUT /settings`
-  - Body: partial patch of settings fields (+ optional `ownerId`)
+  - Body: partial patch of settings fields (+ optional `ownerId`).
+  - Canonical parity fields:
+    - `minDepthMax` (alias accepted: `minActivationsDepthMax`)
+    - `insertionStrategy` (alias accepted: `characterStrategy`)
+    - `minActivations` / `maxRecursionSteps` are mutually exclusive (`minActivations > 0` forces `maxRecursionSteps = 0`, and vice versa)
   - Returns: `{ data: WorldInfoSettingsDto }`
 
 ## Bindings
@@ -82,6 +86,8 @@ Base: `/api/world-info`
     - `worldInfoBefore`, `worldInfoAfter`
     - `depthEntries`, `outletEntries`
     - `debug`
+  - Entry trigger filters are stored in ST format:
+    - `normal`, `continue`, `impersonate`, `swipe`, `regenerate`, `quiet`
 
 ## Validation limits
 

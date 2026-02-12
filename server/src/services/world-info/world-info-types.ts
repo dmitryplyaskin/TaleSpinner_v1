@@ -15,7 +15,17 @@ export type WorldInfoBookSource = (typeof worldInfoBookSources)[number];
 export const worldInfoEffectTypes = ["sticky", "cooldown"] as const;
 export type WorldInfoEffectType = (typeof worldInfoEffectTypes)[number];
 
-export type WorldInfoRuntimeTrigger = "normal" | "regenerate";
+export const worldInfoGenerationTriggers = [
+  "normal",
+  "continue",
+  "impersonate",
+  "swipe",
+  "regenerate",
+  "quiet",
+] as const;
+export type WorldInfoGenerationTrigger = (typeof worldInfoGenerationTriggers)[number];
+export type WorldInfoRuntimeTrigger = WorldInfoGenerationTrigger;
+export type WorldInfoInsertionStrategy = 0 | 1 | 2;
 
 export type WorldInfoSecondaryLogic = 0 | 1 | 2 | 3;
 export type WorldInfoPosition = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -67,7 +77,7 @@ export type WorldInfoEntry = {
   sticky: number | null;
   cooldown: number | null;
   delay: number | null;
-  triggers: string[];
+  triggers: WorldInfoGenerationTrigger[];
   characterFilter: WorldInfoCharacterFilter;
   extensions: Record<string, unknown>;
 };
@@ -108,6 +118,7 @@ export type WorldInfoSettingsDto = {
   ownerId: string;
   scanDepth: number;
   minActivations: number;
+  minDepthMax: number;
   minActivationsDepthMax: number;
   budgetPercent: number;
   budgetCapTokens: number;
@@ -118,7 +129,8 @@ export type WorldInfoSettingsDto = {
   caseSensitive: boolean;
   matchWholeWords: boolean;
   useGroupScoring: boolean;
-  characterStrategy: 0 | 1 | 2;
+  insertionStrategy: WorldInfoInsertionStrategy;
+  characterStrategy: WorldInfoInsertionStrategy;
   maxRecursionSteps: number;
   meta: Record<string, unknown> | null;
   createdAt: Date;
