@@ -1,22 +1,23 @@
 import { Button, Group, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import React, { type ReactNode, useMemo, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { LuPlus, LuSearch } from 'react-icons/lu';
 
-import { OperationRow } from './operation-row';
+import { OperationRowContainer } from './operation-row-container';
 
-import type { OperationFilterState, OperationListItemVm, OperationStatsVm } from './types';
+import type { OperationFilterState, OperationListRowMeta } from './types';
+import type { OperationKind } from '@shared/types/operation-profiles';
 
 type Props = {
-	items: OperationListItemVm[];
+	rows: OperationListRowMeta[];
 	selectedOpId: string | null;
-	stats: OperationStatsVm;
 	onSelect: (opId: string) => void;
 	onQuickAdd: () => void;
 	onMoveSelection: (direction: 'prev' | 'next') => void;
 	onFocusEditor?: () => void;
-	renderInlineEditor?: (item: OperationListItemVm) => ReactNode;
 };
 
 const DEFAULT_FILTERS: OperationFilterState = {
@@ -26,13 +27,37 @@ const DEFAULT_FILTERS: OperationFilterState = {
 	required: 'all',
 };
 
-function matchesEnabledFilter(item: OperationListItemVm, filter: OperationFilterState['enabled']): boolean {
+type OperationRowFilterSnapshot = OperationListRowMeta & {
+	name: string;
+	kind: OperationKind;
+	enabled: boolean;
+	required: boolean;
+	depsCount: number;
+};
+
+const ROW_WATCH_STRIDE = 5;
+const VIRTUALIZATION_THRESHOLD = 25;
+const ROW_ESTIMATED_HEIGHT = 82;
+
+function isOperationKind(value: unknown): value is OperationKind {
+	return (
+		value === 'template' ||
+		value === 'llm' ||
+		value === 'rag' ||
+		value === 'tool' ||
+		value === 'compute' ||
+		value === 'transform' ||
+		value === 'legacy'
+	);
+}
+
+function matchesEnabledFilter(item: OperationRowFilterSnapshot, filter: OperationFilterState['enabled']): boolean {
 	if (filter === 'all') return true;
 	if (filter === 'enabled') return item.enabled;
 	return !item.enabled;
 }
 
-function matchesRequiredFilter(item: OperationListItemVm, filter: OperationFilterState['required']): boolean {
+function matchesRequiredFilter(item: OperationRowFilterSnapshot, filter: OperationFilterState['required']): boolean {
 	if (filter === 'all') return true;
 	if (filter === 'required') return item.required;
 	return !item.required;
@@ -46,38 +71,93 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
 }
 
 export const OperationList: React.FC<Props> = ({
-	items,
+	rows,
 	selectedOpId,
-	stats,
 	onSelect,
 	onQuickAdd,
 	onMoveSelection,
 	onFocusEditor,
-	renderInlineEditor,
 }) => {
 	const { t } = useTranslation();
+	const { control } = useFormContext();
 	const [filters, setFilters] = useState<OperationFilterState>(DEFAULT_FILTERS);
 	const [debouncedQuery] = useDebouncedValue(filters.query.trim().toLowerCase(), 180);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+
+	const filterWatchPaths = useMemo(
+		() =>
+			rows.flatMap((row) => [
+				`operations.${row.index}.name`,
+				`operations.${row.index}.kind`,
+				`operations.${row.index}.config.enabled`,
+				`operations.${row.index}.config.required`,
+				`operations.${row.index}.config.dependsOn`,
+			]),
+		[rows],
+	);
+
+	const filterWatchValues = useWatch({ control, name: filterWatchPaths }) as unknown[] | undefined;
+
+	const rowFilterSnapshots = useMemo<OperationRowFilterSnapshot[]>(() => {
+		if (rows.length === 0) return [];
+		return rows.map((row, rowPosition) => {
+			const base = rowPosition * ROW_WATCH_STRIDE;
+			const nameValue = filterWatchValues?.[base];
+			const kindValue = filterWatchValues?.[base + 1];
+			const enabledValue = filterWatchValues?.[base + 2];
+			const requiredValue = filterWatchValues?.[base + 3];
+			const dependsOnValue = filterWatchValues?.[base + 4];
+
+			return {
+				...row,
+				name:
+					typeof nameValue === 'string' && nameValue.trim().length > 0
+						? nameValue.trim()
+						: t('operationProfiles.defaults.untitledOperation'),
+				kind: isOperationKind(kindValue) ? kindValue : 'template',
+				enabled: Boolean(enabledValue),
+				required: Boolean(requiredValue),
+				depsCount: Array.isArray(dependsOnValue) ? dependsOnValue.length : 0,
+			};
+		});
+	}, [filterWatchValues, rows, t]);
 
 	const kindOptions = useMemo(() => {
-		const set = new Set(items.map((item) => item.kind));
-		return [
-			{ value: 'all', label: t('operationProfiles.filters.allKinds') },
-			...Array.from(set).sort().map((value) => ({ value, label: value })),
-		];
-	}, [items, t]);
+		const set = new Set(rowFilterSnapshots.map((item) => item.kind));
+		return [{ value: 'all', label: t('operationProfiles.filters.allKinds') }, ...Array.from(set).sort().map((value) => ({ value, label: value }))];
+	}, [rowFilterSnapshots, t]);
 
-	const filteredItems = useMemo(() => {
-		return items.filter((item) => {
+	const filteredRows = useMemo(() => {
+		return rowFilterSnapshots.filter((item) => {
 			if (filters.kind !== 'all' && item.kind !== filters.kind) return false;
 			if (!matchesEnabledFilter(item, filters.enabled)) return false;
 			if (!matchesRequiredFilter(item, filters.required)) return false;
 
 			if (!debouncedQuery) return true;
-			const haystack = `${item.name}\n${item.opId}\n${item.kind}`.toLowerCase();
+			const haystack = `${item.name}\n${item.opId}\n${item.kind}\n${item.enabled ? 'enabled' : 'disabled'}\n${item.required ? 'required' : 'optional'}\n${item.depsCount}`.toLowerCase();
 			return haystack.includes(debouncedQuery);
 		});
-	}, [debouncedQuery, filters.enabled, filters.kind, filters.required, items]);
+	}, [debouncedQuery, filters.enabled, filters.kind, filters.required, rowFilterSnapshots]);
+
+	const shouldVirtualize = filteredRows.length >= VIRTUALIZATION_THRESHOLD;
+
+	const virtualizer = useVirtualizer({
+		count: shouldVirtualize ? filteredRows.length : 0,
+		getScrollElement: () => scrollRef.current,
+		estimateSize: () => ROW_ESTIMATED_HEIGHT,
+		overscan: 8,
+	});
+
+	const selectedFilteredIndex = useMemo(() => {
+		if (!selectedOpId) return -1;
+		return filteredRows.findIndex((row) => row.opId === selectedOpId);
+	}, [filteredRows, selectedOpId]);
+
+	useEffect(() => {
+		if (!shouldVirtualize) return;
+		if (selectedFilteredIndex < 0) return;
+		virtualizer.scrollToIndex(selectedFilteredIndex, { align: 'auto' });
+	}, [selectedFilteredIndex, shouldVirtualize, virtualizer]);
 
 	return (
 		<Stack
@@ -106,7 +186,7 @@ export const OperationList: React.FC<Props> = ({
 					<Stack gap={2}>
 						<Text fw={700}>{t('operationProfiles.operations.title')}</Text>
 						<Text className="op-listHint">
-							{t('operationProfiles.operations.visibleOfTotal', { visible: filteredItems.length, total: stats.total })}
+							{t('operationProfiles.operations.visibleOfTotal', { visible: filteredRows.length, total: rows.length })}
 						</Text>
 					</Stack>
 
@@ -177,18 +257,48 @@ export const OperationList: React.FC<Props> = ({
 				/>
 			</Group>
 
-			{filteredItems.length === 0 ? (
+			{filteredRows.length === 0 ? (
 				<Text size="sm" c="dimmed">
 					{t('operationProfiles.filters.noMatches')}
 				</Text>
+			) : shouldVirtualize ? (
+				<div ref={scrollRef} className="op-listScrollArea">
+					<div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+						{virtualizer.getVirtualItems().map((virtualRow) => {
+							const row = filteredRows[virtualRow.index];
+							if (!row) return null;
+							return (
+								<div
+									key={row.rowKey}
+									style={{
+										position: 'absolute',
+										top: 0,
+										left: 0,
+										width: '100%',
+										transform: `translateY(${virtualRow.start}px)`,
+										paddingBottom: 8,
+									}}
+								>
+									<OperationRowContainer
+										index={row.index}
+										opId={row.opId}
+										selected={selectedOpId === row.opId}
+										onSelect={onSelect}
+									/>
+								</div>
+							);
+						})}
+					</div>
+				</div>
 			) : (
-				filteredItems.map((item) => (
-					<React.Fragment key={item.opId}>
-						<OperationRow item={item} selected={selectedOpId === item.opId} onSelect={onSelect} />
-						{selectedOpId === item.opId && renderInlineEditor && (
-							<div className="op-inlineEditor">{renderInlineEditor(item)}</div>
-						)}
-					</React.Fragment>
+				filteredRows.map((row) => (
+					<OperationRowContainer
+						key={row.rowKey}
+						index={row.index}
+						opId={row.opId}
+						selected={selectedOpId === row.opId}
+						onSelect={onSelect}
+					/>
 				))
 			)}
 		</Stack>

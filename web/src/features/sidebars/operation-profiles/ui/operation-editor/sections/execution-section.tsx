@@ -1,11 +1,11 @@
 import { Group, Stack } from '@mantine/core';
-import React from 'react';
-import { useWatch } from 'react-hook-form';
+import React, { useMemo } from 'react';
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { FormMultiSelect, FormNumberInput, FormSelect } from '@ui/form-components';
 
-import { useOperationDepsOptions } from '../use-operation-deps-options';
+import type { OperationProfileFormValues } from '../../../form/operation-profile-form-mapping';
 
 const hookOptions = [
 	{ value: 'before_main_llm', label: 'before_main_llm' },
@@ -23,7 +23,28 @@ type Props = {
 
 export const ExecutionSection: React.FC<Props> = ({ index }) => {
 	const { t } = useTranslation();
-	const depOptions = useOperationDepsOptions();
+	const { control } = useFormContext<OperationProfileFormValues>();
+	const { fields } = useFieldArray({
+		control,
+		name: 'operations',
+		keyName: '_key',
+	});
+
+	const namePaths = useMemo(() => fields.map((_, idx) => `operations.${idx}.name`), [fields]);
+	const watchedNames = useWatch({ control, name: namePaths as any }) as unknown[] | undefined;
+
+	const depOptions = useMemo(() => {
+		return fields
+			.map((field, idx) => {
+				const opId = typeof field.opId === 'string' ? field.opId : '';
+				if (!opId) return null;
+				const nameValue = watchedNames?.[idx];
+				const name = typeof nameValue === 'string' ? nameValue : '';
+				return { value: opId, label: name.trim() ? `${name} — ${opId}` : opId };
+			})
+			.filter((option): option is { value: string; label: string } => option !== null);
+	}, [fields, watchedNames]);
+
 	const selfOpId = useWatch({ name: `operations.${index}.opId` }) as unknown;
 	const selfId = typeof selfOpId === 'string' ? selfOpId : '';
 

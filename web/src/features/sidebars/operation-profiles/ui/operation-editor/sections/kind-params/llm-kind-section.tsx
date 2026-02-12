@@ -1,19 +1,20 @@
 import { Accordion, Button, Divider, Select, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 
 import { getLlmSettingsFields } from '@model/llm-settings';
 import { llmProviderModel } from '@model/provider';
 import { samplersModel } from '@model/samplers';
 import { Dialog } from '@ui/dialog';
 import { FormCheckbox, FormInput, FormMultiSelect, FormNumberInput, FormSelect, FormTextarea } from '@ui/form-components';
+
 import { LlmRuntimeSelectorFields } from '../../../../../../llm-provider/runtime-selector-fields';
 import { SamplerSettingsGrid } from '../../../../../../llm-provider/sampler-settings-grid';
 
-import type { LlmOperationSamplers } from '@shared/types/operation-profiles';
 import type { LlmProviderId } from '@shared/types/llm';
+import type { LlmOperationSamplers } from '@shared/types/operation-profiles';
 import type { SamplersItemType } from '@shared/types/samplers';
 
 type Props = {
@@ -184,13 +185,13 @@ export const LlmKindSection: React.FC<Props> = ({ index }) => {
 					name={`operations.${index}.config.params.system`}
 					label={t('operationProfiles.kindSection.llm.system')}
 					infoTip={t('operationProfiles.kindSection.llm.systemInfo')}
-					textareaProps={{ minRows: 3, autosize: true }}
+					textareaProps={{ minRows: 4, maxRows: 12, autosize: false }}
 				/>
 				<FormTextarea
 					name={`operations.${index}.config.params.prompt`}
 					label={t('operationProfiles.kindSection.llm.prompt')}
 					infoTip={t('operationProfiles.kindSection.llm.promptInfo')}
-					textareaProps={{ minRows: 6, autosize: true }}
+					textareaProps={{ minRows: 8, maxRows: 20, autosize: false }}
 				/>
 			</Stack>
 
@@ -345,7 +346,8 @@ export const LlmKindSection: React.FC<Props> = ({ index }) => {
 							infoTip={t('operationProfiles.kindSection.llm.jsonSchemaInfo')}
 							textareaProps={{
 								minRows: 10,
-								autosize: true,
+								maxRows: 24,
+								autosize: false,
 								placeholder: JSON_SCHEMA_EXAMPLE,
 							}}
 						/>

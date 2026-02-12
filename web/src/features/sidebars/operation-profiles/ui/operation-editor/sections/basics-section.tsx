@@ -16,7 +16,7 @@ export const BasicsSection: React.FC<Props> = ({ index }) => {
 				name={`operations.${index}.description`}
 				label={t('operationProfiles.sectionsLabels.description')}
 				infoTip={t('operationProfiles.tooltips.description')}
-				textareaProps={{ minRows: 2, autosize: true }}
+				textareaProps={{ minRows: 2, maxRows: 8, autosize: false }}
 			/>
 
 			<Group grow wrap="wrap">

@@ -22,7 +22,7 @@ export const JsonKindParamsSection: React.FC<Props> = ({ index, kindLabel, descr
 				name={`operations.${index}.config.params.paramsJson`}
 				label={t('operationProfiles.kindSection.jsonParamsLabel', { kindLabel })}
 				infoTip={t('operationProfiles.kindSection.jsonParamsInfo')}
-				textareaProps={{ minRows: 8, autosize: true, placeholder }}
+				textareaProps={{ minRows: 8, maxRows: 20, autosize: false, placeholder }}
 			/>
 		</Stack>
 	);

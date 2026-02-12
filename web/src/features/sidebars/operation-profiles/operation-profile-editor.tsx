@@ -14,7 +14,7 @@ import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm,
 import { OperationEditor } from './ui/operation-editor/operation-editor';
 import { OperationList } from './ui/operation-list';
 
-import type { OperationListItemVm, OperationStatsVm } from './ui/types';
+import type { OperationListRowMeta } from './ui/types';
 import type { OperationProfileDto } from '../../../api/chat-core';
 import type { OperationKind } from '@shared/types/operation-profiles';
 
@@ -44,6 +44,41 @@ export type OperationProfileToolbarState = {
 	onResetSessionId: () => void;
 };
 
+type SelectedOperationEditorProps = {
+	index: number;
+	opId: string;
+	isDirty: boolean;
+	onRemove: (index: number, opId: string) => void;
+};
+
+const SelectedOperationEditor: React.FC<SelectedOperationEditorProps> = React.memo(({ index, opId, isDirty, onRemove }) => {
+	const { t } = useTranslation();
+	const [nameValue, kindValue] = useWatch({
+		name: [`operations.${index}.name`, `operations.${index}.kind`],
+	}) as [unknown, unknown];
+
+	const normalizedKind: OperationKind = isOperationKind(kindValue) ? kindValue : 'template';
+	const title =
+		typeof nameValue === 'string' && nameValue.trim().length > 0
+			? nameValue.trim()
+			: t('operationProfiles.defaults.untitledOperation');
+
+	return (
+		<OperationEditor
+			index={index}
+			title={title}
+			status={{
+				index: index + 1,
+				kind: normalizedKind,
+				isDirty,
+			}}
+			onRemove={() => onRemove(index, opId)}
+		/>
+	);
+});
+
+SelectedOperationEditor.displayName = 'SelectedOperationEditor';
+
 export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLayout, onToolbarStateChange }) => {
 	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationProfileFx);
@@ -60,7 +95,19 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 		keyName: '_key',
 	});
 
-	const watchedOperations = useWatch({ control, name: 'operations' }) as OperationProfileFormValues['operations'] | undefined;
+	const rows = useMemo<OperationListRowMeta[]>(() => {
+		return fields
+			.map((field, index): OperationListRowMeta | null => {
+				if (typeof field.opId !== 'string' || field.opId.length === 0) return null;
+				const rowKey = typeof field._key === 'string' && field._key.length > 0 ? field._key : `${field.opId}-${index}`;
+				return {
+					opId: field.opId,
+					index,
+					rowKey,
+				};
+			})
+			.filter((row): row is OperationListRowMeta => row !== null);
+	}, [fields]);
 
 	const [isProfileOpen, setIsProfileOpen] = useState(true);
 	const [jsonError, setJsonError] = useState<string | null>(null);
@@ -72,56 +119,30 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 		setEditingOpId(initial.operations[0]?.opId ?? null);
 	}, [initial, reset]);
 
-	const items = useMemo<OperationListItemVm[]>(() => {
-		return fields
-			.map((f, idx): OperationListItemVm | null => {
-				if (typeof f.opId !== 'string' || f.opId.length === 0) return null;
-				const watched = watchedOperations?.[idx];
-				const rawKind = watched?.kind;
-				return {
-					opId: f.opId,
-					index: idx,
-					name: typeof watched?.name === 'string' && watched.name.trim() ? watched.name.trim() : t('operationProfiles.defaults.untitledOperation'),
-					kind: isOperationKind(rawKind) ? rawKind : 'template',
-					enabled: Boolean(watched?.config?.enabled),
-					required: Boolean(watched?.config?.required),
-					depsCount: Array.isArray(watched?.config?.dependsOn) ? watched.config.dependsOn.length : 0,
-				};
-			})
-			.filter((item): item is OperationListItemVm => item !== null);
-	}, [fields, t, watchedOperations]);
-
-	const stats = useMemo<OperationStatsVm>(() => {
-		return {
-			total: items.length,
-			enabled: items.filter((item) => item.enabled).length,
-			required: items.filter((item) => item.required).length,
-			withDeps: items.filter((item) => item.depsCount > 0).length,
-			filtered: items.length,
-		};
-	}, [items]);
-
 	const selectedIndex = useMemo(() => {
-		if (items.length === 0) return null;
+		if (rows.length === 0) return null;
 		if (editingOpId) {
-			const match = items.find((item) => item.opId === editingOpId);
+			const match = rows.find((row) => row.opId === editingOpId);
 			if (match) return match.index;
 		}
-		return items[0]?.index ?? null;
-	}, [editingOpId, items]);
+		return rows[0]?.index ?? null;
+	}, [editingOpId, rows]);
 
-	const selectedItem = selectedIndex === null ? null : items.find((item) => item.index === selectedIndex) ?? null;
-	const selectedOpId = selectedItem?.opId ?? null;
+	const selectedRow = selectedIndex === null ? null : rows.find((row) => row.index === selectedIndex) ?? null;
+	const selectedOpId = selectedRow?.opId ?? null;
 
-	const submitValues = useCallback((values: OperationProfileFormValues) => {
-		setJsonError(null);
-		try {
-			const payload = fromOperationProfileForm(values, { validateJson: true });
-			doUpdate({ profileId: profile.profileId, patch: payload });
-		} catch (error) {
-			setJsonError(error instanceof Error ? error.message : String(error));
-		}
-	}, [doUpdate, profile.profileId]);
+	const submitValues = useCallback(
+		(values: OperationProfileFormValues) => {
+			setJsonError(null);
+			try {
+				const payload = fromOperationProfileForm(values, { validateJson: true });
+				doUpdate({ profileId: profile.profileId, patch: payload });
+			} catch (error) {
+				setJsonError(error instanceof Error ? error.message : String(error));
+			}
+		},
+		[doUpdate, profile.profileId],
+	);
 
 	const onSave = useMemo(() => methods.handleSubmit(submitValues), [methods, submitValues]);
 
@@ -155,44 +176,53 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 		};
 	}, [onToolbarStateChange]);
 
-	const addOperation = () => {
+	const addOperation = useCallback(() => {
 		const next = makeDefaultOperation();
 		append(next);
 		setEditingOpId(next.opId);
-	};
+	}, [append]);
 
-	const moveSelection = (direction: 'prev' | 'next') => {
-		if (items.length === 0) return;
-		const current = selectedOpId ? items.findIndex((item) => item.opId === selectedOpId) : 0;
-		const safeCurrent = current >= 0 ? current : 0;
-		const nextIndex = direction === 'prev' ? Math.max(0, safeCurrent - 1) : Math.min(items.length - 1, safeCurrent + 1);
-		const next = items[nextIndex];
-		if (!next) return;
-		setEditingOpId(next.opId);
-	};
+	const moveSelection = useCallback(
+		(direction: 'prev' | 'next') => {
+			if (rows.length === 0) return;
+			const current = selectedOpId ? rows.findIndex((row) => row.opId === selectedOpId) : 0;
+			const safeCurrent = current >= 0 ? current : 0;
+			const nextIndex = direction === 'prev' ? Math.max(0, safeCurrent - 1) : Math.min(rows.length - 1, safeCurrent + 1);
+			const next = rows[nextIndex];
+			if (!next) return;
+			setEditingOpId(next.opId);
+		},
+		[rows, selectedOpId],
+	);
 
-	const removeOperationAt = (targetIndex: number, targetOpId: string) => {
-		if (!window.confirm(t('operationProfiles.confirm.deleteOperation'))) return;
-		const currentPosition = items.findIndex((item) => item.opId === targetOpId);
-		const next =
-			items[currentPosition + 1]?.opId ??
-			items[currentPosition - 1]?.opId ??
-			null;
-		remove(targetIndex);
-		setEditingOpId(next);
-	};
+	const removeOperationAt = useCallback(
+		(targetIndex: number, targetOpId: string) => {
+			if (!window.confirm(t('operationProfiles.confirm.deleteOperation'))) return;
+			const currentPosition = rows.findIndex((row) => row.opId === targetOpId);
+			if (currentPosition < 0) {
+				remove(targetIndex);
+				setEditingOpId(rows[0]?.opId ?? null);
+				return;
+			}
+			const next = rows[currentPosition + 1]?.opId ?? rows[currentPosition - 1]?.opId ?? null;
+			remove(targetIndex);
+			setEditingOpId(next);
+		},
+		[remove, rows, t],
+	);
 
-	const renderOperationEditor = (item: OperationListItemVm) => (
-		<OperationEditor
-			index={item.index}
-			title={item.name}
-			status={{
-				index: item.index + 1,
-				kind: item.kind,
-				isDirty: formState.isDirty,
-			}}
-			onRemove={() => removeOperationAt(item.index, item.opId)}
+	const inspectorContent = selectedRow ? (
+		<SelectedOperationEditor
+			key={selectedRow.opId}
+			index={selectedRow.index}
+			opId={selectedRow.opId}
+			isDirty={formState.isDirty}
+			onRemove={removeOperationAt}
 		/>
+	) : (
+		<Text size="sm" c="dimmed">
+			{t('operationProfiles.inspector.selectFromList')}
+		</Text>
 	);
 
 	return (
@@ -248,7 +278,7 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 					</Alert>
 				)}
 
-				{items.length === 0 ? (
+				{rows.length === 0 ? (
 					<Card withBorder className="op-editorCard">
 						<Stack align="flex-start" gap="sm">
 							<Text fw={700}>{t('operationProfiles.operations.title')}</Text>
@@ -264,9 +294,8 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 					<div className="op-workspace">
 						<div className="op-listPane">
 							<OperationList
-								items={items}
+								rows={rows}
 								selectedOpId={selectedOpId}
-								stats={stats}
 								onQuickAdd={addOperation}
 								onMoveSelection={moveSelection}
 								onSelect={(opId) => setEditingOpId(opId)}
@@ -283,27 +312,22 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 								</Stack>
 							</div>
 
-							{selectedItem ? (
-								renderOperationEditor(selectedItem)
-							) : (
-								<Text size="sm" c="dimmed">
-									{t('operationProfiles.inspector.selectFromList')}
-								</Text>
-							)}
+							{inspectorContent}
 						</div>
 					</div>
 				) : (
-					<Card withBorder className="op-editorCard">
-						<OperationList
-							items={items}
-							selectedOpId={selectedOpId}
-							stats={stats}
-							onQuickAdd={addOperation}
-							onMoveSelection={moveSelection}
-							onSelect={(opId) => setEditingOpId(opId)}
-							renderInlineEditor={renderOperationEditor}
-						/>
-					</Card>
+					<>
+						<Card withBorder className="op-editorCard">
+							<OperationList
+								rows={rows}
+								selectedOpId={selectedOpId}
+								onQuickAdd={addOperation}
+								onMoveSelection={moveSelection}
+								onSelect={(opId) => setEditingOpId(opId)}
+							/>
+						</Card>
+						<Card withBorder className="op-editorCard">{inspectorContent}</Card>
+					</>
 				)}
 			</Stack>
 		</FormProvider>

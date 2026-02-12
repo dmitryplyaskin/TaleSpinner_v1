@@ -29,6 +29,7 @@
     "@mantine/nprogress": "^8.3.12",
     "@mantine/spotlight": "^8.3.12",
     "@mantine/tiptap": "^8.3.12",
+    "@tanstack/react-virtual": "^3.13.18",
     "@tiptap/extension-link": "^3.15.3",
     "@tiptap/pm": "^3.15.3",
     "@tiptap/react": "^3.15.3",

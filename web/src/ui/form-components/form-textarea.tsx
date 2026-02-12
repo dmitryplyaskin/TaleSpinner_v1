@@ -41,6 +41,10 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 		...containerProps,
 	});
 
+	const mergedTextareaProps: TextareaProps = textareaProps?.autosize
+		? { minRows: 10, ...textareaProps }
+		: { rows: 10, ...textareaProps };
+
 	const errorMessage = typeof fieldState.error?.message === 'string' ? fieldState.error.message : '';
 	const labelComponent = (
 		<Group gap={6} wrap="nowrap" align="center" style={{ marginBottom: 2 }}>
@@ -60,7 +64,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 	return (
 		<>
 			<Input.Wrapper {...fieldProps} label={labelComponent} error={errorMessage || undefined}>
-				<Textarea {...textareaProps} {...field} value={field.value ?? ''} placeholder={placeholder} />
+				<Textarea {...mergedTextareaProps} {...field} value={field.value ?? ''} placeholder={placeholder} />
 			</Input.Wrapper>
 
 			<TextareaFullscreenDialog
@@ -68,7 +72,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 				onOpenChange={setIsFullscreenOpen}
 				value={field.value}
 				onChange={field.onChange}
-				textareaProps={textareaProps}
+				textareaProps={mergedTextareaProps}
 			/>
 		</>
 	);
