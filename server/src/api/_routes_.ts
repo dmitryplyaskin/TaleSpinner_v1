@@ -7,6 +7,7 @@ import generationsCoreRoutes from "./generations.core.api";
 import instructionsRoutes from "./instructions.api";
 import llmPresetsRoutes from "./llm-presets.api";
 import llmRoutes from "./llm.api";
+import ragRoutes from "./rag.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
 import samplersRoutes from "./samplers.api";
@@ -24,6 +25,7 @@ export const routes = [
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,
+  ragRoutes,
   llmPresetsRoutes,
   fileRoutes,
   instructionsRoutes,
