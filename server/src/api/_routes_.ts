@@ -6,6 +6,7 @@ import fileRoutes from "./files/routes";
 import generationsCoreRoutes from "./generations.core.api";
 import llmPresetsRoutes from "./llm-presets.api";
 import llmRoutes from "./llm.api";
+import ragRoutes from "./rag.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
 import instructionsCoreRoutes from "./instructions.core.api";
 import samplersRoutes from "./samplers.api";
@@ -23,6 +24,7 @@ export const routes = [
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,
+  ragRoutes,
   llmPresetsRoutes,
   fileRoutes,
   instructionsCoreRoutes,

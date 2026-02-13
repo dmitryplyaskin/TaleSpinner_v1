@@ -15,6 +15,7 @@ import modelsRoutes from "./routes/models-routes";
 import settingsRoutes from "./routes/settings-routes";
 import sidebarsRoutes from "./routes/sidebars-routes";
 import { bootstrapLlm } from "./services/llm/llm-bootstrap";
+import { bootstrapRag } from "./services/rag.service";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ async function main(): Promise<void> {
   await applyMigrations();
   await ensureInstructionsSchema();
   await bootstrapLlm();
+  await bootstrapRag();
 
   app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
