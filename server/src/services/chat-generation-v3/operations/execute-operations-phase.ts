@@ -14,7 +14,7 @@ import { applyPromptEffect } from "./effect-handlers/prompt-effects";
 import { executeLlmOperation } from "./llm-operation-executor";
 
 import type { TaskResult } from "../../../core/operation-orchestrator/types";
-import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
+import type { InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
 import type { OperationHook, OperationInProfile, OperationTrigger } from "@shared/types/operation-profiles";
 
 type PreviewState = {
@@ -167,7 +167,7 @@ function replayDependencyEffects(
   return state;
 }
 
-function buildTemplateContext(base: PromptTemplateRenderContext, state: PreviewState): PromptTemplateRenderContext {
+function buildTemplateContext(base: InstructionRenderContext, state: PreviewState): InstructionRenderContext {
   return {
     ...base,
     promptSystem: resolvePromptSystem(state.messages),
@@ -182,7 +182,7 @@ function buildTemplateContext(base: PromptTemplateRenderContext, state: PreviewS
 }
 
 function buildLiquidContextSnapshot(params: {
-  base: PromptTemplateRenderContext;
+  base: InstructionRenderContext;
   state: PreviewState;
 }): {
   char: unknown;
@@ -300,7 +300,7 @@ export async function executeOperationsPhase(params: {
   baseMessages: PromptDraftMessage[];
   baseArtifacts: Record<string, { value: string; history: string[] }>;
   assistantText: string;
-  templateContext: PromptTemplateRenderContext;
+  templateContext: InstructionRenderContext;
   abortSignal?: AbortSignal;
   onOperationStarted?: (data: { hook: OperationHook; opId: string; name: string }) => void;
   onOperationFinished?: (data: OperationFinishedEventData) => void;

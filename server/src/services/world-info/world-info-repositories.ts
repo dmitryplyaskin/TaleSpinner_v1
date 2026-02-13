@@ -482,7 +482,7 @@ export async function replaceWorldInfoBindings(params: {
   const ownerId = params.ownerId ?? "global";
   const scopeId = params.scope === "global" ? null : (params.scopeId ?? null);
   const ts = new Date();
-  await db.transaction(async (tx) => {
+  await db.transaction((tx) => {
     const where = [
       eq(worldInfoBindings.ownerId, ownerId),
       eq(worldInfoBindings.scope, params.scope),
@@ -490,39 +490,38 @@ export async function replaceWorldInfoBindings(params: {
         ? isNull(worldInfoBindings.scopeId)
         : eq(worldInfoBindings.scopeId, scopeId),
     ];
-    const existingRows = await tx
+    const existingRows = tx
       .select()
       .from(worldInfoBindings)
       .where(and(...where))
-      .orderBy(worldInfoBindings.displayOrder, worldInfoBindings.createdAt);
+      .orderBy(worldInfoBindings.displayOrder, worldInfoBindings.createdAt)
+      .all();
     const existing = existingRows.map(rowToBindingDto);
     const existingByBookId = new Map(existing.map((item) => [item.bookId, item]));
 
     const incomingBookIds = new Set<string>();
-    const updates: Promise<unknown>[] = [];
     const inserts: Array<typeof worldInfoBindings.$inferInsert> = [];
 
     for (const [idx, item] of params.items.entries()) {
       incomingBookIds.add(item.bookId);
       const found = existingByBookId.get(item.bookId);
       if (found) {
-        updates.push(
-          tx
-            .update(worldInfoBindings)
-            .set({
-              bindingRole: item.bindingRole ?? found.bindingRole,
-              displayOrder: item.displayOrder ?? idx,
-              enabled: item.enabled ?? true,
-              metaJson:
-                typeof item.meta === "undefined"
-                  ? safeJsonStringify(found.meta, "null")
-                  : item.meta === null
-                    ? null
-                    : safeJsonStringify(item.meta, "{}"),
-              updatedAt: ts,
-            })
-            .where(eq(worldInfoBindings.id, found.id))
-        );
+        tx
+          .update(worldInfoBindings)
+          .set({
+            bindingRole: item.bindingRole ?? found.bindingRole,
+            displayOrder: item.displayOrder ?? idx,
+            enabled: item.enabled ?? true,
+            metaJson:
+              typeof item.meta === "undefined"
+                ? safeJsonStringify(found.meta, "null")
+                : item.meta === null
+                  ? null
+                  : safeJsonStringify(item.meta, "{}"),
+            updatedAt: ts,
+          })
+          .where(eq(worldInfoBindings.id, found.id))
+          .run();
         continue;
       }
 
@@ -546,19 +545,16 @@ export async function replaceWorldInfoBindings(params: {
       });
     }
 
-    if (updates.length > 0) {
-      await Promise.all(updates);
-    }
-
     if (inserts.length > 0) {
-      await tx.insert(worldInfoBindings).values(inserts);
+      tx.insert(worldInfoBindings).values(inserts).run();
     }
 
     const toDelete = existing.filter((item) => !incomingBookIds.has(item.bookId));
     if (toDelete.length > 0) {
-      await tx
+      tx
         .delete(worldInfoBindings)
-        .where(inArray(worldInfoBindings.id, toDelete.map((item) => item.id)));
+        .where(inArray(worldInfoBindings.id, toDelete.map((item) => item.id)))
+        .run();
     }
   });
 

@@ -6,7 +6,7 @@ import type {
   OperationTrigger,
 } from "@shared/types/operation-profiles";
 
-import type { PromptTemplateRenderContext } from "../chat-core/prompt-template-renderer";
+import type { InstructionRenderContext } from "../chat-core/prompt-template-renderer";
 import { renderLiquidTemplate } from "../chat-core/prompt-template-renderer";
 
 export type PromptDraftMessage = {
@@ -127,9 +127,9 @@ function applyOperationOutput(
 }
 
 function buildOperationContext(
-  base: PromptTemplateRenderContext,
+  base: InstructionRenderContext,
   state: RuntimeState
-): PromptTemplateRenderContext {
+): InstructionRenderContext {
   return {
     ...base,
     promptSystem: resolvePromptSystem(state.messages),
@@ -144,7 +144,7 @@ async function runTemplateOperations(params: {
   trigger: OperationTrigger;
   hook: "before_main_llm" | "after_main_llm";
   state: RuntimeState;
-  templateContext: PromptTemplateRenderContext;
+  templateContext: InstructionRenderContext;
 }): Promise<void> {
   const ops = params.profile.operations.filter(
     (op): op is Extract<OperationInProfile, { kind: "template" }> =>
@@ -199,7 +199,7 @@ export async function applyTemplateOperationsToPromptDraft(params: {
   profile: OperationProfile;
   trigger: OperationTrigger;
   draftMessages: PromptDraftMessage[];
-  templateContext: PromptTemplateRenderContext;
+  templateContext: InstructionRenderContext;
 }): Promise<{
   messages: PromptDraftMessage[];
   artifacts: Record<string, { value: string; history: string[] }>;
@@ -228,7 +228,7 @@ export async function applyTemplateOperationsAfterMainLlm(params: {
   trigger: OperationTrigger;
   draftMessages: PromptDraftMessage[];
   assistantText: string;
-  templateContext: PromptTemplateRenderContext;
+  templateContext: InstructionRenderContext;
 }): Promise<{
   assistantText: string;
   artifacts: Record<string, { value: string; history: string[] }>;

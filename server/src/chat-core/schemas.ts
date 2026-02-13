@@ -102,13 +102,13 @@ export const createMessageBodySchema = z.object({
   meta: jsonValueSchema.optional(),
 });
 
-// ---- Prompt templates
+// ---- Instructions
 
-export const listPromptTemplatesQuerySchema = z.object({
+export const listInstructionsQuerySchema = z.object({
   ownerId: ownerIdSchema.optional(),
 });
 
-export const createPromptTemplateBodySchema = z.object({
+export const createInstructionBodySchema = z.object({
   ownerId: ownerIdSchema.optional(),
   name: z.string().min(1),
   engine: z.literal("liquidjs").optional().default("liquidjs"),
@@ -116,7 +116,7 @@ export const createPromptTemplateBodySchema = z.object({
   meta: jsonValueSchema.optional(),
 });
 
-export const updatePromptTemplateBodySchema = z.object({
+export const updateInstructionBodySchema = z.object({
   name: z.string().min(1).optional(),
   engine: z.literal("liquidjs").optional(),
   templateText: z.string().min(1).optional(),

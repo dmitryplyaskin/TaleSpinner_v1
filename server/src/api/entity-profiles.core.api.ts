@@ -26,7 +26,7 @@ import {
   updateEntityProfile,
 } from "../services/chat-core/entity-profiles-repository";
 import {
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
@@ -396,7 +396,7 @@ router.post(
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
-      const greetingTemplateContext = await buildPromptTemplateRenderContext({
+      const greetingTemplateContext = await buildInstructionRenderContext({
         ownerId,
         chatId: chat.id,
         branchId: mainBranch.id,

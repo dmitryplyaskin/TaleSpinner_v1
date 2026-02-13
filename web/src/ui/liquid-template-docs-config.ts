@@ -1,5 +1,5 @@
 export type LiquidDocsContextId =
-	| 'prompt_template'
+	| 'instruction'
 	| 'operation_template'
 	| 'operation_llm'
 	| 'entity_profile'
@@ -73,19 +73,19 @@ const COMMON_MACROS: MacroDoc[] = [
 ];
 
 export const LIQUID_DOCS_BY_CONTEXT: Record<LiquidDocsContextId, LiquidDocsModel> = {
-	prompt_template: {
-		titleKey: 'dialogs.liquidDocs.contexts.promptTemplate.title',
-		usageKey: 'dialogs.liquidDocs.contexts.promptTemplate.usage',
+	instruction: {
+		titleKey: 'dialogs.liquidDocs.contexts.instruction.title',
+		usageKey: 'dialogs.liquidDocs.contexts.instruction.usage',
 		variables: BASE_VARIABLES,
 		macros: COMMON_MACROS,
 		examples: [
 			{
-				titleKey: 'dialogs.liquidDocs.examples.promptTemplateSystem.title',
+				titleKey: 'dialogs.liquidDocs.examples.instructionSystem.title',
 				template:
 					'You are {{char.name}}.\nScenario: {{scenario}}\n\n{{wiBefore}}\n{{trim}}\n{{wiAfter}}',
 			},
 			{
-				titleKey: 'dialogs.liquidDocs.examples.promptTemplateOutlet.title',
+				titleKey: 'dialogs.liquidDocs.examples.instructionOutlet.title',
 				template: "Memory:\n{{outlet::default}}\nTone: {{random::calm::tense::neutral}}",
 			},
 		],

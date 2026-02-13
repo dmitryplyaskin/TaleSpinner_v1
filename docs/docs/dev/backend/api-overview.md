@@ -29,7 +29,7 @@ app.use('/api', routes)
 - entity profiles
 - llm providers / tokens / runtime / presets
 - operation profiles
-- prompt templates
+- instructions
 - ui themes
 - world info
 - files

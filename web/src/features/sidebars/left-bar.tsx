@@ -2,7 +2,7 @@ import { Box } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useTranslation } from 'react-i18next';
 import { type IconType } from 'react-icons';
-import { LuBookOpen, LuFileCode2, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuWorkflow } from 'react-icons/lu';
+import { LuBookOpen, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuWorkflow } from 'react-icons/lu';
 
 import { $sidebars, toggleSidebarOpen, type SidebarName } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
@@ -18,7 +18,6 @@ const sidebarButtons: SidebarButton[] = [
 	{ name: 'settings', labelKey: 'leftRail.settings', icon: LuSettings },
 	{ name: 'userPersons', labelKey: 'leftRail.userPersons', icon: LuSquareUser },
 	{ name: 'instructions', labelKey: 'leftRail.instructions', icon: LuFileText },
-	{ name: 'templates', labelKey: 'leftRail.templates', icon: LuFileCode2 },
 	{ name: 'worldInfo', labelKey: 'leftRail.worldInfo', icon: LuBookOpen },
 	{ name: 'operationProfiles', labelKey: 'leftRail.operationProfiles', icon: LuWorkflow },
 ];

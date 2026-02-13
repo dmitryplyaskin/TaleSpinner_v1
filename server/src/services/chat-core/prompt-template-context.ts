@@ -6,14 +6,14 @@ import { getEntityProfileById } from "./entity-profiles-repository";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
 import { getSelectedUserPerson } from "./user-persons-repository";
 
-import type { PromptTemplateRenderContext } from "./prompt-template-renderer";
+import type { InstructionRenderContext } from "./prompt-template-renderer";
 import type {
   PreparedWorldInfoEntry,
   WorldInfoDepthEntry,
 } from "../world-info/world-info-types";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
 
-export type PromptTemplateWorldInfoInput = {
+export type InstructionWorldInfoInput = {
   worldInfoBefore?: string;
   worldInfoAfter?: string;
   anchorBefore?: string;
@@ -30,7 +30,7 @@ export type PromptTemplateWorldInfoInput = {
   emBottom?: string[];
 };
 
-export type PromptTemplateResolvedWorldInfo = {
+export type InstructionResolvedWorldInfo = {
   worldInfoBefore: string;
   worldInfoAfter: string;
   depthEntries: WorldInfoDepthEntry[];
@@ -41,16 +41,16 @@ export type PromptTemplateResolvedWorldInfo = {
   emBottom: string[];
   warnings: string[];
   activatedCount: number;
-  activatedEntries: PromptTemplateResolvedWorldInfoActivationEntry[];
+  activatedEntries: InstructionResolvedWorldInfoActivationEntry[];
 };
 
-export type PromptTemplateResolvedWorldInfoActivationReason =
+export type InstructionResolvedWorldInfoActivationReason =
   | "decorator_activate"
   | "constant"
   | "key_match"
   | "runtime_activation";
 
-export type PromptTemplateResolvedWorldInfoActivationEntry = {
+export type InstructionResolvedWorldInfoActivationEntry = {
   hash: string;
   bookId: string;
   bookName: string;
@@ -58,7 +58,7 @@ export type PromptTemplateResolvedWorldInfoActivationEntry = {
   comment: string;
   content: string;
   matchedKeys: string[];
-  reasons: PromptTemplateResolvedWorldInfoActivationReason[];
+  reasons: InstructionResolvedWorldInfoActivationReason[];
 };
 
 function isRecord(val: unknown): val is Record<string, unknown> {
@@ -107,7 +107,7 @@ function buildOutletJoinedValues(
   );
 }
 
-function createEmptyResolvedWorldInfo(): PromptTemplateResolvedWorldInfo {
+function createEmptyResolvedWorldInfo(): InstructionResolvedWorldInfo {
   return {
     worldInfoBefore: "",
     worldInfoAfter: "",
@@ -124,10 +124,10 @@ function createEmptyResolvedWorldInfo(): PromptTemplateResolvedWorldInfo {
 }
 
 function cloneTemplateContextForWorldInfoRender(
-  context: PromptTemplateRenderContext,
-  worldInfo: PromptTemplateResolvedWorldInfo
-): PromptTemplateRenderContext {
-  const cloned: PromptTemplateRenderContext = {
+  context: InstructionRenderContext,
+  worldInfo: InstructionResolvedWorldInfo
+): InstructionRenderContext {
+  const cloned: InstructionRenderContext = {
     ...context,
     messages: Array.isArray(context.messages)
       ? context.messages.map((m) => ({ role: m.role, content: m.content }))
@@ -154,8 +154,8 @@ function toErrorMessage(error: unknown): string {
 export function deriveWorldInfoActivationReasons(params: {
   entry: Pick<PreparedWorldInfoEntry, "decorators" | "constant">;
   matchedKeys: string[];
-}): PromptTemplateResolvedWorldInfoActivationReason[] {
-  const reasons: PromptTemplateResolvedWorldInfoActivationReason[] = [];
+}): InstructionResolvedWorldInfoActivationReason[] {
+  const reasons: InstructionResolvedWorldInfoActivationReason[] = [];
   if (params.entry.decorators.activate) reasons.push("decorator_activate");
   if (params.entry.constant) reasons.push("constant");
   if (params.matchedKeys.length > 0) reasons.push("key_match");
@@ -166,7 +166,7 @@ export function deriveWorldInfoActivationReasons(params: {
 function mapActivatedWorldInfoEntries(params: {
   activatedEntries: PreparedWorldInfoEntry[];
   matchedKeysByHash: Record<string, string[]>;
-}): PromptTemplateResolvedWorldInfoActivationEntry[] {
+}): InstructionResolvedWorldInfoActivationEntry[] {
   return params.activatedEntries.map((entry) => {
     const matchedKeys = asStringArray(params.matchedKeysByHash[entry.hash]);
     return {
@@ -184,7 +184,7 @@ function mapActivatedWorldInfoEntries(params: {
 
 async function renderWorldInfoTextWithLiquid(params: {
   content: string;
-  context: PromptTemplateRenderContext;
+  context: InstructionRenderContext;
   warnings: string[];
   warningKey: string;
 }): Promise<string> {
@@ -205,9 +205,9 @@ async function renderWorldInfoTextWithLiquid(params: {
 }
 
 async function renderResolvedWorldInfoWithLiquid(params: {
-  resolved: PromptTemplateResolvedWorldInfo;
-  context: PromptTemplateRenderContext;
-}): Promise<PromptTemplateResolvedWorldInfo> {
+  resolved: InstructionResolvedWorldInfo;
+  context: InstructionRenderContext;
+}): Promise<InstructionResolvedWorldInfo> {
   const warnings = [...params.resolved.warnings];
   const renderContext = cloneTemplateContextForWorldInfoRender(
     params.context,
@@ -322,9 +322,9 @@ async function renderResolvedWorldInfoWithLiquid(params: {
 }
 
 export function applyWorldInfoToTemplateContext(
-  base: PromptTemplateRenderContext,
-  worldInfo?: PromptTemplateWorldInfoInput
-): PromptTemplateRenderContext {
+  base: InstructionRenderContext,
+  worldInfo?: InstructionWorldInfoInput
+): InstructionRenderContext {
   const worldInfoBefore = asString(
     worldInfo?.worldInfoBefore ??
       worldInfo?.wiBefore ??
@@ -366,7 +366,7 @@ export async function resolveWorldInfoForTemplateContext(params: {
   history: Array<{ role: string; content: string }>;
   scanSeed?: string;
   dryRun?: boolean;
-}): Promise<PromptTemplateResolvedWorldInfo> {
+}): Promise<InstructionResolvedWorldInfo> {
   if (!params.chatId) return createEmptyResolvedWorldInfo();
 
   try {
@@ -405,7 +405,7 @@ export async function resolveWorldInfoForTemplateContext(params: {
 }
 
 export async function resolveAndApplyWorldInfoToTemplateContext(params: {
-  context: PromptTemplateRenderContext;
+  context: InstructionRenderContext;
   ownerId: string;
   chatId?: string;
   branchId?: string;
@@ -413,7 +413,7 @@ export async function resolveAndApplyWorldInfoToTemplateContext(params: {
   trigger?: OperationTrigger;
   scanSeed?: string;
   dryRun?: boolean;
-}): Promise<PromptTemplateResolvedWorldInfo> {
+}): Promise<InstructionResolvedWorldInfo> {
   const resolvedRaw = await resolveWorldInfoForTemplateContext({
     ownerId: params.ownerId,
     chatId: params.chatId,
@@ -433,9 +433,9 @@ export async function resolveAndApplyWorldInfoToTemplateContext(params: {
 }
 
 function enrichTemplateContext(
-  base: PromptTemplateRenderContext,
-  worldInfo?: PromptTemplateWorldInfoInput
-): PromptTemplateRenderContext {
+  base: InstructionRenderContext,
+  worldInfo?: InstructionWorldInfoInput
+): InstructionRenderContext {
   const charObj = isRecord(base.char) ? base.char : {};
   const userObj = isRecord(base.user) ? base.user : {};
 
@@ -466,7 +466,7 @@ function enrichTemplateContext(
   return applyWorldInfoToTemplateContext(base, worldInfo);
 }
 
-export async function buildPromptTemplateRenderContext(params: {
+export async function buildInstructionRenderContext(params: {
   ownerId?: string;
   chatId?: string;
   branchId?: string;
@@ -474,12 +474,12 @@ export async function buildPromptTemplateRenderContext(params: {
   historyLimit?: number;
   excludeMessageIds?: string[];
   excludeEntryIds?: string[];
-  worldInfo?: PromptTemplateWorldInfoInput;
-}): Promise<PromptTemplateRenderContext> {
+  worldInfo?: InstructionWorldInfoInput;
+}): Promise<InstructionRenderContext> {
   const ownerId = params.ownerId ?? "global";
 
   // Default “empty” context: should never break Liquid rendering.
-  const base: PromptTemplateRenderContext = {
+  const base: InstructionRenderContext = {
     char: {},
     user: {},
     chat: {},

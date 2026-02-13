@@ -1,14 +1,14 @@
 import { buildPromptDraft } from "../../chat-core/prompt-draft-builder";
 import {
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "../../chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
-import { pickPromptTemplateForChat } from "../../chat-core/prompt-templates-repository";
+import { pickInstructionForChat } from "../../chat-core/instructions-repository";
 
 import type {
-  PromptTemplateResolvedWorldInfo,
-  PromptTemplateResolvedWorldInfoActivationEntry,
+  InstructionResolvedWorldInfo,
+  InstructionResolvedWorldInfoActivationEntry,
 } from "../../chat-core/prompt-template-context";
 import type { PromptBuildOutput } from "../contracts";
 import type { OperationTrigger } from "@shared/types/operation-profiles";
@@ -18,15 +18,15 @@ const DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
 export type PromptWorldInfoDiagnostics = {
   worldInfoBefore: string;
   worldInfoAfter: string;
-  depthEntries: PromptTemplateResolvedWorldInfo["depthEntries"];
-  outletEntries: PromptTemplateResolvedWorldInfo["outletEntries"];
+  depthEntries: InstructionResolvedWorldInfo["depthEntries"];
+  outletEntries: InstructionResolvedWorldInfo["outletEntries"];
   anTop: string[];
   anBottom: string[];
   emTop: string[];
   emBottom: string[];
   warnings: string[];
   activatedCount: number;
-  activatedEntries: PromptTemplateResolvedWorldInfoActivationEntry[];
+  activatedEntries: InstructionResolvedWorldInfoActivationEntry[];
 };
 
 export async function buildBasePrompt(params: {
@@ -41,10 +41,10 @@ export async function buildBasePrompt(params: {
   excludeEntryIds?: string[];
 }): Promise<{
   prompt: PromptBuildOutput;
-  templateContext: Awaited<ReturnType<typeof buildPromptTemplateRenderContext>>;
+  templateContext: Awaited<ReturnType<typeof buildInstructionRenderContext>>;
   worldInfoDiagnostics: PromptWorldInfoDiagnostics;
 }> {
-  const templateContext = await buildPromptTemplateRenderContext({
+  const templateContext = await buildInstructionRenderContext({
     ownerId: params.ownerId,
     chatId: params.chatId,
     branchId: params.branchId,
@@ -77,7 +77,7 @@ export async function buildBasePrompt(params: {
 
   let systemPrompt = DEFAULT_SYSTEM_PROMPT;
   try {
-    const template = await pickPromptTemplateForChat({
+    const template = await pickInstructionForChat({
       ownerId: params.ownerId,
       chatId: params.chatId,
     });

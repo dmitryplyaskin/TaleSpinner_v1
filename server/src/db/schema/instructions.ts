@@ -1,7 +1,7 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const promptTemplates = sqliteTable(
-  "prompt_templates",
+export const instructions = sqliteTable(
+  "instructions",
   {
     id: text("id").primaryKey(),
     ownerId: text("owner_id").notNull().default("global"),
@@ -15,7 +15,7 @@ export const promptTemplates = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => ({
-    ownerUpdatedAtIdx: index("prompt_templates_owner_updated_at_idx").on(
+    ownerUpdatedAtIdx: index("instructions_owner_updated_at_idx").on(
       t.ownerId,
       t.updatedAt
     ),

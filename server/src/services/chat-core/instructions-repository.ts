@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
-import { chats, promptTemplates } from "../../db/schema";
+import { chats, instructions } from "../../db/schema";
 
-export type PromptTemplateDto = {
+export type InstructionDto = {
   id: string;
   ownerId: string;
   name: string;
@@ -16,7 +16,7 @@ export type PromptTemplateDto = {
   updatedAt: Date;
 };
 
-function rowToDto(row: typeof promptTemplates.$inferSelect): PromptTemplateDto {
+function rowToDto(row: typeof instructions.$inferSelect): InstructionDto {
   return {
     id: row.id,
     ownerId: row.ownerId,
@@ -29,43 +29,43 @@ function rowToDto(row: typeof promptTemplates.$inferSelect): PromptTemplateDto {
   };
 }
 
-export async function listPromptTemplates(params: {
+export async function listInstructions(params: {
   ownerId?: string;
-}): Promise<PromptTemplateDto[]> {
+}): Promise<InstructionDto[]> {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
   const rows = await db
     .select()
-    .from(promptTemplates)
-    .where(eq(promptTemplates.ownerId, ownerId))
-    .orderBy(desc(promptTemplates.updatedAt));
+    .from(instructions)
+    .where(eq(instructions.ownerId, ownerId))
+    .orderBy(desc(instructions.updatedAt));
   return rows.map(rowToDto);
 }
 
-export async function getPromptTemplateById(
+export async function getInstructionById(
   id: string
-): Promise<PromptTemplateDto | null> {
+): Promise<InstructionDto | null> {
   const db = await initDb();
   const rows = await db
     .select()
-    .from(promptTemplates)
-    .where(eq(promptTemplates.id, id));
+    .from(instructions)
+    .where(eq(instructions.id, id));
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
-export async function createPromptTemplate(params: {
+export async function createInstruction(params: {
   id?: string;
   ownerId?: string;
   name: string;
   engine?: "liquidjs";
   templateText: string;
   meta?: unknown;
-}): Promise<PromptTemplateDto> {
+}): Promise<InstructionDto> {
   const db = await initDb();
   const ts = new Date();
   const id = typeof params.id === "string" && params.id.length > 0 ? params.id : uuidv4();
 
-  await db.insert(promptTemplates).values({
+  await db.insert(instructions).values({
     id,
     ownerId: params.ownerId ?? "global",
     name: params.name,
@@ -79,7 +79,7 @@ export async function createPromptTemplate(params: {
     updatedAt: ts,
   });
 
-  const created = await getPromptTemplateById(id);
+  const created = await getInstructionById(id);
   if (!created) {
     return {
       id,
@@ -95,19 +95,19 @@ export async function createPromptTemplate(params: {
   return created;
 }
 
-export async function updatePromptTemplate(params: {
+export async function updateInstruction(params: {
   id: string;
   name?: string;
   engine?: "liquidjs";
   templateText?: string;
   meta?: unknown;
-}): Promise<PromptTemplateDto | null> {
+}): Promise<InstructionDto | null> {
   const db = await initDb();
   const ts = new Date();
 
-  if (!(await getPromptTemplateById(params.id))) return null;
+  if (!(await getInstructionById(params.id))) return null;
 
-  const set: Partial<typeof promptTemplates.$inferInsert> = { updatedAt: ts };
+  const set: Partial<typeof instructions.$inferInsert> = { updatedAt: ts };
   if (typeof params.name === "string") set.name = params.name;
   if (typeof params.engine === "string") set.engine = params.engine;
   if (typeof params.templateText === "string")
@@ -118,37 +118,37 @@ export async function updatePromptTemplate(params: {
   }
 
   await db
-    .update(promptTemplates)
+    .update(instructions)
     .set(set)
-    .where(eq(promptTemplates.id, params.id));
-  return getPromptTemplateById(params.id);
+    .where(eq(instructions.id, params.id));
+  return getInstructionById(params.id);
 }
 
-export async function deletePromptTemplate(id: string): Promise<void> {
+export async function deleteInstruction(id: string): Promise<void> {
   const db = await initDb();
-  await db.delete(promptTemplates).where(eq(promptTemplates.id, id));
+  await db.delete(instructions).where(eq(instructions.id, id));
 }
 
-export async function pickPromptTemplateForChat(params: {
+export async function pickInstructionForChat(params: {
   ownerId?: string;
   chatId: string;
-}): Promise<PromptTemplateDto | null> {
+}): Promise<InstructionDto | null> {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
 
   const chatRows = await db
-    .select({ promptTemplateId: chats.promptTemplateId })
+    .select({ instructionId: chats.instructionId })
     .from(chats)
     .where(and(eq(chats.ownerId, ownerId), eq(chats.id, params.chatId)))
     .limit(1);
-  const promptTemplateId = chatRows[0]?.promptTemplateId ?? null;
-  if (!promptTemplateId) return null;
+  const instructionId = chatRows[0]?.instructionId ?? null;
+  if (!instructionId) return null;
 
   const rows = await db
     .select()
-    .from(promptTemplates)
+    .from(instructions)
     .where(
-      and(eq(promptTemplates.ownerId, ownerId), eq(promptTemplates.id, promptTemplateId))
+      and(eq(instructions.ownerId, ownerId), eq(instructions.id, instructionId))
     )
     .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;

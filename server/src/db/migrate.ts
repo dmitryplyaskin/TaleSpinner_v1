@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { applyMigrations, resolveMigrationsFolder } from "./apply-migrations";
 
 async function main(): Promise<void> {

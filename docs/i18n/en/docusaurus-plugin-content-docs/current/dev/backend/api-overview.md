@@ -29,7 +29,7 @@ Therefore `/chats/:id` in router files becomes `/api/chats/:id`.
 - entity profiles
 - llm providers / tokens / runtime / presets
 - operation profiles
-- prompt templates
+- instructions
 - ui themes
 - world info
 - files

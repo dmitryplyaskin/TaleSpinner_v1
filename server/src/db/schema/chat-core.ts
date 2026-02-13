@@ -52,8 +52,8 @@ export const chats = sqliteTable(
 
     title: text("title").notNull(),
     activeBranchId: text("active_branch_id"),
-    // Selected prompt template for this chat (all templates are global; chat stores the ref).
-    promptTemplateId: text("prompt_template_id"),
+    // Selected instruction for this chat (all instructions are global; chat stores the ref).
+    instructionId: text("instruction_id"),
     status: text("status", { enum: ["active", "archived", "deleted"] })
       .notNull()
       .default("active"),

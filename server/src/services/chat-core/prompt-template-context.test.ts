@@ -30,7 +30,7 @@ vi.mock("./prompt-template-renderer", () => ({
 
 import {
   applyWorldInfoToTemplateContext,
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   deriveWorldInfoActivationReasons,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "./prompt-template-context";
@@ -68,7 +68,7 @@ describe("prompt-template-context", () => {
       },
     });
 
-    const context = await buildPromptTemplateRenderContext({
+    const context = await buildInstructionRenderContext({
       ownerId: "global",
       entityProfileId: "c-1",
     });
@@ -100,12 +100,12 @@ describe("prompt-template-context", () => {
       contentTypeDefault: "",
     });
 
-    const context = await buildPromptTemplateRenderContext({ ownerId: "global" });
+    const context = await buildInstructionRenderContext({ ownerId: "global" });
     expect(context.persona).toBe("Prefix fallback");
   });
 
   test("stringifies empty char/user as empty strings instead of [object Object]", async () => {
-    const context = await buildPromptTemplateRenderContext({ ownerId: "global" });
+    const context = await buildInstructionRenderContext({ ownerId: "global" });
 
     expect(String(context.char)).toBe("");
     expect(String(context.user)).toBe("");
@@ -198,7 +198,7 @@ describe("prompt-template-context", () => {
       },
     });
 
-    const context = await buildPromptTemplateRenderContext({
+    const context = await buildInstructionRenderContext({
       ownerId: "global",
       entityProfileId: "c-1",
     });
@@ -258,7 +258,7 @@ describe("prompt-template-context", () => {
       }
     );
 
-    const context = await buildPromptTemplateRenderContext({ ownerId: "global" });
+    const context = await buildInstructionRenderContext({ ownerId: "global" });
     const resolved = await resolveAndApplyWorldInfoToTemplateContext({
       context,
       ownerId: "global",

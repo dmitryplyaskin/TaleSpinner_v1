@@ -12,7 +12,6 @@ const en = {
 			settings: 'LLM settings',
 			userPersons: 'Personas',
 			instructions: 'Instructions',
-			templates: 'Templates',
 			worldInfo: 'World Info',
 			operationProfiles: 'Operations',
 			appSettings: 'App settings',
@@ -186,7 +185,7 @@ const en = {
 			},
 			toasts: {
 				openChatError: 'Failed to open chat',
-				selectTemplateError: 'Failed to select template',
+				selectInstructionError: 'Failed to select instruction',
 				deleteChatError: 'Failed to delete chat',
 				renameChatError: 'Failed to rename chat',
 				activateBranchError: 'Failed to activate branch',
@@ -230,8 +229,6 @@ const en = {
 			settingsTitle: 'Settings',
 			llmSettings: 'LLM settings',
 			apiProvider: 'API Provider',
-			templatesTitle: 'Prompt templates',
-			selectTemplate: 'Select template',
 			userPersonsTitle: 'Persona list',
 			selectPerson: 'Select persona',
 			addPerson: 'Add persona',
@@ -497,20 +494,8 @@ const en = {
 				create: 'Create instruction',
 				duplicate: 'Duplicate instruction',
 				delete: 'Delete instruction',
+				prerender: 'Prerender',
 			},
-			fields: {
-				name: 'Name',
-				instruction: 'Instruction',
-			},
-			placeholders: {
-				name: 'Enter instruction name',
-				instruction: 'Enter instruction text',
-			},
-			defaults: {
-				newInstruction: 'New instruction',
-			},
-		},
-		templates: {
 			fields: {
 				name: 'Name',
 				templateText: 'Template (LiquidJS)',
@@ -520,27 +505,25 @@ const en = {
 			},
 			placeholders: {
 				name: 'Enter name',
-			},
-			actions: {
-				prerender: 'Prerender',
+				selectInstruction: 'Select instruction',
 			},
 			defaults: {
-				newTemplate: 'New template',
-				importedTemplate: 'Imported template',
+				newInstruction: 'New instruction',
+				importedInstruction: 'Imported instruction',
 			},
 			confirm: {
-				deleteTemplate: 'Delete template?',
+				deleteInstruction: 'Delete instruction?',
 			},
 			toasts: {
 				exportNotPossibleTitle: 'Export not possible',
-				selectForExport: 'Select a template to export',
+				selectForExport: 'Select an instruction to export',
 				importErrorTitle: 'Import error',
 				importMissingTemplateText: 'File does not contain templateText',
 				importSuccessTitle: 'Import successful',
 				importReadError: 'Failed to read file',
-				createErrorTitle: 'Failed to create template',
-				saveErrorTitle: 'Failed to save template',
-				deleteErrorTitle: 'Failed to delete template',
+				createErrorTitle: 'Failed to create instruction',
+				saveErrorTitle: 'Failed to save instruction',
+				deleteErrorTitle: 'Failed to delete instruction',
 			},
 		},
 		userPersons: {
@@ -1146,9 +1129,9 @@ const en = {
 					examples: 'Examples',
 				},
 				contexts: {
-					promptTemplate: {
-						title: 'Prompt template Liquid docs',
-						usage: 'Used when rendering chat prompt templates before generation.',
+					instruction: {
+						title: 'Instruction Liquid docs',
+						usage: 'Used when rendering chat instructions before generation.',
 					},
 					operationTemplate: {
 						title: 'Template operation Liquid docs',
@@ -1210,10 +1193,10 @@ const en = {
 					random: 'Chooses one option at render time and inserts text.',
 				},
 				examples: {
-					promptTemplateSystem: {
+					instructionSystem: {
 						title: 'System template with world info',
 					},
-					promptTemplateOutlet: {
+					instructionOutlet: {
 						title: 'Outlet plus random tone',
 					},
 					operationTemplateArtifacts: {

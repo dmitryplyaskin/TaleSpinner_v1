@@ -1,6 +1,6 @@
 import { apiJson } from './api-json';
 
-export type PromptTemplateDto = {
+export type InstructionDto = {
 	id: string;
 	ownerId: string;
 	name: string;
@@ -11,21 +11,21 @@ export type PromptTemplateDto = {
 	updatedAt: string;
 };
 
-export async function listPromptTemplates(params?: { ownerId?: string }): Promise<PromptTemplateDto[]> {
+export async function listInstructions(params?: { ownerId?: string }): Promise<InstructionDto[]> {
 	const query = new URLSearchParams();
 	if (typeof params?.ownerId === 'string') query.set('ownerId', params.ownerId);
 	const suffix = query.size > 0 ? `?${query.toString()}` : '';
-	return apiJson<PromptTemplateDto[]>(`/prompt-templates${suffix}`);
+	return apiJson<InstructionDto[]>(`/instructions${suffix}`);
 }
 
-export async function createPromptTemplate(params: {
+export async function createInstruction(params: {
 	name: string;
 	engine?: 'liquidjs';
 	templateText: string;
 	meta?: unknown;
 	ownerId?: string;
-}): Promise<PromptTemplateDto> {
-	return apiJson<PromptTemplateDto>('/prompt-templates', {
+}): Promise<InstructionDto> {
+	return apiJson<InstructionDto>('/instructions', {
 		method: 'POST',
 		body: JSON.stringify({
 			ownerId: params.ownerId,
@@ -37,14 +37,14 @@ export async function createPromptTemplate(params: {
 	});
 }
 
-export async function updatePromptTemplate(params: {
+export async function updateInstruction(params: {
 	id: string;
 	name?: string;
 	engine?: 'liquidjs';
 	templateText?: string;
 	meta?: unknown;
-}): Promise<PromptTemplateDto> {
-	return apiJson<PromptTemplateDto>(`/prompt-templates/${encodeURIComponent(params.id)}`, {
+}): Promise<InstructionDto> {
+	return apiJson<InstructionDto>(`/instructions/${encodeURIComponent(params.id)}`, {
 		method: 'PUT',
 		body: JSON.stringify({
 			name: params.name,
@@ -55,11 +55,11 @@ export async function updatePromptTemplate(params: {
 	});
 }
 
-export async function deletePromptTemplate(id: string): Promise<{ id: string }> {
-	return apiJson<{ id: string }>(`/prompt-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+export async function deleteInstruction(id: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/instructions/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-export async function prerenderPromptTemplate(params: {
+export async function prerenderInstruction(params: {
 	templateText: string;
 	ownerId?: string;
 	chatId?: string;
@@ -67,7 +67,7 @@ export async function prerenderPromptTemplate(params: {
 	entityProfileId?: string;
 	historyLimit?: number;
 }): Promise<{ rendered: string }> {
-	return apiJson<{ rendered: string }>('/prompt-templates/prerender', {
+	return apiJson<{ rendered: string }>('/instructions/prerender', {
 		method: 'POST',
 		body: JSON.stringify({
 			ownerId: params.ownerId,
