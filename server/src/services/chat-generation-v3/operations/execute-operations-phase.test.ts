@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { executeOperationsPhase } from "./execute-operations-phase";
 
-import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
+import type { InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
 import type { OperationInProfile, OperationOutput } from "@shared/types/operation-profiles";
 
 
@@ -46,7 +46,7 @@ function streamOf(
   })();
 }
 
-function makeTemplateContext(): PromptTemplateRenderContext {
+function makeTemplateContext(): InstructionRenderContext {
   return {
     char: {},
     user: { name: "User" },

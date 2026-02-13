@@ -10,7 +10,6 @@ export type SidebarName =
 	| 'userPersons'
 	| 'operationProfiles'
 	| 'instructions'
-	| 'templates'
 	| 'worldInfo'
 	| 'appSettings';
 
@@ -46,9 +45,6 @@ export const defaultSidebars: SidebarSettings = {
 		...defaultSidebarSetting,
 	},
 	instructions: {
-		...defaultSidebarSetting,
-	},
-	templates: {
 		...defaultSidebarSetting,
 	},
 	worldInfo: {

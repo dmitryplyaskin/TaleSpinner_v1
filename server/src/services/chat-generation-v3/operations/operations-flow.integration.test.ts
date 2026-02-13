@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import type { OperationInProfile, OperationOutput } from "@shared/types/operation-profiles";
 
-import type { PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
+import type { InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
 import { RunArtifactStore } from "../artifacts/run-artifact-store";
 import type { RunState } from "../contracts";
 import { commitEffectsPhase } from "./commit-effects-phase";
@@ -10,7 +10,7 @@ import { executeOperationsPhase } from "./execute-operations-phase";
 
 type TemplateOp = Extract<OperationInProfile, { kind: "template" }>;
 
-function makeTemplateContext(): PromptTemplateRenderContext {
+function makeTemplateContext(): InstructionRenderContext {
   return {
     char: {},
     user: {},

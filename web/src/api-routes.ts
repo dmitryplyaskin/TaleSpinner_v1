@@ -34,15 +34,4 @@ export const apiRoutes = {
 		delete: (filename: string) => `${BASE_URL}/files/${filename}`,
 		metadata: (filename: string) => `${BASE_URL}/files/metadata/${filename}`,
 	},
-	instructions: {
-		list: () => `${BASE_URL}/instructions`,
-		getById: (id: string) => `${BASE_URL}/instructions/${id}`,
-		create: () => `${BASE_URL}/instructions`,
-		update: (id: string) => `${BASE_URL}/instructions/${id}`,
-		delete: (id: string) => `${BASE_URL}/instructions/${id}`,
-		settings: {
-			get: () => `${BASE_URL}/settings/instructions`,
-			update: () => `${BASE_URL}/settings/instructions`,
-		},
-	},
 };

@@ -378,7 +378,17 @@ export async function getTokenPlaintext(id: string): Promise<string | null> {
     .where(eq(llmTokens.id, id));
   const row = rows[0];
   if (!row) return null;
-  return decryptSecret(row.ciphertext);
+  try {
+    return decryptSecret(row.ciphertext);
+  } catch (error) {
+    // Do not crash runtime/model endpoints when token decryption is unavailable.
+    // Treat it as "token missing" and let callers decide fallback behavior.
+    console.warn("Failed to decrypt LLM token", {
+      tokenId: id,
+      error,
+    });
+    return null;
+  }
 }
 
 export async function touchTokenLastUsed(id: string): Promise<void> {

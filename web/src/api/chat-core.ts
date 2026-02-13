@@ -70,7 +70,7 @@ export type ChatDto = {
 	entityProfileId: string;
 	title: string;
 	activeBranchId: string | null;
-	promptTemplateId: string | null;
+	instructionId: string | null;
 	status: 'active' | 'archived' | 'deleted';
 	createdAt: string;
 	updatedAt: string;
@@ -241,13 +241,13 @@ export async function getChatById(chatId: string): Promise<ChatDto> {
 	return apiJson<ChatDto>(`/chats/${encodeURIComponent(chatId)}`);
 }
 
-export async function setChatPromptTemplate(params: {
+export async function setChatInstruction(params: {
 	chatId: string;
-	promptTemplateId: string | null;
+	instructionId: string | null;
 }): Promise<ChatDto> {
-	return apiJson<ChatDto>(`/chats/${encodeURIComponent(params.chatId)}/prompt-template`, {
+	return apiJson<ChatDto>(`/chats/${encodeURIComponent(params.chatId)}/instruction`, {
 		method: 'PUT',
-		body: JSON.stringify({ promptTemplateId: params.promptTemplateId }),
+		body: JSON.stringify({ instructionId: params.instructionId }),
 	});
 }
 

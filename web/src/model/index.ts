@@ -9,6 +9,5 @@ export * from './samplers';
 export * from './app-settings';
 export * from './app-debug';
 export * from './chat-core';
-export * from './prompt-templates';
 export * from './operation-profiles';
 export * from './world-info';

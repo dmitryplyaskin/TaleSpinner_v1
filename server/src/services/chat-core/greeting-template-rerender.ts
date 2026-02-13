@@ -3,7 +3,7 @@ import { updatePartPayloadText } from "../chat-entry-parts/parts-repository";
 import { listEntryVariants, updateVariantDerived } from "../chat-entry-parts/variants-repository";
 
 import {
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "./prompt-template-context";
 import { renderLiquidTemplate } from "./prompt-template-renderer";
@@ -103,7 +103,7 @@ export async function rerenderGreetingTemplatesIfPreplay(params: {
   const variants = await listEntryVariants({ entryId: greetingEntry.entryId });
   if (variants.length === 0) return;
 
-  const templateContext = await buildPromptTemplateRenderContext({
+  const templateContext = await buildInstructionRenderContext({
     ownerId: params.ownerId,
     chatId: params.chatId,
     branchId: params.branchId,

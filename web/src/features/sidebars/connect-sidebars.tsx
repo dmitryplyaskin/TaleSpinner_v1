@@ -4,7 +4,6 @@ import { AppSettingsSidebar } from './app-settings';
 import { InstructionsSidebar } from './instructions';
 import { OperationProfilesSidebar } from './operation-profiles';
 import { SettingsSidebar } from './settings';
-import { TemplateSidebar } from './templates';
 import { UserPersonSidebar } from './user-person';
 import { WorldInfoSidebar } from './world-info';
 
@@ -16,7 +15,6 @@ export const ConnectSidebars = () => {
 			<UserPersonSidebar />
 			<OperationProfilesSidebar />
 			<InstructionsSidebar />
-			<TemplateSidebar />
 			<WorldInfoSidebar />
 			<AppSettingsSidebar />
 		</>

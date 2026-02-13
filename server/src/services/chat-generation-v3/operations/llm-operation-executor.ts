@@ -2,7 +2,7 @@ import { llmGateway } from "@core/llm-gateway";
 import type { GenerateMessage } from "@shared/types/generate";
 import type { OperationInProfile } from "@shared/types/operation-profiles";
 
-import { renderLiquidTemplate, type PromptTemplateRenderContext } from "../../chat-core/prompt-template-renderer";
+import { renderLiquidTemplate, type InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
 import { buildGatewayStreamRequest } from "../../llm/llm-gateway-adapter";
 import { getProviderConfig, getTokenPlaintext } from "../../llm/llm-repository";
 import { compileLlmJsonSchemaSpec } from "../../operations/llm-json-schema-spec";
@@ -287,7 +287,7 @@ async function callLlmOnce(params: {
 
 export async function executeLlmOperation(params: {
   op: LlmOperation;
-  liquidContext: PromptTemplateRenderContext;
+  liquidContext: InstructionRenderContext;
   abortSignal?: AbortSignal;
 }): Promise<{ rendered: string; debugSummary: string }> {
   let llmParams: ReturnType<typeof parseLlmOperationParams>;

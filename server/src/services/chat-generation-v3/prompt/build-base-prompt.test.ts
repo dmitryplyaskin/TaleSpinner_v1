@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  buildPromptTemplateRenderContext: vi.fn(),
+  buildInstructionRenderContext: vi.fn(),
   resolveAndApplyWorldInfoToTemplateContext: vi.fn(),
-  pickPromptTemplateForChat: vi.fn(),
+  pickInstructionForChat: vi.fn(),
   renderLiquidTemplate: vi.fn(),
   buildPromptDraft: vi.fn(),
 }));
 
 vi.mock("../../chat-core/prompt-template-context", () => ({
-  buildPromptTemplateRenderContext: mocks.buildPromptTemplateRenderContext,
+  buildInstructionRenderContext: mocks.buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext: mocks.resolveAndApplyWorldInfoToTemplateContext,
 }));
-vi.mock("../../chat-core/prompt-templates-repository", () => ({
-  pickPromptTemplateForChat: mocks.pickPromptTemplateForChat,
+vi.mock("../../chat-core/instructions-repository", () => ({
+  pickInstructionForChat: mocks.pickInstructionForChat,
 }));
 vi.mock("../../chat-core/prompt-template-renderer", () => ({
   renderLiquidTemplate: mocks.renderLiquidTemplate,
@@ -26,7 +26,7 @@ import { buildBasePrompt } from "./build-base-prompt";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.buildPromptTemplateRenderContext.mockResolvedValue({
+  mocks.buildInstructionRenderContext.mockResolvedValue({
     char: {},
     user: {},
     chat: {},
@@ -48,7 +48,7 @@ beforeEach(() => {
     activatedCount: 3,
     activatedEntries: [],
   });
-  mocks.pickPromptTemplateForChat.mockResolvedValue(null);
+  mocks.pickInstructionForChat.mockResolvedValue(null);
   mocks.buildPromptDraft.mockResolvedValue({
     draft: { messages: [{ role: "system", content: "sys" }] },
     llmMessages: [{ role: "system", content: "sys" }],
@@ -107,7 +107,7 @@ describe("buildBasePrompt world-info integration", () => {
         };
       }
     );
-    mocks.pickPromptTemplateForChat.mockResolvedValue({
+    mocks.pickInstructionForChat.mockResolvedValue({
       id: "tpl-1",
       ownerId: "global",
       name: "tpl",

@@ -17,12 +17,12 @@ import {
   deleteChatBranch,
   getChatById,
   listChatBranches,
-  setChatPromptTemplate,
+  setChatInstruction,
   softDeleteChat,
   updateChatBranchTitle,
   updateChatTitle,
 } from "../services/chat-core/chats-repository";
-import { getPromptTemplateById } from "../services/chat-core/prompt-templates-repository";
+import { getInstructionById } from "../services/chat-core/instructions-repository";
 
 const router = express.Router();
 
@@ -37,31 +37,31 @@ router.get(
   })
 );
 
-const setPromptTemplateBodySchema = z.object({
-  promptTemplateId: idSchema.nullable(),
+const setInstructionBodySchema = z.object({
+  instructionId: idSchema.nullable(),
 });
 
 router.put(
-  "/chats/:id/prompt-template",
-  validate({ params: chatIdParamsSchema, body: setPromptTemplateBodySchema }),
+  "/chats/:id/instruction",
+  validate({ params: chatIdParamsSchema, body: setInstructionBodySchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const body = setPromptTemplateBodySchema.parse(req.body);
+    const body = setInstructionBodySchema.parse(req.body);
 
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
-    if (body.promptTemplateId) {
-      const tpl = await getPromptTemplateById(body.promptTemplateId);
+    if (body.instructionId) {
+      const tpl = await getInstructionById(body.instructionId);
       if (!tpl || tpl.ownerId !== chat.ownerId) {
-        throw new HttpError(404, "PromptTemplate не найден", "NOT_FOUND");
+        throw new HttpError(404, "Instruction не найден", "NOT_FOUND");
       }
     }
 
-    const updated = await setChatPromptTemplate({
+    const updated = await setChatInstruction({
       ownerId: chat.ownerId,
       chatId: chat.id,
-      promptTemplateId: body.promptTemplateId,
+      instructionId: body.instructionId,
     });
     if (!updated) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 

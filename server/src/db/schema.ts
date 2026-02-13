@@ -1,6 +1,6 @@
 export * from "./schema/chat-core";
 export * from "./schema/chat-entry-parts";
-export * from "./schema/prompt-templates";
+export * from "./schema/instructions";
 export * from "./schema/operation-profiles";
 export * from "./schema/llm";
 export * from "./schema/ui";

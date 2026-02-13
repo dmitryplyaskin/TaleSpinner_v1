@@ -15,7 +15,7 @@ import {
 	listChatBranches,
 	listChatsForEntityProfile,
 	listEntityProfiles,
-	setChatPromptTemplate,
+	setChatInstruction,
 	updateChat,
 	updateChatBranch,
 	updateEntityProfile,
@@ -180,30 +180,30 @@ sample({
 	target: setOpenedChat,
 });
 
-export const setChatPromptTemplateRequested = createEvent<{ promptTemplateId: string | null }>();
+export const setChatInstructionRequested = createEvent<{ instructionId: string | null }>();
 
-export const setChatPromptTemplateFx = createEffect(
-	async (params: { chatId: string; promptTemplateId: string | null }): Promise<ChatDto> => {
-		return setChatPromptTemplate({ chatId: params.chatId, promptTemplateId: params.promptTemplateId });
+export const setChatInstructionFx = createEffect(
+	async (params: { chatId: string; instructionId: string | null }): Promise<ChatDto> => {
+		return setChatInstruction({ chatId: params.chatId, instructionId: params.instructionId });
 	},
 );
 
 sample({
-	clock: setChatPromptTemplateRequested,
+	clock: setChatInstructionRequested,
 	source: $currentChat,
 	filter: (chat): chat is ChatDto => Boolean(chat?.id),
-	fn: (chat, payload) => ({ chatId: chat!.id, promptTemplateId: payload.promptTemplateId }),
-	target: setChatPromptTemplateFx,
+	fn: (chat, payload) => ({ chatId: chat!.id, instructionId: payload.instructionId }),
+	target: setChatInstructionFx,
 });
 
-$currentChat.on(setChatPromptTemplateFx.doneData, (_, chat) => chat);
-$chatsForCurrentProfile.on(setChatPromptTemplateFx.doneData, (items, updated) =>
+$currentChat.on(setChatInstructionFx.doneData, (_, chat) => chat);
+$chatsForCurrentProfile.on(setChatInstructionFx.doneData, (items, updated) =>
 	items.map((c) => (c.id === updated.id ? updated : c)),
 );
 
-setChatPromptTemplateFx.failData.watch((error) => {
+setChatInstructionFx.failData.watch((error) => {
 	toaster.error({
-		title: i18n.t('chat.toasts.selectTemplateError'),
+		title: i18n.t('chat.toasts.selectInstructionError'),
 		description: error instanceof Error ? error.message : String(error),
 	});
 });

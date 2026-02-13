@@ -1,6 +1,6 @@
 import { Liquid } from "liquidjs";
 
-export interface PromptTemplateRenderContext {
+export interface InstructionRenderContext {
   char: unknown;
   user: unknown;
   chat: unknown;
@@ -172,7 +172,7 @@ export function validateLiquidTemplate(templateText: string): void {
 
 export async function renderLiquidTemplate(params: {
   templateText: string;
-  context: PromptTemplateRenderContext;
+  context: InstructionRenderContext;
   options?: {
     strictVariables?: boolean;
     /**

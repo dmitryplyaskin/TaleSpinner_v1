@@ -8,6 +8,7 @@ import staticRouter from "./api/static.api";
 import { errorHandler } from "./core/middleware/error-handler";
 import { applyMigrations } from "./db/apply-migrations";
 import { initDb } from "./db/client";
+import { ensureInstructionsSchema } from "./db/ensure-instructions-schema";
 import appSettingsRoutes from "./routes/app-settings-routes";
 import generateRoutes from "./routes/generate-routes";
 import modelsRoutes from "./routes/models-routes";
@@ -43,6 +44,7 @@ app.use(errorHandler(console));
 async function main(): Promise<void> {
   await initDb();
   await applyMigrations();
+  await ensureInstructionsSchema();
   await bootstrapLlm();
 
   app.listen(port, () => {

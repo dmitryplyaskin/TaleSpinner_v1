@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  buildPromptTemplateRenderContext: vi.fn(),
+  buildInstructionRenderContext: vi.fn(),
   resolveAndApplyWorldInfoToTemplateContext: vi.fn(),
-  pickPromptTemplateForChat: vi.fn(),
+  pickInstructionForChat: vi.fn(),
   listProjectedPromptMessages: vi.fn(),
 }));
 
 vi.mock("../../chat-core/prompt-template-context", () => ({
-  buildPromptTemplateRenderContext: mocks.buildPromptTemplateRenderContext,
+  buildInstructionRenderContext: mocks.buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext: mocks.resolveAndApplyWorldInfoToTemplateContext,
 }));
 
-vi.mock("../../chat-core/prompt-templates-repository", () => ({
-  pickPromptTemplateForChat: mocks.pickPromptTemplateForChat,
+vi.mock("../../chat-core/instructions-repository", () => ({
+  pickInstructionForChat: mocks.pickInstructionForChat,
 }));
 
 vi.mock("../../chat-entry-parts/prompt-history", () => ({
@@ -24,7 +24,7 @@ import { buildBasePrompt } from "./build-base-prompt";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.buildPromptTemplateRenderContext.mockResolvedValue({
+  mocks.buildInstructionRenderContext.mockResolvedValue({
     char: { name: "Lilly" },
     user: {},
     chat: {},
@@ -46,7 +46,7 @@ beforeEach(() => {
     activatedCount: 2,
     activatedEntries: [],
   });
-  mocks.pickPromptTemplateForChat.mockResolvedValue(null);
+  mocks.pickInstructionForChat.mockResolvedValue(null);
   mocks.listProjectedPromptMessages.mockResolvedValue({
     currentTurn: 1,
     entryCount: 1,
@@ -82,7 +82,7 @@ describe("buildBasePrompt explicit-only WI integration", () => {
   });
 
   test("injects WI only via explicit template placeholder and keeps single system message", async () => {
-    mocks.pickPromptTemplateForChat.mockResolvedValue({
+    mocks.pickInstructionForChat.mockResolvedValue({
       id: "tpl-1",
       ownerId: "global",
       name: "tpl",

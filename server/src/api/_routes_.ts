@@ -4,12 +4,11 @@ import entityProfilesCoreRoutes from "./entity-profiles.core.api";
 import entityProfilesImportRoutes from "./entity-profiles.import.api";
 import fileRoutes from "./files/routes";
 import generationsCoreRoutes from "./generations.core.api";
-import instructionsRoutes from "./instructions.api";
 import llmPresetsRoutes from "./llm-presets.api";
 import llmRoutes from "./llm.api";
 import ragRoutes from "./rag.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
-import promptTemplatesCoreRoutes from "./prompt-templates.core.api";
+import instructionsCoreRoutes from "./instructions.core.api";
 import samplersRoutes from "./samplers.api";
 import uiThemeCoreRoutes from "./ui-theme.core.api";
 import userPersonsCoreRoutes from "./user-persons.core.api";
@@ -28,8 +27,7 @@ export const routes = [
   ragRoutes,
   llmPresetsRoutes,
   fileRoutes,
-  instructionsRoutes,
-  promptTemplatesCoreRoutes,
+  instructionsCoreRoutes,
   uiThemeCoreRoutes,
   worldInfoCoreRoutes,
 ];

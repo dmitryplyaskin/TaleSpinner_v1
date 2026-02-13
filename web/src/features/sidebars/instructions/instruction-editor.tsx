@@ -1,51 +1,122 @@
-import { Button, Group, Stack } from '@mantine/core';
-import { type InstructionType } from '@shared/types/instructions';
+import { Button, Group, Stack, Text, Textarea } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { createEmptyInstruction , instructionsModel } from '@model/instructions';
+import { $currentBranchId, $currentChat, $currentEntityProfile } from '@model/chat-core';
+import {
+	$selectedInstruction,
+	updateInstructionRequested,
+} from '@model/instructions';
 import { FormInput } from '@ui/form-components';
-import { FormTextarea } from '@ui/form-components/form-textarea';
+import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
-export const InstructionEditor: React.FC = () => {
+import { prerenderInstruction } from '../../../api/instructions';
+
+type FormValues = {
+	name: string;
+	templateText: string;
+};
+
+export const InstructionEditor = () => {
 	const { t } = useTranslation();
-	const selectedInstruction = useUnit(instructionsModel.$selectedItem);
+	const tpl = useUnit($selectedInstruction);
+	const [chat, branchId, profile] = useUnit([$currentChat, $currentBranchId, $currentEntityProfile]);
 
-	const methods = useForm<InstructionType>({
-		defaultValues: selectedInstruction || createEmptyInstruction(),
+	const [preview, setPreview] = useState<string>('');
+	const [previewError, setPreviewError] = useState<string | null>(null);
+	const [previewLoading, setPreviewLoading] = useState(false);
+
+	const methods = useForm<FormValues>({
+		defaultValues: {
+			name: tpl?.name ?? '',
+			templateText: tpl?.templateText ?? '',
+		},
 	});
 
-	const { handleSubmit } = methods;
+	useEffect(() => {
+		methods.reset({
+			name: tpl?.name ?? '',
+			templateText: tpl?.templateText ?? '',
+		});
+		setPreview('');
+		setPreviewError(null);
+	}, [tpl?.id]);
 
-	const onSubmit = (data: InstructionType) => {
-		if (selectedInstruction) {
-			instructionsModel.updateItemFx({ ...data, updatedAt: new Date().toISOString() });
-		} else {
-			instructionsModel.createItemFx(data);
-		}
+	if (!tpl) return null;
+
+	const onSubmit = (data: FormValues) => {
+		updateInstructionRequested({
+			id: tpl.id,
+			name: data.name,
+			templateText: data.templateText,
+		});
 	};
 
-	useEffect(() => {
-		methods.reset(selectedInstruction || createEmptyInstruction());
-	}, [selectedInstruction]);
+	const onPrerender = async () => {
+		setPreviewLoading(true);
+		setPreviewError(null);
+		try {
+			const data = await prerenderInstruction({
+				templateText: methods.getValues('templateText'),
+				chatId: chat?.id ?? undefined,
+				branchId: branchId ?? undefined,
+				entityProfileId: profile?.id ?? undefined,
+				historyLimit: 50,
+			});
+			setPreview(data.rendered);
+		} catch (e) {
+			setPreview('');
+			setPreviewError(e instanceof Error ? e.message : String(e));
+		} finally {
+			setPreviewLoading(false);
+		}
+	};
 
 	return (
 		<FormProvider {...methods}>
 			<Stack gap="md" mt="md">
 				<FormInput name="name" label={t('instructions.fields.name')} placeholder={t('instructions.placeholders.name')} />
 
-				<FormTextarea
-					name="instruction"
-					label={t('instructions.fields.instruction')}
-					placeholder={t('instructions.placeholders.instruction')}
-					textareaProps={{
-						styles: { input: { minHeight: 300 } },
-					}}
+				<Textarea
+					label={
+						<Group gap={6} wrap="nowrap" align="center">
+							{t('instructions.fields.templateText')}
+							<LiquidDocsButton context="instruction" />
+						</Group>
+					}
+					description={t('instructions.fields.templateTextDescription')}
+					value={methods.watch('templateText')}
+					onChange={(e) => methods.setValue('templateText', e.currentTarget.value, { shouldDirty: true })}
+					minRows={14}
+					autosize
+					styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' } }}
 				/>
+
+				{previewError && (
+					<Text c="red" size="sm">
+						{previewError}
+					</Text>
+				)}
+
+				{preview.length > 0 && (
+					<Textarea
+						label={t('instructions.fields.prerender')}
+						description={t('instructions.fields.prerenderDescription')}
+						value={preview}
+						readOnly
+						minRows={10}
+						autosize
+						styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' } }}
+					/>
+				)}
+
 				<Group justify="flex-end">
-					<Button onClick={handleSubmit(onSubmit)}>{t('common.save')}</Button>
+					<Button variant="light" loading={previewLoading} onClick={onPrerender}>
+						{t('instructions.actions.prerender')}
+					</Button>
+					<Button onClick={methods.handleSubmit(onSubmit)}>{t('common.save')}</Button>
 				</Group>
 			</Stack>
 		</FormProvider>

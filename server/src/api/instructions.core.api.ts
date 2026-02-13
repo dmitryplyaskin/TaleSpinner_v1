@@ -6,13 +6,13 @@ import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
 
 import {
-  createPromptTemplateBodySchema,
+  createInstructionBodySchema,
   idSchema,
-  listPromptTemplatesQuerySchema,
-  updatePromptTemplateBodySchema,
+  listInstructionsQuerySchema,
+  updateInstructionBodySchema,
 } from "../chat-core/schemas";
 import {
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "../services/chat-core/prompt-template-context";
 import {
@@ -20,12 +20,12 @@ import {
   validateLiquidTemplate,
 } from "../services/chat-core/prompt-template-renderer";
 import {
-  createPromptTemplate,
-  deletePromptTemplate,
-  getPromptTemplateById,
-  listPromptTemplates,
-  updatePromptTemplate,
-} from "../services/chat-core/prompt-templates-repository";
+  createInstruction,
+  deleteInstruction,
+  getInstructionById,
+  listInstructions,
+  updateInstruction,
+} from "../services/chat-core/instructions-repository";
 
 const router = express.Router();
 
@@ -40,19 +40,19 @@ const prerenderBodySchema = z.object({
 });
 
 router.get(
-  "/prompt-templates",
-  validate({ query: listPromptTemplatesQuerySchema }),
+  "/instructions",
+  validate({ query: listInstructionsQuerySchema }),
   asyncHandler(async (req: Request) => {
-    const query = listPromptTemplatesQuerySchema.parse(req.query);
-    const templates = await listPromptTemplates({
+    const query = listInstructionsQuerySchema.parse(req.query);
+    const instructions = await listInstructions({
       ownerId: query.ownerId ?? "global",
     });
-    return { data: templates };
+    return { data: instructions };
   })
 );
 
 router.post(
-  "/prompt-templates/prerender",
+  "/instructions/prerender",
   validate({ body: prerenderBodySchema }),
   asyncHandler(async (req: Request) => {
     const body = prerenderBodySchema.parse(req.body);
@@ -61,12 +61,12 @@ router.post(
     } catch (error) {
       throw new HttpError(
         400,
-        `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+        `Instruction не компилируется: ${error instanceof Error ? error.message : String(error)}`,
         "VALIDATION_ERROR"
       );
     }
 
-    const context = await buildPromptTemplateRenderContext({
+    const context = await buildInstructionRenderContext({
       ownerId: body.ownerId ?? "global",
       chatId: body.chatId,
       branchId: body.branchId,
@@ -93,20 +93,20 @@ router.post(
 );
 
 router.post(
-  "/prompt-templates",
-  validate({ body: createPromptTemplateBodySchema }),
+  "/instructions",
+  validate({ body: createInstructionBodySchema }),
   asyncHandler(async (req: Request) => {
     try {
       validateLiquidTemplate(req.body.templateText);
     } catch (error) {
       throw new HttpError(
         400,
-        `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+        `Instruction не компилируется: ${error instanceof Error ? error.message : String(error)}`,
         "VALIDATION_ERROR"
       );
     }
 
-    const created = await createPromptTemplate({
+    const created = await createInstruction({
       ownerId: req.body.ownerId,
       name: req.body.name,
       engine: req.body.engine,
@@ -118,8 +118,8 @@ router.post(
 );
 
 router.put(
-  "/prompt-templates/:id",
-  validate({ params: idParamsSchema, body: updatePromptTemplateBodySchema }),
+  "/instructions/:id",
+  validate({ params: idParamsSchema, body: updateInstructionBodySchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
     if (typeof req.body.templateText === "string") {
@@ -128,13 +128,13 @@ router.put(
       } catch (error) {
         throw new HttpError(
           400,
-          `Template не компилируется: ${error instanceof Error ? error.message : String(error)}`,
+          `Instruction не компилируется: ${error instanceof Error ? error.message : String(error)}`,
           "VALIDATION_ERROR"
         );
       }
     }
 
-    const updated = await updatePromptTemplate({
+    const updated = await updateInstruction({
       id: params.id,
       name: req.body.name,
       engine: req.body.engine,
@@ -142,20 +142,20 @@ router.put(
       meta: typeof req.body.meta === "undefined" ? undefined : req.body.meta,
     });
     if (!updated)
-      throw new HttpError(404, "PromptTemplate не найден", "NOT_FOUND");
+      throw new HttpError(404, "Instruction не найден", "NOT_FOUND");
     return { data: updated };
   })
 );
 
 router.delete(
-  "/prompt-templates/:id",
+  "/instructions/:id",
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const exists = await getPromptTemplateById(params.id);
+    const exists = await getInstructionById(params.id);
     if (!exists)
-      throw new HttpError(404, "PromptTemplate не найден", "NOT_FOUND");
-    await deletePromptTemplate(params.id);
+      throw new HttpError(404, "Instruction не найден", "NOT_FOUND");
+    await deleteInstruction(params.id);
     return { data: { id: params.id } };
   })
 );

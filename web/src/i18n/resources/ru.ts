@@ -12,7 +12,6 @@ const ru = {
 			settings: 'Настройки LLM',
 			userPersons: 'Персоны',
 			instructions: 'Инструкции',
-			templates: 'Шаблоны',
 			worldInfo: 'World Info',
 			operationProfiles: 'Операции',
 			appSettings: 'Настройки приложения',
@@ -186,7 +185,7 @@ const ru = {
 			},
 			toasts: {
 				openChatError: 'Не удалось открыть чат',
-				selectTemplateError: 'Не удалось выбрать шаблон',
+				selectInstructionError: 'Не удалось выбрать инструкцию',
 				deleteChatError: 'Не удалось удалить чат',
 				renameChatError: 'Не удалось переименовать чат',
 				activateBranchError: 'Не удалось активировать ветку',
@@ -231,8 +230,6 @@ const ru = {
 			llmSettings: 'Настройки LLM',
 			apiProvider: 'API Provider',
 			ragProvider: 'RAG',
-			templatesTitle: 'Prompt templates',
-			selectTemplate: 'Выберите шаблон',
 			userPersonsTitle: 'Список персон',
 			selectPerson: 'Выберите персону',
 			addPerson: 'Добавить персону',
@@ -530,20 +527,8 @@ const ru = {
 				create: 'Создать инструкцию',
 				duplicate: 'Дублировать инструкцию',
 				delete: 'Удалить инструкцию',
+				prerender: 'Пререндер',
 			},
-			fields: {
-				name: 'Название',
-				instruction: 'Инструкция',
-			},
-			placeholders: {
-				name: 'Введите название инструкции',
-				instruction: 'Введите текст инструкции',
-			},
-			defaults: {
-				newInstruction: 'Новая инструкция',
-			},
-		},
-		templates: {
 			fields: {
 				name: 'Название',
 				templateText: 'Template (LiquidJS)',
@@ -553,27 +538,25 @@ const ru = {
 			},
 			placeholders: {
 				name: 'Введите название',
-			},
-			actions: {
-				prerender: 'Пререндер',
+				selectInstruction: 'Выберите инструкцию',
 			},
 			defaults: {
-				newTemplate: 'Новый шаблон',
-				importedTemplate: 'Импортированный шаблон',
+				newInstruction: 'Новая инструкция',
+				importedInstruction: 'Импортированная инструкция',
 			},
 			confirm: {
-				deleteTemplate: 'Удалить шаблон?',
+				deleteInstruction: 'Удалить инструкцию?',
 			},
 			toasts: {
 				exportNotPossibleTitle: 'Экспорт невозможен',
-				selectForExport: 'Выберите шаблон для экспорта',
+				selectForExport: 'Выберите инструкцию для экспорта',
 				importErrorTitle: 'Ошибка импорта',
 				importMissingTemplateText: 'Файл не содержит templateText',
 				importSuccessTitle: 'Импорт успешен',
 				importReadError: 'Не удалось прочитать файл',
-				createErrorTitle: 'Не удалось создать шаблон',
-				saveErrorTitle: 'Не удалось сохранить шаблон',
-				deleteErrorTitle: 'Не удалось удалить шаблон',
+				createErrorTitle: 'Не удалось создать инструкцию',
+				saveErrorTitle: 'Не удалось сохранить инструкцию',
+				deleteErrorTitle: 'Не удалось удалить инструкцию',
 			},
 		},
 		userPersons: {
@@ -1179,9 +1162,9 @@ const ru = {
 					examples: 'Примеры',
 				},
 				contexts: {
-					promptTemplate: {
-						title: 'Liquid для prompt templates',
-						usage: 'Используется при рендере шаблонов prompt перед генерацией.',
+					instruction: {
+						title: 'Liquid для инструкций',
+						usage: 'Используется при рендере инструкций чата перед генерацией.',
 					},
 					operationTemplate: {
 						title: 'Liquid для template-операции',
@@ -1243,10 +1226,10 @@ const ru = {
 					random: 'Выбирает один вариант при рендере и вставляет его.',
 				},
 				examples: {
-					promptTemplateSystem: {
+					instructionSystem: {
 						title: 'System шаблон с World Info',
 					},
-					promptTemplateOutlet: {
+					instructionOutlet: {
 						title: 'Outlet плюс случайный тон',
 					},
 					operationTemplateArtifacts: {

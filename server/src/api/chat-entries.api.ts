@@ -15,7 +15,7 @@ import {
 } from "../services/chat-core/generations-repository";
 import { rerenderGreetingTemplatesIfPreplay } from "../services/chat-core/greeting-template-rerender";
 import {
-  buildPromptTemplateRenderContext,
+  buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "../services/chat-core/prompt-template-context";
 import { renderLiquidTemplate } from "../services/chat-core/prompt-template-renderer";
@@ -47,7 +47,7 @@ import {
 } from "../services/chat-entry-parts/variants-repository";
 import { runChatGenerationV3 } from "../services/chat-generation-v3/run-chat-generation-v3";
 
-import type { PromptTemplateRenderContext } from "../services/chat-core/prompt-template-renderer";
+import type { InstructionRenderContext } from "../services/chat-core/prompt-template-renderer";
 import type { RunEvent } from "../services/chat-generation-v3/contracts";
 import type { Entry, Part, Variant } from "@shared/types/chat-entry-parts";
 
@@ -492,7 +492,7 @@ export function mergeEntryPromptVisibilityMeta(params: {
 
 export async function renderUserInputWithLiquid(params: {
   content: string;
-  context: PromptTemplateRenderContext;
+  context: InstructionRenderContext;
   options?: {
     allowEmptyResult?: boolean;
   };
@@ -858,7 +858,7 @@ router.post(
     const branchId = body.branchId || chat.activeBranchId;
     if (!branchId) throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");
 
-    const templateContext = await buildPromptTemplateRenderContext({
+    const templateContext = await buildInstructionRenderContext({
       ownerId,
       chatId: params.id,
       branchId,
@@ -1497,7 +1497,7 @@ router.post(
 
     const ownerId = body.ownerId ?? "global";
     const chat = await getChatById(entry.chatId);
-    const templateContext = await buildPromptTemplateRenderContext({
+    const templateContext = await buildInstructionRenderContext({
       ownerId,
       chatId: entry.chatId,
       branchId: entry.branchId,

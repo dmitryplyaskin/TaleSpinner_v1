@@ -8,7 +8,7 @@ import {
   chatMessages,
   chats,
   messageVariants,
-  promptTemplates,
+  instructions,
 } from "../../db/schema";
 
 let _lastTsMs = 0;
@@ -24,7 +24,7 @@ export type ChatDto = {
   entityProfileId: string;
   title: string;
   activeBranchId: string | null;
-  promptTemplateId: string | null;
+  instructionId: string | null;
   status: "active" | "archived" | "deleted";
   createdAt: Date;
   updatedAt: Date;
@@ -41,7 +41,7 @@ function chatRowToDto(row: typeof chats.$inferSelect): ChatDto {
     entityProfileId: row.entityProfileId,
     title: row.title,
     activeBranchId: row.activeBranchId ?? null,
-    promptTemplateId: row.promptTemplateId ?? null,
+    instructionId: row.instructionId ?? null,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -166,13 +166,13 @@ export async function createChat(params: {
 
   await db.transaction((tx) => {
     const templateRows = tx
-      .select({ id: promptTemplates.id })
-      .from(promptTemplates)
-      .where(eq(promptTemplates.ownerId, ownerId))
-      .orderBy(desc(promptTemplates.updatedAt))
+      .select({ id: instructions.id })
+      .from(instructions)
+      .where(eq(instructions.ownerId, ownerId))
+      .orderBy(desc(instructions.updatedAt))
       .limit(1)
       .all();
-    const defaultPromptTemplateId = templateRows[0]?.id ?? null;
+    const defaultInstructionId = templateRows[0]?.id ?? null;
 
     tx.insert(chats).values({
       id: chatId,
@@ -180,7 +180,7 @@ export async function createChat(params: {
       entityProfileId: params.entityProfileId,
       title: params.title,
       activeBranchId: null,
-      promptTemplateId: defaultPromptTemplateId,
+      instructionId: defaultInstructionId,
       status: "active",
       createdAt: ts,
       updatedAt: ts,
@@ -227,17 +227,17 @@ export async function createChat(params: {
   return { chat: createdChat, mainBranch };
 }
 
-export async function setChatPromptTemplate(params: {
+export async function setChatInstruction(params: {
   ownerId?: string;
   chatId: string;
-  promptTemplateId: string | null;
+  instructionId: string | null;
 }): Promise<ChatDto | null> {
   const db = await initDb();
   const ownerId = params.ownerId ?? "global";
   const ts = new Date();
   await db
     .update(chats)
-    .set({ promptTemplateId: params.promptTemplateId, updatedAt: ts })
+    .set({ instructionId: params.instructionId, updatedAt: ts })
     .where(and(eq(chats.ownerId, ownerId), eq(chats.id, params.chatId)));
   return getChatById(params.chatId);
 }
