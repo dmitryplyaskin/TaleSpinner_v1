@@ -426,6 +426,10 @@ export async function* runChatGenerationV3(
     const profileOperations = context.profileSnapshot?.operations ?? [];
     const executionMode = context.profileSnapshot?.executionMode ?? "sequential";
     const runArtifactStore = new RunArtifactStore();
+    const mainPhaseSettings = {
+      ...(basePrompt.instructionDerivedSettings ?? {}),
+      ...(request.settings ?? {}),
+    };
 
     // execute_before_operations
     emit("run.phase_changed", { phase: "execute_before_operations" });
@@ -548,7 +552,10 @@ export async function* runChatGenerationV3(
       const mainStartedAt = Date.now();
       const main = yield* streamEventsWhile(
         runMainLlmPhase({
-          request,
+          request: {
+            ...request,
+            settings: mainPhaseSettings,
+          },
           runState,
           ownerId: context.ownerId,
           abortController,

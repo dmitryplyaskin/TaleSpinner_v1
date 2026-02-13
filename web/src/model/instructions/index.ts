@@ -3,6 +3,7 @@ import { combine, createEffect, createEvent, createStore, sample } from 'effecto
 import { toaster } from '@ui/toaster';
 import i18n from '../../i18n';
 
+import type { InstructionMeta } from '@shared/types/instructions';
 import type { InstructionDto } from '../../api/instructions';
 import {
 	createInstruction,
@@ -22,6 +23,16 @@ function isInstructionDto(value: unknown): value is InstructionDto {
 		typeof item.templateText === 'string' &&
 		(item.engine === 'liquidjs')
 	);
+}
+
+function resolveCopyName(originalName: string, usedNames: Set<string>): string {
+	const firstCopy = `${originalName} (copy)`;
+	if (!usedNames.has(firstCopy)) return firstCopy;
+	let index = 2;
+	while (usedNames.has(`${originalName} (copy ${index})`)) {
+		index += 1;
+	}
+	return `${originalName} (copy ${index})`;
 }
 
 export const loadInstructionsFx = createEffect(async () => {
@@ -115,7 +126,7 @@ sample({
 });
 
 export const createInstructionFx = createEffect(
-	async (params: { name: string; templateText: string; meta?: unknown }) => {
+	async (params: { name: string; templateText: string; meta?: InstructionMeta }) => {
 		return createInstruction({
 			name: params.name,
 			templateText: params.templateText,
@@ -125,11 +136,12 @@ export const createInstructionFx = createEffect(
 );
 
 export const updateInstructionFx = createEffect(
-	async (params: { id: string; name: string; templateText: string }) => {
+	async (params: { id: string; name: string; templateText: string; meta?: InstructionMeta }) => {
 		return updateInstruction({
 			id: params.id,
 			name: params.name,
 			templateText: params.templateText,
+			meta: params.meta,
 		});
 	},
 );
@@ -138,8 +150,8 @@ export const deleteInstructionFx = createEffect(async (params: { id: string }) =
 
 export const createInstructionRequested = createEvent();
 export const duplicateInstructionRequested = createEvent<{ id: string }>();
-export const importInstructionRequested = createEvent<{ name: string; templateText: string; meta?: unknown }>();
-export const updateInstructionRequested = createEvent<{ id: string; name: string; templateText: string }>();
+export const importInstructionRequested = createEvent<{ name: string; templateText: string; meta?: InstructionMeta }>();
+export const updateInstructionRequested = createEvent<{ id: string; name: string; templateText: string; meta?: InstructionMeta }>();
 export const deleteInstructionRequested = createEvent<{ id: string }>();
 
 sample({
@@ -157,8 +169,10 @@ sample({
 	filter: (items, payload) => items.some((t) => t.id === payload.id),
 	fn: (items, payload) => {
 		const tpl = items.find((t) => t.id === payload.id)!;
+		const usedNames = new Set(items.map((item) => item.name));
+		const name = resolveCopyName(tpl.name, usedNames);
 		return {
-			name: `${tpl.name} (copy)`,
+			name,
 			templateText: tpl.templateText,
 			meta: { duplicatedFromId: tpl.id, source: 'duplicate' },
 		};
@@ -168,7 +182,17 @@ sample({
 
 sample({
 	clock: importInstructionRequested,
-	fn: (payload) => payload,
+	source: $instructions,
+	fn: (items, payload) => {
+		const usedNames = new Set(items.map((item) => item.name));
+		const name = usedNames.has(payload.name)
+			? resolveCopyName(payload.name, usedNames)
+			: payload.name;
+		return {
+			...payload,
+			name,
+		};
+	},
 	target: createInstructionFx,
 });
 

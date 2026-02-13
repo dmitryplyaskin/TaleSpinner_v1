@@ -1,5 +1,9 @@
 import { buildPromptDraft } from "../../chat-core/prompt-draft-builder";
 import {
+  getTsInstructionMeta,
+  resolveStAdvancedInstructionRuntime,
+} from "../../chat-core/instruction-st-preset";
+import {
   buildInstructionRenderContext,
   resolveAndApplyWorldInfoToTemplateContext,
 } from "../../chat-core/prompt-template-context";
@@ -43,6 +47,7 @@ export async function buildBasePrompt(params: {
   prompt: PromptBuildOutput;
   templateContext: Awaited<ReturnType<typeof buildInstructionRenderContext>>;
   worldInfoDiagnostics: PromptWorldInfoDiagnostics;
+  instructionDerivedSettings: Record<string, unknown>;
 }> {
   const templateContext = await buildInstructionRenderContext({
     ownerId: params.ownerId,
@@ -76,18 +81,35 @@ export async function buildBasePrompt(params: {
   worldInfoActivatedCount = resolvedWorldInfo.activatedCount;
 
   let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+  let preHistorySystemMessages: string[] = [];
+  let postHistorySystemMessages: string[] = [];
+  let instructionDerivedSettings: Record<string, unknown> = {};
   try {
     const template = await pickInstructionForChat({
       ownerId: params.ownerId,
       chatId: params.chatId,
     });
     if (template) {
-      const rendered = await renderLiquidTemplate({
-        templateText: template.templateText,
-        context: templateContext,
-      });
-      const normalized = rendered.trim();
-      if (normalized) systemPrompt = normalized;
+      const tsInstruction = getTsInstructionMeta(template.meta);
+      if (tsInstruction?.mode === "st_advanced" && tsInstruction.stAdvanced) {
+        const resolved = await resolveStAdvancedInstructionRuntime({
+          stAdvanced: tsInstruction.stAdvanced,
+          context: templateContext,
+        });
+        if (resolved.systemPrompt.trim().length > 0) {
+          systemPrompt = resolved.systemPrompt;
+        }
+        preHistorySystemMessages = resolved.preHistorySystemMessages;
+        postHistorySystemMessages = resolved.postHistorySystemMessages;
+        instructionDerivedSettings = resolved.derivedSettings;
+      } else {
+        const rendered = await renderLiquidTemplate({
+          templateText: template.templateText,
+          context: templateContext,
+        });
+        const normalized = rendered.trim();
+        if (normalized) systemPrompt = normalized;
+      }
     }
   } catch {
     // Keep default fallback.
@@ -98,6 +120,10 @@ export async function buildBasePrompt(params: {
     chatId: params.chatId,
     branchId: params.branchId,
     systemPrompt,
+    preHistorySystemMessages:
+      preHistorySystemMessages.length > 0 ? preHistorySystemMessages : undefined,
+    postHistorySystemMessages:
+      postHistorySystemMessages.length > 0 ? postHistorySystemMessages : undefined,
     historyLimit: params.historyLimit,
     excludeMessageIds: params.excludeMessageIds,
     excludeEntryIds: params.excludeEntryIds,
@@ -134,5 +160,6 @@ export async function buildBasePrompt(params: {
       activatedCount: resolvedWorldInfo.activatedCount,
       activatedEntries: [...resolvedWorldInfo.activatedEntries],
     },
+    instructionDerivedSettings: { ...instructionDerivedSettings },
   };
 }

@@ -5,13 +5,15 @@ import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
 import { chats, instructions } from "../../db/schema";
 
+import type { InstructionMeta } from "@shared/types/instructions";
+
 export type InstructionDto = {
   id: string;
   ownerId: string;
   name: string;
   engine: "liquidjs";
   templateText: string;
-  meta: unknown | null;
+  meta: InstructionMeta | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -59,7 +61,7 @@ export async function createInstruction(params: {
   name: string;
   engine?: "liquidjs";
   templateText: string;
-  meta?: unknown;
+  meta?: InstructionMeta;
 }): Promise<InstructionDto> {
   const db = await initDb();
   const ts = new Date();
@@ -100,7 +102,7 @@ export async function updateInstruction(params: {
   name?: string;
   engine?: "liquidjs";
   templateText?: string;
-  meta?: unknown;
+  meta?: InstructionMeta;
 }): Promise<InstructionDto | null> {
   const db = await initDb();
   const ts = new Date();

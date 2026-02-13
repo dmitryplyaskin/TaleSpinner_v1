@@ -1,12 +1,14 @@
 import { apiJson } from './api-json';
 
+import type { InstructionMeta } from '@shared/types/instructions';
+
 export type InstructionDto = {
 	id: string;
 	ownerId: string;
 	name: string;
 	engine: 'liquidjs';
 	templateText: string;
-	meta: unknown | null;
+	meta: InstructionMeta | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -22,7 +24,7 @@ export async function createInstruction(params: {
 	name: string;
 	engine?: 'liquidjs';
 	templateText: string;
-	meta?: unknown;
+	meta?: InstructionMeta;
 	ownerId?: string;
 }): Promise<InstructionDto> {
 	return apiJson<InstructionDto>('/instructions', {
@@ -42,7 +44,7 @@ export async function updateInstruction(params: {
 	name?: string;
 	engine?: 'liquidjs';
 	templateText?: string;
-	meta?: unknown;
+	meta?: InstructionMeta;
 }): Promise<InstructionDto> {
 	return apiJson<InstructionDto>(`/instructions/${encodeURIComponent(params.id)}`, {
 		method: 'PUT',

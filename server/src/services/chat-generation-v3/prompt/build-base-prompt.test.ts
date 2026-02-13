@@ -137,4 +137,83 @@ describe("buildBasePrompt world-info integration", () => {
       })
     );
   });
+
+  test("uses st_advanced meta to build system/pre/post prompts and derived settings", async () => {
+    mocks.pickInstructionForChat.mockResolvedValue({
+      id: "tpl-1",
+      ownerId: "global",
+      name: "tpl",
+      engine: "liquidjs",
+      templateText: "ignored",
+      meta: {
+        tsInstruction: {
+          version: 1,
+          mode: "st_advanced",
+          stAdvanced: {
+            rawPreset: {},
+            prompts: [
+              { identifier: "main", content: "Main {{char.name}}" },
+              { identifier: "jailbreak", content: "Post {{user.name}}" },
+            ],
+            promptOrder: [
+              {
+                character_id: 100001,
+                order: [
+                  { identifier: "main", enabled: true },
+                  { identifier: "chatHistory", enabled: true },
+                  { identifier: "jailbreak", enabled: true },
+                ],
+              },
+            ],
+            responseConfig: {
+              temperature: 0.6,
+              openai_max_tokens: 444,
+            },
+            importInfo: {
+              source: "sillytavern",
+              fileName: "Default.json",
+              importedAt: new Date("2026-02-13T00:00:00.000Z").toISOString(),
+            },
+          },
+        },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    mocks.buildInstructionRenderContext.mockResolvedValue({
+      char: { name: "Lilly" },
+      user: { name: "Dima" },
+      chat: {},
+      messages: [{ role: "user", content: "hello" }],
+      rag: {},
+      art: {},
+      now: new Date().toISOString(),
+    });
+    mocks.renderLiquidTemplate.mockImplementation(
+      async ({ templateText, context }: { templateText: string; context: Record<string, unknown> }) =>
+        templateText
+          .replace("{{char.name}}", String((context.char as { name?: string })?.name ?? ""))
+          .replace("{{user.name}}", String((context.user as { name?: string })?.name ?? ""))
+    );
+
+    const out = await buildBasePrompt({
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      entityProfileId: "entity",
+      historyLimit: 50,
+      trigger: "generate",
+    });
+
+    expect(mocks.buildPromptDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: "Main Lilly",
+        postHistorySystemMessages: ["Post Dima"],
+      })
+    );
+    expect(out.instructionDerivedSettings).toMatchObject({
+      temperature: 0.6,
+      maxTokens: 444,
+    });
+  });
 });

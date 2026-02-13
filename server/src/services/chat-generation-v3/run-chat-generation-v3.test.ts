@@ -142,6 +142,7 @@ beforeEach(() => {
       activatedCount: 0,
       activatedEntries: [],
     },
+    instructionDerivedSettings: {},
   });
 });
 
@@ -400,5 +401,71 @@ describe("runChatGenerationV3", () => {
 
     mainGate.resolve();
     await consume;
+  });
+
+  test("merges instruction derived settings with request settings for main LLM", async () => {
+    const request = makeRequest();
+    request.settings = {
+      top_p: 0.91,
+      temperature: 0.95,
+    };
+    mocks.buildBasePrompt.mockResolvedValueOnce({
+      prompt: {
+        systemPrompt: "sys",
+        historyReturnedCount: 1,
+        promptHash: "h",
+        promptSnapshot: {
+          v: 1,
+          messages: [],
+          truncated: false,
+          meta: { historyLimit: 50, historyReturnedCount: 1 },
+        },
+        llmMessages: [{ role: "system", content: "sys" }],
+        draftMessages: [{ role: "system", content: "sys" }],
+      },
+      templateContext: {
+        char: {},
+        user: {},
+        chat: {},
+        messages: [],
+        rag: {},
+        art: {},
+        now: new Date().toISOString(),
+      },
+      worldInfoDiagnostics: {
+        worldInfoBefore: "",
+        worldInfoAfter: "",
+        depthEntries: [],
+        outletEntries: {},
+        anTop: [],
+        anBottom: [],
+        emTop: [],
+        emBottom: [],
+        warnings: [],
+        activatedCount: 0,
+        activatedEntries: [],
+      },
+      instructionDerivedSettings: {
+        temperature: 0.4,
+        maxTokens: 321,
+      },
+    });
+    mocks.executeOperationsPhase.mockResolvedValue([]);
+    mocks.commitEffectsPhase.mockImplementation(async (params: any) => ({
+      report: { hook: params.hook, status: "done", effects: [] },
+      requiredError: false,
+    }));
+    mocks.runMainLlmPhase.mockResolvedValue({ status: "done" });
+
+    for await (const _evt of runChatGenerationV3(request)) {
+      // consume
+    }
+
+    const call = mocks.runMainLlmPhase.mock.calls[0]?.[0];
+    expect(call.request.settings).toEqual({
+      temperature: 0.95,
+      maxTokens: 321,
+      top_p: 0.91,
+    });
   });
 });
