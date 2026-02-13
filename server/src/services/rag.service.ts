@@ -1,14 +1,29 @@
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
 import { BaseService } from '@core/services/base-service';
 import { ConfigService } from '@core/services/config-service';
 import { getTokenPlaintext, listTokens } from '@services/llm/llm-repository';
 
-import type { RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
+import type {
+  RagModel,
+  RagPreset,
+  RagPresetPayload,
+  RagPresetSettings,
+  RagProviderConfig,
+  RagProviderDefinition,
+  RagProviderId,
+  RagRuntime,
+} from '@shared/types/rag';
+
+const MODELS_REQUEST_TIMEOUT_MS = 7000;
+const DEFAULT_RAG_PRESET_NAME = 'Default RAG preset';
+
+const ragProviderIdSchema = z.enum(['openrouter', 'ollama'] satisfies RagProviderId[]);
 
 const ragRuntimeSchema = z.object({
-  activeProviderId: z.enum(['openrouter', 'ollama'] satisfies RagProviderId[]),
+  activeProviderId: ragProviderIdSchema,
   activeTokenId: z.string().nullable(),
   activeModel: z.string().nullable(),
 });
@@ -23,6 +38,30 @@ const ragConfigSchema = z.object({
   truncate: z.boolean().optional(),
 }).passthrough();
 
+const ragProviderConfigsByIdSchema = z.object({
+  openrouter: ragConfigSchema.optional(),
+  ollama: ragConfigSchema.optional(),
+}).partial();
+
+export const ragPresetPayloadSchema = z.object({
+  activeProviderId: ragProviderIdSchema,
+  activeTokenId: z.string().min(1).nullable(),
+  activeModel: z.string().min(1).nullable(),
+  providerConfigsById: ragProviderConfigsByIdSchema,
+});
+
+export const ragPresetSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  payload: ragPresetPayloadSchema,
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export const ragPresetSettingsSchema = z.object({
+  selectedId: z.string().min(1).nullable().optional(),
+}).passthrough();
+
 class RagPresets extends BaseService<RagPreset> {
   constructor() {
     super('rag-presets');
@@ -35,7 +74,7 @@ class RagPresetSettingsConfig extends ConfigService<RagPresetSettings> {
   }
 
   getDefaultConfig(): RagPresetSettings {
-    return { selectedId: null, enabled: true };
+    return { selectedId: null };
   }
 }
 
@@ -73,7 +112,7 @@ export const ragProviderDefinitions: RagProviderDefinition[] = [
     name: 'OpenRouter',
     enabled: true,
     requiresToken: true,
-    supportsModels: false,
+    supportsModels: true,
     configFields: [
       { key: 'defaultModel', label: 'Default embedding model', type: 'text', required: false, placeholder: 'openai/text-embedding-3-small' },
       { key: 'dimensions', label: 'Dimensions', type: 'number', required: false },
@@ -111,9 +150,164 @@ export const ragService = {
   providerConfigs: new RagProviderConfigService(),
 };
 
+let ensureRagPresetStateInFlight: Promise<{ presets: RagPreset[]; settings: RagPresetSettings }> | null = null;
+
+function normalizeRagConfig(input: unknown): RagProviderConfig {
+  const parsed = ragConfigSchema.safeParse(input ?? {});
+  if (!parsed.success) return {};
+  return parsed.data;
+}
+
+function normalizeRagPreset(input: unknown): RagPreset | null {
+  const parsed = ragPresetSchema.safeParse(input);
+  if (!parsed.success) return null;
+
+  const payload = parsed.data.payload;
+  return {
+    ...parsed.data,
+    payload: {
+      ...payload,
+      providerConfigsById: {
+        openrouter: payload.providerConfigsById.openrouter ? normalizeRagConfig(payload.providerConfigsById.openrouter) : undefined,
+        ollama: payload.providerConfigsById.ollama ? normalizeRagConfig(payload.providerConfigsById.ollama) : undefined,
+      },
+    },
+  };
+}
+
+export function normalizeRagPresetSettings(input: unknown): RagPresetSettings {
+  const parsed = ragPresetSettingsSchema.safeParse(input);
+  if (!parsed.success) return { selectedId: null };
+  return { selectedId: parsed.data.selectedId ?? null };
+}
+
+async function buildRagPresetPayloadSnapshot(): Promise<RagPresetPayload> {
+  const [runtimeRaw, providerConfigsRaw] = await Promise.all([
+    ragService.runtime.getConfig(),
+    ragService.providerConfigs.getConfig(),
+  ]);
+  const runtime = ragRuntimeSchema.parse(runtimeRaw);
+
+  return {
+    activeProviderId: runtime.activeProviderId,
+    activeTokenId: runtime.activeTokenId ?? null,
+    activeModel: runtime.activeModel ?? null,
+    providerConfigsById: {
+      openrouter: normalizeRagConfig(providerConfigsRaw.openrouter ?? {}),
+      ollama: normalizeRagConfig(providerConfigsRaw.ollama ?? {}),
+    },
+  };
+}
+
+async function ensureRagPresetStateUnsafe(): Promise<{ presets: RagPreset[]; settings: RagPresetSettings }> {
+  const rawPresets = await ragService.presets.getAll();
+  const normalizedPresets: RagPreset[] = [];
+
+  for (const rawPreset of rawPresets) {
+    const normalized = normalizeRagPreset(rawPreset);
+    if (!normalized) {
+      console.warn('Skipping invalid RAG preset payload', { id: (rawPreset as { id?: unknown })?.id });
+      continue;
+    }
+    normalizedPresets.push(normalized);
+
+    if (JSON.stringify(rawPreset) !== JSON.stringify(normalized)) {
+      await ragService.presets.update(normalized);
+    }
+  }
+
+  if (normalizedPresets.length === 0) {
+    const now = new Date().toISOString();
+    const created = await ragService.presets.create({
+      id: uuidv4(),
+      name: DEFAULT_RAG_PRESET_NAME,
+      payload: await buildRagPresetPayloadSnapshot(),
+      createdAt: now,
+      updatedAt: now,
+    });
+    normalizedPresets.push(created);
+  }
+
+  const currentSettingsRaw = await ragService.presetSettings.getConfig();
+  let nextSettings = normalizeRagPresetSettings(currentSettingsRaw);
+  const presetIds = new Set(normalizedPresets.map((item) => item.id));
+
+  if (!nextSettings.selectedId || !presetIds.has(nextSettings.selectedId)) {
+    nextSettings = { selectedId: normalizedPresets[0]?.id ?? null };
+  }
+
+  if (JSON.stringify(currentSettingsRaw) !== JSON.stringify(nextSettings)) {
+    await ragService.presetSettings.saveConfig(nextSettings);
+  }
+
+  return { presets: normalizedPresets, settings: nextSettings };
+}
+
+export async function ensureRagPresetState(): Promise<{ presets: RagPreset[]; settings: RagPresetSettings }> {
+  if (ensureRagPresetStateInFlight) {
+    return ensureRagPresetStateInFlight;
+  }
+
+  ensureRagPresetStateInFlight = ensureRagPresetStateUnsafe();
+  try {
+    return await ensureRagPresetStateInFlight;
+  } finally {
+    ensureRagPresetStateInFlight = null;
+  }
+}
+
+export async function bootstrapRag(): Promise<void> {
+  await ensureRagPresetState();
+}
+
 export async function listRagTokens(providerId: RagProviderId) {
   if (providerId !== 'openrouter') return [];
   return listTokens('openrouter');
+}
+
+export async function listRagModels(params: {
+  providerId: RagProviderId;
+  tokenId: string | null;
+}): Promise<RagModel[]> {
+  if (params.providerId !== 'openrouter') {
+    return [];
+  }
+  if (!params.tokenId) {
+    return [];
+  }
+
+  const token = await getTokenPlaintext(params.tokenId);
+  if (!token) {
+    return [];
+  }
+
+  try {
+    const response = await axios.get('https://openrouter.ai/api/v1/embeddings/models', {
+      headers: {
+        'HTTP-Referer': 'http://localhost:5000',
+        'X-Title': 'TaleSpinner',
+        Authorization: `Bearer ${token}`,
+      },
+      timeout: MODELS_REQUEST_TIMEOUT_MS,
+    });
+
+    const rawItems = Array.isArray(response.data?.data)
+      ? response.data.data as Array<{ id?: unknown; name?: unknown }>
+      : [];
+
+    return rawItems
+      .filter((item) => typeof item?.id === 'string' && item.id.length > 0)
+      .map((item) => ({
+        id: item.id as string,
+        name: typeof item.name === 'string' && item.name.length > 0 ? item.name : item.id as string,
+      }));
+  } catch (error) {
+    console.warn('Failed to fetch RAG embedding models', {
+      providerId: params.providerId,
+      error,
+    });
+    return [];
+  }
 }
 
 export async function getRagRuntime(): Promise<RagRuntime> {

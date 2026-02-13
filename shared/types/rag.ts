@@ -1,5 +1,10 @@
 export type RagProviderId = 'openrouter' | 'ollama';
 
+export type RagModel = {
+  id: string;
+  name: string;
+};
+
 export type RagProviderDefinition = {
   id: RagProviderId;
   name: string;
@@ -51,5 +56,4 @@ export type RagPreset = {
 
 export type RagPresetSettings = {
   selectedId: string | null;
-  enabled: boolean;
 };

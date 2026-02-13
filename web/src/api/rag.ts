@@ -1,6 +1,6 @@
 import { apiJson } from './api-json';
 
-import type { RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
+import type { RagModel, RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
 import type { LlmTokenListItem } from '@shared/types/llm';
 
 export async function getRagProviders(): Promise<RagProviderDefinition[]> {
@@ -30,6 +30,15 @@ export async function patchRagProviderConfig(providerId: RagProviderId, config: 
 export async function listRagTokens(providerId: RagProviderId): Promise<LlmTokenListItem[]> {
   const data = await apiJson<{ tokens: LlmTokenListItem[] }>(`/rag/tokens?providerId=${encodeURIComponent(providerId)}`);
   return data.tokens;
+}
+
+export async function listRagModels(params: { providerId: RagProviderId; tokenId?: string | null }): Promise<RagModel[]> {
+  const search = new URLSearchParams({ providerId: params.providerId });
+  if (params.tokenId) {
+    search.set('tokenId', params.tokenId);
+  }
+  const data = await apiJson<{ models: RagModel[] }>(`/rag/models?${search.toString()}`);
+  return data.models;
 }
 
 export async function listRagPresets(): Promise<RagPreset[]> {
