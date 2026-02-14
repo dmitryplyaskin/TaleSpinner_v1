@@ -1,16 +1,17 @@
 import fs from "fs/promises";
-import path from "path";
 
 import sharp from "sharp";
 
 import { resolveSafePath } from "@core/files/safe-path";
+
+import { createDataPath } from "../utils";
 
 class FileService {
   private readonly fileDirectory: string;
   private readonly ready: Promise<void>;
 
   constructor() {
-    this.fileDirectory = path.join(process.cwd(), "data", "files");
+    this.fileDirectory = createDataPath("files");
     this.ready = this.initFileDirectory();
   }
 

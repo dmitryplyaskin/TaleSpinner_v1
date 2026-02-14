@@ -9,6 +9,8 @@ import { type AsyncRequestHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import fileService from "@services/file-service";
 
+import { createDataPath } from "../../utils";
+
 import { type CardUploadResponse, type ProcessedCardFile, type UploadedFile } from "./types";
 
 interface CharacterComment {
@@ -135,10 +137,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
   const failedFiles: Array<{ originalName: string; error: string }> = [];
 
   const cardImagesPath = path.join(
-    process.cwd(),
-    "data",
-    "media",
-    "images",
+    createDataPath("media", "images"),
     "agent-cards"
   );
   await fs.mkdir(cardImagesPath, { recursive: true });
@@ -222,10 +221,7 @@ export const uploadImage: AsyncRequestHandler = async (req) => {
   const sanitizedFolderName = folderName.replace(/[^a-zA-Z0-9-_]/g, "_");
 
   const imageFolder = path.join(
-    process.cwd(),
-    "data",
-    "media",
-    "images",
+    createDataPath("media", "images"),
     sanitizedFolderName
   );
 

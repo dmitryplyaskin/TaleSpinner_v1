@@ -34,6 +34,7 @@ import { getBranchCurrentTurn } from "../services/chat-entry-parts/branch-turn-r
 import { createEntryWithVariant } from "../services/chat-entry-parts/entries-repository";
 import { createPart } from "../services/chat-entry-parts/parts-repository";
 import { createVariant, updateVariantDerived } from "../services/chat-entry-parts/variants-repository";
+import { createDataPath } from "../utils";
 
 const router = express.Router();
 
@@ -123,7 +124,7 @@ function injectChunkBeforeIEND(basePng: Buffer, chunk: Buffer): Buffer {
 function toProfileMediaPath(avatarAssetId: string | null): string | null {
   if (!avatarAssetId) return null;
   if (!avatarAssetId.startsWith("/media/")) return null;
-  return path.join(process.cwd(), "data", avatarAssetId.replace(/^\/media\//, "media/"));
+  return createDataPath(avatarAssetId.replace(/^\/media\//, "media/"));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -196,7 +197,7 @@ export async function renderGreetingTemplateSinglePass(params: {
 
 async function buildCharSpecPngBuffer(profile: { name: string; spec: unknown; avatarAssetId: string | null }): Promise<Buffer> {
   const relPath = profile.avatarAssetId?.replace(/^\/media\//, "") ?? null;
-  const filePath = relPath ? path.join(process.cwd(), "data", "media", relPath) : null;
+  const filePath = relPath ? createDataPath("media", relPath) : null;
 
   let basePng = Buffer.from(FALLBACK_PNG_BASE64, "base64");
   if (filePath) {
@@ -344,7 +345,7 @@ router.delete(
     const avatarPath = profile?.avatarAssetId ?? null;
     if (avatarPath && avatarPath.startsWith("/media/images/entity-profiles/")) {
       const rel = avatarPath.replace(/^\/media\//, ""); // -> images/entity-profiles/...
-      const filePath = path.join(process.cwd(), "data", "media", rel);
+      const filePath = createDataPath("media", rel);
       await fs.unlink(filePath).catch(() => undefined);
     }
 

@@ -2,6 +2,8 @@ import path from "path";
 
 import express from "express";
 
+import { createDataPath } from "../utils";
+
 const router = express.Router();
 
 // Конфигурация для разных типов файлов
@@ -18,10 +20,9 @@ const mimeTypes: Record<string, string> = {
 // Добавляем middleware для статических файлов
 router.use(
   "/media",
-  express.static(path.join(process.cwd(), "data", "media"), {
+  express.static(createDataPath("media"), {
     maxAge: "1d",
     setHeaders: (res, filePath) => {
-      console.log(filePath);
       const ext = path.extname(filePath).toLowerCase();
       const mimeType = mimeTypes[ext];
       if (mimeType) {

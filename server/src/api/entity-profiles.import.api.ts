@@ -14,6 +14,7 @@ import {
   createEntityProfile,
   type EntityProfileDto,
 } from "../services/chat-core/entity-profiles-repository";
+import { createDataPath } from "../utils";
 
 type ImportFailed = { originalName: string; error: string };
 
@@ -42,7 +43,7 @@ function safeJsonParseBuffer(buffer: Buffer): unknown {
 }
 
 function getEntityProfileImagesDir(): string {
-  return path.join(process.cwd(), "data", "media", "images", "entity-profiles");
+  return createDataPath("media", "images", "entity-profiles");
 }
 
 async function saveEntityProfilePng(

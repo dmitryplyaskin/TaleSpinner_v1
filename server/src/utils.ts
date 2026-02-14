@@ -1,6 +1,6 @@
 import path from "path";
 
-import { DATA_PATH } from "./const";
+import { getDataRootPath } from "./const";
 
-export const createDataPath = (dir: string): string =>
-  path.join(DATA_PATH, dir);
+export const createDataPath = (...parts: string[]): string =>
+  path.join(getDataRootPath(), ...parts);

@@ -1,13 +1,12 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 
 import { eq } from "drizzle-orm";
 
 import { type AppSettings } from "@shared/types/app-settings";
 
-import { DATA_PATH } from "../../const";
 import { initDb } from "../../db/client";
 import { uiAppSettings } from "../../db/schema";
+import { createDataPath } from "../../utils";
 
 const SETTINGS_ROW_ID = "global";
 const MAX_LEGACY_DATA_DEPTH = 32;
@@ -84,7 +83,7 @@ function rowToDto(row: typeof uiAppSettings.$inferSelect): AppSettings {
 }
 
 async function tryReadLegacyFile(): Promise<unknown> {
-  const legacyPath = path.join(DATA_PATH, "config", "app-settings.json");
+  const legacyPath = createDataPath("config", "app-settings.json");
   try {
     const raw = await fs.readFile(legacyPath, "utf8");
     return JSON.parse(raw);

@@ -1,0 +1,49 @@
+name: Backend Full Matrix (Nightly + Merge)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/backend-full-matrix.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-full-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install server dependencies
+        run: yarn --cwd server install --frozen-lockfile
+
+      - name: Run backend e2e full matrix
+        run: yarn --cwd server test:e2e:full
+
+      - name: Run backend e2e stability
+        run: yarn --cwd server test:e2e:stability
+
+      - name: Run backend e2e blackbox smoke
+        run: yarn --cwd server test:e2e:blackbox

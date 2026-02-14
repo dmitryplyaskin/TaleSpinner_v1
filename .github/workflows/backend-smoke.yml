@@ -1,0 +1,55 @@
+name: Backend Smoke (PR + Merge)
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/backend-smoke.yml'
+  push:
+    branches: [main, dev]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/backend-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install server dependencies
+        run: yarn --cwd server install --frozen-lockfile
+
+      - name: Typecheck server
+        run: yarn --cwd server typecheck
+
+      - name: Run server unit/integration tests
+        run: yarn --cwd server test
+
+      - name: Run backend e2e smoke
+        run: yarn --cwd server test:e2e:smoke
