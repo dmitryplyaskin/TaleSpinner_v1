@@ -106,7 +106,7 @@ if "%BRANCH_SOURCE%"=="local" (
         git worktree add --track -b "%BRANCH_NAME%" "%WORKTREE_PATH%" "%REMOTE_NAME%/%BRANCH_NAME%"
     ) else (
         echo Ветка "%BRANCH_NAME%" не найдена. Создаём новую от %REMOTE_NAME%/%BASE_BRANCH%...
-        git worktree add -b "%BRANCH_NAME%" "%WORKTREE_PATH%" "%REMOTE_NAME%/%BASE_BRANCH%"
+        git worktree add --no-track -b "%BRANCH_NAME%" "%WORKTREE_PATH%" "%REMOTE_NAME%/%BASE_BRANCH%"
     )
 )
 
@@ -114,6 +114,15 @@ if errorlevel 1 (
     echo [Ошибка] Не удалось создать worktree.
     pause
     exit /b 1
+)
+
+set "UPSTREAM_REF="
+for /f "delims=" %%u in ('git -C "%WORKTREE_PATH%" rev-parse --abbrev-ref --symbolic-full-name "%BRANCH_NAME%@{upstream}" 2^>nul') do set "UPSTREAM_REF=%%u"
+if /I not "%BRANCH_NAME%"=="%BASE_BRANCH%" (
+    if /I "!UPSTREAM_REF!"=="%REMOTE_NAME%/%BASE_BRANCH%" (
+        git -C "%WORKTREE_PATH%" branch --unset-upstream "%BRANCH_NAME%" >nul 2>&1
+        echo [OK] Для ветки %BRANCH_NAME% снят upstream %REMOTE_NAME%/%BASE_BRANCH% (защита от случайного push в dev)
+    )
 )
 
 echo.
