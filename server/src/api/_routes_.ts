@@ -8,6 +8,7 @@ import llmPresetsRoutes from "./llm-presets.api";
 import llmRoutes from "./llm.api";
 import ragRoutes from "./rag.api";
 import operationProfilesCoreRoutes from "./operation-profiles.core.api";
+import operationBlocksCoreRoutes from "./operation-blocks.core.api";
 import instructionsCoreRoutes from "./instructions.core.api";
 import samplersRoutes from "./samplers.api";
 import uiThemeCoreRoutes from "./ui-theme.core.api";
@@ -21,6 +22,7 @@ export const routes = [
   chatEntriesRoutes,
   generationsCoreRoutes,
   operationProfilesCoreRoutes,
+  operationBlocksCoreRoutes,
   userPersonsCoreRoutes,
   samplersRoutes,
   llmRoutes,

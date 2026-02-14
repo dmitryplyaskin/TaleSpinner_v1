@@ -47,6 +47,28 @@ export const operationProfileSettings = sqliteTable(
   })
 );
 
+export const operationBlocks = sqliteTable(
+  "operation_blocks",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    name: text("name").notNull(),
+    description: text("description"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    version: integer("version").notNull().default(1),
+    specJson: text("spec_json").notNull(),
+    metaJson: text("meta_json"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => ({
+    ownerUpdatedAtIdx: index("operation_blocks_owner_updated_at_idx").on(
+      t.ownerId,
+      t.updatedAt
+    ),
+  })
+);
+
 export const operationProfileSessionArtifacts = sqliteTable(
   "operation_profile_session_artifacts",
   {

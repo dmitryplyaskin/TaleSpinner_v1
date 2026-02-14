@@ -3,6 +3,7 @@ import { resolveGatewayModel } from "../../llm/llm-gateway-adapter";
 import { getProviderConfig, getRuntime } from "../../llm/llm-repository";
 import { getOperationProfileSettings } from "../../operations/operation-profile-settings-repository";
 import { getOperationProfileById } from "../../operations/operation-profiles-repository";
+import { resolveCompiledOperationProfile } from "../../operations/operation-profile-resolver";
 import { stripChatGenerationDebugSettings } from "../debug";
 
 import type { ProfileSnapshot, RunContext, RunRequest } from "../contracts";
@@ -14,24 +15,29 @@ function buildSessionKey(params: {
   chatId: string;
   branchId: string;
   profile: OperationProfile;
+  blockVersionFingerprint: string;
 }): string {
-  return [
+  const base = [
     params.ownerId,
     params.chatId,
     params.branchId,
     params.profile.profileId,
     String(params.profile.version),
     params.profile.operationProfileSessionId,
-  ].join(":");
+  ];
+  if (params.blockVersionFingerprint.trim().length > 0) {
+    base.push(params.blockVersionFingerprint);
+  }
+  return base.join(":");
 }
 
-function toProfileSnapshot(profile: OperationProfile): ProfileSnapshot {
+function toProfileSnapshot(profile: OperationProfile): NonNullable<ProfileSnapshot> {
   return {
     profileId: profile.profileId,
     version: profile.version,
     executionMode: profile.executionMode,
     operationProfileSessionId: profile.operationProfileSessionId,
-    operations: profile.operations,
+    operations: [],
   };
 }
 
@@ -55,6 +61,7 @@ export async function resolveRunContext(params: {
     ? await getOperationProfileById(settings.activeProfileId)
     : null;
   const profile = activeProfile && activeProfile.enabled ? activeProfile : null;
+  const compiledProfile = profile ? await resolveCompiledOperationProfile(profile) : null;
 
   const generation = await createGeneration({
     ownerId,
@@ -74,6 +81,7 @@ export async function resolveRunContext(params: {
         chatId: params.request.chatId,
         branchId: params.request.branchId,
         profile,
+        blockVersionFingerprint: compiledProfile?.blockVersionFingerprint ?? "",
       })
     : null;
 
@@ -85,7 +93,12 @@ export async function resolveRunContext(params: {
     chatId: params.request.chatId,
     branchId: params.request.branchId,
     entityProfileId: params.request.entityProfileId,
-    profileSnapshot: profile ? toProfileSnapshot(profile) : null,
+    profileSnapshot: profile
+      ? {
+          ...toProfileSnapshot(profile),
+          operations: compiledProfile?.operations ?? [],
+        }
+      : null,
     runtimeInfo: {
       providerId: runtime.activeProviderId,
       model,

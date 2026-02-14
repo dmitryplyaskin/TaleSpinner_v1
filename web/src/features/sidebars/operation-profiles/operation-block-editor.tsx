@@ -5,17 +5,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { LuChevronDown, LuChevronUp, LuPlus } from 'react-icons/lu';
-import { v4 as uuidv4 } from 'uuid';
 
-import { updateOperationProfileFx } from '@model/operation-profiles';
-import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
+import { updateOperationBlockFx } from '@model/operation-blocks';
+import { FormInput, FormSwitch } from '@ui/form-components';
 
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from './form/operation-profile-form-mapping';
 import { OperationEditor } from './ui/operation-editor/operation-editor';
 import { OperationList } from './ui/operation-list';
 
 import type { OperationListRowMeta } from './ui/types';
-import type { OperationProfileDto } from '../../../api/chat-core';
+import type { OperationBlockDto, OperationProfileDto } from '../../../api/chat-core';
 import type { OperationKind } from '@shared/types/operation-profiles';
 
 function isOperationKind(value: unknown): value is OperationKind {
@@ -31,17 +30,16 @@ function isOperationKind(value: unknown): value is OperationKind {
 }
 
 type Props = {
-	profile: OperationProfileDto;
+	block: OperationBlockDto;
 	preferSplitLayout: boolean;
-	onToolbarStateChange?: (state: OperationProfileToolbarState | null) => void;
+	onToolbarStateChange?: (state: OperationBlockToolbarState | null) => void;
 };
 
-export type OperationProfileToolbarState = {
+export type OperationBlockToolbarState = {
 	canSave: boolean;
 	canDiscard: boolean;
 	onSave: () => void;
 	onDiscard: () => void;
-	onResetSessionId: () => void;
 };
 
 type SelectedOperationEditorProps = {
@@ -79,15 +77,33 @@ const SelectedOperationEditor: React.FC<SelectedOperationEditorProps> = React.me
 
 SelectedOperationEditor.displayName = 'SelectedOperationEditor';
 
-export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLayout, onToolbarStateChange }) => {
+export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout, onToolbarStateChange }) => {
 	const { t } = useTranslation();
-	const doUpdate = useUnit(updateOperationProfileFx);
+	const doUpdate = useUnit(updateOperationBlockFx);
 	const isMobile = useMediaQuery('(max-width: 767px)');
 	const useSplitLayout = preferSplitLayout && !isMobile;
 
-	const initial = useMemo(() => toOperationProfileForm(profile), [profile]);
+	const initial = useMemo(
+		() =>
+			toOperationProfileForm({
+				profileId: block.blockId,
+				ownerId: block.ownerId,
+				name: block.name,
+				description: block.description,
+				enabled: block.enabled,
+				executionMode: 'sequential',
+				operationProfileSessionId: '00000000-0000-0000-0000-000000000000',
+				blockRefs: [],
+				operations: block.operations,
+				meta: block.meta,
+				version: block.version,
+				createdAt: block.createdAt,
+				updatedAt: block.updatedAt,
+			} satisfies OperationProfileDto),
+		[block],
+	);
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
-	const { control, formState, reset, setValue } = methods;
+	const { control, formState, reset } = methods;
 
 	const { fields, append, remove } = useFieldArray({
 		name: 'operations',
@@ -136,12 +152,20 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 			setJsonError(null);
 			try {
 				const payload = fromOperationProfileForm(values, { validateJson: true });
-				doUpdate({ profileId: profile.profileId, patch: payload });
+				doUpdate({
+					blockId: block.blockId,
+					patch: {
+						name: payload.name,
+						description: payload.description,
+						enabled: payload.enabled,
+						operations: payload.operations,
+					},
+				});
 			} catch (error) {
 				setJsonError(error instanceof Error ? error.message : String(error));
 			}
 		},
-		[doUpdate, profile.profileId],
+		[doUpdate, block.blockId],
 	);
 
 	const onSave = useMemo(() => methods.handleSubmit(submitValues), [methods, submitValues]);
@@ -152,19 +176,14 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 		setEditingOpId(initial.operations[0]?.opId ?? null);
 	}, [initial, reset]);
 
-	const onResetSessionId = useCallback(() => {
-		setValue('operationProfileSessionId', uuidv4(), { shouldDirty: true });
-	}, [setValue]);
-
-	const toolbarState = useMemo<OperationProfileToolbarState>(() => {
+	const toolbarState = useMemo<OperationBlockToolbarState>(() => {
 		return {
 			canSave: formState.isDirty,
 			canDiscard: formState.isDirty,
 			onSave,
 			onDiscard,
-			onResetSessionId,
 		};
-	}, [formState.isDirty, onDiscard, onResetSessionId, onSave]);
+	}, [formState.isDirty, onDiscard, onSave]);
 
 	useEffect(() => {
 		onToolbarStateChange?.(toolbarState);
@@ -238,36 +257,18 @@ export const OperationProfileEditor: React.FC<Props> = ({ profile, preferSplitLa
 					>
 						<Group gap="xs" wrap="nowrap">
 							{isProfileOpen ? <LuChevronDown /> : <LuChevronUp />}
-							<Text fw={700}>{t('operationProfiles.profileSettings.title')}</Text>
+							<Text fw={700}>{t('operationProfiles.blocks.blockSettingsTitle')}</Text>
 						</Group>
 					</Group>
 
 					<Collapse in={isProfileOpen}>
 						<Stack gap="xs" pt="md">
-							<FormInput name="name" label={t('operationProfiles.profileSettings.profileName')} inputProps={{ style: { flex: 1 } }} />
+							<FormInput name="name" label={t('operationProfiles.blocks.blockName')} inputProps={{ style: { flex: 1 } }} />
 							<FormInput name="description" label={t('operationProfiles.sectionsLabels.description')} />
 
 							<Group gap="md" wrap="wrap">
-								<FormSwitch name="enabled" label={t('operationProfiles.profileSettings.profileEnabled')} />
-								<FormSelect
-									name="executionMode"
-									label={t('operationProfiles.profileSettings.executionMode')}
-									selectProps={{
-										comboboxProps: { withinPortal: false },
-										style: { width: 220 },
-										options: [
-											{ value: 'concurrent', label: 'concurrent' },
-											{ value: 'sequential', label: 'sequential' },
-										],
-									}}
-								/>
+								<FormSwitch name="enabled" label={t('operationProfiles.blocks.blockEnabled')} />
 							</Group>
-
-							<FormInput
-								name="operationProfileSessionId"
-								label={t('operationProfiles.profileSettings.sessionId')}
-								infoTip={t('operationProfiles.profileSettings.sessionIdInfo')}
-							/>
 						</Stack>
 					</Collapse>
 				</Card>

@@ -10,4 +10,5 @@ export * from './app-settings';
 export * from './app-debug';
 export * from './chat-core';
 export * from './operation-profiles';
+export * from './operation-blocks';
 export * from './world-info';

@@ -2,10 +2,36 @@
 			sidebar: {
 				title: 'Operations',
 			},
+			tabs: {
+				profiles: 'Profiles',
+				blocks: 'Blocks',
+			},
 			defaults: {
 				newProfile: 'New profile',
 				copyName: '{{name}} (copy)',
 				untitledOperation: 'Untitled operation',
+			},
+			blocks: {
+				defaults: {
+					newBlock: 'New block',
+				},
+				blockSettingsTitle: 'Block settings',
+				blockName: 'Block name',
+				blockEnabled: 'Block enabled',
+				selectBlock: 'Select block',
+				emptySelectBlock: 'Select a block to edit operations.',
+				profileCompositionTitle: 'Profile composition',
+				addBlock: 'Add block',
+				emptyComposition: 'No blocks attached to this profile yet.',
+				blockRefEnabled: 'Enabled in this profile',
+				blockOrder: 'Order',
+				actions: {
+					createBlock: 'Create block',
+					duplicateBlock: 'Duplicate block',
+					deleteBlock: 'Delete block',
+					exportBlock: 'Export block',
+					importBlocks: 'Import blocks',
+				},
 			},
 			actions: {
 				openNodeEditor: 'Open Node Editor',
@@ -258,6 +284,7 @@
 			},
 			confirm: {
 				deleteProfile: 'Delete this operations profile?',
+				deleteBlock: 'Delete this operations block?',
 				deleteOperation: 'Delete selected operation?',
 				deleteGroup: 'Delete this group?',
 				deleteSelectedOperations: 'Delete selected operations?',
