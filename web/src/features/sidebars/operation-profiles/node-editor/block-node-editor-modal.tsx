@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
-import { updateOperationProfileFx } from '@model/operation-profiles';
+import { updateOperationBlockFx } from '@model/operation-blocks';
 import { Z_INDEX } from '@ui/z-index';
 
 import { fromOperationProfileForm, makeDefaultOperation, toOperationProfileForm, type OperationProfileFormValues } from '../form/operation-profile-form-mapping';
@@ -41,13 +41,13 @@ import { NodeEditorHeader } from './ui/node-editor-header';
 import { computeBoundsFromNodes } from './utils/bounds';
 import { DEFAULT_GROUP_COLOR_HEX, normalizeCssColorToOpaqueRgbString } from './utils/color';
 
-import type { OperationProfileDto } from '../../../../api/chat-core';
+import type { OperationBlockDto, OperationProfileDto } from '../../../../api/chat-core';
 import type { NodeEditorViewState } from '../ui/types';
 
 type Props = {
 	opened: boolean;
 	onClose: () => void;
-	profile: OperationProfileDto;
+	block: OperationBlockDto;
 };
 
 type OpEdge = { source: string; target: string };
@@ -103,12 +103,30 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
 	return Boolean(target.closest?.('[contenteditable="true"]'));
 }
 
-export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClose, profile }) => {
+export const OperationBlockNodeEditorModal: React.FC<Props> = ({ opened, onClose, block }) => {
 	const { t } = useTranslation();
-	const doUpdate = useUnit(updateOperationProfileFx);
+	const doUpdate = useUnit(updateOperationBlockFx);
 	const isCompactLayout = useMediaQuery('(max-width: 1024px)');
 
-	const initial = useMemo(() => toOperationProfileForm(profile), [profile]);
+	const initial = useMemo(
+		() =>
+			toOperationProfileForm({
+				profileId: block.blockId,
+				ownerId: block.ownerId,
+				name: block.name,
+				description: block.description,
+				enabled: block.enabled,
+				executionMode: 'sequential',
+				operationProfileSessionId: '00000000-0000-0000-0000-000000000000',
+				blockRefs: [],
+				operations: block.operations,
+				meta: block.meta,
+				version: block.version,
+				createdAt: block.createdAt,
+				updatedAt: block.updatedAt,
+			} satisfies OperationProfileDto),
+		[block],
+	);
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
 	const { control, formState, setValue, reset: resetForm } = methods;
 
@@ -138,7 +156,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		resetForm(initial);
 		setSelectedOpId(null);
 		setSelectedNodeIds([]);
-		const metaGroups = readNodeEditorMeta(profile.meta)?.groups ?? {};
+		const metaGroups = readNodeEditorMeta(block.meta)?.groups ?? {};
 		setGroups(metaGroups);
 		setSelectedGroupId(null);
 		setGroupEditor(null);
@@ -146,7 +164,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		setViewState('graph');
 		setIsInspectorVisible(true);
 
-		const meta = readNodeEditorMeta(profile.meta);
+		const meta = readNodeEditorMeta(block.meta);
 		const resetEdges = buildEdges(initial.operations as Array<{ opId: string; config?: { dependsOn?: string[] } }>);
 		const fallbackPositions = computeSimpleLayout(extractOpIds(initial), edgesToDeps(resetEdges));
 		const nextNodes: Array<Node<OperationFlowNodeData>> = initial.operations.map((op) => {
@@ -167,7 +185,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 			};
 		});
 		setNodes(nextNodes);
-	}, [initial, profile.meta, resetForm, setNodes]);
+	}, [initial, block.meta, resetForm, setNodes]);
 
 	useEffect(() => {
 		resetToInitialState();
@@ -193,7 +211,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 	// Initialize nodes on open / profile change.
 	useEffect(() => {
 		if (!opened) return;
-		const meta = readNodeEditorMeta(profile.meta);
+		const meta = readNodeEditorMeta(block.meta);
 		const fallbackPositions = computeSimpleLayout(extractOpIds(methods.getValues()), edgesToDeps(edges));
 		const initialNodes: Array<Node<OperationFlowNodeData>> = safeOperations.map((op) => {
 			const pos = meta?.nodes?.[op.opId] ?? fallbackPositions[op.opId] ?? { x: 0, y: 0 };
@@ -214,12 +232,12 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 		});
 		setNodes(initialNodes);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [opened, profile.profileId]);
+	}, [opened, block.blockId]);
 
 	useEffect(() => {
 		if (!opened) return;
 		setIsInspectorVisible(true);
-	}, [opened, profile.profileId]);
+	}, [opened, block.blockId]);
 
 	// Keep node data in sync with form, but preserve positions while dragging.
 	useEffect(() => {
@@ -322,8 +340,14 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 				groups: Object.keys(groupsToSave).length ? groupsToSave : undefined,
 			};
 			doUpdate({
-				profileId: profile.profileId,
-				patch: { ...payload, meta: writeNodeEditorMeta(profile.meta, nodeEditorMeta) },
+				blockId: block.blockId,
+				patch: {
+					name: payload.name,
+					description: payload.description,
+					enabled: payload.enabled,
+					operations: payload.operations,
+					meta: writeNodeEditorMeta(block.meta, nodeEditorMeta),
+				},
 			});
 			setIsLayoutDirty(false);
 		} catch (e) {
@@ -675,7 +699,7 @@ export const OperationProfileNodeEditorModal: React.FC<Props> = ({ opened, onClo
 			<FormProvider {...methods}>
 				<Stack gap="sm" style={{ flex: 1, minHeight: 0 }} className="opNodeShell">
 					<NodeEditorHeader
-						profileName={profile.name}
+						profileName={block.name}
 						isDirty={isDirty}
 						onAutoLayout={autoLayout}
 						onSave={onSave}

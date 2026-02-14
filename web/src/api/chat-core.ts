@@ -1,6 +1,9 @@
 import { BASE_URL } from '../const';
 
 import type {
+	OperationBlock,
+	OperationBlockExport,
+	OperationProfileLegacyExportV1,
 	OperationProfile,
 	OperationProfileExport,
 	OperationProfileSettings,
@@ -313,6 +316,11 @@ export type OperationProfileDto = Omit<OperationProfile, 'createdAt' | 'updatedA
 	updatedAt: string;
 };
 
+export type OperationBlockDto = Omit<OperationBlock, 'createdAt' | 'updatedAt'> & {
+	createdAt: string;
+	updatedAt: string;
+};
+
 export type OperationProfileSettingsDto = Omit<OperationProfileSettings, 'updatedAt'> & {
 	updatedAt: string;
 };
@@ -352,9 +360,64 @@ export async function exportOperationProfile(profileId: string): Promise<Operati
 
 export async function importOperationProfiles(params: {
 	ownerId?: string;
-	items: OperationProfileExport | OperationProfileExport[];
+	items: OperationProfileExport | OperationProfileLegacyExportV1 | Array<OperationProfileExport | OperationProfileLegacyExportV1>;
 }): Promise<{ created: OperationProfileDto[] }> {
 	return apiJson<{ created: OperationProfileDto[] }>('/operation-profiles/import', {
+		method: 'POST',
+		body: JSON.stringify({ ownerId: params.ownerId, items: params.items }),
+	});
+}
+
+export async function listOperationBlocks(): Promise<OperationBlockDto[]> {
+	return apiJson<OperationBlockDto[]>('/operation-blocks');
+}
+
+export async function createOperationBlock(params: {
+	ownerId?: string;
+	input: {
+		name: string;
+		description?: string;
+		enabled: boolean;
+		operations: OperationBlockDto['operations'];
+		meta?: unknown;
+	};
+}): Promise<OperationBlockDto> {
+	return apiJson<OperationBlockDto>('/operation-blocks', {
+		method: 'POST',
+		body: JSON.stringify({ ownerId: params.ownerId, input: params.input }),
+	});
+}
+
+export async function updateOperationBlock(params: {
+	ownerId?: string;
+	blockId: string;
+	patch: Partial<{
+		name: string;
+		description?: string;
+		enabled: boolean;
+		operations: OperationBlockDto['operations'];
+		meta?: unknown;
+	}>;
+}): Promise<OperationBlockDto> {
+	return apiJson<OperationBlockDto>(`/operation-blocks/${encodeURIComponent(params.blockId)}`, {
+		method: 'PUT',
+		body: JSON.stringify({ ownerId: params.ownerId, patch: params.patch }),
+	});
+}
+
+export async function deleteOperationBlock(blockId: string): Promise<{ id: string }> {
+	return apiJson<{ id: string }>(`/operation-blocks/${encodeURIComponent(blockId)}`, { method: 'DELETE' });
+}
+
+export async function exportOperationBlock(blockId: string): Promise<OperationBlockExport> {
+	return apiJson<OperationBlockExport>(`/operation-blocks/${encodeURIComponent(blockId)}/export`);
+}
+
+export async function importOperationBlocks(params: {
+	ownerId?: string;
+	items: OperationBlockExport | OperationBlockExport[];
+}): Promise<{ created: OperationBlockDto[] }> {
+	return apiJson<{ created: OperationBlockDto[] }>('/operation-blocks/import', {
 		method: 'POST',
 		body: JSON.stringify({ ownerId: params.ownerId, items: params.items }),
 	});

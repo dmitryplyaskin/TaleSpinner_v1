@@ -17,6 +17,7 @@ function makeProfile(operations: OperationProfile["operations"]): OperationProfi
     executionMode: "sequential",
     operationProfileSessionId: "0f0e6f22-7780-4cf6-8c00-31d0f4f96217",
     version: 1,
+    blockRefs: [],
     operations,
     meta: null,
     createdAt: now,

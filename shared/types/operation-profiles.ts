@@ -184,6 +184,42 @@ export type NonTemplateOperationInProfile =
 
 export type OperationInProfile = TemplateOperationInProfile | NonTemplateOperationInProfile;
 
+export type OperationBlock = {
+  blockId: string; // UUID
+  ownerId: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  version: number;
+  operations: OperationInProfile[];
+  meta: unknown | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type OperationBlockUpsertInput = {
+  name: string;
+  description?: string;
+  enabled: boolean;
+  operations: OperationInProfile[];
+  meta?: unknown;
+};
+
+export type OperationBlockExport = {
+  blockId?: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  operations: OperationInProfile[];
+  meta?: unknown;
+};
+
+export type OperationProfileBlockRef = {
+  blockId: string; // UUID
+  enabled: boolean;
+  order: number;
+};
+
 export type OperationProfile = {
   profileId: string; // UUID
   ownerId: string;
@@ -193,7 +229,12 @@ export type OperationProfile = {
   executionMode: OperationExecutionMode;
   operationProfileSessionId: string; // UUID (resettable)
   version: number;
-  operations: OperationInProfile[];
+  /**
+   * Runtime-only flattened operations snapshot.
+   * Persisted profile data uses `blockRefs`.
+   */
+  operations?: OperationInProfile[];
+  blockRefs: OperationProfileBlockRef[];
   meta: unknown | null;
   createdAt: Date;
   updatedAt: Date;
@@ -205,11 +246,29 @@ export type OperationProfileUpsertInput = {
   enabled: boolean;
   executionMode: OperationExecutionMode;
   operationProfileSessionId: string;
-  operations: OperationInProfile[];
+  blockRefs: OperationProfileBlockRef[];
   meta?: unknown;
 };
 
-export type OperationProfileExport = {
+export type OperationProfileBundleProfile = {
+  profileId?: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  executionMode: OperationExecutionMode;
+  operationProfileSessionId: string;
+  blockRefs: OperationProfileBlockRef[];
+  meta?: unknown;
+};
+
+export type OperationProfileExportV2 = {
+  type: "operation_profile_bundle";
+  version: 2;
+  profile: OperationProfileBundleProfile;
+  blocks: OperationBlockExport[];
+};
+
+export type OperationProfileLegacyExportV1 = {
   // `profileId` is intentionally optional on import.
   profileId?: string;
   name: string;
@@ -220,6 +279,8 @@ export type OperationProfileExport = {
   operations: OperationInProfile[];
   meta?: unknown;
 };
+
+export type OperationProfileExport = OperationProfileExportV2;
 
 export type OperationProfileSettings = {
   activeProfileId: string | null;

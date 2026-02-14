@@ -146,7 +146,7 @@ async function runTemplateOperations(params: {
   state: RuntimeState;
   templateContext: InstructionRenderContext;
 }): Promise<void> {
-  const ops = params.profile.operations.filter(
+  const ops = (params.profile.operations ?? []).filter(
     (op): op is Extract<OperationInProfile, { kind: "template" }> =>
       op.kind === "template" &&
       op.config.hooks.includes(params.hook) &&

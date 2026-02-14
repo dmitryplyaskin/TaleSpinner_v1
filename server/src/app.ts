@@ -9,6 +9,7 @@ import { errorHandler } from "./core/middleware/error-handler";
 import { applyMigrations } from "./db/apply-migrations";
 import { initDb } from "./db/client";
 import { ensureInstructionsSchema } from "./db/ensure-instructions-schema";
+import { ensureOperationBlocksCutover } from "./db/ensure-operation-blocks-cutover";
 import appSettingsRoutes from "./routes/app-settings-routes";
 import generateRoutes from "./routes/generate-routes";
 import modelsRoutes from "./routes/models-routes";
@@ -25,6 +26,7 @@ export async function bootstrapApp(options: BootstrapAppOptions = {}): Promise<v
   await initDb({ dbPath: options.dbPath });
   await applyMigrations();
   await ensureInstructionsSchema();
+  await ensureOperationBlocksCutover();
   await bootstrapLlm();
   await bootstrapRag();
 }

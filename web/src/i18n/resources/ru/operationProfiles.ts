@@ -2,10 +2,36 @@
 			sidebar: {
 				title: 'Операции',
 			},
+			tabs: {
+				profiles: 'Профили',
+				blocks: 'Блоки',
+			},
 			defaults: {
 				newProfile: 'Новый профиль',
 				copyName: '{{name}} (копия)',
 				untitledOperation: 'Операция без названия',
+			},
+			blocks: {
+				defaults: {
+					newBlock: 'Новый блок',
+				},
+				blockSettingsTitle: 'Настройки блока',
+				blockName: 'Название блока',
+				blockEnabled: 'Блок включен',
+				selectBlock: 'Выберите блок',
+				emptySelectBlock: 'Выберите блок для редактирования операций.',
+				profileCompositionTitle: 'Состав профиля',
+				addBlock: 'Добавить блок',
+				emptyComposition: 'В профиль пока не добавлены блоки.',
+				blockRefEnabled: 'Включен в этом профиле',
+				blockOrder: 'Порядок',
+				actions: {
+					createBlock: 'Создать блок',
+					duplicateBlock: 'Дублировать блок',
+					deleteBlock: 'Удалить блок',
+					exportBlock: 'Экспортировать блок',
+					importBlocks: 'Импортировать блоки',
+				},
 			},
 			actions: {
 				openNodeEditor: 'Открыть Node Editor',
@@ -258,6 +284,7 @@
 			},
 			confirm: {
 				deleteProfile: 'Удалить этот профиль операций?',
+				deleteBlock: 'Удалить этот блок операций?',
 				deleteOperation: 'Удалить выбранную операцию?',
 				deleteGroup: 'Удалить эту группу?',
 				deleteSelectedOperations: 'Удалить выбранные операции?',

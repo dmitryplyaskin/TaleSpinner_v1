@@ -1,9 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
+import { HttpError } from "@core/middleware/error-handler";
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
 import { operationProfiles } from "../../db/schema";
+import { getOperationBlockById } from "./operation-blocks-repository";
 
 import type {
   OperationProfile,
@@ -12,14 +14,25 @@ import type {
 import { validateOperationProfileUpsertInput } from "./operation-profile-validator";
 
 type OperationProfileSpecRow = {
-  operations: OperationProfile["operations"];
+  blockRefs: OperationProfile["blockRefs"];
 };
 
 function parseSpecJson(value: string): OperationProfileSpecRow {
+  const parsed = safeJsonParse<unknown>(value, { blockRefs: [] });
+  if (!parsed || typeof parsed !== "object") return { blockRefs: [] };
+  const refs = (parsed as { blockRefs?: unknown }).blockRefs;
+  return { blockRefs: Array.isArray(refs) ? (refs as OperationProfile["blockRefs"]) : [] };
+}
+
+type LegacyOperationsSpecRow = {
+  operations: unknown[];
+};
+
+export function parseLegacyOperationsFromSpecJson(value: string): LegacyOperationsSpecRow {
   const parsed = safeJsonParse<unknown>(value, { operations: [] });
   if (!parsed || typeof parsed !== "object") return { operations: [] };
   const ops = (parsed as { operations?: unknown }).operations;
-  return { operations: Array.isArray(ops) ? (ops as OperationProfile["operations"]) : [] };
+  return { operations: Array.isArray(ops) ? ops : [] };
 }
 
 function rowToDto(row: typeof operationProfiles.$inferSelect): OperationProfile {
@@ -33,7 +46,7 @@ function rowToDto(row: typeof operationProfiles.$inferSelect): OperationProfile 
     executionMode: row.executionMode,
     operationProfileSessionId: row.operationProfileSessionId,
     version: row.version,
-    operations: spec.operations,
+    blockRefs: spec.blockRefs,
     meta: safeJsonParse(row.metaJson, null),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -75,6 +88,14 @@ export async function createOperationProfile(params: {
   const profileId = uuidv4();
 
   const validated = validateOperationProfileUpsertInput(params.input);
+  for (const ref of validated.blockRefs) {
+    const block = await getOperationBlockById(ref.blockId);
+    if (!block) {
+      throw new HttpError(400, "Unknown blockId in profile", "VALIDATION_ERROR", {
+        blockId: ref.blockId,
+      });
+    }
+  }
 
   await db.insert(operationProfiles).values({
     id: profileId,
@@ -85,7 +106,7 @@ export async function createOperationProfile(params: {
     executionMode: validated.executionMode,
     operationProfileSessionId: validated.operationProfileSessionId,
     version: 1,
-    specJson: safeJsonStringify({ operations: validated.operations }, "{}"),
+    specJson: safeJsonStringify({ blockRefs: validated.blockRefs }, "{}"),
     metaJson: validated.meta === null ? null : safeJsonStringify(validated.meta),
     createdAt: ts,
     updatedAt: ts,
@@ -102,7 +123,7 @@ export async function createOperationProfile(params: {
     executionMode: validated.executionMode,
     operationProfileSessionId: validated.operationProfileSessionId,
     version: 1,
-    operations: validated.operations,
+    blockRefs: validated.blockRefs,
     meta: validated.meta,
     createdAt: ts,
     updatedAt: ts,
@@ -136,13 +157,21 @@ export async function updateOperationProfile(params: {
       typeof params.patch.operationProfileSessionId === "string"
         ? params.patch.operationProfileSessionId
         : current.operationProfileSessionId,
-    operations: Array.isArray(params.patch.operations)
-      ? params.patch.operations
-      : current.operations,
+    blockRefs: Array.isArray(params.patch.blockRefs)
+      ? params.patch.blockRefs
+      : current.blockRefs,
     meta: typeof params.patch.meta === "undefined" ? current.meta : params.patch.meta,
   };
 
   const validated = validateOperationProfileUpsertInput(nextInput);
+  for (const ref of validated.blockRefs) {
+    const block = await getOperationBlockById(ref.blockId);
+    if (!block) {
+      throw new HttpError(400, "Unknown blockId in profile", "VALIDATION_ERROR", {
+        blockId: ref.blockId,
+      });
+    }
+  }
 
   const ts = new Date();
   const nextVersion = current.version + 1;
@@ -156,7 +185,7 @@ export async function updateOperationProfile(params: {
       executionMode: validated.executionMode,
       operationProfileSessionId: validated.operationProfileSessionId,
       version: nextVersion,
-      specJson: safeJsonStringify({ operations: validated.operations }, "{}"),
+      specJson: safeJsonStringify({ blockRefs: validated.blockRefs }, "{}"),
       metaJson: validated.meta === null ? null : safeJsonStringify(validated.meta),
       updatedAt: ts,
     })

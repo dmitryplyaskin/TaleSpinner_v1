@@ -75,7 +75,7 @@ sample({
 			enabled: src.enabled,
 			executionMode: src.executionMode,
 			operationProfileSessionId: uuidv4(),
-			operations: src.operations,
+			blockRefs: src.blockRefs,
 			meta: src.meta ?? undefined,
 		};
 	},

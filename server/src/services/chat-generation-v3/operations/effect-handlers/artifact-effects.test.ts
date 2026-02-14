@@ -76,6 +76,7 @@ describe("applyArtifactEffect", () => {
         executionMode: "sequential",
         operationProfileSessionId: "2d4fbad2-f9e8-470d-bee8-5e860abf32ca",
         version: 1,
+        blockRefs: [],
         operations: [],
         meta: null,
         createdAt: new Date("2026-02-10T00:00:00.000Z"),
