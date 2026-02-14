@@ -9,6 +9,16 @@ setlocal EnableDelayedExpansion
 
 set "CURRENT_DIR=%~dp0"
 set "CURRENT_DIR=%CURRENT_DIR:~0,-1%"
+set "COPY_EXTRA_MODE=prompt"
+set "PAUSE_AT_END=1"
+
+for %%A in (%*) do (
+    if /i "%%~A"=="--with-extra" set "COPY_EXTRA_MODE=yes"
+    if /i "%%~A"=="--no-extra" set "COPY_EXTRA_MODE=no"
+    if /i "%%~A"=="--no-pause" set "PAUSE_AT_END=0"
+)
+
+for %%I in ("%CURRENT_DIR%") do set "CURRENT_DIR=%%~fI"
 
 cd /d "%CURRENT_DIR%"
 
@@ -16,25 +26,25 @@ cd /d "%CURRENT_DIR%"
 git rev-parse --git-dir >nul 2>&1
 if errorlevel 1 (
     echo [Ошибка] Запустите скрипт из корня git-репозитория TaleSpinner.
-    pause
+    call :maybePause
     exit /b 1
 )
 
 :: Определение основного каталога (TaleSpinner_v1)
 set "PARENT_DIR=%CURRENT_DIR%\.."
-set "MAIN_PATH=%PARENT_DIR%\TaleSpinner_v1"
+for %%I in ("%PARENT_DIR%\TaleSpinner_v1") do set "MAIN_PATH=%%~fI"
 
 :: Если мы уже в основном каталоге — нечего синхронизировать
 if /i "%CURRENT_DIR%"=="%MAIN_PATH%" (
-    echo Вы уже в основном каталоге. Синхронизация не требуется.
-    pause
+    echo Already in main directory. Sync is not required.
+    call :maybePause
     exit /b 0
 )
 
 if not exist "%MAIN_PATH%" (
     echo [Ошибка] Основной каталог не найден: %MAIN_PATH%
     echo Убедитесь, что TaleSpinner_v1 находится рядом с текущим worktree.
-    pause
+    call :maybePause
     exit /b 1
 )
 
@@ -43,7 +53,7 @@ set "DST_DATA=%CURRENT_DIR%\server\data"
 
 if not exist "%SRC_DATA%" (
     echo [Ошибка] Папка server\data не найдена в основном каталоге.
-    pause
+    call :maybePause
     exit /b 1
 )
 
@@ -77,7 +87,16 @@ if "%COPIED%"=="0" (
 
 :: Опционально: media и config
 set "COPY_EXTRA="
-set /p "COPY_EXTRA=Скопировать также media и config? (y/N): "
+if /i "%COPY_EXTRA_MODE%"=="yes" (
+    set "COPY_EXTRA=y"
+) else (
+    if /i "%COPY_EXTRA_MODE%"=="no" (
+        set "COPY_EXTRA=n"
+    ) else (
+        set /p "COPY_EXTRA=Скопировать также media и config? (y/N): "
+    )
+)
+
 if /i "!COPY_EXTRA!"=="y" (
     if exist "%SRC_DATA%\media" (
         xcopy /E /I /Y /Q "%SRC_DATA%\media" "%DST_DATA%\media" >nul 2>&1
@@ -90,4 +109,9 @@ if /i "!COPY_EXTRA!"=="y" (
 )
 
 echo.
-pause
+call :maybePause
+exit /b 0
+
+:maybePause
+if "%PAUSE_AT_END%"=="1" pause
+exit /b 0
