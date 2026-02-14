@@ -155,6 +155,7 @@ export const createUserPersonBodySchema = z.object({
   avatarUrl: z.string().optional(),
   type: userPersonTypeSchema.optional().default("default"),
   contentTypeDefault: z.string().optional(),
+  contentTypeExtended: jsonValueSchema.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
@@ -165,6 +166,7 @@ export const updateUserPersonBodySchema = z.object({
   avatarUrl: z.string().optional(),
   type: userPersonTypeSchema.optional(),
   contentTypeDefault: z.string().optional(),
+  contentTypeExtended: jsonValueSchema.optional(),
   updatedAt: z.string().optional(),
 });
 

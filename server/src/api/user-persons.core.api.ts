@@ -61,6 +61,7 @@ router.post(
       // v1: only default persona in the “core” flow
       type: "default",
       contentTypeDefault: body.contentTypeDefault ?? "",
+      contentTypeExtended: body.contentTypeExtended,
       createdAt: body.createdAt ? new Date(body.createdAt) : undefined,
       updatedAt: body.updatedAt ? new Date(body.updatedAt) : undefined,
     });
@@ -81,6 +82,7 @@ router.put(
       avatarUrl: body.avatarUrl,
       type: "default",
       contentTypeDefault: body.contentTypeDefault,
+      contentTypeExtended: body.contentTypeExtended,
       updatedAt: body.updatedAt ? new Date(body.updatedAt) : undefined,
     });
     if (!updated) throw new HttpError(404, "User person не найден", "NOT_FOUND");
