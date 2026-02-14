@@ -27,8 +27,8 @@ describe("safe path helpers", () => {
   });
 
   test("resolveSafePath keeps path inside base dir", () => {
-    const base = path.join("C:\\", "safe", "root");
+    const base = path.resolve(path.sep, "safe", "root");
     const resolved = resolveSafePath(base, "hello.txt");
-    expect(resolved).toBe(path.join(base, "hello.txt"));
+    expect(resolved).toBe(path.resolve(base, "hello.txt"));
   });
 });

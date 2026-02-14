@@ -32,6 +32,13 @@ Purpose: repository-specific instructions for Codex agents.
 - Never expose secrets or token values in output.
 - Keep code comments in English when adding comments.
 
+## Worktree Startup Rule
+- If current repo folder name starts with `TaleSpinner_` and is not `TaleSpinner_v1`, treat it as a git worktree for tasks.
+- At the start of each new task in such worktree:
+  - run `git fetch origin dev`
+  - if current branch is `dev`, `main`, or detached `HEAD`, create and switch to a task branch from `origin/dev` before edits
+  - run `sync-db-from-main.bat --no-extra --no-pause` to refresh local DB from the main folder
+
 ## Area-Specific Guidance
 
 ### Backend (`server/**`)
