@@ -256,6 +256,75 @@ sample({
 	target: openEntityProfileFx,
 });
 
+type QuickCreateChatResult = {
+	created: CreateChatResponse;
+	deletedChatId: string | null;
+	deleteError: string | null;
+};
+
+export const quickCreateChatRequested = createEvent<{ title?: string; deleteCurrentChat: boolean }>();
+
+export const quickCreateChatFx = createEffect(
+	async (params: {
+		entityProfileId: string;
+		title?: string;
+		currentChatId: string | null;
+		deleteCurrentChat: boolean;
+	}): Promise<QuickCreateChatResult> => {
+		const created = await createChatForEntityProfile({
+			entityProfileId: params.entityProfileId,
+			title: params.title ?? i18n.t('chat.defaults.newChat'),
+		});
+
+		if (!params.deleteCurrentChat || !params.currentChatId) {
+			return { created, deletedChatId: null, deleteError: null };
+		}
+
+		try {
+			await deleteChat(params.currentChatId);
+			return { created, deletedChatId: params.currentChatId, deleteError: null };
+		} catch (error) {
+			return {
+				created,
+				deletedChatId: null,
+				deleteError: error instanceof Error ? error.message : String(error),
+			};
+		}
+	},
+);
+
+sample({
+	clock: quickCreateChatRequested,
+	source: { profile: $currentEntityProfile, currentChat: $currentChat },
+	filter: ({ profile }) => Boolean(profile?.id),
+	fn: ({ profile, currentChat }, payload) => ({
+		entityProfileId: profile!.id,
+		title: payload.title,
+		currentChatId: currentChat?.id ?? null,
+		deleteCurrentChat: payload.deleteCurrentChat,
+	}),
+	target: quickCreateChatFx,
+});
+
+sample({
+	clock: quickCreateChatFx.doneData,
+	fn: ({ created }) => ({ chat: created.chat, branchId: created.chat.activeBranchId ?? created.mainBranch.id }),
+	target: setOpenedChat,
+});
+
+$chatsForCurrentProfile.on(quickCreateChatFx.doneData, (items, payload) => {
+	return [payload.created.chat, ...items.filter((item) => item.id !== payload.created.chat.id && item.id !== payload.deletedChatId)];
+});
+
+quickCreateChatFx.failData.watch((error) => {
+	toaster.error({ title: i18n.t('chat.toasts.createChatError'), description: error instanceof Error ? error.message : String(error) });
+});
+
+quickCreateChatFx.doneData.watch(({ deleteError }) => {
+	if (!deleteError) return;
+	toaster.error({ title: i18n.t('chat.toasts.deleteChatError'), description: deleteError });
+});
+
 export const deleteChatRequested = createEvent<{ chatId: string }>();
 
 export const deleteChatFx = createEffect(async (params: { chatId: string }): Promise<ChatDto> => {

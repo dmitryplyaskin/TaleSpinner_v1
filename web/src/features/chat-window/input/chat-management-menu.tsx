@@ -1,4 +1,4 @@
-import { ActionIcon, Badge, Box, Group, Menu, Paper, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Badge, Box, Button, Checkbox, Group, Menu, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,8 @@ import {
 	deleteBranchRequested,
 	deleteChatRequested,
 	openChatRequested,
+	quickCreateChatFx,
+	quickCreateChatRequested,
 	updateBranchTitleRequested,
 	updateChatTitleRequested,
 } from '@model/chat-core';
@@ -32,7 +34,7 @@ function normalizeName(value: string): string {
 
 export const ChatManagementMenu = () => {
 	const { t } = useTranslation();
-	const [chats, currentChat, branches, currentBranchId, currentProfile, isBulkDeleteMode, startBulkDeleteMode] = useUnit([
+	const [chats, currentChat, branches, currentBranchId, currentProfile, isBulkDeleteMode, startBulkDeleteMode, quickCreatePending, requestQuickCreate] = useUnit([
 		$chatsForCurrentProfile,
 		$currentChat,
 		$branches,
@@ -40,8 +42,12 @@ export const ChatManagementMenu = () => {
 		$currentEntityProfile,
 		$isBulkDeleteMode,
 		enterBulkDeleteMode,
+		quickCreateChatFx.pending,
+		quickCreateChatRequested,
 	]);
 
+	const [quickCreateModalOpen, setQuickCreateModalOpen] = useState(false);
+	const [deleteCurrentOnQuickCreate, setDeleteCurrentOnQuickCreate] = useState(false);
 	const [chatsModalOpen, setChatsModalOpen] = useState(false);
 	const [branchesModalOpen, setBranchesModalOpen] = useState(false);
 	const [worldInfoModalOpen, setWorldInfoModalOpen] = useState(false);
@@ -115,6 +121,18 @@ export const ChatManagementMenu = () => {
 		setEditingBranchName('');
 	};
 
+	const handleQuickCreateOpenChange = (open: boolean) => {
+		setQuickCreateModalOpen(open);
+		if (!open) {
+			setDeleteCurrentOnQuickCreate(false);
+		}
+	};
+
+	const handleQuickCreateConfirm = () => {
+		requestQuickCreate({ deleteCurrentChat: deleteCurrentOnQuickCreate });
+		handleQuickCreateOpenChange(false);
+	};
+
 	return (
 		<>
 			<Menu withinPortal zIndex={Z_INDEX.overlay.popup} position="top-start">
@@ -139,6 +157,9 @@ export const ChatManagementMenu = () => {
 						</Text>
 					</Box>
 					<Menu.Divider />
+					<Menu.Item leftSection={<LuPlus />} onClick={() => handleQuickCreateOpenChange(true)}>
+						{t('chat.management.quickCreateChat')}
+					</Menu.Item>
 					<Menu.Item leftSection={<LuMessageSquare />} onClick={() => setChatsModalOpen(true)}>
 						{t('chat.management.manageChats')}
 					</Menu.Item>
@@ -161,6 +182,34 @@ export const ChatManagementMenu = () => {
 					</Menu.Item>
 				</Menu.Dropdown>
 			</Menu>
+
+			<Dialog
+				open={quickCreateModalOpen}
+				onOpenChange={handleQuickCreateOpenChange}
+				title={t('chat.management.quickCreateTitle')}
+				size="sm"
+				footer={
+					<>
+						<Button variant="subtle" onClick={() => handleQuickCreateOpenChange(false)} disabled={quickCreatePending}>
+							{t('chat.management.quickCreateNo')}
+						</Button>
+						<Button color="cyan" onClick={handleQuickCreateConfirm} loading={quickCreatePending}>
+							{t('chat.management.quickCreateYes')}
+						</Button>
+					</>
+				}
+			>
+				<Stack gap="sm">
+					<Text size="sm">{t('chat.management.quickCreateQuestion')}</Text>
+					{currentChatId && (
+						<Checkbox
+							checked={deleteCurrentOnQuickCreate}
+							onChange={(event) => setDeleteCurrentOnQuickCreate(event.currentTarget.checked)}
+							label={t('chat.management.quickCreateDeleteCurrent')}
+						/>
+					)}
+				</Stack>
+			</Dialog>
 
 			<Dialog
 				open={chatsModalOpen}
