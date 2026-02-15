@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
@@ -8,6 +8,21 @@ import { chatEntries, entryVariants } from "../../db/schema";
 import { listPartsForVariants } from "./parts-repository";
 
 import type { Entry, EntryRole, Variant, VariantKind } from "@shared/types/chat-entry-parts";
+
+export type EntriesCursor = {
+  createdAt: number;
+  entryId: string;
+};
+
+export type EntriesPageInfo = {
+  hasMoreOlder: boolean;
+  nextCursor: EntriesCursor | null;
+};
+
+export type EntriesPageResult = {
+  entries: Entry[];
+  pageInfo: EntriesPageInfo;
+};
 
 function entryRowToDomain(row: typeof chatEntries.$inferSelect): Entry {
   return {
@@ -98,19 +113,37 @@ export async function createEntryWithVariant(params: {
   return { entry, variant };
 }
 
-export async function listEntries(params: {
+export async function listEntriesPage(params: {
   chatId: string;
   branchId: string;
   limit: number;
   before?: number;
+  cursorCreatedAt?: number;
+  cursorEntryId?: string;
   includeSoftDeleted?: boolean;
-}): Promise<Entry[]> {
+}): Promise<EntriesPageResult> {
   const db = await initDb();
   const where = [eq(chatEntries.chatId, params.chatId), eq(chatEntries.branchId, params.branchId)];
   if (!params.includeSoftDeleted) {
     where.push(eq(chatEntries.softDeleted, false));
   }
-  if (typeof params.before === "number") {
+
+  const hasCursor =
+    typeof params.cursorCreatedAt === "number" &&
+    Number.isFinite(params.cursorCreatedAt) &&
+    params.cursorCreatedAt > 0 &&
+    typeof params.cursorEntryId === "string" &&
+    params.cursorEntryId.length > 0;
+
+  if (hasCursor) {
+    const cursorDate = new Date(params.cursorCreatedAt!);
+    where.push(
+      or(
+        lt(chatEntries.createdAt, cursorDate),
+        and(eq(chatEntries.createdAt, cursorDate), lt(chatEntries.entryId, params.cursorEntryId!))
+      )!
+    );
+  } else if (typeof params.before === "number") {
     where.push(lt(chatEntries.createdAt, new Date(params.before)));
   }
 
@@ -119,9 +152,40 @@ export async function listEntries(params: {
     .from(chatEntries)
     .where(and(...where))
     .orderBy(desc(chatEntries.createdAt), desc(chatEntries.entryId))
-    .limit(params.limit);
+    .limit(params.limit + 1);
 
-  return rowsNewestFirst.slice().reverse().map(entryRowToDomain);
+  const hasMoreOlder = rowsNewestFirst.length > params.limit;
+  const pageRowsNewestFirst = hasMoreOlder ? rowsNewestFirst.slice(0, params.limit) : rowsNewestFirst;
+  const entries = pageRowsNewestFirst.slice().reverse().map(entryRowToDomain);
+  const oldest = entries[0];
+  const nextCursor =
+    hasMoreOlder && oldest
+      ? {
+          createdAt: oldest.createdAt,
+          entryId: oldest.entryId,
+        }
+      : null;
+
+  return {
+    entries,
+    pageInfo: {
+      hasMoreOlder,
+      nextCursor,
+    },
+  };
+}
+
+export async function listEntries(params: {
+  chatId: string;
+  branchId: string;
+  limit: number;
+  before?: number;
+  cursorCreatedAt?: number;
+  cursorEntryId?: string;
+  includeSoftDeleted?: boolean;
+}): Promise<Entry[]> {
+  const page = await listEntriesPage(params);
+  return page.entries;
 }
 
 export async function getEntryById(params: { entryId: string }): Promise<Entry | null> {
@@ -152,6 +216,8 @@ export async function listEntriesWithActiveVariants(params: {
   branchId: string;
   limit: number;
   before?: number;
+  cursorCreatedAt?: number;
+  cursorEntryId?: string;
   excludeEntryIds?: string[];
   includeSoftDeleted?: boolean;
 }): Promise<Array<{ entry: Entry; variant: Variant | null }>> {
@@ -160,6 +226,8 @@ export async function listEntriesWithActiveVariants(params: {
     branchId: params.branchId,
     limit: params.limit,
     before: params.before,
+    cursorCreatedAt: params.cursorCreatedAt,
+    cursorEntryId: params.cursorEntryId,
     includeSoftDeleted: params.includeSoftDeleted,
   });
 
@@ -189,6 +257,64 @@ export async function listEntriesWithActiveVariants(params: {
     entry,
     variant: variantById.get(entry.activeVariantId) ?? null,
   }));
+}
+
+export async function listEntriesWithActiveVariantsPage(params: {
+  chatId: string;
+  branchId: string;
+  limit: number;
+  before?: number;
+  cursorCreatedAt?: number;
+  cursorEntryId?: string;
+  excludeEntryIds?: string[];
+  includeSoftDeleted?: boolean;
+}): Promise<{
+  entries: Array<{ entry: Entry; variant: Variant | null }>;
+  pageInfo: EntriesPageInfo;
+}> {
+  const page = await listEntriesPage({
+    chatId: params.chatId,
+    branchId: params.branchId,
+    limit: params.limit,
+    before: params.before,
+    cursorCreatedAt: params.cursorCreatedAt,
+    cursorEntryId: params.cursorEntryId,
+    includeSoftDeleted: params.includeSoftDeleted,
+  });
+
+  const exclude = new Set(params.excludeEntryIds ?? []);
+  const filtered = page.entries.filter((entry) => !exclude.has(entry.entryId));
+  const variantIds = filtered.map((entry) => entry.activeVariantId).filter(Boolean);
+
+  if (variantIds.length === 0) {
+    return {
+      entries: filtered.map((entry) => ({ entry, variant: null })),
+      pageInfo: page.pageInfo,
+    };
+  }
+
+  const db = await initDb();
+  const variantRows = await db
+    .select()
+    .from(entryVariants)
+    .where(inArray(entryVariants.variantId, variantIds));
+
+  const partsMap = await listPartsForVariants({ variantIds });
+  const variantById = new Map<string, Variant>();
+  for (const variantRow of variantRows) {
+    variantById.set(
+      variantRow.variantId,
+      variantRowToDomain(variantRow, partsMap.get(variantRow.variantId) ?? [])
+    );
+  }
+
+  return {
+    entries: filtered.map((entry) => ({
+      entry,
+      variant: variantById.get(entry.activeVariantId) ?? null,
+    })),
+    pageInfo: page.pageInfo,
+  };
 }
 
 export async function softDeleteEntry(params: { entryId: string; by: "user" | "agent" }): Promise<void> {

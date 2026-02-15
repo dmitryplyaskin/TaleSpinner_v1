@@ -24,7 +24,12 @@ import { logChatGenerationSseEvent } from '../chat-generation-debug';
 import { userPersonsModel } from '../user-persons';
 
 import type { SseEnvelope } from '../../api/chat-core';
-import type { ChatEntryWithVariantDto, PromptDiagnosticsResponse } from '../../api/chat-entry-parts';
+import type {
+	ChatEntryWithVariantDto,
+	EntriesCursor,
+	ListChatEntriesResponse,
+	PromptDiagnosticsResponse,
+} from '../../api/chat-entry-parts';
 import type { Entry, Part, Variant } from '@shared/types/chat-entry-parts';
 
 function nowIso(): string {
@@ -35,12 +40,172 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export const loadEntriesFx = createEffect(async (params: { chatId: string; branchId: string }) => {
-	return listChatEntries({ chatId: params.chatId, branchId: params.branchId, limit: 200 });
+const ENTRIES_PAGE_SIZE = 50;
+const ENTRIES_SYNC_MAX = 200;
+const BOTTOM_DISTANCE_PX = 120;
+
+export type EntriesPageInfoState = {
+	hasMoreOlder: boolean;
+	nextCursor: EntriesCursor | null;
+	isLoadingInitial: boolean;
+	isLoadingOlder: boolean;
+	isSyncingLatest: boolean;
+};
+
+export type ChatViewportState = {
+	isAtBottom: boolean;
+	unseenCount: number;
+	bottomDistancePx: number;
+};
+
+function compareEntriesAsc(
+	left: ChatEntryWithVariantDto,
+	right: ChatEntryWithVariantDto,
+): number {
+	if (left.entry.createdAt !== right.entry.createdAt) {
+		return left.entry.createdAt - right.entry.createdAt;
+	}
+	return left.entry.entryId.localeCompare(right.entry.entryId);
+}
+
+function isEntryOlderThan(
+	entry: ChatEntryWithVariantDto,
+	anchor: ChatEntryWithVariantDto,
+): boolean {
+	if (entry.entry.createdAt !== anchor.entry.createdAt) {
+		return entry.entry.createdAt < anchor.entry.createdAt;
+	}
+	return entry.entry.entryId.localeCompare(anchor.entry.entryId) < 0;
+}
+
+function mergeEntriesStable(
+	existing: ChatEntryWithVariantDto[],
+	incoming: ChatEntryWithVariantDto[],
+): ChatEntryWithVariantDto[] {
+	const byId = new Map<string, ChatEntryWithVariantDto>();
+	for (const item of existing) byId.set(item.entry.entryId, item);
+	for (const item of incoming) byId.set(item.entry.entryId, item);
+	return Array.from(byId.values()).sort(compareEntriesAsc);
+}
+
+function mergeLatestWindow(
+	existing: ChatEntryWithVariantDto[],
+	incoming: ChatEntryWithVariantDto[],
+): ChatEntryWithVariantDto[] {
+	if (incoming.length === 0) return existing;
+	const oldestIncoming = incoming[0];
+	const preservedOlder = existing.filter((item) => isEntryOlderThan(item, oldestIncoming));
+	return mergeEntriesStable(preservedOlder, incoming);
+}
+
+const EMPTY_PAGE_INFO: EntriesPageInfoState = {
+	hasMoreOlder: false,
+	nextCursor: null,
+	isLoadingInitial: false,
+	isLoadingOlder: false,
+	isSyncingLatest: false,
+};
+
+export const loadInitialPageFx = createEffect(async (params: { chatId: string; branchId: string }) => {
+	return listChatEntries({ chatId: params.chatId, branchId: params.branchId, limit: ENTRIES_PAGE_SIZE });
 });
 
-export const $entries = createStore<ChatEntryWithVariantDto[]>([]).on(loadEntriesFx.doneData, (_, res) => res.entries);
-export const $currentTurn = createStore<number>(0).on(loadEntriesFx.doneData, (_, res) => res.currentTurn);
+export const loadEntriesFx = createEffect(
+	async (params: { chatId: string; branchId: string; limit?: number }) => {
+		return listChatEntries({
+			chatId: params.chatId,
+			branchId: params.branchId,
+			limit: Math.min(Math.max(params.limit ?? ENTRIES_SYNC_MAX, ENTRIES_PAGE_SIZE), ENTRIES_SYNC_MAX),
+		});
+	},
+);
+
+export const loadOlderPageFx = createEffect(
+	async (params: { chatId: string; branchId: string; cursor: EntriesCursor; limit?: number }) => {
+		return listChatEntries({
+			chatId: params.chatId,
+			branchId: params.branchId,
+			limit: Math.min(Math.max(params.limit ?? ENTRIES_PAGE_SIZE, 1), ENTRIES_SYNC_MAX),
+			cursorCreatedAt: params.cursor.createdAt,
+			cursorEntryId: params.cursor.entryId,
+		});
+	},
+);
+
+export const loadOlderPageRequested = createEvent();
+
+export const $entries = createStore<ChatEntryWithVariantDto[]>([])
+	.on(loadInitialPageFx.doneData, (_prev, res) => mergeEntriesStable([], res.entries))
+	.on(loadEntriesFx.doneData, (prev, res) => mergeLatestWindow(prev, res.entries))
+	.on(loadOlderPageFx.doneData, (prev, res) => mergeEntriesStable(res.entries, prev))
+	.on(setOpenedChat, () => []);
+
+export const $currentTurn = createStore<number>(0)
+	.on(loadInitialPageFx.doneData, (_prev, res) => res.currentTurn)
+	.on(loadEntriesFx.doneData, (_prev, res) => res.currentTurn)
+	.on(loadOlderPageFx.doneData, (_prev, res) => res.currentTurn)
+	.on(setOpenedChat, () => 0);
+
+export const $entriesPageInfo = createStore<EntriesPageInfoState>(EMPTY_PAGE_INFO)
+	.on(loadInitialPageFx, (state) => ({ ...state, isLoadingInitial: true, isSyncingLatest: false }))
+	.on(loadInitialPageFx.doneData, (_state, res) => ({
+		hasMoreOlder: res.pageInfo.hasMoreOlder,
+		nextCursor: res.pageInfo.nextCursor,
+		isLoadingInitial: false,
+		isLoadingOlder: false,
+		isSyncingLatest: false,
+	}))
+	.on(loadInitialPageFx.fail, (state) => ({ ...state, isLoadingInitial: false }))
+	.on(loadEntriesFx, (state) => ({ ...state, isSyncingLatest: true }))
+	.on(loadEntriesFx.doneData, (state, res) => ({
+		hasMoreOlder: state.hasMoreOlder || res.pageInfo.hasMoreOlder,
+		nextCursor: state.nextCursor ?? res.pageInfo.nextCursor,
+		isLoadingInitial: false,
+		isLoadingOlder: false,
+		isSyncingLatest: false,
+	}))
+	.on(loadEntriesFx.fail, (state) => ({ ...state, isSyncingLatest: false }))
+	.on(loadOlderPageFx, (state) => ({ ...state, isLoadingOlder: true }))
+	.on(loadOlderPageFx.doneData, (_state, res) => ({
+		hasMoreOlder: res.pageInfo.hasMoreOlder,
+		nextCursor: res.pageInfo.nextCursor,
+		isLoadingInitial: false,
+		isLoadingOlder: false,
+		isSyncingLatest: false,
+	}))
+	.on(loadOlderPageFx.fail, (state) => ({ ...state, isLoadingOlder: false }))
+	.on(setOpenedChat, () => EMPTY_PAGE_INFO);
+
+export const chatViewportChanged = createEvent<{ distanceToBottom: number }>();
+export const resetUnseenMessages = createEvent();
+export const incrementUnseenMessages = createEvent<{ count?: number }>();
+
+export const $chatViewportState = createStore<ChatViewportState>({
+	isAtBottom: true,
+	unseenCount: 0,
+	bottomDistancePx: 0,
+})
+	.on(chatViewportChanged, (state, payload) => {
+		const distance = Math.max(0, payload.distanceToBottom);
+		const isAtBottom = distance <= BOTTOM_DISTANCE_PX;
+		return {
+			isAtBottom,
+			unseenCount: isAtBottom ? 0 : state.unseenCount,
+			bottomDistancePx: distance,
+		};
+	})
+	.on(resetUnseenMessages, (state) => ({ ...state, unseenCount: 0 }))
+	.on(incrementUnseenMessages, (state, payload) =>
+		state.isAtBottom
+			? { ...state, unseenCount: 0 }
+			: { ...state, unseenCount: state.unseenCount + Math.max(1, payload.count ?? 1) },
+	)
+	.on(setOpenedChat, () => ({
+		isAtBottom: true,
+		unseenCount: 0,
+		bottomDistancePx: 0,
+	}));
+
 export const $isBulkDeleteMode = createStore(false);
 export const $bulkDeleteSelectedEntryIds = createStore<string[]>([]);
 export const enterBulkDeleteMode = createEvent();
@@ -48,16 +213,38 @@ export const exitBulkDeleteMode = createEvent();
 export const toggleBulkDeleteEntrySelection = createEvent<{ entryId: string }>();
 export const clearBulkDeleteSelection = createEvent();
 
-loadEntriesFx.failData.watch((error) => {
+const reportLoadEntriesError = (error: unknown) => {
 	toaster.error({ title: i18n.t('chat.toasts.loadChatError'), description: error instanceof Error ? error.message : String(error) });
-});
+};
+loadInitialPageFx.failData.watch(reportLoadEntriesError);
+loadEntriesFx.failData.watch(reportLoadEntriesError);
+loadOlderPageFx.failData.watch(reportLoadEntriesError);
 
 // Reload entries when we open a chat (chat-core still owns chat/branch selection).
 sample({
 	clock: setOpenedChat,
 	fn: ({ chat, branchId }) => ({ chatId: chat.id, branchId }),
-	target: loadEntriesFx,
+	target: loadInitialPageFx,
 });
+
+sample({
+	clock: loadOlderPageRequested,
+	source: {
+		chat: $currentChat,
+		branchId: $currentBranchId,
+		pageInfo: $entriesPageInfo,
+	},
+	filter: ({ chat, branchId, pageInfo }) =>
+		Boolean(chat?.id && branchId && pageInfo.hasMoreOlder && pageInfo.nextCursor && !pageInfo.isLoadingOlder),
+	fn: ({ chat, branchId, pageInfo }) => ({
+		chatId: chat!.id,
+		branchId: branchId!,
+		cursor: pageInfo.nextCursor!,
+	}),
+	target: loadOlderPageFx,
+});
+
+const reconcileBulkSelection = createEvent<ListChatEntriesResponse>();
 
 $isBulkDeleteMode
 	.on(enterBulkDeleteMode, () => true)
@@ -73,8 +260,11 @@ $bulkDeleteSelectedEntryIds
 	.on(clearBulkDeleteSelection, () => [])
 	.on(setOpenedChat, () => []);
 
+sample({ clock: loadInitialPageFx.doneData, target: reconcileBulkSelection });
+sample({ clock: loadEntriesFx.doneData, target: reconcileBulkSelection });
+sample({ clock: loadOlderPageFx.doneData, target: reconcileBulkSelection });
 sample({
-	clock: loadEntriesFx.doneData,
+	clock: reconcileBulkSelection,
 	source: $bulkDeleteSelectedEntryIds,
 	fn: (selected, res) => {
 		const available = new Set(res.entries.map((item) => item.entry.entryId));
@@ -1001,6 +1191,47 @@ deleteVariantFx.failData.watch((error) => {
 	toaster.error({ title: i18n.t('chat.toasts.deleteVariantError'), description: error instanceof Error ? error.message : String(error) });
 });
 
+export type EntryPartEditState = {
+	partId: string;
+	draftText: string;
+};
+
+function omitEntryEdit(
+	state: Record<string, EntryPartEditState>,
+	entryId: string,
+): Record<string, EntryPartEditState> {
+	if (!state[entryId]) return state;
+	const next = { ...state };
+	delete next[entryId];
+	return next;
+}
+
+export const openEntryPartEditRequested = createEvent<{ entryId: string; partId: string; draftText: string }>();
+export const updateEntryPartDraftRequested = createEvent<{ entryId: string; draftText: string }>();
+export const closeEntryPartEditRequested = createEvent<{ entryId: string }>();
+export const clearEntryPartEditsRequested = createEvent();
+
+export const $entryPartEdits = createStore<Record<string, EntryPartEditState>>({})
+	.on(openEntryPartEditRequested, (state, payload) => ({
+		...state,
+		[payload.entryId]: { partId: payload.partId, draftText: payload.draftText },
+	}))
+	.on(updateEntryPartDraftRequested, (state, payload) => {
+		const current = state[payload.entryId];
+		if (!current) return state;
+		return {
+			...state,
+			[payload.entryId]: {
+				...current,
+				draftText: payload.draftText,
+			},
+		};
+	})
+	.on(closeEntryPartEditRequested, (state, payload) => omitEntryEdit(state, payload.entryId))
+	.on(clearEntryPartEditsRequested, () => ({}))
+	.on(enterBulkDeleteMode, () => ({}))
+	.on(setOpenedChat, () => ({}));
+
 export const manualEditEntryRequested = createEvent<{ entryId: string; content: string; partId?: string }>();
 export const manualEditEntryFx = createEffect(async (params: { entryId: string; content: string; partId?: string }) => {
 	return manualEditEntry(params);
@@ -1020,6 +1251,12 @@ sample({
 	clock: manualEditEntryFx.doneData,
 	fn: ({ entryId }) => ({ entryId }),
 	target: loadVariantsRequested,
+});
+
+sample({
+	clock: manualEditEntryFx.doneData,
+	fn: ({ entryId }) => ({ entryId }),
+	target: closeEntryPartEditRequested,
 });
 
 manualEditEntryFx.doneData.watch(() => {

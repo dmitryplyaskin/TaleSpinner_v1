@@ -62,6 +62,23 @@ export type ChatEntryWithVariantDto = {
 	variant: Variant | null;
 };
 
+export type EntriesCursor = {
+	createdAt: number;
+	entryId: string;
+};
+
+export type EntriesPageInfo = {
+	hasMoreOlder: boolean;
+	nextCursor: EntriesCursor | null;
+};
+
+export type ListChatEntriesResponse = {
+	branchId: string;
+	currentTurn: number;
+	entries: ChatEntryWithVariantDto[];
+	pageInfo: EntriesPageInfo;
+};
+
 export type PromptDiagnosticsResponse = {
 	generationId: string;
 	entryId: string;
@@ -120,12 +137,16 @@ export async function listChatEntries(params: {
 	branchId?: string;
 	limit?: number;
 	before?: number;
-}): Promise<{ branchId: string; currentTurn: number; entries: ChatEntryWithVariantDto[] }> {
+	cursorCreatedAt?: number;
+	cursorEntryId?: string;
+}): Promise<ListChatEntriesResponse> {
 	const qs = new URLSearchParams();
 	if (params.branchId) qs.set('branchId', params.branchId);
 	if (typeof params.limit === 'number') qs.set('limit', String(params.limit));
 	if (typeof params.before === 'number') qs.set('before', String(params.before));
-	return apiJson<{ branchId: string; currentTurn: number; entries: ChatEntryWithVariantDto[] }>(
+	if (typeof params.cursorCreatedAt === 'number') qs.set('cursorCreatedAt', String(params.cursorCreatedAt));
+	if (params.cursorEntryId) qs.set('cursorEntryId', params.cursorEntryId);
+	return apiJson<ListChatEntriesResponse>(
 		`/chats/${encodeURIComponent(params.chatId)}/entries?${qs.toString()}`,
 	);
 }

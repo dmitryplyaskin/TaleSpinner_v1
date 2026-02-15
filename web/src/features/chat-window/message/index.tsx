@@ -1,15 +1,18 @@
 import { Avatar, Box, Checkbox, Flex, Stack, Text } from '@mantine/core';
-import { useUnit } from 'effector-react';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useStoreMap, useUnit } from 'effector-react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { $currentEntityProfile } from '@model/chat-core';
 import {
 	$currentTurn,
+	$entryPartEdits,
 	$isChatStreaming,
 	$variantsByEntryId,
+	closeEntryPartEditRequested,
 	loadVariantsRequested,
 	manualEditEntryRequested,
+	openEntryPartEditRequested,
 	openDeleteEntryConfirm,
 	openDeletePartConfirm,
 	openDeleteVariantConfirm,
@@ -17,6 +20,7 @@ import {
 	regenerateRequested,
 	selectVariantRequested,
 	setEntryPromptVisibilityRequested,
+	updateEntryPartDraftRequested,
 } from '@model/chat-entry-parts';
 import { userPersonsModel } from '@model/user-persons';
 import { toaster } from '@ui/toaster';
@@ -38,7 +42,7 @@ type MessageProps = {
 	onAvatarPreviewRequested?: (preview: ChatAvatarPreview) => void;
 	isBulkDeleteMode: boolean;
 	isBulkSelected: boolean;
-	onToggleBulkSelection: () => void;
+	onToggleBulkSelection: (payload: { entryId: string }) => void;
 };
 
 type PersonaSnapshot = {
@@ -93,13 +97,23 @@ const MessageInner: React.FC<MessageProps> = ({
 }) => {
 	const { t } = useTranslation();
 	const [currentProfile, selectedUserPerson] = useUnit([$currentEntityProfile, userPersonsModel.$selectedItem]);
+	const [openEntryPartEdit, updateEntryPartDraft, closeEntryPartEdit] = useUnit([
+		openEntryPartEditRequested,
+		updateEntryPartDraftRequested,
+		closeEntryPartEditRequested,
+	]);
 	const isStreaming = useUnit($isChatStreaming);
 	const currentTurn = useUnit($currentTurn);
 	const variantsById = useUnit($variantsByEntryId);
-	const [editingPartId, setEditingPartId] = useState<string | null>(null);
-	const [draftText, setDraftText] = useState('');
 	const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 	const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+	const editState = useStoreMap({
+		store: $entryPartEdits,
+		keys: [data.entry.entryId],
+		fn: (state, [entryId]) => state[entryId] ?? null,
+	});
+	const editingPartId = editState?.partId ?? null;
+	const draftText = editState?.draftText ?? '';
 
 	const isUser = data.entry.role === 'user';
 	const isAssistant = data.entry.role === 'assistant';
@@ -152,9 +166,8 @@ const MessageInner: React.FC<MessageProps> = ({
 
 	useEffect(() => {
 		if (!isBulkDeleteMode) return;
-		setEditingPartId(null);
-		setDraftText('');
-	}, [isBulkDeleteMode]);
+		closeEntryPartEdit({ entryId: data.entry.entryId });
+	}, [closeEntryPartEdit, data.entry.entryId, isBulkDeleteMode]);
 
 	const currentVariantIndex = useMemo(() => {
 		if (variants.length === 0) return -1;
@@ -247,8 +260,7 @@ const MessageInner: React.FC<MessageProps> = ({
 			});
 			return;
 		}
-		setEditingPartId(part.partId);
-		setDraftText(part.payload);
+		openEntryPartEdit({ entryId: data.entry.entryId, partId: part.partId, draftText: part.payload });
 	};
 
 	const handleOpenEditPart = (part: Part) => {
@@ -256,21 +268,25 @@ const MessageInner: React.FC<MessageProps> = ({
 		if (part.channel === 'main') return;
 		if (!canMutateParts || !isEditablePart(part)) return;
 		if (typeof part.payload !== 'string') return;
-		setEditingPartId(part.partId);
-		setDraftText(part.payload);
+		openEntryPartEdit({ entryId: data.entry.entryId, partId: part.partId, draftText: part.payload });
 	};
 
 	const handleCancelEdit = () => {
-		setEditingPartId(null);
-		setDraftText('');
+		closeEntryPartEdit({ entryId: data.entry.entryId });
 	};
 
 	const handleConfirmEdit = () => {
 		if (!editingPartId) return;
 		manualEditEntryRequested({ entryId: data.entry.entryId, partId: editingPartId, content: draftText });
-		setEditingPartId(null);
-		setDraftText('');
+		closeEntryPartEdit({ entryId: data.entry.entryId });
 	};
+
+	const handleDraftTextChange = useCallback(
+		(next: string) => {
+			updateEntryPartDraft({ entryId: data.entry.entryId, draftText: next });
+		},
+		[data.entry.entryId, updateEntryPartDraft],
+	);
 
 	const handleRequestDeleteMessage = () => {
 		if (isOptimistic || isStreaming || isEditing) return;
@@ -332,7 +348,7 @@ const MessageInner: React.FC<MessageProps> = ({
 						<Checkbox
 							checked={isBulkSelected}
 							color="red"
-							onChange={() => onToggleBulkSelection()}
+							onChange={() => onToggleBulkSelection({ entryId: data.entry.entryId })}
 							onClick={(event) => event.stopPropagation()}
 							aria-label={t('chat.management.bulkSelectMessage')}
 							size="sm"
@@ -357,7 +373,7 @@ const MessageInner: React.FC<MessageProps> = ({
 						onTouchEnd={handleTouchEnd}
 						onPointerDown={handlePointerDown}
 						onPointerUp={handlePointerUp}
-						onClick={isBulkDeleteMode ? onToggleBulkSelection : undefined}
+						onClick={isBulkDeleteMode ? () => onToggleBulkSelection({ entryId: data.entry.entryId }) : undefined}
 						style={isBulkDeleteMode ? { cursor: 'pointer' } : undefined}
 					>
 						<Flex align="center" justify="space-between" gap="sm">
@@ -411,7 +427,7 @@ const MessageInner: React.FC<MessageProps> = ({
 								canMutateParts={canMutateParts}
 								editingPartId={editingPartId}
 								draftText={draftText}
-								onDraftTextChange={setDraftText}
+								onDraftTextChange={handleDraftTextChange}
 								onCancelEditPart={handleCancelEdit}
 								onConfirmEditPart={handleConfirmEdit}
 								onEditPart={handleOpenEditPart}

@@ -31,7 +31,7 @@ export const RenderChat = ({ onAvatarPreviewRequested }: RenderChatProps) => {
 					onAvatarPreviewRequested={onAvatarPreviewRequested}
 					isBulkDeleteMode={isBulkDeleteMode}
 					isBulkSelected={selectedSet.has(entry.entry.entryId)}
-					onToggleBulkSelection={() => toggleSelection({ entryId: entry.entry.entryId })}
+					onToggleBulkSelection={toggleSelection}
 				/>
 			))}
 		</Stack>
