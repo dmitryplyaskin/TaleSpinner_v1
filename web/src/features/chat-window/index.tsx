@@ -52,34 +52,36 @@ export const ChatWindow: React.FC = () => {
 	return (
 		<Box className="ts-chat-window" style={{ backgroundImage: `url(${BGImages})` }}>
 			<Box className="ts-chat-window__inner" data-preview-open={avatarPreview ? 'true' : 'false'}>
-				<Box className="ts-chat-scroll">
-					<Box className="ts-chat-content">
-						<RenderChat onAvatarPreviewRequested={setAvatarPreview} />
-						<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
-
-						<Box className="ts-chat-composer-wrap">
-							{isBulkDeleteMode && (
-								<Box className="ts-bulk-delete-toolbar">
-									<Group justify="space-between" align="center">
-										<Text size="sm">{t('chat.management.bulkSelectedCount', { count: selectedEntryIds.length })}</Text>
-										<Group gap="xs">
-											<Button
-												size="xs"
-												color="red"
-												onClick={() => requestBulkDeleteConfirm()}
-												disabled={selectedEntryIds.length === 0}
-											>
-												{t('common.delete')}
-											</Button>
-											<Button size="xs" variant="subtle" onClick={() => closeBulkDeleteMode()}>
-												{t('common.cancel')}
-											</Button>
-										</Group>
-									</Group>
-								</Box>
-							)}
-							<MessageInput />
+				<Box className="ts-chat-shell">
+					<Box className="ts-chat-scroll">
+						<Box className="ts-chat-content">
+							<RenderChat onAvatarPreviewRequested={setAvatarPreview} />
+							<Box ref={messagesEndRef} style={{ scrollMarginBottom: 160 }} />
 						</Box>
+					</Box>
+
+					<Box className="ts-chat-composer-wrap">
+						{isBulkDeleteMode && (
+							<Box className="ts-bulk-delete-toolbar">
+								<Group justify="space-between" align="center">
+									<Text size="sm">{t('chat.management.bulkSelectedCount', { count: selectedEntryIds.length })}</Text>
+									<Group gap="xs">
+										<Button
+											size="xs"
+											color="red"
+											onClick={() => requestBulkDeleteConfirm()}
+											disabled={selectedEntryIds.length === 0}
+										>
+											{t('common.delete')}
+										</Button>
+										<Button size="xs" variant="subtle" onClick={() => closeBulkDeleteMode()}>
+											{t('common.cancel')}
+										</Button>
+									</Group>
+								</Group>
+							</Box>
+						)}
+						<MessageInput />
 					</Box>
 				</Box>
 

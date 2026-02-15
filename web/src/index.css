@@ -272,16 +272,23 @@ a {
   padding: 0 var(--ts-chat-inner-x-padding);
 }
 
-.ts-chat-scroll {
+.ts-chat-shell {
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--ts-border-soft);
-  border-radius: 18px;
+  border-radius: 0;
   background: linear-gradient(180deg, var(--ts-chat-scroll-bg-top), var(--ts-chat-scroll-bg-bottom));
   backdrop-filter: blur(5px);
   box-shadow: var(--ts-shadow-strong);
   padding: 8px 10px 10px;
+}
+
+.ts-chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ts-chat-header {
@@ -297,12 +304,11 @@ a {
 }
 
 .ts-chat-content {
-  padding: 12px 2px 4px;
+  padding: 12px 2px 8px;
 }
 
 .ts-chat-composer-wrap {
-  position: sticky;
-  bottom: 6px;
+  flex-shrink: 0;
   z-index: 4;
   padding-top: 14px;
 }
