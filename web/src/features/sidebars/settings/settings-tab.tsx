@@ -8,9 +8,10 @@ import { LuCopy, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
 
 import { createEmptySampler, samplersModel } from '@model/samplers';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { SamplerSettingsGrid } from '../../llm-provider/sampler-settings-grid';
 
 import { getLlmSettingsFields } from '../../../model/llm-settings';
+import { SamplerSettingsGrid } from '../../llm-provider/sampler-settings-grid';
+
 
 
 

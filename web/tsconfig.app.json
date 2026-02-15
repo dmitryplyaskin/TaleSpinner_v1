@@ -25,10 +25,8 @@
       "@ui/*": ["./src/ui/*"],
       "@types/*": ["./src/types/*"],
       "@model/*": ["./src/model/*"], 
-      "@shared/*": ["../shared/*"],
-      "@utils/*": ["./src/utils/*"]
+      "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["src/legacy"]
+  "include": ["src"]
 }

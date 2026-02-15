@@ -1,17 +1,18 @@
 import { combine, createEffect, createEvent, createStore, sample } from 'effector';
 
 import { toaster } from '@ui/toaster';
-import i18n from '../../i18n';
 
-import type { InstructionMeta } from '@shared/types/instructions';
-import type { InstructionDto } from '../../api/instructions';
 import {
 	createInstruction,
 	deleteInstruction,
 	listInstructions,
 	updateInstruction,
 } from '../../api/instructions';
+import i18n from '../../i18n';
 import { $currentChat, setChatInstructionRequested, setOpenedChat } from '../chat-core';
+
+import type { InstructionDto } from '../../api/instructions';
+import type { InstructionMeta } from '@shared/types/instructions';
 
 function isInstructionDto(value: unknown): value is InstructionDto {
 	if (!value || typeof value !== 'object') return false;

@@ -13,9 +13,6 @@ import {
 	importInstructionRequested,
 	instructionSelected,
 } from '@model/instructions';
-import { Drawer } from '@ui/drawer';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { toaster } from '@ui/toaster';
 import {
 	buildStPresetFromAdvanced,
 	createStAdvancedConfigFromPreset,
@@ -25,10 +22,14 @@ import {
 	hasSensitivePresetFields,
 	withTsInstructionMeta,
 } from '@model/instructions/st-preset';
+import { Drawer } from '@ui/drawer';
+import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { toaster } from '@ui/toaster';
+
+import { InstructionEditor } from './instruction-editor';
 
 import type { InstructionMeta } from '@shared/types/instructions';
 
-import { InstructionEditor } from './instruction-editor';
 
 function downloadJson(params: { fileName: string; data: unknown }): void {
 	const blob = new Blob([JSON.stringify(params.data, null, 2)], { type: 'application/json' });

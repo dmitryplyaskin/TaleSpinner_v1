@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Drawer } from '@ui/drawer';
 
 import { APIProviderTab } from './api-provoder-tab';
-import { SamplerSettingsTab } from './settings-tab';
 import { RagSettingsTab } from './rag-settings-tab';
+import { SamplerSettingsTab } from './settings-tab';
 
 type TabType = 'settings' | 'provider' | 'rag';
 

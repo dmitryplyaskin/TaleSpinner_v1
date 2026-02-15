@@ -1,6 +1,7 @@
 import { ActionIcon, Box, Group, Title } from '@mantine/core';
-import type { ReactNode } from 'react';
 import { LuArrowLeftToLine, LuArrowRightToLine, LuFullscreen, LuMinimize2, LuX } from 'react-icons/lu';
+
+import type { ReactNode } from 'react';
 
 type SidebarShellProps = {
 	title: string;

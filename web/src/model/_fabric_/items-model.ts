@@ -4,9 +4,10 @@ import { debounce } from 'patronum/debounce';
 import { v4 as uuidv4 } from 'uuid';
 
 import { asyncHandler } from '@model/utils/async-handler';
-import i18n from '../../i18n';
 
 import { BASE_URL } from '../../const';
+import i18n from '../../i18n';
+
 
 import { type FabricItems } from './types';
 

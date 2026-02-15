@@ -1,7 +1,7 @@
+import { Avatar, type AvatarProps } from '@mantine/core';
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Avatar, type AvatarProps } from '@mantine/core';
 
 import { toaster } from '@ui/toaster';
 

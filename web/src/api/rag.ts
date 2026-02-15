@@ -1,7 +1,7 @@
 import { apiJson } from './api-json';
 
-import type { RagModel, RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
 import type { LlmTokenListItem } from '@shared/types/llm';
+import type { RagModel, RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
 
 export async function getRagProviders(): Promise<RagProviderDefinition[]> {
   const data = await apiJson<{ providers: RagProviderDefinition[] }>('/rag/providers');

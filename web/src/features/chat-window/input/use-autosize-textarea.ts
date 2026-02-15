@@ -1,5 +1,6 @@
-import type { RefObject } from 'react';
 import { useCallback, useLayoutEffect } from 'react';
+
+import type { RefObject } from 'react';
 
 type UseAutosizeTextareaParams = {
 	value: string;

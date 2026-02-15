@@ -2,8 +2,8 @@ import { createEffect, createEvent, createStore, sample } from 'effector';
 
 import { fetchAppSettingsFx } from './app-settings';
 import { loadEntityProfilesFx } from './chat-core';
-import { fetchSettingsFx as fetchLlmSettingsFx } from './llm-settings';
 import { instructionsInitRequested } from './instructions';
+import { fetchSettingsFx as fetchLlmSettingsFx } from './llm-settings';
 import { llmProviderModel } from './provider';
 import { samplersModel } from './samplers';
 import { getSettingsFx as fetchSidebarsFx } from './sidebars';
