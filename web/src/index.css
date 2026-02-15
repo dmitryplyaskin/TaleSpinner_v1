@@ -311,6 +311,12 @@ a {
   padding-top: 14px;
 }
 
+.ts-chat-unseen-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
 .ts-bulk-delete-toolbar {
   margin-bottom: 8px;
   border: 1px solid var(--ts-border-soft);

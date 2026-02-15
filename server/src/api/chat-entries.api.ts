@@ -26,7 +26,7 @@ import {
   getActiveVariantWithParts,
   getEntryById,
   listEntries,
-  listEntriesWithActiveVariants,
+  listEntriesWithActiveVariantsPage,
   softDeleteEntry,
   softDeleteEntries,
   updateEntryMeta,
@@ -790,18 +790,31 @@ async function cleanupEmptyGenerationVariants(entryId: string): Promise<void> {
   }
 }
 
-const listEntriesQuerySchema = z.object({
-  branchId: z.string().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
-  before: z.coerce.number().int().positive().optional(), // createdAt ms cursor
-});
+const listEntriesQuerySchema = z
+  .object({
+    branchId: z.string().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+    before: z.coerce.number().int().positive().optional(), // backward-compatible createdAt cursor
+    cursorCreatedAt: z.coerce.number().int().positive().optional(),
+    cursorEntryId: z.string().min(1).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const hasCreatedAt = typeof value.cursorCreatedAt === "number";
+    const hasEntryId = typeof value.cursorEntryId === "string" && value.cursorEntryId.length > 0;
+    if (hasCreatedAt !== hasEntryId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cursorCreatedAt и cursorEntryId должны передаваться вместе",
+      });
+    }
+  });
 
 router.get(
   "/chats/:id/entries",
   validate({ params: chatIdParamsSchema, query: listEntriesQuerySchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const query = req.query as unknown as { branchId?: string; limit: number; before?: number };
+    const query = listEntriesQuerySchema.parse(req.query);
 
     const chat = await getChatById(params.id);
     if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
@@ -822,15 +835,24 @@ router.get(
       // best-effort rerender; never fail the entries listing
     }
 
-    const entries = await listEntriesWithActiveVariants({
+    const page = await listEntriesWithActiveVariantsPage({
       chatId: params.id,
       branchId,
       limit: query.limit,
       before: query.before,
+      cursorCreatedAt: query.cursorCreatedAt,
+      cursorEntryId: query.cursorEntryId,
     });
 
     const currentTurn = await getBranchCurrentTurn({ branchId });
-    return { data: { branchId, currentTurn, entries } };
+    return {
+      data: {
+        branchId,
+        currentTurn,
+        entries: page.entries,
+        pageInfo: page.pageInfo,
+      },
+    };
   })
 );
 
