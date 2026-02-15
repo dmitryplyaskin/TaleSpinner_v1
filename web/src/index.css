@@ -152,7 +152,6 @@ a {
   color: inherit;
 }
 
-.mantine-Modal-content,
 .mantine-Drawer-content {
   background: var(--ts-surface);
 }

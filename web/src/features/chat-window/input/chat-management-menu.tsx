@@ -32,6 +32,8 @@ function normalizeName(value: string): string {
 	return value.trim();
 }
 
+const CHAT_LIST_MODAL_WIDTH = 720;
+
 export const ChatManagementMenu = () => {
 	const { t } = useTranslation();
 	const [chats, currentChat, branches, currentBranchId, currentProfile, isBulkDeleteMode, startBulkDeleteMode, quickCreatePending, requestQuickCreate] = useUnit([
@@ -221,13 +223,10 @@ export const ChatManagementMenu = () => {
 					}
 				}}
 				title={t('chat.management.chatsTitle')}
-				size={560}
+				size={CHAT_LIST_MODAL_WIDTH}
 				footer={<></>}
 			>
-				<Group justify="space-between" align="center">
-					<Text size="sm" c="dimmed">
-						{t('chat.management.chatsTitle')}
-					</Text>
+				<Group justify="flex-end" align="center">
 					<ActionIcon
 						variant="light"
 						color="cyan"
@@ -348,13 +347,10 @@ export const ChatManagementMenu = () => {
 					}
 				}}
 				title={t('chat.management.branchesTitle')}
-				size={560}
+				size={CHAT_LIST_MODAL_WIDTH}
 				footer={<></>}
 			>
-				<Group justify="space-between" align="center">
-					<Text size="sm" c="dimmed">
-						{t('chat.management.branchesTitle')}
-					</Text>
+				<Group justify="flex-end" align="center">
 					<ActionIcon
 						variant="light"
 						color="cyan"
