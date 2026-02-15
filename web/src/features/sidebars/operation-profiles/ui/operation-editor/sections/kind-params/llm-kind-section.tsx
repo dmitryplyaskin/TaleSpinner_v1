@@ -75,7 +75,7 @@ function toOperationSamplers(settings: unknown): LlmOperationSamplers {
 
 export const LlmKindSection: React.FC<Props> = ({ index }) => {
 	const { t } = useTranslation();
-	const { control, setValue } = useFormContext();
+	const { control, setValue, getValues } = useFormContext();
 	const [isSchemaHelpOpen, setSchemaHelpOpen] = useState(false);
 	const [
 		providers,
@@ -212,16 +212,32 @@ export const LlmKindSection: React.FC<Props> = ({ index }) => {
 								models={models}
 								activeModel={activeModel}
 								onProviderSelect={(providerId) => {
+									const currentProviderId = normalizeProviderId(getValues(providerPath));
+									if (providerId === currentProviderId) return;
 									setValue(providerPath, providerId, { shouldDirty: true });
 									setValue(tokenPath, '', { shouldDirty: true });
 									setValue(modelPath, '', { shouldDirty: true });
 								}}
 								onTokenSelect={(tokenId) => {
-									setValue(tokenPath, tokenId ?? '', { shouldDirty: true });
-									setValue(modelPath, '', { shouldDirty: true });
+									const nextTokenId = tokenId ?? '';
+									const currentTokenIdRaw = getValues(tokenPath);
+									const currentTokenId = typeof currentTokenIdRaw === 'string' ? currentTokenIdRaw : '';
+									if (nextTokenId === currentTokenId) return;
+
+									setValue(tokenPath, nextTokenId, { shouldDirty: true });
+
+									const currentModelRaw = getValues(modelPath);
+									const currentModel = typeof currentModelRaw === 'string' ? currentModelRaw : '';
+									if (currentModel.length > 0) {
+										setValue(modelPath, '', { shouldDirty: true });
+									}
 								}}
 								onModelSelect={(model) => {
-									setValue(modelPath, model ?? '', { shouldDirty: true });
+									const nextModel = model ?? '';
+									const currentModelRaw = getValues(modelPath);
+									const currentModel = typeof currentModelRaw === 'string' ? currentModelRaw : '';
+									if (nextModel === currentModel) return;
+									setValue(modelPath, nextModel, { shouldDirty: true });
 								}}
 								onLoadModels={loadModels}
 								allowTokenManager={false}
@@ -241,6 +257,7 @@ export const LlmKindSection: React.FC<Props> = ({ index }) => {
 								value={samplerPresetId}
 								onChange={(next) => {
 									const presetId = next ?? '';
+									if (presetId === samplerPresetId) return;
 									setValue(samplerPresetPath, presetId, { shouldDirty: true });
 									const preset = (samplerPresets as SamplersItemType[]).find((item) => item.id === presetId);
 									if (!preset) return;

@@ -1,6 +1,7 @@
 import { createEffect, createEvent, createStore, sample } from 'effector';
 
-import i18n from '../../i18n';
+import { toaster } from '@ui/toaster';
+
 import {
 	createOperationBlock,
 	deleteOperationBlock,
@@ -10,7 +11,7 @@ import {
 	updateOperationBlock,
 	type OperationBlockDto,
 } from '../../api/chat-core';
-import { toaster } from '@ui/toaster';
+import i18n from '../../i18n';
 
 import type { OperationBlockExport } from '@shared/types/operation-profiles';
 
@@ -87,13 +88,13 @@ sample({
 });
 
 createOperationBlockFx.doneData.watch((b) => {
-	toaster.success({ title: i18n.t('operationProfiles.toasts.created'), description: `${b.name} (v${b.version})` });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.created'), description: b.name });
 });
 createOperationBlockFx.failData.watch((e) => {
 	toaster.error({ title: i18n.t('operationProfiles.toasts.createError'), description: e instanceof Error ? e.message : String(e) });
 });
 updateOperationBlockFx.doneData.watch((b) => {
-	toaster.success({ title: i18n.t('operationProfiles.toasts.saved'), description: `${b.name} (v${b.version})` });
+	toaster.success({ title: i18n.t('operationProfiles.toasts.saved'), description: b.name });
 });
 updateOperationBlockFx.failData.watch((e) => {
 	toaster.error({ title: i18n.t('operationProfiles.toasts.saveError'), description: e instanceof Error ? e.message : String(e) });

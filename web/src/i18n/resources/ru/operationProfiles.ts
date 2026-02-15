@@ -28,6 +28,7 @@
 				actions: {
 					createBlock: 'Создать блок',
 					duplicateBlock: 'Дублировать блок',
+					editBlock: 'Редактировать блок',
 					deleteBlock: 'Удалить блок',
 					exportBlock: 'Экспортировать блок',
 					importBlocks: 'Импортировать блоки',

@@ -28,6 +28,7 @@
 				actions: {
 					createBlock: 'Create block',
 					duplicateBlock: 'Duplicate block',
+					editBlock: 'Edit block',
 					deleteBlock: 'Delete block',
 					exportBlock: 'Export block',
 					importBlocks: 'Import blocks',

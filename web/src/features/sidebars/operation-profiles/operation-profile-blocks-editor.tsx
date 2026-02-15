@@ -1,9 +1,9 @@
 import { ActionIcon, Alert, Button, Card, Group, NumberInput, Select, Stack, Switch, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
+import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuPlus, LuTrash2 } from 'react-icons/lu';
+import { LuArrowDown, LuArrowUp, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
@@ -23,6 +23,7 @@ export type OperationProfileBlocksToolbarState = {
 type Props = {
 	profile: OperationProfileDto;
 	blocks: OperationBlockDto[];
+	onEditBlock?: (blockId: string) => void;
 	onToolbarStateChange?: (state: OperationProfileBlocksToolbarState | null) => void;
 };
 
@@ -40,7 +41,7 @@ function toFormValues(profile: OperationProfileDto): FormValues {
 	};
 }
 
-export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks, onToolbarStateChange }) => {
+export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks, onEditBlock, onToolbarStateChange }) => {
 	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationProfileFx);
 	const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 		name: 'blockRefs',
 		keyName: '_key',
 	});
+	const watchedBlockRefs = useWatch({ control, name: 'blockRefs' });
 
 	useEffect(() => {
 		reset(initial);
@@ -61,11 +63,11 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 	}, [initial, reset]);
 
 	const availableBlockOptions = useMemo(() => {
-		const linked = new Set((methods.getValues('blockRefs') ?? []).map((ref) => ref.blockId));
+		const linked = new Set((watchedBlockRefs ?? []).map((ref) => ref.blockId));
 		return blocks
 			.filter((b) => !linked.has(b.blockId))
 			.map((b) => ({ value: b.blockId, label: b.name }));
-	}, [blocks, fields, methods]);
+	}, [blocks, watchedBlockRefs]);
 
 	const onSave = useMemo(
 		() =>
@@ -195,6 +197,15 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 													disabled={index >= fields.length - 1}
 												>
 													<LuArrowDown size={16} />
+												</ActionIcon>
+												<ActionIcon
+													variant="subtle"
+													aria-label={t('operationProfiles.blocks.actions.editBlock')}
+													title={t('operationProfiles.blocks.actions.editBlock')}
+													disabled={!onEditBlock}
+													onClick={() => onEditBlock?.(field.blockId)}
+												>
+													<LuPencil size={16} />
 												</ActionIcon>
 												<ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>
 													<LuTrash2 size={16} />

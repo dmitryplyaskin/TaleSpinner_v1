@@ -6,6 +6,15 @@ import { LuGitFork, LuRotateCcw, LuSave, LuUndo2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
+	$operationBlocks,
+	createOperationBlockFx,
+	deleteOperationBlockFx,
+	duplicateOperationBlockRequested,
+	exportOperationBlockFx,
+	importOperationBlocksFx,
+	loadOperationBlocksFx,
+} from '@model/operation-blocks';
+import {
 	$operationProfileSettings,
 	$operationProfiles,
 	createOperationProfileFx,
@@ -17,23 +26,14 @@ import {
 	loadOperationProfilesFx,
 	setActiveOperationProfileRequested
 } from '@model/operation-profiles';
-import {
-	$operationBlocks,
-	createOperationBlockFx,
-	deleteOperationBlockFx,
-	duplicateOperationBlockRequested,
-	exportOperationBlockFx,
-	importOperationBlocksFx,
-	loadOperationBlocksFx,
-} from '@model/operation-blocks';
 import { $sidebars } from '@model/sidebars';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
+import { OperationBlockNodeEditorModal } from './node-editor/block-node-editor-modal';
 import { OperationBlockEditor, type OperationBlockToolbarState } from './operation-block-editor';
 import { OperationProfileBlocksEditor, type OperationProfileBlocksToolbarState } from './operation-profile-blocks-editor';
-import { OperationBlockNodeEditorModal } from './node-editor/block-node-editor-modal';
 import './operation-profiles.css';
 import { BlockActions } from './ui/block-actions';
 import { ProfileActions } from './ui/profile-actions';
@@ -168,7 +168,15 @@ export const OperationProfilesSidebar: React.FC = () => {
 								{t('operationProfiles.empty.selectProfile')}
 							</Text>
 						) : (
-							<OperationProfileBlocksEditor profile={selectedProfile} blocks={blocks} onToolbarStateChange={setProfileToolbarState} />
+							<OperationProfileBlocksEditor
+								profile={selectedProfile}
+								blocks={blocks}
+								onEditBlock={(blockId) => {
+									setSelectedBlockId(blockId);
+									setActiveTab('blocks');
+								}}
+								onToolbarStateChange={setProfileToolbarState}
+							/>
 						)}
 					</>
 				)}

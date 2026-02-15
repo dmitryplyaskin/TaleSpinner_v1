@@ -86,7 +86,9 @@ export const LlmRuntimeSelectorFields: React.FC<Props> = ({
 
 	const applyManualModel = () => {
 		const next = manualModel.trim();
-		onModelSelect(next.length > 0 ? next : null);
+		const nextModel = next.length > 0 ? next : null;
+		if (nextModel === activeModel) return;
+		onModelSelect(nextModel);
 	};
 
 	return (
@@ -96,7 +98,9 @@ export const LlmRuntimeSelectorFields: React.FC<Props> = ({
 					data={providerOptions}
 					value={activeProviderId}
 					onChange={(value) => {
-						onProviderSelect((value ?? 'openrouter') as LlmProviderId);
+						const nextProviderId = (value ?? 'openrouter') as LlmProviderId;
+						if (nextProviderId === activeProviderId) return;
+						onProviderSelect(nextProviderId);
 					}}
 					placeholder={t('provider.placeholders.selectProvider')}
 					searchable
@@ -118,7 +122,11 @@ export const LlmRuntimeSelectorFields: React.FC<Props> = ({
 				<Select
 					data={tokenOptions}
 					value={activeTokenId}
-					onChange={(value) => onTokenSelect(value ?? null)}
+					onChange={(value) => {
+						const nextTokenId = value ?? null;
+						if (nextTokenId === activeTokenId) return;
+						onTokenSelect(nextTokenId);
+					}}
 					placeholder={tokens.length ? t('provider.placeholders.selectToken') : t('provider.placeholders.noTokens')}
 					clearable
 					searchable
@@ -141,8 +149,11 @@ export const LlmRuntimeSelectorFields: React.FC<Props> = ({
 					data={modelOptions}
 					value={selectedModelOption?.value ?? null}
 					onChange={(value) => {
-						onModelSelect(value ?? null);
-						setManualModel(value ?? '');
+						const nextModel = value ?? null;
+						if (nextModel !== activeModel) {
+							onModelSelect(nextModel);
+						}
+						setManualModel(nextModel ?? '');
 					}}
 					clearable
 					searchable

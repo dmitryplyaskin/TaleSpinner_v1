@@ -77,33 +77,70 @@ const SelectedOperationEditor: React.FC<SelectedOperationEditorProps> = React.me
 
 SelectedOperationEditor.displayName = 'SelectedOperationEditor';
 
+function toFormValuesFromBlock(block: OperationBlockDto): OperationProfileFormValues {
+	return toOperationProfileForm({
+		profileId: block.blockId,
+		ownerId: block.ownerId,
+		name: block.name,
+		description: block.description,
+		enabled: block.enabled,
+		executionMode: 'sequential',
+		operationProfileSessionId: '00000000-0000-0000-0000-000000000000',
+		blockRefs: [],
+		operations: block.operations,
+		meta: block.meta,
+		version: block.version,
+		createdAt: block.createdAt,
+		updatedAt: block.updatedAt,
+	} satisfies OperationProfileDto);
+}
+
+function resolveEditingOperationId(preferredOpId: string | null, operations: OperationProfileFormValues['operations']): string | null {
+	if (preferredOpId && operations.some((operation) => operation.opId === preferredOpId)) return preferredOpId;
+	return operations[0]?.opId ?? null;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function areDeepEqual(left: unknown, right: unknown): boolean {
+	if (Object.is(left, right)) return true;
+
+	if (Array.isArray(left) || Array.isArray(right)) {
+		if (!Array.isArray(left) || !Array.isArray(right)) return false;
+		if (left.length !== right.length) return false;
+		for (let index = 0; index < left.length; index += 1) {
+			if (!areDeepEqual(left[index], right[index])) return false;
+		}
+		return true;
+	}
+
+	if (isPlainObject(left) || isPlainObject(right)) {
+		if (!isPlainObject(left) || !isPlainObject(right)) return false;
+		const leftKeys = Object.keys(left).filter((key) => left[key] !== undefined);
+		const rightKeys = Object.keys(right).filter((key) => right[key] !== undefined);
+		if (leftKeys.length !== rightKeys.length) return false;
+		for (const key of leftKeys) {
+			if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+			if (!areDeepEqual(left[key], right[key])) return false;
+		}
+		return true;
+	}
+
+	return false;
+}
+
 export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout, onToolbarStateChange }) => {
 	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationBlockFx);
 	const isMobile = useMediaQuery('(max-width: 767px)');
 	const useSplitLayout = preferSplitLayout && !isMobile;
 
-	const initial = useMemo(
-		() =>
-			toOperationProfileForm({
-				profileId: block.blockId,
-				ownerId: block.ownerId,
-				name: block.name,
-				description: block.description,
-				enabled: block.enabled,
-				executionMode: 'sequential',
-				operationProfileSessionId: '00000000-0000-0000-0000-000000000000',
-				blockRefs: [],
-				operations: block.operations,
-				meta: block.meta,
-				version: block.version,
-				createdAt: block.createdAt,
-				updatedAt: block.updatedAt,
-			} satisfies OperationProfileDto),
-		[block],
-	);
+	const initial = useMemo(() => toFormValuesFromBlock(block), [block]);
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
-	const { control, formState, reset } = methods;
+	const { control, reset } = methods;
+	const watchedValues = useWatch({ control });
 
 	const { fields, append, remove } = useFieldArray({
 		name: 'operations',
@@ -127,12 +164,19 @@ export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout
 
 	const [isProfileOpen, setIsProfileOpen] = useState(true);
 	const [jsonError, setJsonError] = useState<string | null>(null);
-	const [editingOpId, setEditingOpId] = useState<string | null>(() => initial.operations[0]?.opId ?? null);
+	const [baselineValues, setBaselineValues] = useState<OperationProfileFormValues>(initial);
+	const [editingOpId, setEditingOpId] = useState<string | null>(() => resolveEditingOperationId(null, initial.operations));
+
+	const hasUnsavedChanges = useMemo(() => {
+		const current = (watchedValues as OperationProfileFormValues | undefined) ?? baselineValues;
+		return !areDeepEqual(current, baselineValues);
+	}, [baselineValues, watchedValues]);
 
 	useEffect(() => {
 		setJsonError(null);
 		reset(initial);
-		setEditingOpId(initial.operations[0]?.opId ?? null);
+		setBaselineValues(initial);
+		setEditingOpId((prev) => resolveEditingOperationId(prev, initial.operations));
 	}, [initial, reset]);
 
 	const selectedIndex = useMemo(() => {
@@ -148,11 +192,18 @@ export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout
 	const selectedOpId = selectedRow?.opId ?? null;
 
 	const submitValues = useCallback(
-		(values: OperationProfileFormValues) => {
+		async (values: OperationProfileFormValues) => {
 			setJsonError(null);
+			let payload: ReturnType<typeof fromOperationProfileForm>;
 			try {
-				const payload = fromOperationProfileForm(values, { validateJson: true });
-				doUpdate({
+				payload = fromOperationProfileForm(values, { validateJson: true });
+			} catch (error) {
+				setJsonError(error instanceof Error ? error.message : String(error));
+				return;
+			}
+
+			try {
+				const updatedBlock = await doUpdate({
 					blockId: block.blockId,
 					patch: {
 						name: payload.name,
@@ -161,11 +212,15 @@ export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout
 						operations: payload.operations,
 					},
 				});
-			} catch (error) {
-				setJsonError(error instanceof Error ? error.message : String(error));
+				const nextValues = toFormValuesFromBlock(updatedBlock);
+				reset(nextValues);
+				setBaselineValues(nextValues);
+				setEditingOpId((prev) => resolveEditingOperationId(prev, nextValues.operations));
+			} catch {
+				// API errors are surfaced by model-level toasts.
 			}
 		},
-		[doUpdate, block.blockId],
+		[doUpdate, block.blockId, reset],
 	);
 
 	const onSave = useMemo(() => methods.handleSubmit(submitValues), [methods, submitValues]);
@@ -173,17 +228,18 @@ export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout
 	const onDiscard = useCallback(() => {
 		setJsonError(null);
 		reset(initial);
-		setEditingOpId(initial.operations[0]?.opId ?? null);
+		setBaselineValues(initial);
+		setEditingOpId((prev) => resolveEditingOperationId(prev, initial.operations));
 	}, [initial, reset]);
 
 	const toolbarState = useMemo<OperationBlockToolbarState>(() => {
 		return {
-			canSave: formState.isDirty,
-			canDiscard: formState.isDirty,
+			canSave: hasUnsavedChanges,
+			canDiscard: hasUnsavedChanges,
 			onSave,
 			onDiscard,
 		};
-	}, [formState.isDirty, onDiscard, onSave]);
+	}, [hasUnsavedChanges, onDiscard, onSave]);
 
 	useEffect(() => {
 		onToolbarStateChange?.(toolbarState);
@@ -235,7 +291,7 @@ export const OperationBlockEditor: React.FC<Props> = ({ block, preferSplitLayout
 			key={selectedRow.opId}
 			index={selectedRow.index}
 			opId={selectedRow.opId}
-			isDirty={formState.isDirty}
+			isDirty={hasUnsavedChanges}
 			onRemove={removeOperationAt}
 		/>
 	) : (
