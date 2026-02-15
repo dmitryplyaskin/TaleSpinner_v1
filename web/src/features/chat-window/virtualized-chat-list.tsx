@@ -1,7 +1,7 @@
 import { Box, Loader, Stack } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useUnit } from 'effector-react';
-import { memo, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
 	$bulkDeleteSelectedEntryIds,
@@ -16,7 +16,10 @@ import { Message } from './message';
 
 const VIRTUALIZATION_THRESHOLD = 40;
 const ROW_ESTIMATED_HEIGHT = 220;
-const ROW_OVERSCAN = 10;
+const ROW_BASE_OVERSCAN = 10;
+const ROW_FAST_OVERSCAN = 28;
+const FAST_SCROLL_VELOCITY_PX_PER_MS = 2.4;
+const FAST_OVERSCAN_HOLD_MS = 160;
 
 type VirtualizedChatListProps = {
 	scrollElement: HTMLDivElement | null;
@@ -76,16 +79,69 @@ export const VirtualizedChatList = ({
 	]);
 	const selectedSet = useMemo(() => new Set(selectedEntryIds), [selectedEntryIds]);
 	const shouldVirtualize = entries.length >= VIRTUALIZATION_THRESHOLD;
+	const [overscan, setOverscan] = useState(ROW_BASE_OVERSCAN);
 	const entriesCountRef = useRef(entries.length);
+	const overscanResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	entriesCountRef.current = entries.length;
 
 	const virtualizer = useVirtualizer({
 		count: shouldVirtualize ? entries.length : 0,
 		getScrollElement: () => scrollElement,
 		estimateSize: () => ROW_ESTIMATED_HEIGHT,
-		overscan: ROW_OVERSCAN,
+		overscan: overscan,
 		getItemKey: (index) => entries[index]?.entry.entryId ?? `row_${index}`,
 	});
+
+	useEffect(() => {
+		if (!shouldVirtualize) {
+			setOverscan((current) => (current === ROW_BASE_OVERSCAN ? current : ROW_BASE_OVERSCAN));
+			return;
+		}
+		if (!scrollElement) return;
+
+		let lastTop = scrollElement.scrollTop;
+		let lastTimestamp = performance.now();
+
+		const resetOverscanSoon = () => {
+			if (overscanResetTimerRef.current) {
+				clearTimeout(overscanResetTimerRef.current);
+			}
+			overscanResetTimerRef.current = setTimeout(() => {
+				setOverscan((current) => (current === ROW_BASE_OVERSCAN ? current : ROW_BASE_OVERSCAN));
+				overscanResetTimerRef.current = null;
+			}, FAST_OVERSCAN_HOLD_MS);
+		};
+
+		const handleScroll = () => {
+			const now = performance.now();
+			const currentTop = scrollElement.scrollTop;
+			const deltaPx = Math.abs(currentTop - lastTop);
+			const deltaMs = Math.max(1, now - lastTimestamp);
+			const velocity = deltaPx / deltaMs;
+
+			lastTop = currentTop;
+			lastTimestamp = now;
+
+			if (velocity >= FAST_SCROLL_VELOCITY_PX_PER_MS) {
+				setOverscan((current) => (current === ROW_FAST_OVERSCAN ? current : ROW_FAST_OVERSCAN));
+				resetOverscanSoon();
+				return;
+			}
+
+			if (overscanResetTimerRef.current) {
+				resetOverscanSoon();
+			}
+		};
+
+		scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+		return () => {
+			scrollElement.removeEventListener('scroll', handleScroll);
+			if (overscanResetTimerRef.current) {
+				clearTimeout(overscanResetTimerRef.current);
+				overscanResetTimerRef.current = null;
+			}
+		};
+	}, [scrollElement, shouldVirtualize]);
 
 	useLayoutEffect(() => {
 		if (!scrollElement) return;
