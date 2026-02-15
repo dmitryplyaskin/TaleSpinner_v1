@@ -37,6 +37,8 @@ const BASE_VARIABLES: VariableDoc[] = [
 	{ token: '{{chat.id}}', descriptionKey: 'dialogs.liquidDocs.variables.chatId' },
 	{ token: '{{chat.title}}', descriptionKey: 'dialogs.liquidDocs.variables.chatTitle' },
 	{ token: '{{messages}}', descriptionKey: 'dialogs.liquidDocs.variables.messages' },
+	{ token: '{{lastUserMessage}}', descriptionKey: 'dialogs.liquidDocs.variables.lastUserMessage' },
+	{ token: '{{lastAssistantMessage}}', descriptionKey: 'dialogs.liquidDocs.variables.lastAssistantMessage' },
 	{ token: '{{now}}', descriptionKey: 'dialogs.liquidDocs.variables.now' },
 	{ token: '{{rag}}', descriptionKey: 'dialogs.liquidDocs.variables.rag' },
 	{ token: '{{description}}', descriptionKey: 'dialogs.liquidDocs.variables.description' },

@@ -49,6 +49,9 @@
 					chatId: 'Идентификатор текущего чата.',
 					chatTitle: 'Название текущего чата.',
 					messages: 'История prompt-сообщений в виде массива { role, content }.',
+					lastUserMessage: 'Последнее user-сообщение из массива messages.',
+					lastAssistantMessage:
+						'Последнее assistant-сообщение из массива messages. До main LLM это прошлый ответ ассистента, после main LLM это свежесгенерированный ответ.',
 					now: 'Текущая ISO-метка времени с сервера.',
 					rag: 'Зарезервированный объект retrieval-контекста.',
 					description: 'Алиас для char.description.',

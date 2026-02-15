@@ -122,6 +122,40 @@ describe("prompt-template-renderer", () => {
     expect(last).toBe("Pick=C");
   });
 
+  test("exposes lastUserMessage and lastAssistantMessage aliases from messages", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "U={{lastUserMessage}} | A={{lastAssistantMessage}}",
+      context: {
+        ...makeContext(),
+        messages: [
+          { role: "system", content: "S0" },
+          { role: "assistant", content: "A1" },
+          { role: "user", content: "U1" },
+          { role: "assistant", content: "A2" },
+          { role: "user", content: "U2" },
+        ],
+      },
+    });
+
+    expect(rendered).toBe("U=U2 | A=A2");
+  });
+
+  test("lastAssistantMessage points to fresh assistant text when it is in messages tail", async () => {
+    const rendered = await renderLiquidTemplate({
+      templateText: "{{lastAssistantMessage}}",
+      context: {
+        ...makeContext(),
+        messages: [
+          { role: "assistant", content: "old answer" },
+          { role: "user", content: "new question" },
+          { role: "assistant", content: "fresh main llm answer" },
+        ],
+      },
+    });
+
+    expect(rendered).toBe("fresh main llm answer");
+  });
+
   test("keeps malformed random macro as literal without throwing", async () => {
     const rendered = await renderLiquidTemplate({
       templateText: "Bad={{random::   }}",

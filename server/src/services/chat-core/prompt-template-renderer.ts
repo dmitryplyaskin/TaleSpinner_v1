@@ -33,6 +33,8 @@ export interface InstructionRenderContext {
   emBottom?: string[];
   mesExamples?: string;
   mesExamplesRaw?: string;
+  lastUserMessage?: string;
+  lastAssistantMessage?: string;
 }
 
 const engine = new Liquid({
@@ -157,6 +159,39 @@ function normalizeToString(value: unknown): string {
   return typeof value === "string" ? value : String(value);
 }
 
+function findLastMessageByRole(
+  messages: Array<{ role: string; content: string }>,
+  role: "user" | "assistant"
+): string {
+  for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+    const item = messages[idx];
+    if (item?.role !== role) continue;
+    return typeof item.content === "string" ? item.content : String(item.content ?? "");
+  }
+  return "";
+}
+
+function withDerivedMessageAliases(
+  context: InstructionRenderContext
+): InstructionRenderContext {
+  const messages = Array.isArray(context.messages)
+    ? context.messages.filter(
+        (item): item is { role: string; content: string } =>
+          typeof item?.role === "string" && typeof item?.content === "string"
+      )
+    : [];
+
+  // These aliases are derived from effective prompt-visible history.
+  // before_main_llm: lastAssistantMessage is the latest assistant message before current user turn.
+  // after_main_llm: callers append freshly generated assistant text to messages, so alias points to it.
+  return {
+    ...context,
+    messages,
+    lastUserMessage: findLastMessageByRole(messages, "user"),
+    lastAssistantMessage: findLastMessageByRole(messages, "assistant"),
+  };
+}
+
 function mightContainLiquidSyntax(text: string): boolean {
   // Fast heuristic: detect potential Liquid markers.
   return text.includes("{{") || text.includes("{%");
@@ -197,6 +232,7 @@ export async function renderLiquidTemplate(params: {
   const renderEngine = params.options?.strictVariables
     ? new Liquid({ cache: true, strictFilters: false, strictVariables: true })
     : engine;
+  const renderContext = withDerivedMessageAliases(params.context);
   const maxPasses = params.options?.maxPasses ?? DEFAULT_MAX_PASSES;
   const maxOutputChars = params.options?.maxOutputChars ?? DEFAULT_MAX_OUTPUT_CHARS;
   let sawTrimSentinel = false;
@@ -208,7 +244,7 @@ export async function renderLiquidTemplate(params: {
 
   // Pass 1: render the original template (syntax has typically been validated earlier).
   let current = normalizeToString(
-    await renderEngine.parseAndRender(firstPassPreprocessed.text, params.context)
+    await renderEngine.parseAndRender(firstPassPreprocessed.text, renderContext)
   );
 
   // Additional passes: render again only if the output still looks like a template.
@@ -224,7 +260,7 @@ export async function renderLiquidTemplate(params: {
       });
       sawTrimSentinel = sawTrimSentinel || passPreprocessed.hasTrimSentinel;
       const next = normalizeToString(
-        await renderEngine.parseAndRender(passPreprocessed.text, params.context)
+        await renderEngine.parseAndRender(passPreprocessed.text, renderContext)
       );
       if (next === current) break;
       current = next;

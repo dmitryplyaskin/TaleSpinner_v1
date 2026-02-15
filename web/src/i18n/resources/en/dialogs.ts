@@ -49,6 +49,9 @@
 					chatId: 'Current chat identifier.',
 					chatTitle: 'Current chat title.',
 					messages: 'Prompt-visible history as array of { role, content }.',
+					lastUserMessage: 'Last user message from messages array.',
+					lastAssistantMessage:
+						'Last assistant message from messages array. Before main LLM it is previous assistant reply, after main LLM it is freshly generated assistant reply.',
 					now: 'Current ISO timestamp generated on server.',
 					rag: 'Reserved retrieval context object.',
 					description: 'Alias for char.description.',
