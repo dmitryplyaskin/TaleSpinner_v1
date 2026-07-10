@@ -1464,33 +1464,17 @@ sample({
 	target: applyStreamPatch,
 });
 
+// Per-operation progress lives in the "Запуск" tab of the operations sidebar
+// (model/operation-run-trace); toasts stay only for failures.
 handleSseEnvelope.watch((env) => {
+	if (env.type !== 'operation.finished') return;
 	const data = typeof env.data === 'object' && env.data !== null ? (env.data as Record<string, unknown>) : null;
 	if (!data) return;
+	const status = typeof data.status === 'string' ? data.status : '';
+	if (status !== 'error' && status !== 'aborted') return;
 	const name = typeof data.name === 'string' && data.name.trim().length > 0 ? data.name : String(data.opId ?? 'operation');
 	const hook = typeof data.hook === 'string' && data.hook.trim().length > 0 ? data.hook : 'unknown';
 
-	if (env.type === 'operation.started') {
-		toaster.info({
-			title: i18n.t('chat.toasts.operationStarted', { name, hook }),
-		});
-		return;
-	}
-
-	if (env.type !== 'operation.finished') return;
-	const status = typeof data.status === 'string' ? data.status : '';
-	if (status === 'done') {
-		toaster.success({
-			title: i18n.t('chat.toasts.operationFinishedDone', { name, hook }),
-		});
-		return;
-	}
-	if (status === 'skipped') {
-		toaster.warning({
-			title: i18n.t('chat.toasts.operationFinishedSkipped', { name, hook }),
-		});
-		return;
-	}
 	if (status === 'aborted') {
 		toaster.error({
 			title: i18n.t('chat.toasts.operationFinishedAborted', { name, hook }),

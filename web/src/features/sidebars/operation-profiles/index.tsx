@@ -37,10 +37,11 @@ import './operation-profiles.css';
 import { BlockActions } from './ui/block-actions';
 import { ProfileActions } from './ui/profile-actions';
 import { ProfilePicker } from './ui/profile-picker';
+import { RunTracePanel } from './ui/run-trace-panel';
 
 const TOOLBAR_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
-type TabValue = 'profiles' | 'blocks';
+type TabValue = 'profiles' | 'blocks' | 'run';
 
 export const OperationProfilesSidebar: React.FC = () => {
 	const { t } = useTranslation();
@@ -142,6 +143,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 					<Tabs.List>
 						<Tabs.Tab value="profiles">{t('operationProfiles.tabs.profiles')}</Tabs.Tab>
 						<Tabs.Tab value="blocks">{t('operationProfiles.tabs.blocks')}</Tabs.Tab>
+						<Tabs.Tab value="run">{t('operationProfiles.tabs.run')}</Tabs.Tab>
 					</Tabs.List>
 				</Tabs>
 
@@ -376,6 +378,8 @@ export const OperationProfilesSidebar: React.FC = () => {
 						)}
 					</>
 				)}
+
+				{activeTab === 'run' && <RunTracePanel />}
 			</Stack>
 		</Drawer>
 	);
