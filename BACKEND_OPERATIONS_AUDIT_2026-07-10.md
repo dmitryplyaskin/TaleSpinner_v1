@@ -36,6 +36,24 @@
 
 Следовательно, большинство находок ниже — это не обычные ошибки компиляции, а пробелы в сквозных гарантиях, failure semantics и соответствии runtime публичным контрактам.
 
+## Прогресс исправлений
+
+Обновлено: 2026-07-13.
+
+| Задача | Статус | Коммит | Результат |
+| --- | --- | --- | --- |
+| OPS-001 | Выполнено | `baa690b` | Preparation failures наблюдаемы в SSE; созданная generation финализируется; пустой assistant scaffolding удаляется при ошибке до создания generation. |
+| OPS-002 | Выполнено | `3dad07e` | Assistant rewrite сохраняется в main-part; required/optional persistence failures соблюдают policy; UI получает `turn.assistant.canonicalized`. |
+
+Проверки после OPS-002:
+
+- backend: 101 test files, 513 tests passed;
+- frontend: 36 test files, 121 tests passed;
+- `yarn verify:server` и `yarn verify:web` прошли;
+- `yarn build:server` и `yarn build:web` прошли.
+
+Phase A завершена частично: OPS-001 и OPS-002 закрыты, передача operation errors в SSE остаётся следующей задачей.
+
 ## Как Operations работают сейчас
 
 Текущий runtime flow:
@@ -76,7 +94,9 @@
 
 ## P0 — блокирующие проблемы
 
-### OPS-001. Ошибки до создания `RunState` могут полностью потеряться
+### OPS-001. Ошибки до создания `RunState` могут полностью потеряться — выполнено
+
+Статус: выполнено 2026-07-13, коммит `baa690b`.
 
 Код:
 
@@ -111,7 +131,9 @@
 - generation не остаётся `streaming`;
 - пустой assistant scaffolding удаляется или явно отмечается failed.
 
-### OPS-002. `assistant_output_main` rewrite не сохраняется
+### OPS-002. `assistant_output_main` rewrite не сохраняется — выполнено
+
+Статус: выполнено 2026-07-13, коммит `3dad07e`.
 
 Код:
 
@@ -882,11 +904,11 @@ Config revision и manual reset должны иметь раздельно оп�
 
 ### Phase A. Terminal-state correctness
 
-1. Исправить OPS-001.
-2. Добавить preparation failure events и cleanup.
-3. Исправить assistant rewrite persistence из OPS-002.
-4. Добавить operation errors в SSE.
-5. Сначала написать regression tests.
+1. [x] Исправить OPS-001.
+2. [x] Добавить preparation failure events и cleanup.
+3. [x] Исправить assistant rewrite persistence из OPS-002.
+4. [ ] Добавить operation errors в SSE.
+5. [x] Сначала написать regression tests для выполненных задач.
 
 Критерии завершения:
 
@@ -960,12 +982,12 @@ Config revision и manual reset должны иметь раздельно оп�
 
 Безопасный первый batch должен быть узким:
 
-1. Добавить failing tests на preparation errors и assistant rewrite persistence.
-2. Изменить `runChatGenerationV3`, чтобы все failure paths завершались наблюдаемо.
-3. Persist-ить `turn.assistant.replace_text` через отдельный handler.
-4. Передавать error information в `operation.finished`.
-5. Compile/validate profile до activation.
-6. Добавить conservative concurrency cap.
+1. [x] Добавить failing tests на preparation errors и assistant rewrite persistence.
+2. [x] Изменить `runChatGenerationV3`, чтобы все failure paths завершались наблюдаемо.
+3. [x] Persist-ить `turn.assistant.replace_text` через отдельный handler.
+4. [ ] Передавать error information в `operation.finished`.
+5. [ ] Compile/validate profile до activation.
+6. [ ] Добавить conservative concurrency cap.
 
 Этот batch исправит пользовательскую correctness, не требуя одновременно завершать полную transaction redesign.
 
@@ -984,4 +1006,3 @@ Config revision и manual reset должны иметь раздельно оп�
 - Artifacts и activation state используют один documented session lifecycle.
 - Точный compiled plan и operation results доступны после run.
 - RU и EN documentation описывает фактическое поведение.
-
