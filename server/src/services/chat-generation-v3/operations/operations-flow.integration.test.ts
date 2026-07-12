@@ -3,12 +3,13 @@ import {
   type LegacyOperationOutput,
   type OperationInProfile,
 } from "@shared/types/operation-profiles";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 
 import { RunArtifactStore } from "../artifacts/run-artifact-store";
 
 import { commitEffectsPhase } from "./commit-effects-phase";
+import * as turnEffects from "./effect-handlers/turn-effects";
 import { executeOperationsPhase } from "./execute-operations-phase";
 
 import type { InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
@@ -142,7 +143,16 @@ function collectEvents() {
 }
 
 describe("operations flow integration (execute + commit)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test("before artifacts and prompt injection are visible in after phase and canonicalize assistant", async () => {
+    vi.spyOn(turnEffects, "persistAssistantTurnText").mockResolvedValue({
+      previousText: "raw",
+      assistantEntryId: "assistant-entry",
+      assistantMainPartId: "assistant-main",
+    });
     const runState = makeRunState();
     const runArtifactStore = new RunArtifactStore();
     const templateContext = makeTemplateContext();

@@ -259,6 +259,16 @@ export type TurnUserCanonicalizationRecord = {
   committedAt: string;
 };
 
+export type TurnAssistantCanonicalizationRecord = {
+  hook: OperationHook;
+  opId: string;
+  assistantEntryId: string;
+  assistantMainPartId: string;
+  beforeText: string;
+  afterText: string;
+  committedAt: string;
+};
+
 export type PhaseReport = {
   phase:
     | "prepare_run_context"
@@ -453,6 +463,12 @@ export type RunEvent =
           supportsCurrentTrigger: boolean;
         }>;
       };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "turn.assistant.canonicalized";
+      data: TurnAssistantCanonicalizationRecord;
     }
   | {
       runId: string;

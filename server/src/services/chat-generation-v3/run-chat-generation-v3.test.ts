@@ -583,6 +583,47 @@ describe("runChatGenerationV3", () => {
     });
   });
 
+  test("emits assistant canonicalization after a successful rewrite commit", async () => {
+    mocks.executeOperationsPhase.mockResolvedValue([]);
+    mocks.commitEffectsPhase.mockImplementation(async (params: any) => {
+      if (params.hook === "after_main_llm") {
+        params.onAssistantTurnCanonicalized?.({
+          hook: "after_main_llm",
+          opId: "assistant-rewrite",
+          assistantEntryId: "assistant-entry",
+          assistantMainPartId: "assistant-main-part",
+          beforeText: "raw",
+          afterText: "normalized",
+          committedAt: "2026-07-13T00:00:00.000Z",
+        });
+      }
+      return {
+        report: { hook: params.hook, status: "done", effects: [] },
+        requiredError: false,
+      };
+    });
+    mocks.runMainLlmPhase.mockImplementation(async ({ runState }: any) => {
+      runState.assistantText = "raw";
+      return { status: "done" };
+    });
+
+    const events: any[] = [];
+    for await (const event of runChatGenerationV3(makeRequest())) {
+      events.push(event);
+    }
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "turn.assistant.canonicalized",
+        data: expect.objectContaining({
+          assistantEntryId: "assistant-entry",
+          assistantMainPartId: "assistant-main-part",
+          afterText: "normalized",
+        }),
+      })
+    );
+  });
+
   test("streams main_llm.reasoning_delta while main phase is running", async () => {
     const mainGate = deferred<void>();
     mocks.executeOperationsPhase.mockResolvedValue([]);

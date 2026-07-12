@@ -25,6 +25,8 @@ import { $currentBranchId, $currentChat, setOpenedChat } from '../chat-core';
 import { logChatGenerationSseEvent } from '../chat-generation-debug';
 import { userPersonsModel } from '../user-persons';
 
+import { applyAssistantCanonicalizationPatch } from './assistant-canonicalization';
+
 import type { SseEnvelope } from '../../api/chat-core';
 import type {
 	BatchUpdateEntryPartsRequest,
@@ -1371,6 +1373,26 @@ sample({
 	clock: handleSseEnvelope,
 	source: { entries: $entries, stream: $activeStream, generationId: $activeGenerationId },
 	fn: ({ entries, stream }, env) => {
+		if (env.type === 'turn.assistant.canonicalized') {
+			const data = isRecord(env.data) ? env.data : null;
+			const assistantEntryId = typeof data?.assistantEntryId === 'string' ? data.assistantEntryId : null;
+			const assistantMainPartId = typeof data?.assistantMainPartId === 'string' ? data.assistantMainPartId : null;
+			const afterText = typeof data?.afterText === 'string' ? data.afterText : null;
+			if (!assistantEntryId || !assistantMainPartId || afterText === null) {
+				return { entries, stream };
+			}
+
+			return {
+				entries: applyAssistantCanonicalizationPatch({
+					entries,
+					entryId: assistantEntryId,
+					partId: assistantMainPartId,
+					afterText,
+				}),
+				stream,
+			};
+		}
+
 		if (env.type === 'turn.user.canonicalized') {
 			const data = env.data as Record<string, unknown> | null;
 			const userEntryId = data && typeof data.userEntryId === 'string' ? data.userEntryId : null;

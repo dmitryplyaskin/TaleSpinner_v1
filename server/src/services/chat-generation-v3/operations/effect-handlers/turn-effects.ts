@@ -2,9 +2,48 @@ import { safeJsonStringify } from "../../../../chat-core/json";
 import {
   createPart,
   getPartWithVariantContextById,
+  updatePartPayloadText,
 } from "../../../chat-entry-parts/parts-repository";
 
-import type { UserTurnTarget } from "../../contracts";
+import type { RunPersistenceTarget, UserTurnTarget } from "../../contracts";
+
+export async function persistAssistantTurnText(params: {
+  target: RunPersistenceTarget | undefined;
+  text: string;
+}): Promise<{
+  previousText: string | null;
+  assistantEntryId: string;
+  assistantMainPartId: string;
+}> {
+  const target = params.target;
+  if (!target) {
+    throw new Error("Assistant persistence target is required for turn.assistant.* effect");
+  }
+
+  const context = await getPartWithVariantContextById({
+    partId: target.assistantMainPartId,
+  });
+  if (!context) throw new Error("Assistant target part not found");
+  if (context.entryId !== target.assistantEntryId) {
+    throw new Error("Assistant target entry mismatch");
+  }
+
+  const previousText =
+    typeof context.part.payload === "string"
+      ? context.part.payload
+      : safeJsonStringify(context.part.payload, "");
+  await updatePartPayloadText({
+    partId: target.assistantMainPartId,
+    payloadText: params.text,
+    payloadFormat: "markdown",
+  });
+
+  return {
+    previousText,
+    assistantEntryId: target.assistantEntryId,
+    assistantMainPartId: target.assistantMainPartId,
+  };
+}
 
 export async function persistUserTurnText(params: {
   target: UserTurnTarget | undefined;

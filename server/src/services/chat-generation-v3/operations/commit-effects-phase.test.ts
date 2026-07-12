@@ -211,6 +211,12 @@ describe("commit effects phase", () => {
   });
 
   test("applies assistant canonicalization after_main_llm", async () => {
+    const persistSpy = vi.spyOn(turnEffects, "persistAssistantTurnText").mockResolvedValue({
+      previousText: "raw",
+      assistantEntryId: "assistant-entry",
+      assistantMainPartId: "assistant-main-part",
+    });
+    const onAssistantTurnCanonicalized = vi.fn();
     const state = makeRunState();
     state.assistantText = "raw";
     state.operationResultsByHook.after_main_llm = [
@@ -231,10 +237,124 @@ describe("commit effects phase", () => {
       sessionKey: null,
       runState: state,
       runArtifactStore: new RunArtifactStore(),
+      persistenceTarget: {
+        mode: "entry_parts",
+        assistantEntryId: "assistant-entry",
+        assistantMainPartId: "assistant-main-part",
+      },
+      onAssistantTurnCanonicalized,
     });
 
     expect(result.requiredError).toBe(false);
+    expect(persistSpy).toHaveBeenCalledWith({
+      target: {
+        mode: "entry_parts",
+        assistantEntryId: "assistant-entry",
+        assistantMainPartId: "assistant-main-part",
+      },
+      text: "normalized",
+    });
     expect(state.assistantText).toBe("normalized");
+    expect(onAssistantTurnCanonicalized).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hook: "after_main_llm",
+        opId: "assistant",
+        assistantEntryId: "assistant-entry",
+        assistantMainPartId: "assistant-main-part",
+        beforeText: "raw",
+        afterText: "normalized",
+      })
+    );
+  });
+
+  test("keeps original assistant text and marks required error when persistence fails", async () => {
+    vi.spyOn(turnEffects, "persistAssistantTurnText").mockRejectedValue(
+      new Error("assistant persist failure")
+    );
+    const state = makeRunState();
+    state.assistantText = "raw";
+    state.operationResultsByHook.after_main_llm = [
+      makeDoneResult({
+        opId: "required-assistant",
+        order: 10,
+        hook: "after_main_llm",
+        required: true,
+        effects: [
+          {
+            type: "turn.assistant.replace_text",
+            opId: "required-assistant",
+            text: "normalized",
+          },
+        ],
+      }),
+    ];
+
+    const result = await commitEffectsPhase({
+      hook: "after_main_llm",
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      profile: null,
+      sessionKey: null,
+      runState: state,
+      runArtifactStore: new RunArtifactStore(),
+      persistenceTarget: {
+        mode: "entry_parts",
+        assistantEntryId: "assistant-entry",
+        assistantMainPartId: "assistant-main-part",
+      },
+    });
+
+    expect(result.requiredError).toBe(true);
+    expect(result.report.effects[0]).toMatchObject({
+      effectType: "turn.assistant.replace_text",
+      status: "error",
+      message: "assistant persist failure",
+    });
+    expect(state.assistantText).toBe("raw");
+  });
+
+  test("keeps original assistant text without failing the barrier for optional persistence", async () => {
+    vi.spyOn(turnEffects, "persistAssistantTurnText").mockRejectedValue(
+      new Error("optional assistant persist failure")
+    );
+    const state = makeRunState();
+    state.assistantText = "raw";
+    state.operationResultsByHook.after_main_llm = [
+      makeDoneResult({
+        opId: "optional-assistant",
+        order: 10,
+        hook: "after_main_llm",
+        effects: [
+          {
+            type: "turn.assistant.replace_text",
+            opId: "optional-assistant",
+            text: "normalized",
+          },
+        ],
+      }),
+    ];
+
+    const result = await commitEffectsPhase({
+      hook: "after_main_llm",
+      ownerId: "global",
+      chatId: "chat",
+      branchId: "branch",
+      profile: null,
+      sessionKey: null,
+      runState: state,
+      runArtifactStore: new RunArtifactStore(),
+      persistenceTarget: {
+        mode: "entry_parts",
+        assistantEntryId: "assistant-entry",
+        assistantMainPartId: "assistant-main-part",
+      },
+    });
+
+    expect(result.requiredError).toBe(false);
+    expect(result.report.status).toBe("done");
+    expect(result.report.effects[0]?.status).toBe("error");
+    expect(state.assistantText).toBe("raw");
   });
 
   test("invokes user turn persistence handler and reports applied event", async () => {
