@@ -2,6 +2,7 @@ import { getGenerationByIdWithDebug } from "../../services/chat-core/generations
 import {
   getActiveVariantWithParts,
   listEntries,
+  softDeleteEntry,
 } from "../../services/chat-entry-parts/entries-repository";
 import { createPart } from "../../services/chat-entry-parts/parts-repository";
 import {
@@ -141,11 +142,17 @@ export async function finalizeChatGenerationArtifacts(params: {
   generationId: string | null;
   assistantVariantId: string;
   cleanupEntryId?: string;
+  cleanupEmptyEntryId?: string;
 }): Promise<void> {
   if (params.generationId) {
     await linkVariantToGeneration({
       variantId: params.assistantVariantId,
       generationId: params.generationId,
+    });
+  } else if (params.cleanupEmptyEntryId) {
+    await softDeleteEntry({
+      entryId: params.cleanupEmptyEntryId,
+      by: "agent",
     });
   }
 

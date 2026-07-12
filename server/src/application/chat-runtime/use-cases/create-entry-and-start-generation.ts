@@ -189,6 +189,7 @@ export async function createEntryAndStartGeneration(
       await finalizeChatGenerationArtifacts({
         generationId,
         assistantVariantId: staged.assistantVariantId,
+        cleanupEmptyEntryId: staged.assistantEntryId,
       });
     },
   });

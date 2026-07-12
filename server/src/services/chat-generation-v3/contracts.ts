@@ -318,6 +318,17 @@ export type RunEvent =
   | {
       runId: string;
       seq: number;
+      type: "run.preparation_failed";
+      data: {
+        generationId: null;
+        status: "error";
+        code: "generation_preparation_error";
+        message: string;
+      };
+    }
+  | {
+      runId: string;
+      seq: number;
       type: "run.started";
       data: { generationId: string; trigger: OperationTrigger };
     }

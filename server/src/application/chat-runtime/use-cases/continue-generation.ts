@@ -133,6 +133,7 @@ export async function continueGeneration(
       await finalizeChatGenerationArtifacts({
         generationId,
         assistantVariantId: staged.assistantVariantId,
+        cleanupEmptyEntryId: staged.assistantEntryId,
       });
     },
   });
