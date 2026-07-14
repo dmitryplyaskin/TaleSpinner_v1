@@ -1,26 +1,9 @@
-import { Group } from '@mantine/core';
-import React, { useRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCopyPlus, LuPlus, LuTrash2 } from 'react-icons/lu';
 
-import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from '@ui/file-transfer-icons';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { toaster } from '@ui/toaster';
-import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
+import { EntityActionsMenu } from './entity-actions-menu';
 
 type SelectedBlock = { blockId: string; name: string } | null;
-const QUICK_ACTION_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
-
-function downloadJson(filename: string, blob: Blob) {
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = filename;
-	document.body.appendChild(a);
-	a.click();
-	document.body.removeChild(a);
-	URL.revokeObjectURL(url);
-}
 
 type Props = {
 	selected: SelectedBlock;
@@ -33,96 +16,25 @@ type Props = {
 
 export const BlockActions: React.FC<Props> = ({ selected, onCreate, onDuplicate, onDelete, onExport, onImport }) => {
 	const { t } = useTranslation();
-	const fileInputRef = useRef<HTMLInputElement>(null);
-
 	return (
-		<Group gap="xs" wrap="nowrap" className="op-profileActions">
-			<IconButtonWithTooltip
-				aria-label={t('operationProfiles.blocks.actions.createBlock')}
-				tooltip={t('operationProfiles.blocks.actions.createBlock')}
-				icon={<LuPlus />}
-				size="input-sm"
-				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
-				onClick={onCreate}
-			/>
-			<IconButtonWithTooltip
-				aria-label={t('operationProfiles.blocks.actions.duplicateBlock')}
-				tooltip={t('operationProfiles.blocks.actions.duplicateBlock')}
-				icon={<LuCopyPlus />}
-				size="input-sm"
-				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
-				disabled={!selected?.blockId}
-				onClick={() => selected?.blockId && onDuplicate(selected.blockId)}
-			/>
-			<IconButtonWithTooltip
-				aria-label={t('operationProfiles.blocks.actions.deleteBlock')}
-				tooltip={t('operationProfiles.blocks.actions.deleteBlock')}
-				icon={<LuTrash2 />}
-				size="input-sm"
-				colorPalette="red"
-				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
-				disabled={!selected?.blockId}
-				onClick={() => {
-					if (!selected?.blockId) return;
-					if (!window.confirm(t('operationProfiles.confirm.deleteBlock'))) return;
-					onDelete(selected.blockId);
-				}}
-			/>
-
-			<IconButtonWithTooltip
-				aria-label={t('operationProfiles.blocks.actions.exportBlock')}
-				tooltip={t('operationProfiles.blocks.actions.exportBlock')}
-				icon={<EXPORT_FILE_ICON />}
-				size="input-sm"
-				variant="ghost"
-				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
-				disabled={!selected?.blockId}
-				onClick={async () => {
-					if (!selected?.blockId) return;
-					try {
-						const exported = await onExport(selected.blockId);
-						downloadJson(exported.filename, exported.blob);
-					} catch (e) {
-						toaster.error({
-							title: t('operationProfiles.toasts.exportError'),
-							description: e instanceof Error ? e.message : String(e),
-						});
-					}
-				}}
-			/>
-
-			<input
-				ref={fileInputRef}
-				type="file"
-				accept="application/json"
-				style={{ display: 'none' }}
-				onChange={(e) => {
-					const file = e.currentTarget.files?.[0];
-					if (!file) return;
-					void onImport(file)
-						.catch((err) => {
-							toaster.error({
-								title: t('operationProfiles.toasts.importError'),
-								description: err instanceof Error ? err.message : String(err),
-							});
-						})
-						.finally(() => {
-							e.currentTarget.value = '';
-						});
-				}}
-			/>
-
-			<IconButtonWithTooltip
-				aria-label={t('operationProfiles.blocks.actions.importBlocks')}
-				tooltip={t('operationProfiles.blocks.actions.importBlocks')}
-				icon={<IMPORT_FILE_ICON />}
-				size="input-sm"
-				variant="ghost"
-				tooltipSettings={QUICK_ACTION_TOOLTIP_SETTINGS}
-				onClick={() => {
-					fileInputRef.current?.click();
-				}}
-			/>
-		</Group>
+		<EntityActionsMenu
+			selected={selected ? { id: selected.blockId, name: selected.name } : null}
+			labels={{
+				create: t('operationProfiles.blocks.actions.createBlock'),
+				more: t('operationProfiles.actions.more'),
+				duplicate: t('operationProfiles.blocks.actions.duplicateBlock'),
+				remove: t('operationProfiles.blocks.actions.deleteBlock'),
+				export: t('operationProfiles.blocks.actions.exportBlock'),
+				import: t('operationProfiles.blocks.actions.importBlocks'),
+				confirmRemove: t('operationProfiles.confirm.deleteBlock'),
+				exportError: t('operationProfiles.toasts.exportError'),
+				importError: t('operationProfiles.toasts.importError'),
+			}}
+			onCreate={onCreate}
+			onDuplicate={onDuplicate}
+			onRemove={onDelete}
+			onExport={onExport}
+			onImport={onImport}
+		/>
 	);
 };
