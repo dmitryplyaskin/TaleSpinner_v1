@@ -26,6 +26,7 @@ import { logChatGenerationSseEvent } from '../chat-generation-debug';
 import { userPersonsModel } from '../user-persons';
 
 import { applyAssistantCanonicalizationPatch } from './assistant-canonicalization';
+import { readOperationFinishedFailure } from './operation-finished-failure';
 
 import type { SseEnvelope } from '../../api/chat-core';
 import type {
@@ -1490,21 +1491,23 @@ sample({
 // (model/operation-run-trace); toasts stay only for failures.
 handleSseEnvelope.watch((env) => {
 	if (env.type !== 'operation.finished') return;
-	const data = typeof env.data === 'object' && env.data !== null ? (env.data as Record<string, unknown>) : null;
-	if (!data) return;
-	const status = typeof data.status === 'string' ? data.status : '';
-	if (status !== 'error' && status !== 'aborted') return;
-	const name = typeof data.name === 'string' && data.name.trim().length > 0 ? data.name : String(data.opId ?? 'operation');
-	const hook = typeof data.hook === 'string' && data.hook.trim().length > 0 ? data.hook : 'unknown';
+	const failure = readOperationFinishedFailure(env.data);
+	if (!failure) return;
+	const interpolation = {
+		name: failure.name ?? i18n.t('chat.toasts.operationFallbackName'),
+		hook: failure.hook ?? i18n.t('chat.toasts.operationFallbackHook'),
+	};
 
-	if (status === 'aborted') {
+	if (failure.status === 'aborted') {
 		toaster.error({
-			title: i18n.t('chat.toasts.operationFinishedAborted', { name, hook }),
+			title: i18n.t('chat.toasts.operationFinishedAborted', interpolation),
+			description: failure.errorMessage ?? undefined,
 		});
 		return;
 	}
 	toaster.error({
-		title: i18n.t('chat.toasts.operationFinishedError', { name, hook }),
+		title: i18n.t('chat.toasts.operationFinishedError', interpolation),
+		description: failure.errorMessage ?? undefined,
 	});
 });
 

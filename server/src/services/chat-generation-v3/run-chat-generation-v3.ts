@@ -14,6 +14,7 @@ import { RunEventStream } from "./orchestration/run-event-stream";
 import { runOperationHookPhase } from "./orchestration/run-operation-hook-phase";
 import {
   buildRunDebugStateSnapshot,
+  buildRequiredOperationFailureMessage,
   buildRunResult,
   cloneLlmMessages,
   clonePromptDraftMessages,
@@ -306,10 +307,12 @@ export async function* runChatGenerationV3(
     if (beforeBarrierFailed) {
       runState.finishedStatus = "failed";
       runState.failedType = "before_barrier";
-      runState.errorMessage =
-        commitBefore.requiredError
-          ? "Required before effect commit failed"
-          : "Required before operation did not finish with done";
+      runState.errorMessage = buildRequiredOperationFailureMessage({
+        stage: "before",
+        operationResults: requiredBeforeNotDone,
+        commitReport: commitBefore.report,
+        requiredCommitError: commitBefore.requiredError,
+      });
       markPhase("before_barrier", "failed", barrierStartedAt, runState.errorMessage);
     } else {
       markPhase("before_barrier", "done", barrierStartedAt);
@@ -452,10 +455,12 @@ export async function* runChatGenerationV3(
         if (commitAfter.requiredError || requiredAfterNotDone.length > 0) {
           runState.finishedStatus = "failed";
           runState.failedType = "after_main_llm";
-          runState.errorMessage =
-            commitAfter.requiredError
-              ? "Required after effect commit failed"
-              : "Required after operation did not finish with done";
+          runState.errorMessage = buildRequiredOperationFailureMessage({
+            stage: "after",
+            operationResults: requiredAfterNotDone,
+            commitReport: commitAfter.report,
+            requiredCommitError: commitAfter.requiredError,
+          });
         } else {
           runState.finishedStatus = "done";
         }

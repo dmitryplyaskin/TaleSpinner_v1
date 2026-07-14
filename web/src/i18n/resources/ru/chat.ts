@@ -261,6 +261,8 @@
 				operationFinishedSkipped: 'Операция {{name}} ({{hook}}) пропущена',
 				operationFinishedError: 'Операция {{name}} ({{hook}}) завершилась с ошибкой',
 				operationFinishedAborted: 'Операция {{name}} ({{hook}}) прервана',
+				operationFallbackName: 'операция',
+				operationFallbackHook: 'неизвестная фаза',
 			},
 		};
 

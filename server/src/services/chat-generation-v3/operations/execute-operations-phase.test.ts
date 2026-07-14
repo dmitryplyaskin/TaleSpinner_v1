@@ -567,6 +567,11 @@ describe("executeOperationsPhase", () => {
   });
 
   test("returns error for strictVariables with missing variable", async () => {
+    const finishedEvents = collectEvents<{
+      opId: string;
+      status: string;
+      error?: { code: string; message: string };
+    }>();
     const out = await executeOperationsPhase({
       runId: "run-5",
       hook: "before_main_llm",
@@ -585,11 +590,63 @@ describe("executeOperationsPhase", () => {
       baseArtifacts: makeBaseArtifacts(),
       assistantText: "",
       templateContext: makeTemplateContext(),
+      onOperationFinished: (event) => {
+        finishedEvents.push({
+          opId: event.opId,
+          status: event.status,
+          error: event.error,
+        });
+      },
     });
 
     expect(out[0]?.status).toBe("error");
     expect(out[0]?.effects).toEqual([]);
     expect(out[0]?.error?.message.length).toBeGreaterThan(0);
+    expect(finishedEvents.items).toEqual([
+      {
+        opId: "a",
+        status: "error",
+        error: {
+          code: "OPERATION_ERROR",
+          message: expect.stringContaining("missing"),
+        },
+      },
+    ]);
+  });
+
+  test("redacts credentials from operation.finished error messages", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "error", message: "Authorization: Bearer provider-secret" },
+        { type: "done", status: "error" },
+      ])
+    );
+    const finishedEvents = collectEvents<{ error?: { code: string; message: string } }>();
+
+    await executeOperationsPhase({
+      runId: "run-redacted-error",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "redacted-error",
+          order: 10,
+          prompt: "summarize",
+          output: artifactOutput("summary"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+      onOperationFinished: (event) => finishedEvents.push({ error: event.error }),
+    });
+
+    expect(finishedEvents.items[0]?.error).toEqual({
+      code: "LLM_PROVIDER_ERROR",
+      message: "Authorization: [REDACTED]",
+    });
   });
 
   test("blocks dependent node when ancestor fails", async () => {

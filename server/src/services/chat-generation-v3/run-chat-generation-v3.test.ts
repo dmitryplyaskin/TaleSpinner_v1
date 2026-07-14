@@ -294,6 +294,9 @@ describe("runChatGenerationV3", () => {
     const finished = events.find((e) => e.type === "run.finished");
     expect(finished?.data.status).toBe("failed");
     expect(finished?.data.failedType).toBe("before_barrier");
+    expect(finished?.data.message).toBe(
+      "Required before operation did not finish with done: op-1"
+    );
   });
 
   test("does not fail before barrier for required activation_not_reached skip", async () => {

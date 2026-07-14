@@ -46,7 +46,15 @@ export type OrchestratorEvent =
   | { type: "orch.task.started"; data: { runId: string; taskId: string } }
   | {
       type: "orch.task.finished";
-      data: { runId: string; taskId: string; status: TaskStatus };
+      data:
+        | { runId: string; taskId: string; status: "done" | "skipped" }
+        | {
+            runId: string;
+            taskId: string;
+            status: "error";
+            error: { message: string; code?: string };
+          }
+        | { runId: string; taskId: string; status: "aborted"; reason?: string };
     }
   | {
       type: "orch.task.skipped";
