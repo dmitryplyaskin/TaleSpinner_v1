@@ -4,11 +4,13 @@ import * as llmApi from '../../api/llm';
 
 import type {
 	LlmModel,
+	LlmOpenRouterEndpoint,
 	LlmPresetPayload,
 	LlmProviderConfig,
 	LlmProviderDefinition,
 	LlmProviderId,
 	LlmRuntime,
+	LlmRuntimeProviderState,
 	LlmScope,
 	LlmTokenListItem,
 } from '@shared/types/llm';
@@ -24,6 +26,11 @@ export const loadProvidersFx = createEffect(async (): Promise<LlmProviderDefinit
 export const loadRuntimeFx = createEffect(async (params: { scope: LlmScope; scopeId: string }): Promise<LlmRuntime> => {
 	return llmApi.getRuntime(params);
 });
+
+export const loadRuntimeProviderStateFx = createEffect(
+	async (params: { scope: LlmScope; scopeId: string; providerId: LlmProviderId }): Promise<LlmRuntimeProviderState> =>
+		llmApi.getRuntimeProviderState(params),
+);
 
 export const patchRuntimeFx = createEffect(
 	async (params: {
@@ -100,6 +107,42 @@ export const loadModelsFx = createEffect(
 	},
 );
 
+export const loadOpenRouterEndpointsFx = createEffect(
+	async (modelId: string): Promise<{ modelId: string; endpoints: LlmOpenRouterEndpoint[] }> => ({
+		modelId,
+		endpoints: await llmApi.getOpenRouterModelEndpoints(modelId),
+	}),
+);
+
+export const saveConnectionFx = createEffect(
+	async (params: {
+		scope: LlmScope;
+		scopeId: string;
+		providerId: LlmProviderId;
+		tokenId: string | null;
+		model: string | null;
+		config: LlmProviderConfig;
+		preset?: { presetId: string; payload: LlmPresetPayload };
+	}) => {
+		const config = await llmApi.patchProviderConfig(params.providerId, params.config);
+		const runtime = await llmApi.patchRuntime({
+			scope: params.scope,
+			scopeId: params.scopeId,
+			activeProviderId: params.providerId,
+			activeTokenId: params.tokenId,
+			activeModel: params.model,
+		});
+		const preset = params.preset
+			? await llmApi.updateLlmPreset({
+					presetId: params.preset.presetId,
+					ownerId: 'global',
+					payload: params.preset.payload,
+				})
+			: null;
+		return { config, runtime, preset };
+	},
+);
+
 export const loadLlmPresetsFx = createEffect(async (): Promise<llmApi.LlmPresetDto[]> => {
 	return llmApi.listLlmPresets('global');
 });
@@ -141,7 +184,11 @@ export const deleteLlmPresetFx = createEffect(async (presetId: string): Promise<
 });
 
 export const applyLlmPresetFx = createEffect(
-	async (params: { presetId: string; scope: LlmScope; scopeId: string }): Promise<{
+	async (params: {
+		presetId: string;
+		scope: LlmScope;
+		scopeId: string;
+	}): Promise<{
 		preset: llmApi.LlmPresetDto;
 		runtime: LlmRuntime;
 		warnings: string[];
@@ -179,6 +226,7 @@ export const $tokensByProviderId = createStore<Record<LlmProviderId, LlmTokenLis
 	{} as Record<LlmProviderId, LlmTokenListItem[]>,
 );
 export const $modelsByProviderTokenKey = createStore<Record<string, LlmModel[]>>({});
+export const $openRouterEndpointsByModel = createStore<Record<string, LlmOpenRouterEndpoint[]>>({});
 export const $isTokenManagerOpen = createStore(false);
 export const $llmPresets = createStore<llmApi.LlmPresetDto[]>([]);
 export const $llmPresetSettings = createStore<llmApi.LlmPresetSettingsDto | null>(null);
@@ -222,6 +270,23 @@ $runtimeByScopeKey.on(applyLlmPresetFx.doneData, (state, payload) => ({
 	...state,
 	[toScopeKey(payload.runtime.scope, payload.runtime.scopeId)]: payload.runtime,
 }));
+
+$openRouterEndpointsByModel.on(loadOpenRouterEndpointsFx.doneData, (state, payload) => ({
+	...state,
+	[payload.modelId]: payload.endpoints,
+}));
+
+$providerConfigById.on(saveConnectionFx.doneData, (state, payload) => ({
+	...state,
+	[payload.config.providerId]: payload.config.config,
+}));
+$runtimeByScopeKey.on(saveConnectionFx.doneData, (state, payload) => ({
+	...state,
+	[toScopeKey(payload.runtime.scope, payload.runtime.scopeId)]: payload.runtime,
+}));
+$llmPresets.on(saveConnectionFx.doneData, (state, payload) =>
+	payload.preset ? state.map((item) => (item.presetId === payload.preset?.presetId ? payload.preset : item)) : state,
+);
 
 sample({
 	clock: providerPickerMounted,
@@ -361,6 +426,7 @@ export const llmProviderModel = {
 	$providerConfigById,
 	$tokensByProviderId,
 	$modelsByProviderTokenKey,
+	$openRouterEndpointsByModel,
 	$isTokenManagerOpen,
 	$llmPresets,
 	$llmPresetSettings,
@@ -373,12 +439,15 @@ export const llmProviderModel = {
 
 	loadProvidersFx,
 	loadRuntimeFx,
+	loadRuntimeProviderStateFx,
 	patchRuntimeFx,
 	loadTokensFx,
 	createTokenFx,
 	patchTokenFx,
 	deleteTokenFx,
 	loadModelsFx,
+	loadOpenRouterEndpointsFx,
+	saveConnectionFx,
 	loadProviderConfigFx,
 	patchProviderConfigFx,
 	checkProviderConnectionFx,

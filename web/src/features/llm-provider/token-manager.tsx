@@ -30,6 +30,7 @@ export const TokenManager: React.FC<Props> = ({ providerId, scope, scopeId }) =>
 			open={isOpen}
 			onOpenChange={setOpen}
 			providerId={providerId}
+			providerName={providerId}
 			activeTokenId={activeTokenId}
 			onTokenSelected={(tokenId) => llmProviderModel.tokenSelected({ scope, scopeId, tokenId })}
 		/>

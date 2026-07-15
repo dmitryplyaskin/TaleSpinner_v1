@@ -34,6 +34,9 @@ export type LlmTokenListItem = {
   providerId: LlmProviderId;
   name: string;
   tokenHint: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastUsedAt: Date | null;
 };
 
 export type ProviderConfigRow = {
@@ -66,7 +69,9 @@ function parseConfigJson(raw: string): unknown {
   try {
     return JSON.parse(raw) as unknown;
   } catch (error) {
-    console.warn("Failed to parse provider config JSON. Falling back to {}", { error });
+    console.warn("Failed to parse provider config JSON. Falling back to {}", {
+      error,
+    });
     return {};
   }
 }
@@ -104,8 +109,8 @@ export async function ensureDefaultRuntimeGlobal(): Promise<void> {
     .where(
       and(
         eq(llmRuntimeSettings.scope, "global"),
-        eq(llmRuntimeSettings.scopeId, "global")
-      )
+        eq(llmRuntimeSettings.scopeId, "global"),
+      ),
     );
 
   if (existing.length > 0) return;
@@ -134,7 +139,7 @@ export async function listProviders(): Promise<
 
 export async function getRuntime(
   scope: LlmScope,
-  scopeId: string
+  scopeId: string,
 ): Promise<LlmRuntimeRow> {
   const database = await db();
   const rows = await database
@@ -143,8 +148,8 @@ export async function getRuntime(
     .where(
       and(
         eq(llmRuntimeSettings.scope, scope),
-        eq(llmRuntimeSettings.scopeId, scopeId)
-      )
+        eq(llmRuntimeSettings.scopeId, scopeId),
+      ),
     );
 
   if (rows[0]) {
@@ -179,7 +184,7 @@ export async function getRuntime(
 }
 
 export async function upsertRuntime(
-  runtime: LlmRuntimeRow
+  runtime: LlmRuntimeRow,
 ): Promise<LlmRuntimeRow> {
   const database = await db();
   const ts = nowDate();
@@ -220,8 +225,8 @@ export async function getRuntimeProviderState(params: {
       and(
         eq(llmRuntimeProviderState.scope, params.scope),
         eq(llmRuntimeProviderState.scopeId, params.scopeId),
-        eq(llmRuntimeProviderState.providerId, params.providerId)
-      )
+        eq(llmRuntimeProviderState.providerId, params.providerId),
+      ),
     );
 
   const row = rows[0];
@@ -244,7 +249,7 @@ export async function getRuntimeProviderState(params: {
 }
 
 export async function upsertRuntimeProviderState(
-  params: LlmRuntimeProviderStateRow
+  params: LlmRuntimeProviderStateRow,
 ): Promise<void> {
   const database = await db();
   const ts = nowDate();
@@ -273,7 +278,7 @@ export async function upsertRuntimeProviderState(
 }
 
 export async function getProviderConfig(
-  providerId: LlmProviderId
+  providerId: LlmProviderId,
 ): Promise<ProviderConfigRow> {
   const database = await db();
   const rows = await database
@@ -291,7 +296,7 @@ export async function getProviderConfig(
 
 export async function upsertProviderConfig(
   providerId: LlmProviderId,
-  config: unknown
+  config: unknown,
 ): Promise<ProviderConfigRow> {
   const database = await db();
   const ts = nowDate();
@@ -315,7 +320,7 @@ export async function upsertProviderConfig(
 }
 
 export async function listTokens(
-  providerId: LlmProviderId
+  providerId: LlmProviderId,
 ): Promise<LlmTokenListItem[]> {
   const database = await db();
   const rows = await database
@@ -327,6 +332,9 @@ export async function listTokens(
     providerId: r.providerId as LlmProviderId,
     name: r.name,
     tokenHint: r.tokenHint,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    lastUsedAt: r.lastUsedAt,
   }));
 }
 
@@ -352,7 +360,15 @@ export async function createToken(params: {
     lastUsedAt: null,
   });
 
-  return { id, providerId: params.providerId, name: params.name, tokenHint };
+  return {
+    id,
+    providerId: params.providerId,
+    name: params.name,
+    tokenHint,
+    createdAt: ts,
+    updatedAt: ts,
+    lastUsedAt: null,
+  };
 }
 
 export async function updateToken(params: {
@@ -377,11 +393,21 @@ export async function updateToken(params: {
 
 export async function deleteToken(id: string): Promise<void> {
   const database = await db();
-  await database.delete(llmTokens).where(eq(llmTokens.id, id));
+  await database.transaction(async (tx) => {
+    await tx
+      .update(llmRuntimeSettings)
+      .set({ activeTokenId: null, updatedAt: nowDate() })
+      .where(eq(llmRuntimeSettings.activeTokenId, id));
+    await tx
+      .update(llmRuntimeProviderState)
+      .set({ lastTokenId: null, updatedAt: nowDate() })
+      .where(eq(llmRuntimeProviderState.lastTokenId, id));
+    await tx.delete(llmTokens).where(eq(llmTokens.id, id));
+  });
 }
 
 function classifyDecryptFailure(
-  error: unknown
+  error: unknown,
 ): Extract<TokenPlaintextLookupResult, { status: "decrypt_failed" }> {
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.trim().toLowerCase();
@@ -399,7 +425,7 @@ function classifyDecryptFailure(
 }
 
 export async function getTokenPlaintextResult(
-  id: string
+  id: string,
 ): Promise<TokenPlaintextLookupResult> {
   const database = await db();
   const rows = await database

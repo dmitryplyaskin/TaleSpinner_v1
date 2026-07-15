@@ -2,6 +2,7 @@ import { BASE_URL } from '../const';
 
 import type {
 	LlmModel,
+	LlmOpenRouterEndpoint,
 	LlmPreset,
 	LlmPresetPayload,
 	LlmPresetSettings,
@@ -10,6 +11,7 @@ import type {
 	LlmProviderDefinition,
 	LlmProviderId,
 	LlmRuntime,
+	LlmRuntimeProviderState,
 	LlmScope,
 	LlmTokenListItem,
 } from '@shared/types/llm';
@@ -61,6 +63,15 @@ export async function patchRuntime(params: {
 	});
 }
 
+export async function getRuntimeProviderState(params: {
+	scope: LlmScope;
+	scopeId: string;
+	providerId: LlmProviderId;
+}): Promise<LlmRuntimeProviderState> {
+	const query = new URLSearchParams(params);
+	return apiJson<LlmRuntimeProviderState>(`/llm/runtime/provider-state?${query.toString()}`);
+}
+
 export async function getProviderConfig(providerId: LlmProviderId): Promise<{
 	providerId: LlmProviderId;
 	config: LlmProviderConfig;
@@ -90,18 +101,15 @@ export async function checkProviderConnection(params: {
 	tokenId?: string | null;
 	config?: LlmProviderConfig;
 }): Promise<LlmProviderConnectionCheckResult> {
-	return apiJson<LlmProviderConnectionCheckResult>(
-		`/llm/providers/${encodeURIComponent(params.providerId)}/check`,
-		{
-			method: 'POST',
-			body: JSON.stringify({
-				scope: params.scope,
-				scopeId: params.scopeId,
-				tokenId: params.tokenId ?? null,
-				config: params.config,
-			}),
-		},
-	);
+	return apiJson<LlmProviderConnectionCheckResult>(`/llm/providers/${encodeURIComponent(params.providerId)}/check`, {
+		method: 'POST',
+		body: JSON.stringify({
+			scope: params.scope,
+			scopeId: params.scopeId,
+			tokenId: params.tokenId ?? null,
+			config: params.config,
+		}),
+	});
 }
 
 export async function listTokens(providerId: LlmProviderId): Promise<LlmTokenListItem[]> {
@@ -148,6 +156,13 @@ export async function getModels(params: {
 
 	const data = await apiJson<{ models: LlmModel[] }>(`/llm/models?${query.toString()}`);
 	return data.models;
+}
+
+export async function getOpenRouterModelEndpoints(modelId: string): Promise<LlmOpenRouterEndpoint[]> {
+	const data = await apiJson<{ endpoints: LlmOpenRouterEndpoint[] }>(
+		`/llm/openrouter/endpoints?modelId=${encodeURIComponent(modelId)}`,
+	);
+	return data.endpoints;
 }
 
 export type LlmPresetDto = Omit<LlmPreset, 'createdAt' | 'updatedAt'> & {

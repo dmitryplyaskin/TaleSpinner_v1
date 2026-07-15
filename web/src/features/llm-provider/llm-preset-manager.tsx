@@ -7,17 +7,23 @@ import { PresetControls } from '../sidebars/settings/preset-controls';
 import type { LlmPresetDto, LlmPresetSettingsDto } from '../../api/llm';
 import type { LlmPresetPayload } from '@shared/types/llm';
 
-
 type Props = {
 	presets: LlmPresetDto[];
 	presetSettings: LlmPresetSettingsDto | null;
 	hasUnsavedChanges: boolean;
 	buildCurrentPayload: () => LlmPresetPayload;
 	onCreatePreset: (params: { name: string; payload: LlmPresetPayload }) => Promise<LlmPresetDto>;
-	onUpdatePreset: (params: { presetId: string; name?: string; description?: string | null; payload?: LlmPresetPayload }) => Promise<LlmPresetDto>;
+	onUpdatePreset: (params: {
+		presetId: string;
+		name?: string;
+		description?: string | null;
+		payload?: LlmPresetPayload;
+	}) => Promise<LlmPresetDto>;
 	onDeletePreset: (presetId: string) => Promise<{ id: string }>;
 	onSelectPreset: (presetId: string | null, options?: { skipUnsavedConfirm?: boolean }) => Promise<void> | void;
 	onPatchSettings: (params: { activePresetId?: string | null }) => Promise<LlmPresetSettingsDto>;
+	onSaveCurrent?: () => Promise<void>;
+	showSaveAction?: boolean;
 };
 
 export const LlmPresetManager: React.FC<Props> = ({
@@ -30,6 +36,8 @@ export const LlmPresetManager: React.FC<Props> = ({
 	onDeletePreset,
 	onSelectPreset,
 	onPatchSettings,
+	onSaveCurrent,
+	showSaveAction = true,
 }) => {
 	const { t } = useTranslation();
 
@@ -58,6 +66,7 @@ export const LlmPresetManager: React.FC<Props> = ({
 	};
 
 	const savePreset = async () => {
+		if (onSaveCurrent) return onSaveCurrent();
 		if (!activePreset) return;
 		try {
 			await onUpdatePreset({
@@ -147,8 +156,9 @@ export const LlmPresetManager: React.FC<Props> = ({
 			onDelete={() => void deletePreset()}
 			disableRename={!activePreset}
 			disableDuplicate={!activePreset}
-			disableSave={!activePreset || !hasUnsavedChanges}
+			disableSave={!hasUnsavedChanges || (!onSaveCurrent && !activePreset)}
 			disableDelete={!activePreset}
+			showSaveAction={showSaveAction}
 		/>
 	);
 };

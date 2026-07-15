@@ -19,6 +19,23 @@ export type LlmMessageNormalizationConfig = {
   enabled?: boolean;
 };
 
+export type LlmOpenRouterRoutingStrategy =
+  | "auto"
+  | "price"
+  | "throughput"
+  | "latency"
+  | "priority"
+  | "only";
+
+export type LlmOpenRouterRoutingConfig = {
+  strategy: LlmOpenRouterRoutingStrategy;
+  providerOrder?: string[];
+  allowFallbacks?: boolean;
+  zdr?: boolean;
+  dataCollection?: "allow" | "deny";
+  requireParameters?: boolean;
+};
+
 export type LlmProviderUiField =
   | {
       key: "baseUrl";
@@ -53,11 +70,22 @@ export type LlmRuntime = {
   activeModel: string | null;
 };
 
+export type LlmRuntimeProviderState = {
+  scope: LlmScope;
+  scopeId: string;
+  providerId: LlmProviderId;
+  lastTokenId: string | null;
+  lastModel: string | null;
+};
+
 export type LlmTokenListItem = {
   id: string;
   providerId: LlmProviderId;
   name: string;
   tokenHint: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastUsedAt?: string | null;
 };
 
 export type LlmProviderConfig = {
@@ -66,6 +94,7 @@ export type LlmProviderConfig = {
   tokenPolicy?: LlmTokenPolicy;
   anthropicCache?: LlmAnthropicCacheConfig;
   messageNormalization?: LlmMessageNormalizationConfig;
+  openRouterRouting?: LlmOpenRouterRoutingConfig;
   [key: string]: unknown;
 };
 
@@ -97,6 +126,30 @@ export type LlmPresetSettings = {
 export type LlmModel = {
   id: string;
   name: string;
+  contextLength?: number;
+  pricing?: {
+    prompt?: string;
+    completion?: string;
+  };
+  inputModalities?: string[];
+  outputModalities?: string[];
+  supportedParameters?: string[];
+  createdAt?: number;
+};
+
+export type LlmOpenRouterEndpoint = {
+  name: string;
+  providerName: string;
+  tag: string;
+  contextLength?: number;
+  maxCompletionTokens?: number;
+  quantization?: string;
+  pricing?: {
+    prompt?: string;
+    completion?: string;
+  };
+  supportedParameters?: string[];
+  uptimeLast30m?: number;
 };
 
 export type LlmProviderConnectionIssueCode =
@@ -122,4 +175,3 @@ export type LlmProviderConnectionCheckResult = {
   statusCode: number | null;
   modelCount: number;
 };
-

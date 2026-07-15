@@ -15,12 +15,17 @@ import {
   deleteToken,
   getProviderConfig,
   getRuntime,
+  getRuntimeProviderState,
   listProviders,
   listTokens,
   upsertProviderConfig,
   updateToken,
 } from "@services/llm/llm-repository";
-import { checkProviderConnection, getModels } from "@services/llm/llm-service";
+import {
+  checkProviderConnection,
+  getModels,
+  getOpenRouterModelEndpoints,
+} from "@services/llm/llm-service";
 
 import { updateLlmRuntime } from "../application/llm/use-cases/update-llm-runtime";
 
@@ -43,6 +48,10 @@ const runtimePatchSchema = z.object({
   activeModel: z.string().min(1).nullable().optional(),
 });
 
+const runtimeProviderStateQuerySchema = runtimeQuerySchema.extend({
+  providerId: providerIdSchema,
+});
+
 const providerConnectionCheckBodySchema = z.object({
   scope: scopeSchema.optional().default("global"),
   scopeId: z.string().min(1).optional().default("global"),
@@ -62,7 +71,7 @@ router.get(
     }));
 
     return { data: { providers } };
-  })
+  }),
 );
 
 router.get(
@@ -80,7 +89,7 @@ router.get(
     }
 
     return { data: { ...runtime, activeTokenHint } };
-  })
+  }),
 );
 
 router.patch(
@@ -97,7 +106,16 @@ router.patch(
         activeModel: body.activeModel,
       }),
     };
-  })
+  }),
+);
+
+router.get(
+  "/llm/runtime/provider-state",
+  validate({ query: runtimeProviderStateQuerySchema }),
+  asyncHandler(async (req: Request) => {
+    const query = runtimeProviderStateQuerySchema.parse(req.query);
+    return { data: await getRuntimeProviderState(query) };
+  }),
 );
 
 router.get(
@@ -107,7 +125,7 @@ router.get(
     const providerId = req.params.providerId as LlmProviderId;
     const config = await getProviderConfig(providerId);
     return { data: config };
-  })
+  }),
 );
 
 router.patch(
@@ -126,7 +144,7 @@ router.patch(
 
     const saved = await upsertProviderConfig(providerId, parsed);
     return { data: saved };
-  })
+  }),
 );
 
 router.post(
@@ -148,7 +166,7 @@ router.post(
         configOverride: body.config,
       }),
     };
-  })
+  }),
 );
 
 router.get(
@@ -156,11 +174,11 @@ router.get(
   validate({ query: z.object({ providerId: providerIdSchema }) }),
   asyncHandler(async (req: Request) => {
     const providerId = providerIdSchema.parse(
-      (req.query as unknown as { providerId?: unknown }).providerId
+      (req.query as unknown as { providerId?: unknown }).providerId,
     ) as LlmProviderId;
     const tokens = await listTokens(providerId);
     return { data: { tokens } };
-  })
+  }),
 );
 
 const tokenCreateSchema = z.object({
@@ -180,7 +198,7 @@ router.post(
       token: body.token,
     });
     return { data: created };
-  })
+  }),
 );
 
 const tokenPatchSchema = z
@@ -201,7 +219,7 @@ router.patch(
     const body = req.body as z.infer<typeof tokenPatchSchema>;
     await updateToken({ id, name: body.name, token: body.token });
     return { data: { success: true } };
-  })
+  }),
 );
 
 router.delete(
@@ -210,7 +228,7 @@ router.delete(
   asyncHandler(async (req: Request) => {
     await deleteToken(String(req.params.id));
     return { data: { success: true } };
-  })
+  }),
 );
 
 router.get(
@@ -250,7 +268,20 @@ router.get(
     });
 
     return { data: { models } };
-  })
+  }),
+);
+
+router.get(
+  "/llm/openrouter/endpoints",
+  validate({ query: z.object({ modelId: z.string().min(1) }) }),
+  asyncHandler(async (req: Request) => {
+    const { modelId } = z
+      .object({ modelId: z.string().min(1) })
+      .parse(req.query);
+    return {
+      data: { endpoints: await getOpenRouterModelEndpoints({ modelId }) },
+    };
+  }),
 );
 
 // Guardrail: expose only the new endpoints; legacy configs should not be used.
@@ -260,9 +291,9 @@ router.all(
     throw new HttpError(
       410,
       "Legacy endpoint removed",
-      "LEGACY_ENDPOINT_REMOVED"
+      "LEGACY_ENDPOINT_REMOVED",
     );
-  })
+  }),
 );
 
 export default router;

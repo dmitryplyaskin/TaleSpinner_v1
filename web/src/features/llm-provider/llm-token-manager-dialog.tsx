@@ -1,183 +1,266 @@
-import { Button, Divider, Flex, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Badge, Button, Divider, Group, Menu, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LuEllipsis, LuKeyRound, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 
 import { llmProviderModel } from '@model/provider';
 import { Dialog } from '@ui/dialog';
+import { toaster } from '@ui/toaster';
 
-import type { LlmProviderId } from '@shared/types/llm';
+import type { LlmProviderId, LlmTokenListItem } from '@shared/types/llm';
 
 type Props = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	providerId: LlmProviderId;
+	providerName?: string;
 	activeTokenId?: string | null;
 	onTokenSelected?: (tokenId: string | null) => void;
 };
+
+type EditorMode = { type: 'list' } | { type: 'create' } | { type: 'edit'; token: LlmTokenListItem };
 
 export const LlmTokenManagerDialog: React.FC<Props> = ({
 	open,
 	onOpenChange,
 	providerId,
+	providerName,
 	activeTokenId = null,
 	onTokenSelected,
 }) => {
 	const { t } = useTranslation();
-	const [tokensByProviderId, createTokenFx, patchTokenFx, deleteTokenFx, loadTokensFx] = useUnit([
+	const [
+		tokensByProviderId,
+		createTokenFx,
+		patchTokenFx,
+		deleteTokenFx,
+		loadTokensFx,
+		isCreating,
+		isPatching,
+		isDeleting,
+	] = useUnit([
 		llmProviderModel.$tokensByProviderId,
 		llmProviderModel.createTokenFx,
 		llmProviderModel.patchTokenFx,
 		llmProviderModel.deleteTokenFx,
 		llmProviderModel.loadTokensFx,
+		llmProviderModel.createTokenFx.pending,
+		llmProviderModel.patchTokenFx.pending,
+		llmProviderModel.deleteTokenFx.pending,
 	]);
-
 	const tokens = useMemo(() => tokensByProviderId[providerId] ?? [], [providerId, tokensByProviderId]);
-	const [newName, setNewName] = useState('');
-	const [newToken, setNewToken] = useState('');
-	const [editingId, setEditingId] = useState<string | null>(null);
-	const editing = useMemo(() => tokens.find((item) => item.id === editingId) ?? null, [editingId, tokens]);
-	const [editName, setEditName] = useState('');
-	const [editToken, setEditToken] = useState('');
+	const [mode, setMode] = useState<EditorMode>({ type: 'list' });
+	const [name, setName] = useState('');
+	const [tokenValue, setTokenValue] = useState('');
+	const [deletingToken, setDeletingToken] = useState<LlmTokenListItem | null>(null);
 
-	const resetDrafts = () => {
-		setEditingId(null);
-		setNewName('');
-		setNewToken('');
-		setEditName('');
-		setEditToken('');
+	const resetEditor = () => {
+		setMode({ type: 'list' });
+		setName('');
+		setTokenValue('');
+		setDeletingToken(null);
 	};
 
 	const handleOpenChange = (nextOpen: boolean) => {
 		onOpenChange(nextOpen);
-		if (nextOpen) return;
-		resetDrafts();
+		if (!nextOpen) resetEditor();
 	};
 
-	const startEdit = (tokenId: string) => {
-		const token = tokens.find((item) => item.id === tokenId);
-		if (!token) return;
-		setEditingId(tokenId);
-		setEditName(token.name);
-		setEditToken('');
+	const startCreate = () => {
+		setName('');
+		setTokenValue('');
+		setMode({ type: 'create' });
 	};
 
-	const submitCreate = async () => {
-		const name = newName.trim();
-		const token = newToken.trim();
-		if (!name || !token) return;
-
-		const created = await createTokenFx({ providerId, name, token });
-		await loadTokensFx(providerId);
-		onTokenSelected?.(created.id);
-		setNewName('');
-		setNewToken('');
+	const startEdit = (token: LlmTokenListItem) => {
+		setName(token.name);
+		setTokenValue('');
+		setMode({ type: 'edit', token });
 	};
 
-	const submitEdit = async () => {
-		if (!editingId) return;
-		await patchTokenFx({
-			id: editingId,
-			name: editName.trim() || undefined,
-			token: editToken.trim() || undefined,
-		});
-		await loadTokensFx(providerId);
-		setEditingId(null);
-		setEditToken('');
-	};
-
-	const submitDelete = async (tokenId: string) => {
-		await deleteTokenFx(tokenId);
-		await loadTokensFx(providerId);
-		if (tokenId === activeTokenId) {
-			onTokenSelected?.(null);
+	const submit = async () => {
+		try {
+			if (mode.type === 'create') {
+				const created = await createTokenFx({ providerId, name: name.trim(), token: tokenValue.trim() });
+				await loadTokensFx(providerId);
+				onTokenSelected?.(created.id);
+				toaster.success({ title: t('tokenManager.toasts.created') });
+			} else if (mode.type === 'edit') {
+				await patchTokenFx({ id: mode.token.id, name: name.trim(), token: tokenValue.trim() || undefined });
+				await loadTokensFx(providerId);
+				toaster.success({ title: t('tokenManager.toasts.saved') });
+			}
+			resetEditor();
+		} catch (error) {
+			toaster.error({
+				title: t('tokenManager.toasts.failed'),
+				description: error instanceof Error ? error.message : String(error),
+			});
 		}
 	};
+
+	const submitDelete = async () => {
+		if (!deletingToken) return;
+		try {
+			await deleteTokenFx(deletingToken.id);
+			await loadTokensFx(providerId);
+			if (deletingToken.id === activeTokenId) onTokenSelected?.(null);
+			toaster.success({ title: t('tokenManager.toasts.deleted') });
+			setDeletingToken(null);
+		} catch (error) {
+			toaster.error({
+				title: t('tokenManager.toasts.failed'),
+				description: error instanceof Error ? error.message : String(error),
+			});
+		}
+	};
+
+	const isSubmitDisabled = !name.trim() || (mode.type === 'create' && !tokenValue.trim());
+	const isBusy = isCreating || isPatching || isDeleting;
 
 	return (
 		<Dialog
 			open={open}
 			onOpenChange={handleOpenChange}
-			title={t('tokenManager.title')}
+			title={t('tokenManager.titleWithProvider', { providerName: providerName ?? providerId })}
 			size="lg"
-			footer={
-				<Flex justify="flex-end" gap={2}>
-					<Button variant="subtle" onClick={() => handleOpenChange(false)}>
-						{t('common.close')}
-					</Button>
-				</Flex>
-			}
 			showCloseButton
-			closeOnEscape
-			closeOnInteractOutside
+			closeOnEscape={!isBusy}
+			closeOnInteractOutside={false}
+			footer={
+				<Button variant="subtle" onClick={() => handleOpenChange(false)} disabled={isBusy}>
+					{t('common.close')}
+				</Button>
+			}
 		>
-			<Stack gap="sm">
-				<Text fw={600}>{t('tokenManager.addToken')}</Text>
-				<Stack gap="xs">
-					<TextInput placeholder={t('tokenManager.fields.name')} value={newName} onChange={(event) => setNewName(event.currentTarget.value)} />
-					<PasswordInput
-						placeholder={t('tokenManager.fields.token')}
-						value={newToken}
-						onChange={(event) => setNewToken(event.currentTarget.value)}
-					/>
-					<Flex justify="flex-end">
-						<Button onClick={submitCreate} disabled={!newName.trim() || !newToken.trim()}>
-							{t('common.add')}
+			{mode.type === 'list' ? (
+				<Stack gap="sm">
+					<Group justify="space-between">
+						<Stack gap={1}>
+							<Text fw={600}>{t('tokenManager.savedTitle')}</Text>
+							<Text size="sm" c="dimmed">
+								{t('tokenManager.savedHint')}
+							</Text>
+						</Stack>
+						<Button size="xs" leftSection={<LuPlus />} onClick={startCreate}>
+							{t('tokenManager.addToken')}
 						</Button>
-					</Flex>
-				</Stack>
+					</Group>
 
-				<Divider />
-
-				<Text fw={600}>{t('tokenManager.tokensFor', { providerId })}</Text>
-
-				{tokens.length === 0 ? (
-					<Text c="dimmed">{t('tokenManager.empty')}</Text>
-				) : (
-					<Stack gap="xs">
-						{tokens.map((token) => (
-							<Flex key={token.id} gap={2} align="center" justify="space-between">
-								<Stack gap={0} style={{ minWidth: 0 }}>
-									<Text fw={500}>
-										{token.name} {token.id === activeTokenId ? t('tokenManager.activeSuffix') : ''}
-									</Text>
-									<Text size="sm" c="dimmed">
-										{token.tokenHint}
-									</Text>
+					{tokens.length === 0 ? (
+						<Stack align="center" gap="xs" py="xl">
+							<LuKeyRound size={28} />
+							<Text fw={600}>{t('tokenManager.emptyTitle')}</Text>
+							<Text size="sm" c="dimmed" ta="center">
+								{t('tokenManager.empty')}
+							</Text>
+							<Button size="sm" onClick={startCreate}>
+								{t('tokenManager.addFirst')}
+							</Button>
+						</Stack>
+					) : (
+						<Stack gap={0}>
+							{tokens.map((token, index) => (
+								<Stack key={token.id} gap="xs" py="sm">
+									<Group justify="space-between" wrap="nowrap">
+										<Stack gap={2} style={{ minWidth: 0 }}>
+											<Group gap="xs" wrap="nowrap">
+												<Text fw={600} truncate>
+													{token.name}
+												</Text>
+												{token.id === activeTokenId ? (
+													<Badge size="sm" variant="light">
+														{t('tokenManager.active')}
+													</Badge>
+												) : null}
+											</Group>
+											<Text size="sm" c="dimmed">
+												{token.tokenHint}
+											</Text>
+											{token.lastUsedAt ? (
+												<Text size="xs" c="dimmed">
+													{t('tokenManager.lastUsed', { value: new Date(token.lastUsedAt).toLocaleString() })}
+												</Text>
+											) : null}
+										</Stack>
+										<Group gap="xs" wrap="nowrap">
+											{token.id !== activeTokenId ? (
+												<Button size="compact-sm" variant="subtle" onClick={() => onTokenSelected?.(token.id)}>
+													{t('tokenManager.use')}
+												</Button>
+											) : null}
+											<Menu position="bottom-end" withinPortal>
+												<Menu.Target>
+													<Button variant="subtle" size="compact-sm" px={8} aria-label={t('tokenManager.actions')}>
+														<LuEllipsis />
+													</Button>
+												</Menu.Target>
+												<Menu.Dropdown>
+													<Menu.Item leftSection={<LuPencil />} onClick={() => startEdit(token)}>
+														{t('common.edit')}
+													</Menu.Item>
+													<Menu.Item color="red" leftSection={<LuTrash2 />} onClick={() => setDeletingToken(token)}>
+														{t('common.delete')}
+													</Menu.Item>
+												</Menu.Dropdown>
+											</Menu>
+										</Group>
+									</Group>
+									{index < tokens.length - 1 ? <Divider /> : null}
 								</Stack>
-								<Flex gap={2}>
-									<Button size="sm" variant="outline" onClick={() => startEdit(token.id)}>
-										{t('common.edit')}
+							))}
+						</Stack>
+					)}
+
+					{deletingToken ? (
+						<Alert color="red" title={t('tokenManager.deleteConfirmTitle')}>
+							<Stack gap="sm">
+								<Text size="sm">{t('tokenManager.deleteConfirmText', { name: deletingToken.name })}</Text>
+								<Group justify="flex-end">
+									<Button size="xs" variant="subtle" onClick={() => setDeletingToken(null)}>
+										{t('common.cancel')}
 									</Button>
-									<Button size="sm" variant="outline" color="red" onClick={() => void submitDelete(token.id)}>
+									<Button size="xs" color="red" loading={isDeleting} onClick={() => void submitDelete()}>
 										{t('common.delete')}
 									</Button>
-								</Flex>
-							</Flex>
-						))}
+								</Group>
+							</Stack>
+						</Alert>
+					) : null}
+				</Stack>
+			) : (
+				<Stack gap="sm">
+					<Stack gap={1}>
+						<Text fw={600}>{t(mode.type === 'create' ? 'tokenManager.addToken' : 'tokenManager.editToken')}</Text>
+						<Text size="sm" c="dimmed">
+							{t(mode.type === 'create' ? 'tokenManager.createHint' : 'tokenManager.editHint')}
+						</Text>
 					</Stack>
-				)}
-
-				{editing ? (
-					<Stack gap="xs" mt="md" p="md" style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 8 }}>
-						<Text fw={600}>{t('tokenManager.editToken')}</Text>
-						<TextInput value={editName} onChange={(event) => setEditName(event.currentTarget.value)} placeholder={t('tokenManager.fields.name')} />
-						<PasswordInput
-							value={editToken}
-							onChange={(event) => setEditToken(event.currentTarget.value)}
-							placeholder={t('tokenManager.fields.newTokenPlaceholder', { hint: editing.tokenHint })}
-						/>
-						<Flex justify="flex-end" gap={2}>
-							<Button variant="subtle" onClick={() => setEditingId(null)}>
-								{t('common.cancel')}
-							</Button>
-							<Button onClick={submitEdit} disabled={!editName.trim() && !editToken.trim()}>
-								{t('common.save')}
-							</Button>
-						</Flex>
-					</Stack>
-				) : null}
-			</Stack>
+					<TextInput
+						label={t('tokenManager.fields.name')}
+						value={name}
+						onChange={(event) => setName(event.currentTarget.value)}
+						autoFocus
+					/>
+					<PasswordInput
+						label={t(mode.type === 'create' ? 'tokenManager.fields.token' : 'tokenManager.fields.newToken')}
+						description={
+							mode.type === 'edit' ? t('tokenManager.fields.currentHint', { hint: mode.token.tokenHint }) : undefined
+						}
+						value={tokenValue}
+						onChange={(event) => setTokenValue(event.currentTarget.value)}
+					/>
+					<Group justify="flex-end">
+						<Button variant="subtle" onClick={resetEditor} disabled={isBusy}>
+							{t('common.cancel')}
+						</Button>
+						<Button onClick={() => void submit()} loading={isCreating || isPatching} disabled={isSubmitDisabled}>
+							{t('common.save')}
+						</Button>
+					</Group>
+				</Stack>
+			)}
 		</Dialog>
 	);
 };

@@ -41,7 +41,9 @@ export const Dialog = ({
 	const fullScreen = size === 'cover';
 	const modalSize = fullScreen ? '100%' : size;
 	const drawerLikeFullscreen = fullScreen && typeof fullScreenContentMaxWidth === 'number';
-	const fullscreenPresentation = drawerLikeFullscreen ? getFullscreenSidebarPresentation(fullScreenContentMaxWidth) : null;
+	const fullscreenPresentation = drawerLikeFullscreen
+		? getFullscreenSidebarPresentation(fullScreenContentMaxWidth)
+		: null;
 	const content = (
 		<div
 			style={
@@ -84,6 +86,7 @@ export const Dialog = ({
 			size={modalSize}
 			fullScreen={fullScreen}
 			withCloseButton={drawerLikeFullscreen ? false : showCloseButton}
+			closeButtonProps={{ 'aria-label': t('common.close') }}
 			closeOnClickOutside={closeOnInteractOutside ?? true}
 			closeOnEscape={closeOnEscape ?? true}
 			zIndex={zIndex ?? Z_INDEX.overlay.modal}

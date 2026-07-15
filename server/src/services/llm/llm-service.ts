@@ -22,13 +22,21 @@ import {
   type LlmRuntimeRow,
   type LlmScope,
 } from "./llm-repository";
+import {
+  listOpenRouterModelEndpoints,
+  listOpenRouterModels,
+} from "./openrouter-catalog";
 
 import type { GenerateMessage } from "@shared/types/generate";
-import type { LlmProviderConnectionCheckResult } from "@shared/types/llm";
+import type {
+  LlmModel,
+  LlmOpenRouterEndpoint,
+  LlmProviderConnectionCheckResult,
+} from "@shared/types/llm";
 
 export async function getRuntimeOrThrow(
   scope: LlmScope,
-  scopeId: string
+  scopeId: string,
 ): Promise<LlmRuntimeRow> {
   return getRuntime(scope, scopeId);
 }
@@ -40,7 +48,7 @@ export async function getProvidersForUi(): Promise<
 }
 
 export async function getTokensForUi(
-  providerId: LlmProviderId
+  providerId: LlmProviderId,
 ): Promise<Array<{ id: string; name: string; tokenHint: string }>> {
   const tokens = await listTokens(providerId);
   return tokens.map((t) => ({
@@ -60,7 +68,10 @@ const MODELS_REQUEST_RETRIES = 1;
 const TOKEN_LAST_USED_TOUCH_INTERVAL_MS = 60_000;
 const tokenLastTouchedAt = new Map<string, number>();
 
-function resolveTokenPolicy(providerId: LlmProviderId, config: unknown): TokenPolicy {
+function resolveTokenPolicy(
+  providerId: LlmProviderId,
+  config: unknown,
+): TokenPolicy {
   if (providerId === "openrouter") {
     const parsed = openRouterConfigSchema.safeParse(config ?? {});
     const policy = parsed.success ? parsed.data.tokenPolicy : undefined;
@@ -124,7 +135,7 @@ function describeTokenLookupFailure(params: {
 
 async function fetchModelsWithRetry(
   url: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
 ): Promise<Array<{ id: string; name?: string }>> {
   let attempt = 0;
   let lastError: unknown = null;
@@ -135,7 +146,10 @@ async function fetchModelsWithRetry(
         headers,
         timeout: MODELS_REQUEST_TIMEOUT_MS,
       });
-      return (response.data?.data ?? []) as Array<{ id: string; name?: string }>;
+      return (response.data?.data ?? []) as Array<{
+        id: string;
+        name?: string;
+      }>;
     } catch (error) {
       lastError = error;
       if (attempt === MODELS_REQUEST_RETRIES) {
@@ -149,7 +163,7 @@ async function fetchModelsWithRetry(
 }
 
 function buildConnectionCheckResult(
-  params: LlmProviderConnectionCheckResult
+  params: LlmProviderConnectionCheckResult,
 ): LlmProviderConnectionCheckResult {
   return params;
 }
@@ -157,7 +171,8 @@ function buildConnectionCheckResult(
 function readProviderErrorStatus(error: unknown): number | null {
   if (!error || typeof error !== "object") return null;
   const response = (error as { response?: { status?: unknown } }).response;
-  return typeof response?.status === "number" && Number.isFinite(response.status)
+  return typeof response?.status === "number" &&
+    Number.isFinite(response.status)
     ? response.status
     : null;
 }
@@ -174,7 +189,9 @@ function readProviderErrorMessage(error: unknown): string | null {
   }
   if (!error || typeof error !== "object") return null;
   const message = (error as { message?: unknown }).message;
-  return typeof message === "string" && message.trim().length > 0 ? message : null;
+  return typeof message === "string" && message.trim().length > 0
+    ? message
+    : null;
 }
 
 function buildProviderConnectivityFailure(params: {
@@ -299,7 +316,7 @@ export async function getModels(params: {
   scopeId: string;
   tokenId?: string | null;
   modelOverride?: string | null;
-}): Promise<Array<{ id: string; name: string }>> {
+}): Promise<LlmModel[]> {
   const runtime = await getRuntime(params.scope, params.scopeId);
   const tokenId = params.tokenId ?? runtime.activeTokenId;
   if (!tokenId) {
@@ -315,14 +332,7 @@ export async function getModels(params: {
   const config = await getProviderConfig(params.providerId);
   try {
     if (params.providerId === "openrouter") {
-      const raw = await fetchModelsWithRetry("https://openrouter.ai/api/v1/models", {
-        "HTTP-Referer": "http://localhost:5000",
-        "X-Title": "TaleSpinner",
-        Authorization: `Bearer ${token}`,
-      });
-      return raw
-        .filter((m) => typeof m?.id === "string" && m.id.length > 0)
-        .map((m) => ({ id: m.id, name: m.name ?? m.id }));
+      return await listOpenRouterModels(token);
     }
 
     const providerSpec = resolveGatewayProviderSpec({
@@ -349,6 +359,12 @@ export async function getModels(params: {
   }
 }
 
+export async function getOpenRouterModelEndpoints(params: {
+  modelId: string;
+}): Promise<LlmOpenRouterEndpoint[]> {
+  return listOpenRouterModelEndpoints(params.modelId);
+}
+
 export async function checkProviderConnection(params: {
   providerId: LlmProviderId;
   scope: LlmScope;
@@ -366,7 +382,9 @@ export async function checkProviderConnection(params: {
       resolvedBaseUrl: null,
       issueCode: "TOKEN_MISSING",
       message: "Select a token before checking provider connectivity.",
-      hints: ["Open token manager or choose an existing token in the provider runtime section."],
+      hints: [
+        "Open token manager or choose an existing token in the provider runtime section.",
+      ],
     });
   }
 
@@ -379,7 +397,9 @@ export async function checkProviderConnection(params: {
       issueCode: "TOKEN_DECRYPT_FAILED",
       message:
         "Selected token cannot be decrypted with the current TOKENS_MASTER_KEY.",
-      hints: ["Re-save the token with the current backend key or restore the original TOKENS_MASTER_KEY."],
+      hints: [
+        "Re-save the token with the current backend key or restore the original TOKENS_MASTER_KEY.",
+      ],
     });
   }
 
@@ -390,7 +410,9 @@ export async function checkProviderConnection(params: {
       resolvedBaseUrl: null,
       issueCode: "TOKEN_NOT_FOUND",
       message: "Selected token was not found.",
-      hints: ["Pick another token or recreate the missing token in token manager."],
+      hints: [
+        "Pick another token or recreate the missing token in token manager.",
+      ],
     });
   }
 
@@ -472,7 +494,7 @@ export async function checkProviderConnection(params: {
       ? (response.data.data as Array<{ id?: unknown; name?: unknown }>)
       : [];
     const modelCount = rawModels.filter(
-      (item) => typeof item?.id === "string" && item.id.length > 0
+      (item) => typeof item?.id === "string" && item.id.length > 0,
     ).length;
 
     return buildConnectionCheckResult({
@@ -486,7 +508,9 @@ export async function checkProviderConnection(params: {
       hints:
         modelCount > 0
           ? []
-          : ["The provider responded successfully, but no models were returned for this token."],
+          : [
+              "The provider responded successfully, but no models were returned for this token.",
+            ],
       checkedUrl,
       resolvedBaseUrl,
       statusCode:
@@ -510,7 +534,11 @@ export async function* streamGlobalChat(params: {
   settings: Record<string, unknown>;
   scopeId?: string;
   abortController?: AbortController;
-}): AsyncGenerator<{ content: string; reasoning: string; error: string | null }> {
+}): AsyncGenerator<{
+  content: string;
+  reasoning: string;
+  error: string | null;
+}> {
   const runtime = await getRuntime("global", params.scopeId ?? "global");
   const providerId = runtime.activeProviderId;
   const config = await getProviderConfig(providerId);
@@ -527,7 +555,7 @@ export async function* streamGlobalChat(params: {
     throw new HttpError(
       400,
       "No active token configured for the selected provider",
-      "LLM_TOKEN_MISSING"
+      "LLM_TOKEN_MISSING",
     );
   }
 
@@ -624,6 +652,6 @@ export async function* streamGlobalChat(params: {
   throw new HttpError(
     400,
     "No active token configured for the selected provider",
-    "LLM_TOKEN_MISSING"
+    "LLM_TOKEN_MISSING",
   );
 }
