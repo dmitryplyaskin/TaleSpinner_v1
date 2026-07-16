@@ -16,7 +16,9 @@ type Props = {
 	providerId: LlmProviderId;
 	providerName?: string;
 	activeTokenId?: string | null;
+	tokenItems?: LlmTokenListItem[];
 	onTokenSelected?: (tokenId: string | null) => void;
+	onTokensChanged?: () => Promise<void> | void;
 };
 
 type EditorMode = { type: 'list' } | { type: 'create' } | { type: 'edit'; token: LlmTokenListItem };
@@ -27,7 +29,9 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 	providerId,
 	providerName,
 	activeTokenId = null,
+	tokenItems,
 	onTokenSelected,
+	onTokensChanged,
 }) => {
 	const { t } = useTranslation();
 	const [
@@ -49,7 +53,10 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 		llmProviderModel.patchTokenFx.pending,
 		llmProviderModel.deleteTokenFx.pending,
 	]);
-	const tokens = useMemo(() => tokensByProviderId[providerId] ?? [], [providerId, tokensByProviderId]);
+	const tokens = useMemo(
+		() => tokenItems ?? tokensByProviderId[providerId] ?? [],
+		[providerId, tokenItems, tokensByProviderId],
+	);
 	const [mode, setMode] = useState<EditorMode>({ type: 'list' });
 	const [name, setName] = useState('');
 	const [tokenValue, setTokenValue] = useState('');
@@ -84,11 +91,13 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 			if (mode.type === 'create') {
 				const created = await createTokenFx({ providerId, name: name.trim(), token: tokenValue.trim() });
 				await loadTokensFx(providerId);
+				await onTokensChanged?.();
 				onTokenSelected?.(created.id);
 				toaster.success({ title: t('tokenManager.toasts.created') });
 			} else if (mode.type === 'edit') {
 				await patchTokenFx({ id: mode.token.id, name: name.trim(), token: tokenValue.trim() || undefined });
 				await loadTokensFx(providerId);
+				await onTokensChanged?.();
 				toaster.success({ title: t('tokenManager.toasts.saved') });
 			}
 			resetEditor();
@@ -105,6 +114,7 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 		try {
 			await deleteTokenFx(deletingToken.id);
 			await loadTokensFx(providerId);
+			await onTokensChanged?.();
 			if (deletingToken.id === activeTokenId) onTokenSelected?.(null);
 			toaster.success({ title: t('tokenManager.toasts.deleted') });
 			setDeletingToken(null);

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	ragEmbeddingsBodySchema,
 	ragModelsQuerySchema,
+	ragProviderConnectionCheckBodySchema,
 	ragPresetCreateBodySchema,
 	ragPresetSettingsPatchBodySchema,
 	ragPresetUpdateBodySchema,
@@ -36,6 +37,17 @@ describe('rag route schemas', () => {
 		expect(ragModelsQuerySchema.safeParse({ providerId: 'openrouter' }).success).toBe(true);
 		expect(ragModelsQuerySchema.safeParse({ providerId: 'openrouter', tokenId: 'tok-1' }).success).toBe(true);
 		expect(ragModelsQuerySchema.safeParse({ providerId: 'bad' }).success).toBe(false);
+	});
+
+	test('connection check accepts a draft token and config', () => {
+		expect(ragProviderConnectionCheckBodySchema.safeParse({ tokenId: null, config: {} }).success).toBe(true);
+		expect(
+			ragProviderConnectionCheckBodySchema.safeParse({
+				tokenId: 'token-1',
+				config: { baseUrl: 'http://localhost:11434' },
+			}).success,
+		).toBe(true);
+		expect(ragProviderConnectionCheckBodySchema.safeParse({ tokenId: '' }).success).toBe(false);
 	});
 
 	test('embeddings schema accepts non-empty string or non-empty array of non-empty strings', () => {

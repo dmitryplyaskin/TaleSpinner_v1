@@ -9,6 +9,7 @@ import type {
 	RagPreset,
 	RagPresetSettings,
 	RagProviderConfig,
+	RagProviderConnectionCheckResult,
 	RagProviderDefinition,
 	RagProviderId,
 	RagRuntime,
@@ -38,6 +39,13 @@ export const patchConfigFx = createEffect(
 	}): Promise<{ providerId: RagProviderId; config: RagProviderConfig }> =>
 		ragApi.patchRagProviderConfig(params.providerId, params.config),
 );
+export const checkConnectionFx = createEffect(
+	async (params: {
+		providerId: RagProviderId;
+		tokenId: string | null;
+		config: RagProviderConfig;
+	}): Promise<RagProviderConnectionCheckResult> => ragApi.checkRagProviderConnection(params),
+);
 export const loadTokensFx = createEffect(
 	async (providerId: RagProviderId): Promise<{ providerId: RagProviderId; tokens: LlmTokenListItem[] }> => ({
 		providerId,
@@ -49,6 +57,25 @@ export const loadModelsFx = createEffect(
 		key: toProviderTokenKey(params.providerId, params.tokenId),
 		models: await ragApi.listRagModels(params),
 	}),
+);
+
+export const saveConnectionFx = createEffect(
+	async (params: {
+		providerId: RagProviderId;
+		tokenId: string | null;
+		model: string | null;
+		config: RagProviderConfig;
+		preset?: RagPreset;
+	}) => {
+		const config = await ragApi.patchRagProviderConfig(params.providerId, params.config);
+		const runtime = await ragApi.patchRagRuntime({
+			activeProviderId: params.providerId,
+			activeTokenId: params.providerId === 'openrouter' ? params.tokenId : null,
+			activeModel: params.model,
+		});
+		const preset = params.preset ? await ragApi.updateRagPreset(params.preset) : null;
+		return { config, runtime, preset };
+	},
 );
 
 export const loadPresetsFx = createEffect(async (): Promise<RagPreset[]> => ragApi.listRagPresets());
@@ -81,12 +108,17 @@ export const $presetSettings = createStore<RagPresetSettings | null>(null);
 
 $providers.on(loadProvidersFx.doneData, (_, x) => x);
 $runtime.on(loadRuntimeFx.doneData, (_, x) => x).on(patchRuntimeFx.doneData, (_, x) => x);
+$runtime.on(saveConnectionFx.doneData, (_, x) => x.runtime);
 $configs
 	.on(loadConfigFx.doneData, (s, x) => ({ ...s, [x.providerId]: x.config }))
-	.on(patchConfigFx.doneData, (s, x) => ({ ...s, [x.providerId]: x.config }));
+	.on(patchConfigFx.doneData, (s, x) => ({ ...s, [x.providerId]: x.config }))
+	.on(saveConnectionFx.doneData, (s, x) => ({ ...s, [x.config.providerId]: x.config.config }));
 $tokens.on(loadTokensFx.doneData, (s, x) => ({ ...s, [x.providerId]: x.tokens }));
 $modelsByProviderTokenKey.on(loadModelsFx.doneData, (s, x) => ({ ...s, [x.key]: x.models }));
 $presets.on(loadPresetsFx.doneData, (_, x) => x);
+$presets.on(saveConnectionFx.doneData, (state, result) =>
+	result.preset ? state.map((item) => (item.id === result.preset?.id ? result.preset : item)) : state,
+);
 $presetSettings.on(loadPresetSettingsFx.doneData, (_, x) => x).on(patchPresetSettingsFx.doneData, (_, x) => x);
 
 sample({ clock: ragMounted, target: [loadProvidersFx, loadRuntimeFx, loadPresetsFx, loadPresetSettingsFx] });
@@ -160,12 +192,6 @@ sample({
 sample({ clock: [createPresetFx.doneData, updatePresetFx.doneData, deletePresetFx.done], target: [loadPresetsFx, loadPresetSettingsFx] });
 sample({ clock: applyPresetFx.done, target: [loadRuntimeFx, loadPresetsFx, loadPresetSettingsFx] });
 
-sample({
-	clock: createPresetFx.doneData,
-	fn: (preset) => preset.id,
-	target: ragPresetSelected,
-});
-
 export const ragProviderModel = {
 	$providers,
 	$runtime,
@@ -183,6 +209,9 @@ export const ragProviderModel = {
 	ragConfigPatched,
 	loadConfigFx,
 	patchConfigFx,
+	checkConnectionFx,
+	saveConnectionFx,
+	loadTokensFx,
 	loadModelsFx,
 	createPresetFx,
 	updatePresetFx,

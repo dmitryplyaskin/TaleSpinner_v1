@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
 import { getTokenPlaintext, listTokens } from "@services/llm/llm-repository";
+import { probeRagProviderConnection } from "@services/rag/rag-connection-check";
 
 import { safeJsonParse, safeJsonStringify } from "../chat-core/json";
 import { initDb } from "../db/client";
@@ -22,6 +23,7 @@ import type {
   RagPresetPayload,
   RagPresetSettings,
   RagProviderConfig,
+  RagProviderConnectionCheckResult,
   RagProviderDefinition,
   RagProviderId,
   RagRuntime,
@@ -698,6 +700,16 @@ export async function listRagModels(params: {
     });
     return [];
   }
+}
+
+export async function checkRagProviderConnection(params: {
+  providerId: RagProviderId;
+  tokenId: string | null;
+  configOverride?: RagProviderConfig;
+}): Promise<RagProviderConnectionCheckResult> {
+  const savedConfig = await getRagProviderConfig(params.providerId);
+  const config = ragConfigSchema.parse({ ...savedConfig, ...(params.configOverride ?? {}) });
+  return probeRagProviderConnection({ ...params, config });
 }
 
 export async function getRagRuntime(): Promise<RagRuntime> {
