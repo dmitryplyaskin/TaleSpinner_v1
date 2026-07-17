@@ -252,7 +252,7 @@ function normalizeLlmKindParams(op: Extract<OperationInProfile, { kind: 'llm' }>
 		providerId,
 		credentialRef: typeof llmParamsRaw.credentialRef === 'string' ? llmParamsRaw.credentialRef : '',
 		model: typeof llmParamsRaw.model === 'string' ? llmParamsRaw.model : '',
-		llmPresetId: '',
+		llmPresetId: typeof llmParamsRaw.llmPresetId === 'string' ? llmParamsRaw.llmPresetId : '',
 		system: typeof llmParamsRaw.system === 'string' ? llmParamsRaw.system : '',
 		prompt: typeof llmParamsRaw.prompt === 'string' ? llmParamsRaw.prompt : '',
 		strictVariables: llmParamsRaw.strictVariables === true,
@@ -424,6 +424,7 @@ export function fromOperationProfileForm(
 			if (op.kind === 'llm') {
 				const params = op.config.params as FormLlmKindParams;
 				const model = params.model.trim();
+				const llmPresetId = params.llmPresetId.trim();
 				const system = params.system.trim();
 				const samplerPresetId = params.samplerPresetId.trim();
 				const jsonCustomPattern = params.jsonCustomPattern.trim();
@@ -464,6 +465,7 @@ export function fromOperationProfileForm(
 								providerId: params.providerId,
 								credentialRef: params.credentialRef.trim(),
 								model: model.length > 0 ? model : undefined,
+								llmPresetId: llmPresetId.length > 0 ? llmPresetId : undefined,
 								system: system.length > 0 ? system : undefined,
 								prompt: params.prompt,
 								strictVariables: params.strictVariables ? true : undefined,

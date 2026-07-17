@@ -55,6 +55,7 @@ export const llmOperationParamsSchema: z.ZodType<LlmOperationParams> = z
     providerId: z.enum(["openrouter", "openai_compatible"]),
     credentialRef: z.string().trim().min(1),
     model: z.string().trim().min(1).optional(),
+    llmPresetId: z.string().trim().min(1).optional(),
     system: z.string().optional(),
     prompt: z.string().min(1),
     strictVariables: z.boolean().optional(),

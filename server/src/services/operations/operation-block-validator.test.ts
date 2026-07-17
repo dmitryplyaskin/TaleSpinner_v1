@@ -68,6 +68,40 @@ describe("operation block validator", () => {
     expect(out.operations[0]?.config.params.artifact.tag).toBe("world_state");
   });
 
+  test("preserves the selected LLM preset id", () => {
+    const out = validateOperationBlockUpsertInput({
+      name: "block",
+      enabled: true,
+      operations: [
+        {
+          opId: "6ff77029-5037-4d21-8ace-c9836f58a14b",
+          name: "llm-op",
+          kind: "llm",
+          config: {
+            enabled: true,
+            required: false,
+            hooks: ["before_main_llm"],
+            order: 10,
+            params: {
+              params: {
+                providerId: "openrouter",
+                credentialRef: "credential-1",
+                model: "model-1",
+                llmPresetId: "preset-1",
+                prompt: "Hello",
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    const operation = out.operations[0];
+    expect(operation?.kind).toBe("llm");
+    if (operation?.kind !== "llm") throw new Error("Expected LLM operation");
+    expect(operation.config.params.params.llmPresetId).toBe("preset-1");
+  });
+
   test("rejects dependency to unknown opId", () => {
     expect(() =>
       validateOperationBlockUpsertInput({

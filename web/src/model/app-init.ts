@@ -20,6 +20,7 @@ export const appInitFx = createEffect(async (): Promise<void> => {
 	// Instructions are global; load once on app start.
 	instructionsInitRequested();
 	worldInfoInitRequested();
+	const globalRuntimePromise = llmProviderModel.ensureRuntimeFx({ scope: 'global', scopeId: 'global' });
 
 	await Promise.all([
 		// UI state
@@ -38,8 +39,24 @@ export const appInitFx = createEffect(async (): Promise<void> => {
 		samplersModel.getItemsFx(),
 
 		// LLM provider runtime (needed for auto models load)
-		llmProviderModel.loadProvidersFx(),
-		llmProviderModel.loadRuntimeFx({ scope: 'global', scopeId: 'global' }),
+		llmProviderModel.ensureProvidersFx(),
+		llmProviderModel.ensureLlmPresetsFx(),
+		llmProviderModel.ensureLlmPresetSettingsFx(),
+		globalRuntimePromise,
+	]);
+
+	const runtime = await globalRuntimePromise;
+	await Promise.all([
+		llmProviderModel.ensureTokensFx(runtime.activeProviderId),
+		llmProviderModel.ensureProviderConfigFx(runtime.activeProviderId),
+		runtime.activeTokenId
+			? llmProviderModel.ensureModelsFx({
+					providerId: runtime.activeProviderId,
+					scope: runtime.scope,
+					scopeId: runtime.scopeId,
+					tokenId: runtime.activeTokenId,
+				})
+			: Promise.resolve(),
 	]);
 });
 

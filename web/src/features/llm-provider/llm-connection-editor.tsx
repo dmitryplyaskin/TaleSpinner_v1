@@ -15,40 +15,44 @@ import type {
 	LlmTokenListItem,
 } from '@shared/types/llm';
 
-type Props = {
+export type LlmConnectionSelectorProps = {
 	providers: LlmProviderDefinition[];
 	providerId: LlmProviderId;
 	tokens: LlmTokenListItem[];
 	tokenId: string | null;
 	models: LlmModel[];
 	modelId: string | null;
-	config: LlmProviderConfig;
-	isLoadingModels: boolean;
-	isChecking: boolean;
+	config?: LlmProviderConfig;
+	isLoadingModels?: boolean;
+	isChecking?: boolean;
 	onProviderChange: (providerId: LlmProviderId) => Promise<void>;
 	onTokenChange: (tokenId: string | null) => Promise<void>;
 	onModelChange: (modelId: string) => Promise<void>;
-	onConfigChange: (config: LlmProviderConfig) => void;
+	onConfigChange?: (config: LlmProviderConfig) => void;
 	onRefreshModels: () => Promise<void>;
-	onCheckConnection: () => Promise<void>;
+	onCheckConnection?: () => Promise<void>;
+	showProviderConfig?: boolean;
+	showConnectionCheck?: boolean;
 };
 
-export const LlmConnectionEditor: React.FC<Props> = ({
+export const LlmConnectionSelector: React.FC<LlmConnectionSelectorProps> = ({
 	providers,
 	providerId,
 	tokens,
 	tokenId,
 	models,
 	modelId,
-	config,
-	isLoadingModels,
-	isChecking,
+	config = {},
+	isLoadingModels = false,
+	isChecking = false,
 	onProviderChange,
 	onTokenChange,
 	onModelChange,
 	onConfigChange,
 	onRefreshModels,
 	onCheckConnection,
+	showProviderConfig = true,
+	showConnectionCheck = true,
 }) => {
 	const { t } = useTranslation();
 	const [tokenManagerOpen, setTokenManagerOpen] = useState(false);
@@ -86,11 +90,11 @@ export const LlmConnectionEditor: React.FC<Props> = ({
 				comboboxProps={{ withinPortal: false }}
 			/>
 
-			{providerId === 'openai_compatible' ? (
+			{showProviderConfig && providerId === 'openai_compatible' ? (
 				<TextInput
 					label={t('provider.config.baseUrl')}
 					value={String(config.baseUrl ?? '')}
-					onChange={(event) => onConfigChange({ ...config, baseUrl: event.currentTarget.value })}
+					onChange={(event) => onConfigChange?.({ ...config, baseUrl: event.currentTarget.value })}
 					placeholder="http://localhost:1234/v1"
 				/>
 			) : null}
@@ -167,11 +171,13 @@ export const LlmConnectionEditor: React.FC<Props> = ({
 				</Input.Wrapper>
 			)}
 
-			<Group justify="flex-end">
-				<Button variant="default" loading={isChecking} disabled={!tokenId} onClick={() => void onCheckConnection()}>
-					{t('provider.config.checkConnection')}
-				</Button>
-			</Group>
+			{showConnectionCheck && onCheckConnection ? (
+				<Group justify="flex-end">
+					<Button variant="default" loading={isChecking} disabled={!tokenId} onClick={() => void onCheckConnection()}>
+						{t('provider.config.checkConnection')}
+					</Button>
+				</Group>
+			) : null}
 
 			<LlmTokenManagerDialog
 				open={tokenManagerOpen}
@@ -194,3 +200,7 @@ export const LlmConnectionEditor: React.FC<Props> = ({
 		</Stack>
 	);
 };
+
+export const LlmConnectionEditor: React.FC<LlmConnectionSelectorProps> = (props) => (
+	<LlmConnectionSelector {...props} />
+);

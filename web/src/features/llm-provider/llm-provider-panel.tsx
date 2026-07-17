@@ -46,11 +46,13 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		presets,
 		presetSettings,
 		mount,
-		loadTokensFx,
-		loadConfigFx,
-		loadProviderStateFx,
+		ensureTokensFx,
+		ensureConfigFx,
+		ensureProviderStateFx,
 		loadModelsFx,
+		ensureModelsFx,
 		loadEndpointsFx,
+		ensureEndpointsFx,
 		checkConnectionFx,
 		saveConnectionFx,
 		createPresetFx,
@@ -59,7 +61,9 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		applyPresetFx,
 		patchPresetSettingsFx,
 		isLoadingModels,
+		isEnsuringModels,
 		isLoadingEndpoints,
+		isEnsuringEndpoints,
 		isChecking,
 		isSaving,
 	] = useUnit([
@@ -72,11 +76,13 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		llmProviderModel.$llmPresets,
 		llmProviderModel.$llmPresetSettings,
 		llmProviderModel.providerPickerMounted,
-		llmProviderModel.loadTokensFx,
-		llmProviderModel.loadProviderConfigFx,
-		llmProviderModel.loadRuntimeProviderStateFx,
+		llmProviderModel.ensureTokensFx,
+		llmProviderModel.ensureProviderConfigFx,
+		llmProviderModel.ensureRuntimeProviderStateFx,
 		llmProviderModel.loadModelsFx,
+		llmProviderModel.ensureModelsFx,
 		llmProviderModel.loadOpenRouterEndpointsFx,
+		llmProviderModel.ensureOpenRouterEndpointsFx,
 		llmProviderModel.checkProviderConnectionFx,
 		llmProviderModel.saveConnectionFx,
 		llmProviderModel.createLlmPresetFx,
@@ -85,7 +91,9 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		llmProviderModel.applyLlmPresetFx,
 		llmProviderModel.patchLlmPresetSettingsFx,
 		llmProviderModel.loadModelsFx.pending,
+		llmProviderModel.ensureModelsFx.pending,
 		llmProviderModel.loadOpenRouterEndpointsFx.pending,
+		llmProviderModel.ensureOpenRouterEndpointsFx.pending,
 		llmProviderModel.checkProviderConnectionFx.pending,
 		llmProviderModel.saveConnectionFx.pending,
 	]);
@@ -120,8 +128,12 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		const draft = toDraft(runtime, runtimeConfig);
 		draftsByProvider.current[runtime.activeProviderId] = draft;
 		reset(draft);
-		if (runtime.activeProviderId === 'openrouter' && runtime.activeModel) void loadEndpointsFx(runtime.activeModel);
-	}, [configs, loadEndpointsFx, reset, runtime]);
+		if (runtime.activeProviderId === 'openrouter' && runtime.activeModel) {
+			void ensureEndpointsFx(runtime.activeModel).catch(() =>
+				toaster.warning({ title: t('provider.toasts.endpointsLoadFailed') }),
+			);
+		}
+	}, [configs, ensureEndpointsFx, reset, runtime, t]);
 
 	useEffect(() => setConnectionResult(null), [config, modelId, providerId, tokenId]);
 
@@ -157,9 +169,9 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		draftsByProvider.current[providerId] = getValues();
 		const cached = draftsByProvider.current[nextProviderId];
 		const [loadedConfig, providerState] = await Promise.all([
-			loadConfigFx(nextProviderId),
-			loadProviderStateFx({ scope, scopeId, providerId: nextProviderId }),
-			loadTokensFx(nextProviderId),
+			ensureConfigFx(nextProviderId),
+			ensureProviderStateFx({ scope, scopeId, providerId: nextProviderId }),
+			ensureTokensFx(nextProviderId),
 		]);
 		const nextDraft = cached ?? createProviderDraft(nextProviderId, loadedConfig.config, providerState);
 		draftsByProvider.current[nextProviderId] = nextDraft;
@@ -168,18 +180,23 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 		setValue('modelId', nextDraft.modelId, { shouldDirty: true });
 		setValue('config', nextDraft.config, { shouldDirty: true });
 		if (nextDraft.tokenId) {
-			await loadModelsFx({ providerId: nextProviderId, scope, scopeId, tokenId: nextDraft.tokenId });
+			await ensureModelsFx({ providerId: nextProviderId, scope, scopeId, tokenId: nextDraft.tokenId });
 		}
 	};
 
 	const changeToken = async (nextTokenId: string | null) => {
 		setValue('tokenId', nextTokenId, { shouldDirty: true });
-		if (nextTokenId) await loadModelsFx({ providerId, scope, scopeId, tokenId: nextTokenId });
+		if (nextTokenId) await ensureModelsFx({ providerId, scope, scopeId, tokenId: nextTokenId });
 	};
 
 	const changeModel = async (nextModelId: string) => {
 		setValue('modelId', nextModelId, { shouldDirty: true });
-		if (providerId === 'openrouter') await refreshEndpoints(nextModelId);
+		if (providerId !== 'openrouter') return;
+		try {
+			await ensureEndpointsFx(nextModelId);
+		} catch {
+			toaster.warning({ title: t('provider.toasts.endpointsLoadFailed') });
+		}
 	};
 
 	const validateDraft = (draft: ProviderConnectionDraft): boolean => {
@@ -294,7 +311,7 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 					models={models}
 					modelId={modelId}
 					config={config}
-					isLoadingModels={isLoadingModels}
+					isLoadingModels={isLoadingModels || isEnsuringModels}
 					isChecking={isChecking}
 					onProviderChange={changeProvider}
 					onTokenChange={changeToken}
@@ -311,7 +328,7 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 								modelId={modelId}
 								value={config.openRouterRouting}
 								endpoints={endpoints}
-								isLoading={isLoadingEndpoints}
+								isLoading={isLoadingEndpoints || isEnsuringEndpoints}
 								onReload={async () => {
 									if (modelId) await refreshEndpoints(modelId);
 								}}

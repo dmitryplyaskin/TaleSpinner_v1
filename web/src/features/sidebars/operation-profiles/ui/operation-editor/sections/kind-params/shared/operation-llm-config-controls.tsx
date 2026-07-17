@@ -36,26 +36,32 @@ export const OperationLlmConfigControls: React.FC<Props> = ({ index }) => {
 		modelsByProviderTokenKey,
 		presets,
 		samplerPresets,
-		loadProvidersFx,
-		loadTokensFx,
+		ensureProvidersFx,
+		ensureTokensFx,
 		loadModelsFx,
-		loadLlmPresetsFx,
+		ensureModelsFx,
+		ensureLlmPresetsFx,
 		createLlmPresetFx,
 		updateLlmPresetFx,
 		deleteLlmPresetFx,
+		isLoadingModels,
+		isEnsuringModels,
 	] = useUnit([
 		llmProviderModel.$providers,
 		llmProviderModel.$tokensByProviderId,
 		llmProviderModel.$modelsByProviderTokenKey,
 		llmProviderModel.$llmPresets,
 		samplersModel.$items,
-		llmProviderModel.loadProvidersFx,
-		llmProviderModel.loadTokensFx,
+		llmProviderModel.ensureProvidersFx,
+		llmProviderModel.ensureTokensFx,
 		llmProviderModel.loadModelsFx,
-		llmProviderModel.loadLlmPresetsFx,
+		llmProviderModel.ensureModelsFx,
+		llmProviderModel.ensureLlmPresetsFx,
 		llmProviderModel.createLlmPresetFx,
 		llmProviderModel.updateLlmPresetFx,
 		llmProviderModel.deleteLlmPresetFx,
+		llmProviderModel.loadModelsFx.pending,
+		llmProviderModel.ensureModelsFx.pending,
 	]);
 
 	const fieldPrefix = `operations.${index}.config.params` as const;
@@ -94,13 +100,23 @@ export const OperationLlmConfigControls: React.FC<Props> = ({ index }) => {
 	);
 
 	useEffect(() => {
-		void loadProvidersFx();
-		void loadLlmPresetsFx();
-	}, [loadLlmPresetsFx, loadProvidersFx]);
+		void ensureProvidersFx();
+		void ensureLlmPresetsFx();
+	}, [ensureLlmPresetsFx, ensureProvidersFx]);
 
 	useEffect(() => {
-		void loadTokensFx(providerId);
-	}, [loadTokensFx, providerId]);
+		void ensureTokensFx(providerId);
+	}, [ensureTokensFx, providerId]);
+
+	useEffect(() => {
+		if (!credentialRef) return;
+		void ensureModelsFx({
+			providerId,
+			scope: 'global',
+			scopeId: 'global',
+			tokenId: credentialRef,
+		});
+	}, [credentialRef, ensureModelsFx, providerId]);
 
 	const patchRuntime = (patch: Partial<OperationLlmRuntimeFields>) => {
 		if (typeof patch.providerId !== 'undefined') {
@@ -185,6 +201,7 @@ export const OperationLlmConfigControls: React.FC<Props> = ({ index }) => {
 				providers={providers}
 				tokens={tokens}
 				models={models}
+				isLoadingModels={isLoadingModels || isEnsuringModels}
 				presets={presets}
 				runtime={runtime}
 				onRuntimeChange={patchRuntime}
