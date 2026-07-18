@@ -6,6 +6,7 @@ import { buildGatewayStreamRequest } from "../../llm/llm-gateway-adapter";
 import { getProviderConfig, getTokenPlaintext } from "../../llm/llm-repository";
 import { compileLlmJsonSchemaSpec } from "../../operations/llm-json-schema-spec";
 import { parseLlmOperationParams } from "../../operations/llm-operation-params";
+import { OPERATION_RESOURCE_LIMITS } from "../../operations/operation-resource-limits";
 
 import type { GenerateMessage } from "@shared/types/generate";
 import type { OperationInProfile } from "@shared/types/operation-profiles";
@@ -258,6 +259,12 @@ async function callLlmOnce(params: {
     for await (const event of llmGateway.stream(request)) {
       if (event.type === "delta") {
         text += event.text;
+        if (Buffer.byteLength(text, "utf8") > OPERATION_RESOURCE_LIMITS.llmOutputBytes) {
+          throw createCodedError(
+            "LLM_OUTPUT_TOO_LARGE",
+            `LLM output exceeds ${OPERATION_RESOURCE_LIMITS.llmOutputBytes} bytes`
+          );
+        }
         continue;
       }
       if (event.type === "error") {
@@ -329,6 +336,14 @@ export async function executeLlmOperation(params: {
           context: params.liquidContext,
           options: { strictVariables: llmParams.strictVariables },
         })
+      );
+    }
+    const inputBytes = Buffer.byteLength(renderedPrompt, "utf8") +
+      Buffer.byteLength(renderedSystem, "utf8");
+    if (inputBytes > OPERATION_RESOURCE_LIMITS.llmOutputBytes) {
+      throw createCodedError(
+        "LLM_PROMPT_TOO_LARGE",
+        `Rendered LLM prompt exceeds ${OPERATION_RESOURCE_LIMITS.llmOutputBytes} bytes`
       );
     }
   } catch (error) {

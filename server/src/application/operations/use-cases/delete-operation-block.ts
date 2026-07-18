@@ -10,7 +10,10 @@ export async function deleteOperationBlockWithValidation(params: {
   ownerId: string;
   blockId: string;
 }): Promise<{ id: string }> {
-  const exists = await getOperationBlockById(params.blockId);
+  const exists = await getOperationBlockById({
+    ownerId: params.ownerId,
+    blockId: params.blockId,
+  });
   if (!exists) throw new HttpError(404, "OperationBlock не найден", "NOT_FOUND");
 
   const profiles = await listOperationProfiles({ ownerId: params.ownerId });

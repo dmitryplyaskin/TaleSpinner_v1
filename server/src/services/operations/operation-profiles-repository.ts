@@ -45,43 +45,49 @@ function rowToDto(row: typeof operationProfiles.$inferSelect): OperationProfile 
   };
 }
 
-export async function listOperationProfiles(params?: {
-  ownerId?: string;
+export async function listOperationProfiles(params: {
+  ownerId: string;
 }): Promise<OperationProfile[]> {
   const db = await initDb();
-  const ownerId = params?.ownerId ?? "global";
   const rows = await db
     .select()
     .from(operationProfiles)
-    .where(eq(operationProfiles.ownerId, ownerId))
+    .where(eq(operationProfiles.ownerId, params.ownerId))
     .orderBy(asc(operationProfiles.name));
   return rows.map(rowToDto);
 }
 
 export async function getOperationProfileById(
-  id: string
+  params: { ownerId: string; profileId: string }
 ): Promise<OperationProfile | null> {
   const db = await initDb();
   const rows = await db
     .select()
     .from(operationProfiles)
-    .where(eq(operationProfiles.id, id))
+    .where(
+      and(
+        eq(operationProfiles.id, params.profileId),
+        eq(operationProfiles.ownerId, params.ownerId)
+      )
+    )
     .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
 export async function createOperationProfile(params: {
-  ownerId?: string;
+  ownerId: string;
   input: OperationProfileUpsertInput;
 }): Promise<OperationProfile> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
   const ts = new Date();
   const profileId = uuidv4();
 
   const validated = validateOperationProfileUpsertInput(params.input);
   for (const ref of validated.blockRefs) {
-    const block = await getOperationBlockById(ref.blockId);
+    const block = await getOperationBlockById({
+      ownerId: params.ownerId,
+      blockId: ref.blockId,
+    });
     if (!block) {
       throw new HttpError(400, "Unknown blockId in profile", "VALIDATION_ERROR", {
         blockId: ref.blockId,
@@ -91,7 +97,7 @@ export async function createOperationProfile(params: {
 
   await db.insert(operationProfiles).values({
     id: profileId,
-    ownerId,
+    ownerId: params.ownerId,
     name: validated.name,
     description: validated.description ?? null,
     enabled: validated.enabled,
@@ -104,11 +110,14 @@ export async function createOperationProfile(params: {
     updatedAt: ts,
   });
 
-  const created = await getOperationProfileById(profileId);
+  const created = await getOperationProfileById({
+    ownerId: params.ownerId,
+    profileId,
+  });
   if (created) return created;
   return {
     profileId,
-    ownerId,
+    ownerId: params.ownerId,
     name: validated.name,
     description: validated.description,
     enabled: validated.enabled,
@@ -123,13 +132,15 @@ export async function createOperationProfile(params: {
 }
 
 export async function updateOperationProfile(params: {
-  ownerId?: string;
+  ownerId: string;
   profileId: string;
   patch: Partial<OperationProfileUpsertInput>;
 }): Promise<OperationProfile | null> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
-  const current = await getOperationProfileById(params.profileId);
+  const current = await getOperationProfileById({
+    ownerId: params.ownerId,
+    profileId: params.profileId,
+  });
   if (!current) return null;
 
   const nextInput: OperationProfileUpsertInput = {
@@ -157,7 +168,10 @@ export async function updateOperationProfile(params: {
 
   const validated = validateOperationProfileUpsertInput(nextInput);
   for (const ref of validated.blockRefs) {
-    const block = await getOperationBlockById(ref.blockId);
+    const block = await getOperationBlockById({
+      ownerId: params.ownerId,
+      blockId: ref.blockId,
+    });
     if (!block) {
       throw new HttpError(400, "Unknown blockId in profile", "VALIDATION_ERROR", {
         blockId: ref.blockId,
@@ -181,19 +195,33 @@ export async function updateOperationProfile(params: {
       metaJson: validated.meta === null ? null : safeJsonStringify(validated.meta),
       updatedAt: ts,
     })
-    .where(and(eq(operationProfiles.id, params.profileId), eq(operationProfiles.ownerId, ownerId)));
+    .where(
+      and(
+        eq(operationProfiles.id, params.profileId),
+        eq(operationProfiles.ownerId, params.ownerId)
+      )
+    );
 
-  return getOperationProfileById(params.profileId);
+  return getOperationProfileById({
+    ownerId: params.ownerId,
+    profileId: params.profileId,
+  });
 }
 
 export async function deleteOperationProfile(params: {
-  ownerId?: string;
+  ownerId: string;
   profileId: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
-  await db
+  const deleted = await db
     .delete(operationProfiles)
-    .where(and(eq(operationProfiles.id, params.profileId), eq(operationProfiles.ownerId, ownerId)));
+    .where(
+      and(
+        eq(operationProfiles.id, params.profileId),
+        eq(operationProfiles.ownerId, params.ownerId)
+      )
+    )
+    .returning({ id: operationProfiles.id });
+  return deleted.length > 0;
 }
 

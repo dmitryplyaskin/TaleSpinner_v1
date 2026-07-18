@@ -52,10 +52,13 @@ export async function getChatOperationRuntimeState(
 
   const empty = buildEmptyState(chat.id, branchId);
 
-  const settings = await getOperationProfileSettings();
+  const settings = await getOperationProfileSettings({ ownerId: chat.ownerId });
   if (!settings.activeProfileId) return empty;
 
-  const profile = await getOperationProfileById(settings.activeProfileId);
+  const profile = await getOperationProfileById({
+    ownerId: chat.ownerId,
+    profileId: settings.activeProfileId,
+  });
   if (!profile || !profile.enabled) return empty;
 
   const compiled = await resolveCompiledOperationProfile(profile);

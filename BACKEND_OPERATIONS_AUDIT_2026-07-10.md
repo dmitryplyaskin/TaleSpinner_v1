@@ -45,6 +45,10 @@
 | OPS-001 | Выполнено | `baa690b` | Preparation failures наблюдаемы в SSE; созданная generation финализируется; пустой assistant scaffolding удаляется при ошибке до создания generation. |
 | OPS-002 | Выполнено | `3dad07e` | Assistant rewrite сохраняется в main-part; required/optional persistence failures соблюдают policy; UI получает `turn.assistant.canonicalized`. |
 | OPS-026 | Выполнено | Текущие изменения | `operation.finished` передаёт stable error code, безопасное сообщение и abort reason; frontend показывает причину и сохраняет её в Run Trace; required barrier перечисляет проблемные operation IDs. |
+| OPS-003 | Выполнено | Текущие изменения | Backend слушает loopback по умолчанию; LAN требует opt-in; CORS использует allowlist и отклоняет чужие origins; request payload не переопределяет trusted owner. |
+| OPS-004 | Выполнено | Текущие изменения | Profile/block CRUD, export, activation, settings, bundle export и runtime resolution используют обязательный owner scope; cross-owner block refs запрещены. |
+| OPS-008 | Выполнено | Текущие изменения | Concurrent operation execution ограничен четырьмя задачами; queued DAG tasks сохраняют прежнюю abort semantics. |
+| OPS-009 | Выполнено | Текущие изменения | Добавлены лимиты blocks/operations/dependencies/templates/retries/LLM output, artifact values и history; лимиты проверяются на validation/runtime boundaries. |
 
 Проверки после OPS-002:
 
@@ -62,16 +66,20 @@
 
 Phase A завершена: terminal generation state, assistant rewrite persistence и actionable operation errors покрыты regression-тестами.
 
+Проверки после OPS-003, OPS-004, OPS-008 и OPS-009:
+
+- backend: 106 test files, 544 tests passed;
+- `yarn verify:server` и `yarn build:server` прошли;
+- `yarn docs:check` прошёл для RU и EN.
+
 ### Важные незакрытые задачи
 
-Следующий приоритетный batch — Phase B. Наиболее важный остаток:
+Security и bounded-execution core из Phase B завершены. Наиболее важный остаток:
 
-1. [ ] **OPS-004 (P0): owner scope во всех operation repositories и runtime resolution.** Сейчас cross-owner read/update/export и использование чужого active profile не исключены на уровне repository contract.
-2. [ ] **OPS-003 (P0): строгая local network boundary.** Backend должен слушать loopback по умолчанию, LAN mode требовать opt-in, а CORS и owner identity — перестать доверять произвольному caller.
-3. [ ] **OPS-008 + OPS-009 (P1): bounded execution.** Нужны conservative concurrency cap и лимиты размера profile, operation output и artifact history, иначе один профиль может породить неконтролируемое число provider calls и рост памяти/БД.
-4. [ ] **OPS-014 (P1): compile/validate profile до activation.** Сохранённый активный профиль обязан гарантированно компилироваться до generation time; вместе с concurrency cap это оставшийся хвост первоначального узкого fix batch.
-5. [ ] **OPS-005–OPS-007 + OPS-020 (P1): transaction/state correctness.** Knowledge mutations, activation counters и effects ещё способны оставить partial state или потерять updates при ошибках и concurrent runs.
-6. [ ] **OPS-021 + OPS-022 (P1): atomic import/cutover и optimistic concurrency.** Ошибка multi-write import оставляет orphan/partial records, а параллельное редактирование profile/block молча перетирает изменения.
+1. [ ] **OPS-014 (P1): compile/validate profile при create/update/import.** Activation теперь компилирует профиль заранее, но невалидную композицию всё ещё можно сохранить как неактивную.
+2. [ ] **OPS-005–OPS-007 + OPS-020 (P1): transaction/state correctness.** Knowledge mutations, activation counters и effects ещё способны оставить partial state или потерять updates при ошибках и concurrent runs.
+3. [ ] **OPS-021 + OPS-022 (P1): atomic import/cutover и optimistic concurrency.** Ошибка multi-write import оставляет orphan/partial records, а параллельное редактирование profile/block молча перетирает изменения.
+4. [ ] **OPS-013 (P1): строгая sampler validation.** Общие execution limits уже действуют, но provider samplers всё ещё требуют корректных диапазонов.
 
 После security и bounded-execution batch следует переходить к полной transaction redesign, а не смешивать её с небольшими contract fixes.
 
@@ -181,7 +189,9 @@ Operation может закончиться как `done`, effect — как `ap
 - required rewrite failure завершает run ошибкой;
 - optional failure сохраняет исходный assistant text.
 
-### OPS-003. Local backend не имеет строгой сетевой границы
+### OPS-003. Local backend не имеет строгой сетевой границы — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -207,7 +217,9 @@ Operation может закончиться как `done`, effect — как `ap
 - неподтверждённые origins отклоняются;
 - body не может переопределить trusted owner scope.
 
-### OPS-004. Operation repositories не соблюдают owner scope
+### OPS-004. Operation repositories не соблюдают owner scope — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -290,7 +302,9 @@ Effects применяются по одному. При ошибке она з�
 - формализовать policy: `atomic_per_operation`, `atomic_per_hook` или `best_effort`;
 - для required operations по умолчанию использовать atomic semantics.
 
-### OPS-008. `concurrent` запускает неограниченное число операций
+### OPS-008. `concurrent` запускает неограниченное число операций — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -315,7 +329,9 @@ Runtime не передаёт `concurrency`, поэтому orchestrator исп�
 - предупреждать или отклонять чрезмерно дорогие profiles;
 - сохранять abort semantics для queued tasks.
 
-### OPS-009. Нет resource limits для operation profile и artifacts
+### OPS-009. Нет resource limits для operation profile и artifacts — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -951,10 +967,10 @@ Config revision и manual reset должны иметь раздельно оп�
 
 ### Phase B. Security и bounded execution
 
-1. Исправить owner scope.
-2. Bind на loopback и ограничить CORS.
-3. Ввести concurrency cap.
-4. Добавить profile/artifact resource limits.
+1. [x] Исправить owner scope.
+2. [x] Bind на loopback и ограничить CORS.
+3. [x] Ввести concurrency cap.
+4. [x] Добавить profile/artifact resource limits.
 5. Усилить sampler validation.
 
 Критерии завершения:
@@ -1018,8 +1034,8 @@ Config revision и manual reset должны иметь раздельно оп�
 2. [x] Изменить `runChatGenerationV3`, чтобы все failure paths завершались наблюдаемо.
 3. [x] Persist-ить `turn.assistant.replace_text` через отдельный handler.
 4. [x] Передавать error information в `operation.finished`.
-5. [ ] Compile/validate profile до activation.
-6. [ ] Добавить conservative concurrency cap.
+5. [x] Compile/validate profile до activation.
+6. [x] Добавить conservative concurrency cap.
 
 Этот batch исправит пользовательскую correctness, не требуя одновременно завершать полную transaction redesign.
 

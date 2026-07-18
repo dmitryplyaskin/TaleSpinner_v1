@@ -2,6 +2,10 @@ import { createTaskSkip, runOrchestrator } from "@core/operation-orchestrator";
 
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
 import {
+  assertArtifactValueWithinLimits,
+  OPERATION_RESOURCE_LIMITS,
+} from "../../operations/operation-resource-limits";
+import {
   compileArtifactExposureEffect,
   getArtifactPrimaryEffectType,
   type OperationFinishedEventData,
@@ -539,6 +543,7 @@ export async function executeOperationsPhase(params: {
         hook: params.hook,
         trigger: params.trigger,
         executionMode: params.executionMode,
+        concurrency: OPERATION_RESOURCE_LIMITS.concurrentTasks,
         signal: params.abortSignal,
         tasks: executableOps.map((op) => ({
           taskId: op.opId,
@@ -615,6 +620,7 @@ export async function executeOperationsPhase(params: {
               return knowledgeResult;
             }
 
+            assertArtifactValueWithinLimits(resolvedRendered);
             const artifact = op.config.params.artifact;
             const effects: RuntimeEffect[] = [
               {

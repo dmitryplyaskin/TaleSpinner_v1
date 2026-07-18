@@ -69,5 +69,6 @@ export function resolveOwnerId(
 }
 
 export function getRequestOwnerId(req: Request, requestedOwnerId?: string | null): string {
-  return resolveOwnerId(requestedOwnerId, getRequestContext(req).ownerScope.ownerId);
+  void requestedOwnerId;
+  return getRequestContext(req).ownerScope.ownerId;
 }

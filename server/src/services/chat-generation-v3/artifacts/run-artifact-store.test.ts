@@ -3,6 +3,35 @@ import { describe, expect, test } from "vitest";
 import { RunArtifactStore } from "./run-artifact-store";
 
 describe("RunArtifactStore", () => {
+  test("rejects artifact values larger than 256 KiB", () => {
+    const store = new RunArtifactStore();
+
+    expect(() =>
+      store.upsert({
+        artifactId: "oversized",
+        format: "text",
+        semantics: "intermediate",
+        writeMode: "replace",
+        history: { enabled: true, maxItems: 20 },
+        value: "x".repeat(256 * 1024 + 1),
+      })
+    ).toThrow(/artifact value exceeds/i);
+  });
+
+  test("rejects runtime history limits above 100 items", () => {
+    const store = new RunArtifactStore();
+    expect(() =>
+      store.upsert({
+        artifactId: "history",
+        format: "text",
+        semantics: "intermediate",
+        writeMode: "replace",
+        history: { enabled: true, maxItems: 101 },
+        value: "ok",
+      })
+    ).toThrow(/history maxItems/i);
+  });
+
   test("returns null for unknown tag", () => {
     const store = new RunArtifactStore();
     expect(store.get("missing")).toBeNull();

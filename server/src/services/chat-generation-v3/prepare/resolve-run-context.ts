@@ -59,9 +59,12 @@ export async function resolveRunContext(params: {
     providerConfig: providerConfig.config,
   });
 
-  const settings = await getOperationProfileSettings();
+  const settings = await getOperationProfileSettings({ ownerId });
   const activeProfile = settings.activeProfileId
-    ? await getOperationProfileById(settings.activeProfileId)
+    ? await getOperationProfileById({
+        ownerId,
+        profileId: settings.activeProfileId,
+      })
     : null;
   const profile = activeProfile && activeProfile.enabled ? activeProfile : null;
   const compiledProfile = profile ? await resolveCompiledOperationProfile(profile) : null;

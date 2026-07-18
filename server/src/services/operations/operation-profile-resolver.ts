@@ -4,6 +4,7 @@ import { HttpError } from "@core/middleware/error-handler";
 
 import { validateCompiledProfileArtifactWriters } from "./operation-block-validator";
 import { getOperationBlockById } from "./operation-blocks-repository";
+import { OPERATION_RESOURCE_LIMITS } from "./operation-resource-limits";
 
 import type {
   OperationArtifactConfig,
@@ -21,6 +22,19 @@ export type CompiledOperationProfile = {
   blockVersions: Array<{ blockId: string; version: number }>;
   blockVersionFingerprint: string;
 };
+
+function assertCompiledOperationCount(profileId: string, operationCount: number): void {
+  if (operationCount <= OPERATION_RESOURCE_LIMITS.operationsPerProfile) return;
+  throw new HttpError(
+    400,
+    `Compiled profile exceeds ${OPERATION_RESOURCE_LIMITS.operationsPerProfile} operations`,
+    "VALIDATION_ERROR",
+    {
+      profileId,
+      operationCount,
+    }
+  );
+}
 
 function normalizeOrder(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -82,7 +96,10 @@ async function resolveBlocks(
     });
   const out: Array<{ refOrder: number; block: OperationBlock }> = [];
   for (const ref of enabledRefs) {
-    const block = await getOperationBlockById(ref.blockId);
+    const block = await getOperationBlockById({
+      ownerId: profile.ownerId,
+      blockId: ref.blockId,
+    });
     if (!block) {
       throw new HttpError(400, "Operation block not found", "VALIDATION_ERROR", {
         blockId: ref.blockId,
@@ -100,6 +117,7 @@ export async function resolveCompiledOperationProfile(
 ): Promise<CompiledOperationProfile> {
   if (!Array.isArray(profile.blockRefs) || profile.blockRefs.length === 0) {
     const operations = profile.operations ?? [];
+    assertCompiledOperationCount(profile.profileId, operations.length);
     validateCompiledProfileArtifactWriters({ ...profile, operations });
     return {
       profile,
@@ -125,6 +143,8 @@ export async function resolveCompiledOperationProfile(
       );
     }
   });
+
+  assertCompiledOperationCount(profile.profileId, operations.length);
 
   const blockVersionFingerprint = blockVersions
     .map((item) => `${item.blockId}:${item.version}`)

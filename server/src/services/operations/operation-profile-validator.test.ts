@@ -6,6 +6,24 @@ import {
 } from "./operation-profile-validator";
 
 describe("operation profile validator", () => {
+  test("rejects profiles with more than 16 block references", () => {
+    const blockRefs = Array.from({ length: 17 }, (_, index) => ({
+      blockId: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      enabled: true,
+      order: index,
+    }));
+
+    expect(() =>
+      validateOperationProfileUpsertInput({
+        name: "oversized",
+        enabled: true,
+        executionMode: "concurrent",
+        operationProfileSessionId: "2d9f1f5c-6f38-4f94-9caa-0ea4f36f2db8",
+        blockRefs,
+      })
+    ).toThrow(/Validation error/);
+  });
+
   test("accepts profile with unique block refs", () => {
     const out = validateOperationProfileUpsertInput({
       name: "profile",

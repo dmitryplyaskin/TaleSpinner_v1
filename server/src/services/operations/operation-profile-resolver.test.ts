@@ -12,7 +12,10 @@ import { resolveCompiledOperationProfile } from "./operation-profile-resolver";
 const blockById = new Map<string, OperationBlock>();
 
 vi.mock("./operation-blocks-repository", () => ({
-  getOperationBlockById: vi.fn(async (id: string) => blockById.get(id) ?? null),
+  getOperationBlockById: vi.fn(
+    async (params: { ownerId: string; blockId: string }) =>
+      blockById.get(params.blockId) ?? null
+  ),
 }));
 
 function makeBlock(params: {

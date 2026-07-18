@@ -10,6 +10,10 @@ import { runBackendBootstrap } from "./core/bootstrap/bootstrap-coordinator";
 import { structuredLogger } from "./core/logging/structured-logger";
 import { errorHandler } from "./core/middleware/error-handler";
 import { requestLifecycleLogger } from "./core/middleware/request-lifecycle-logger";
+import {
+  rejectDisallowedOrigin,
+  resolveServerNetworkPolicy,
+} from "./core/network/server-network-policy";
 import { requestContextMiddleware } from "./core/request-context/request-context";
 
 export type BootstrapAppOptions = {
@@ -26,11 +30,17 @@ function shouldUseRequestLogging(): boolean {
 
 export function createApp(): Express {
   const app = express();
+  const networkPolicy = resolveServerNetworkPolicy();
 
   if (shouldUseRequestLogging()) {
     app.use(morgan("dev"));
   }
-  app.use(cors());
+  app.use(rejectDisallowedOrigin(networkPolicy));
+  app.use(
+    cors({
+      origin: (origin, callback) => callback(null, networkPolicy.isOriginAllowed(origin)),
+    })
+  );
   app.use(express.json({ limit: "10mb" }));
   app.use(requestContextMiddleware);
   if (shouldUseRequestLogging()) {
@@ -53,9 +63,10 @@ export async function startAppServer(options: {
 }): Promise<{ app: Express; server: Server }> {
   await bootstrapApp({ dbPath: options.dbPath });
   const app = createApp();
+  const networkPolicy = resolveServerNetworkPolicy();
 
   const server = await new Promise<Server>((resolve) => {
-    const s = app.listen(options.port, () => resolve(s));
+    const s = app.listen(options.port, networkPolicy.host, () => resolve(s));
   });
 
   return { app, server };

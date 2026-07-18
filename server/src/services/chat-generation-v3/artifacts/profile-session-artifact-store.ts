@@ -5,6 +5,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import { safeJsonParse, safeJsonStringify } from "../../../chat-core/json";
 import { initDb } from "../../../db/client";
 import { operationProfileSessionArtifacts } from "../../../db/schema";
+import {
+  assertArtifactHistoryItemLimit,
+  assertArtifactHistoryWithinLimits,
+  assertArtifactValueWithinLimits,
+} from "../../operations/operation-resource-limits";
 
 import type { ArtifactValue } from "../contracts";
 import type { OperationActivationState } from "../operations/operation-activation-intervals";
@@ -120,12 +125,15 @@ export class ProfileSessionArtifactStore {
     };
     value: unknown;
   }): Promise<ArtifactValue> {
+    assertArtifactValueWithinLimits(params.value);
+    assertArtifactHistoryItemLimit(params.history.maxItems);
     const db = await initDb();
     const existingRows = await db
       .select()
       .from(operationProfileSessionArtifacts)
       .where(
         and(
+          eq(operationProfileSessionArtifacts.ownerId, params.ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey),
           eq(operationProfileSessionArtifacts.tag, params.tag)
         )
@@ -141,6 +149,7 @@ export class ProfileSessionArtifactStore {
           params.history.maxItems
         )
       : [];
+    assertArtifactHistoryWithinLimits(history);
 
     if (existing) {
       await db
@@ -198,6 +207,7 @@ export class ProfileSessionArtifactStore {
       .from(operationProfileSessionArtifacts)
       .where(
         and(
+          eq(operationProfileSessionArtifacts.ownerId, params.ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey),
           eq(operationProfileSessionArtifacts.tag, tag)
         )

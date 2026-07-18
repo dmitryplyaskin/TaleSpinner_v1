@@ -319,6 +319,104 @@ beforeEach(() => {
 });
 
 describe("executeOperationsPhase", () => {
+  test("caps concurrent operation execution at four tasks", async () => {
+    let active = 0;
+    let maxActive = 0;
+    mocks.llmGatewayStream.mockImplementation(() =>
+      (async function* () {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        yield { type: "delta", text: "ok" };
+        active -= 1;
+        yield { type: "done", status: "done" };
+      })()
+    );
+
+    const operations = Array.from({ length: 10 }, (_, index) =>
+      makeLlmOp({
+        opId: `llm-${index}`,
+        order: index,
+        prompt: "bounded",
+        output: artifactOutput(`result_${index}`),
+      })
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "bounded-concurrency",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations,
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out.every((item) => item.status === "done")).toBe(true);
+    expect(maxActive).toBe(4);
+  });
+
+  test("rejects auxiliary LLM output larger than 256 KiB", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "x".repeat(256 * 1024 + 1) },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "bounded-output",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-large-output",
+          order: 1,
+          prompt: "bounded",
+          output: artifactOutput("large_output"),
+        }),
+      ],
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]).toMatchObject({
+      status: "error",
+      error: { code: "LLM_OUTPUT_TOO_LARGE" },
+    });
+  });
+
+  test("rejects oversized template output before effects are created", async () => {
+    const out = await executeOperationsPhase({
+      runId: "bounded-template-output",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeTemplateOp({
+          opId: "large-template-output",
+          order: 1,
+          template: "x".repeat(256 * 1024 + 1),
+          output: artifactOutput("large_template"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]).toMatchObject({
+      status: "error",
+      error: { code: "ARTIFACT_VALUE_TOO_LARGE" },
+    });
+  });
+
   test("returns activation skip with skip details", async () => {
     const out = await executeOperationsPhase({
       runId: "run-eligible-filter",

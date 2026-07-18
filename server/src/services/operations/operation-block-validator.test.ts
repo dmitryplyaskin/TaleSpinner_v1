@@ -5,6 +5,71 @@ import { describe, expect, test } from "vitest";
 import { validateOperationBlockUpsertInput } from "./operation-block-validator";
 
 describe("operation block validator", () => {
+  test("rejects blocks with more than 64 operations", () => {
+    const operations = Array.from({ length: 65 }, (_, index) => ({
+      opId: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      name: `operation-${index}`,
+      kind: "template" as const,
+      config: {
+        enabled: true,
+        required: false,
+        hooks: ["before_main_llm" as const],
+        order: index,
+        params: { template: "ok" },
+      },
+    }));
+
+    expect(() =>
+      validateOperationBlockUpsertInput({
+        name: "oversized",
+        enabled: true,
+        operations,
+      })
+    ).toThrow(/Validation error/);
+  });
+
+  test("rejects oversized templates and artifact histories", () => {
+    const base = {
+      name: "block",
+      enabled: true,
+      operations: [
+        {
+          opId: "6ff77029-5037-4d21-8ace-c9836f58a14b",
+          name: "template-op",
+          kind: "template" as const,
+          config: {
+            enabled: true,
+            required: false,
+            hooks: ["before_main_llm" as const],
+            order: 10,
+            params: {
+              template: "x".repeat(100_001),
+            },
+          },
+        },
+      ],
+    };
+    expect(() => validateOperationBlockUpsertInput(base)).toThrow(/Validation error/);
+
+    const withLargeHistory = structuredClone(base);
+    withLargeHistory.operations[0]!.config.params.template = "ok";
+    Object.assign(withLargeHistory.operations[0]!.config.params, {
+      artifact: {
+        artifactId: "artifact:test",
+        tag: "test",
+        title: "Test",
+        format: "text",
+        persistence: "run_only",
+        writeMode: "replace",
+        history: { enabled: true, maxItems: 101 },
+        exposures: [],
+      },
+    });
+    expect(() => validateOperationBlockUpsertInput(withLargeHistory)).toThrow(
+      /Validation error/
+    );
+  });
+
   test("rejects legacy operation kind", () => {
     expect(() =>
       validateOperationBlockUpsertInput({
