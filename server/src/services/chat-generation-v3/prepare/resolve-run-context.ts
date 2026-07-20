@@ -1,3 +1,4 @@
+import { resolveTrustedOwnerId } from "../../../core/request-context/owner-scope-storage";
 import { createGeneration } from "../../chat-core/generations-repository";
 import {
   resolveGatewayModel,
@@ -50,7 +51,7 @@ export async function resolveRunContext(params: {
   context: RunContext;
   profile: OperationProfile | null;
 }> {
-  const ownerId = params.request.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.request.ownerId);
   const runtime = await getRuntime("global", ownerId);
   const providerConfig = await getProviderConfig(runtime.activeProviderId);
   const model = resolveGatewayModel({

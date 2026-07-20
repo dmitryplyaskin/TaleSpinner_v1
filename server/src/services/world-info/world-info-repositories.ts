@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import {
   chatEntries,
@@ -172,7 +173,7 @@ export async function listWorldInfoBooks(params: {
   before?: number;
 }): Promise<{ items: WorldInfoBookSummaryDto[]; nextCursor: number | null }> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const limit = Math.max(1, Math.min(200, params.limit ?? 50));
   const query = params.query?.trim().toLowerCase() ?? "";
   const where = [eq(worldInfoBooks.ownerId, ownerId), isNull(worldInfoBooks.deletedAt)];
@@ -210,7 +211,13 @@ export async function getWorldInfoBookById(id: string): Promise<WorldInfoBookDto
   const rows = await db
     .select()
     .from(worldInfoBooks)
-    .where(and(eq(worldInfoBooks.id, id), isNull(worldInfoBooks.deletedAt)))
+    .where(
+      and(
+        eq(worldInfoBooks.id, id),
+        eq(worldInfoBooks.ownerId, resolveTrustedOwnerId()),
+        isNull(worldInfoBooks.deletedAt)
+      )
+    )
     .limit(1);
   return rows[0] ? rowToBookDto(rows[0]) : null;
 }
@@ -221,7 +228,7 @@ export async function getWorldInfoBooksByIds(params: {
 }): Promise<WorldInfoBookDto[]> {
   if (params.ids.length === 0) return [];
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const rows = await db
     .select()
     .from(worldInfoBooks)
@@ -240,7 +247,7 @@ export async function listWorldInfoBooksForIndexing(params?: {
   ownerId?: string;
 }): Promise<WorldInfoBookDto[]> {
   const db = await initDb();
-  const ownerId = params?.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   const rows = await db
     .select()
     .from(worldInfoBooks)
@@ -259,7 +266,7 @@ export async function createWorldInfoBook(params: {
   source?: WorldInfoBookSource;
 }): Promise<WorldInfoBookDto> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const ts = new Date();
   const id = uuidv4();
   const normalized = normalizeWorldInfoBookPayload(params.data ?? {});
@@ -304,7 +311,7 @@ export async function updateWorldInfoBook(params: {
   version?: number;
 }): Promise<{ item: WorldInfoBookDto | null; conflict: boolean }> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getWorldInfoBookById(params.id);
   if (!current || current.ownerId !== ownerId) return { item: null, conflict: false };
 
@@ -349,7 +356,7 @@ export async function softDeleteWorldInfoBook(params: {
   ownerId?: string;
 }): Promise<boolean> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getWorldInfoBookById(params.id);
   if (!current || current.ownerId !== ownerId) return false;
   const ts = new Date();
@@ -383,7 +390,7 @@ export async function getWorldInfoSettings(params?: {
   ownerId?: string;
 }): Promise<WorldInfoSettingsDto> {
   const db = await initDb();
-  const ownerId = params?.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   const rows = await db
     .select()
     .from(worldInfoSettings)
@@ -427,7 +434,7 @@ export async function patchWorldInfoSettings(params: {
   patch: Partial<Omit<WorldInfoSettingsDto, "ownerId" | "createdAt" | "updatedAt">>;
 }): Promise<WorldInfoSettingsDto> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getWorldInfoSettings({ ownerId });
   const ts = new Date();
 
@@ -468,7 +475,7 @@ export async function listWorldInfoBindings(params: {
   scopeId?: string | null;
 }): Promise<WorldInfoBindingDto[]> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const where = [eq(worldInfoBindings.ownerId, ownerId)];
   if (params.scope) where.push(eq(worldInfoBindings.scope, params.scope));
   if (typeof params.scopeId === "string") where.push(eq(worldInfoBindings.scopeId, params.scopeId));
@@ -495,7 +502,7 @@ export async function replaceWorldInfoBindings(params: {
   }>;
 }): Promise<WorldInfoBindingDto[]> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const scopeId = params.scope === "global" ? null : (params.scopeId ?? null);
   const ts = new Date();
   await db.transaction((tx) => {
@@ -583,7 +590,7 @@ export async function listWorldInfoTimedEffects(params: {
   branchId: string;
 }): Promise<WorldInfoTimedEffectDto[]> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const rows = await db
     .select()
     .from(worldInfoTimedEffects)
@@ -616,7 +623,7 @@ export async function upsertWorldInfoTimedEffect(params: {
   protected?: boolean;
 }): Promise<WorldInfoTimedEffectDto> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const ts = new Date();
   const id = uuidv4();
   await db

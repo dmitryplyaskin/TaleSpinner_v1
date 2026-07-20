@@ -1,5 +1,7 @@
 import { BASE_URL } from "../const";
 
+import { authFetch } from "./auth-fetch";
+
 import type { TaleSpinnerBundleResourceKind } from "@shared/types/bundles";
 
 type ApiEnvelope<T> = { data: T; error?: unknown };
@@ -46,7 +48,7 @@ export async function exportBundle(input: {
   selections: BundleSelectionHandle[];
   format?: "json" | "archive" | "auto";
 }): Promise<{ blob: Blob; filename: string; contentType: string }> {
-  const res = await fetch(`${BASE_URL}/bundles/export`, {
+  const res = await authFetch(`${BASE_URL}/bundles/export`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -81,7 +83,7 @@ export async function importBundle(file: File): Promise<BundleImportResult> {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch(`${BASE_URL}/bundles/import`, {
+  const res = await authFetch(`${BASE_URL}/bundles/import`, {
     method: "POST",
     body: form,
   });

@@ -4,16 +4,26 @@ import type { Request, RequestHandler } from "express";
 
 export const GLOBAL_OWNER_ID = "global";
 
+export type UserRole = "admin" | "user";
+
+export type RequestActor =
+  | {
+      type: "system";
+      id: null;
+    }
+  | {
+      type: "user";
+      id: string;
+      role: UserRole;
+    };
+
 export type RequestContext = {
   requestId: string;
   ownerScope: {
     ownerId: string;
-    source: "context-default" | "explicit";
+    source: "context-default" | "explicit" | "authenticated-user";
   };
-  actor: {
-    type: "system";
-    id: null;
-  };
+  actor: RequestActor;
   tenant: {
     id: null;
   };
@@ -71,4 +81,25 @@ export function resolveOwnerId(
 export function getRequestOwnerId(req: Request, requestedOwnerId?: string | null): string {
   void requestedOwnerId;
   return getRequestContext(req).ownerScope.ownerId;
+}
+
+export function setAuthenticatedUserContext(
+  req: Request,
+  user: { userId: string; role: UserRole }
+): RequestContext {
+  const context = getRequestContext(req);
+  const authenticatedContext: RequestContext = {
+    ...context,
+    ownerScope: {
+      ownerId: user.userId,
+      source: "authenticated-user",
+    },
+    actor: {
+      type: "user",
+      id: user.userId,
+      role: user.role,
+    },
+  };
+  req.context = authenticatedContext;
+  return authenticatedContext;
 }

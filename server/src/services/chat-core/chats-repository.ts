@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq, lt, ne } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import {
   chatBranches,
@@ -137,7 +138,7 @@ export async function listChatsByEntityProfile(params: {
     .from(chats)
     .where(
       and(
-        eq(chats.ownerId, params.ownerId ?? "global"),
+        eq(chats.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(chats.entityProfileId, params.entityProfileId),
         // Show non-deleted by default in list
         ne(chats.status, "deleted")
@@ -149,7 +150,12 @@ export async function listChatsByEntityProfile(params: {
 
 export async function getChatById(id: string): Promise<ChatDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(chats).where(eq(chats.id, id));
+  const rows = await db
+    .select()
+    .from(chats)
+    .where(
+      and(eq(chats.id, id), eq(chats.ownerId, resolveTrustedOwnerId()))
+    );
   return rows[0] ? chatRowToDto(rows[0]) : null;
 }
 
@@ -160,7 +166,7 @@ export async function createChat(params: {
   meta?: unknown;
 }): Promise<{ chat: ChatDto; mainBranch: ChatBranchDto }> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const ts = new Date();
   const chatId = uuidv4();
   const mainBranchId = uuidv4();
@@ -234,7 +240,7 @@ export async function setChatInstruction(params: {
   instructionId: string | null;
 }): Promise<ChatDto | null> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const ts = new Date();
   await db
     .update(chats)
@@ -291,7 +297,7 @@ export async function createChatBranch(params: {
 
   await db.insert(chatBranches).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     chatId: params.chatId,
     title: params.title ?? null,
     createdAt: ts,
@@ -438,7 +444,7 @@ export async function createChatMessage(params: {
 
   await db.insert(chatMessages).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     chatId: params.chatId,
     branchId: params.branchId,
     role: params.role,
@@ -490,7 +496,7 @@ export async function createAssistantMessageWithVariant(params: {
   await db.transaction((tx) => {
     tx.insert(chatMessages).values({
       id: assistantMessageId,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       chatId: params.chatId,
       branchId: params.branchId,
       role: "assistant",
@@ -504,7 +510,7 @@ export async function createAssistantMessageWithVariant(params: {
 
     tx.insert(messageVariants).values({
       id: variantId,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       messageId: assistantMessageId,
       createdAt: ts,
       kind: "generation",
@@ -539,7 +545,7 @@ export async function createImportedAssistantMessage(params: {
   await db.transaction((tx) => {
     tx.insert(chatMessages).values({
       id: assistantMessageId,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       chatId: params.chatId,
       branchId: params.branchId,
       role: "assistant",
@@ -556,7 +562,7 @@ export async function createImportedAssistantMessage(params: {
 
     tx.insert(messageVariants).values({
       id: variantId,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       messageId: assistantMessageId,
       createdAt: ts,
       kind: "import",

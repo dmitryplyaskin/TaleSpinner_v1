@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { normalizeCharSpec } from "../../chat-core/charspec/normalize";
 import { extractCharSpecFromPngBuffer } from "../../chat-core/charspec/png";
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
@@ -465,7 +467,7 @@ export async function importSillyTavernSelection(params: SillyTavernImportReques
   }
   const ctx: ImportContext = {
     rootPath: scan.rootPath,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     selectedIds: new Set(params.selection.itemIds),
     itemById,
     profileRootByHandle,

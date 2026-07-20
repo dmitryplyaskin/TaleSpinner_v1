@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { entryVariants, variantParts } from "../../db/schema";
 
@@ -108,7 +109,7 @@ export function createPart(params: CreatePartParams & { executor: DbExecutor }):
 export function createPart(params: CreatePartParams): Promise<Part>;
 export function createPart(params: CreatePartParams): Promise<Part> | Part {
   const run = (db: DbExecutor): Part => {
-    const ownerId = params.ownerId ?? "global";
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const partId = uuidv4();
 
     const payloadJson = safeJsonStringify({
@@ -217,7 +218,12 @@ export async function getPartPayloadTextById(params: {
   const rows = await db
     .select({ payloadJson: variantParts.payloadJson })
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
 
   const existing = safeJsonParse<StoredPayload | null>(rows[0]?.payloadJson, null);
@@ -233,7 +239,12 @@ export async function getPartById(params: {
   const rows = await db
     .select()
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const row = rows[0];
   return row ? partRowToDomain(row) : null;

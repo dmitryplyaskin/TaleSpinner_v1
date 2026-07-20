@@ -2,6 +2,8 @@ import { randomUUID as uuidv4 } from "node:crypto";
 
 import { and, eq, isNull, or } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { initDb } from "../../db/client";
 import { knowledgeRecordAccessState } from "../../db/schema";
 
@@ -30,7 +32,10 @@ export async function listKnowledgeRecordAccessState(params: {
     .from(knowledgeRecordAccessState)
     .where(
       and(
-        eq(knowledgeRecordAccessState.ownerId, params.ownerId ?? "global"),
+        eq(
+          knowledgeRecordAccessState.ownerId,
+          resolveTrustedOwnerId(params.ownerId)
+        ),
         eq(knowledgeRecordAccessState.chatId, params.chatId),
         or(
           params.branchId === null
@@ -55,7 +60,10 @@ export async function getKnowledgeRecordAccessState(params: {
     .from(knowledgeRecordAccessState)
     .where(
       and(
-        eq(knowledgeRecordAccessState.ownerId, params.ownerId ?? "global"),
+        eq(
+          knowledgeRecordAccessState.ownerId,
+          resolveTrustedOwnerId(params.ownerId)
+        ),
         eq(knowledgeRecordAccessState.chatId, params.chatId),
         params.branchId === null
           ? isNull(knowledgeRecordAccessState.branchId)
@@ -87,7 +95,7 @@ export async function upsertKnowledgeAccessState(params: {
     .insert(knowledgeRecordAccessState)
     .values({
       id: uuidv4(),
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       chatId: params.chatId,
       branchId: params.branchId,
       recordId: params.recordId,

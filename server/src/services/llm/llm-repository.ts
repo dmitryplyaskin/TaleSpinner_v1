@@ -7,6 +7,7 @@ import {
   encryptSecret,
   maskToken,
 } from "@core/crypto/secret-box";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb, type Db } from "../../db/client";
 import {
@@ -63,6 +64,15 @@ export type TokenPlaintextLookupResult =
 
 function nowDate(): Date {
   return new Date();
+}
+
+function storageScopeId(scopeId: string): string {
+  const ownerId = resolveTrustedOwnerId();
+  return ownerId === "global" ? scopeId : `${ownerId}:${scopeId}`;
+}
+
+function providerConfigId(ownerId: string, providerId: LlmProviderId): string {
+  return ownerId === "global" ? providerId : `${ownerId}:${providerId}`;
 }
 
 function parseConfigJson(raw: string): unknown {
@@ -142,13 +152,14 @@ export async function getRuntime(
   scopeId: string,
 ): Promise<LlmRuntimeRow> {
   const database = await db();
+  const persistedScopeId = storageScopeId(scopeId);
   const rows = await database
     .select()
     .from(llmRuntimeSettings)
     .where(
       and(
         eq(llmRuntimeSettings.scope, scope),
-        eq(llmRuntimeSettings.scopeId, scopeId),
+        eq(llmRuntimeSettings.scopeId, persistedScopeId),
       ),
     );
 
@@ -173,7 +184,7 @@ export async function getRuntime(
 
   await database.insert(llmRuntimeSettings).values({
     scope,
-    scopeId,
+    scopeId: persistedScopeId,
     activeProviderId: fallback.activeProviderId,
     activeTokenId: null,
     activeModel: null,
@@ -188,12 +199,13 @@ export async function upsertRuntime(
 ): Promise<LlmRuntimeRow> {
   const database = await db();
   const ts = nowDate();
+  const persistedScopeId = storageScopeId(runtime.scopeId);
 
   await database
     .insert(llmRuntimeSettings)
     .values({
       scope: runtime.scope,
-      scopeId: runtime.scopeId,
+      scopeId: persistedScopeId,
       activeProviderId: runtime.activeProviderId,
       activeTokenId: runtime.activeTokenId,
       activeModel: runtime.activeModel,
@@ -218,13 +230,14 @@ export async function getRuntimeProviderState(params: {
   providerId: LlmProviderId;
 }): Promise<LlmRuntimeProviderStateRow> {
   const database = await db();
+  const persistedScopeId = storageScopeId(params.scopeId);
   const rows = await database
     .select()
     .from(llmRuntimeProviderState)
     .where(
       and(
         eq(llmRuntimeProviderState.scope, params.scope),
-        eq(llmRuntimeProviderState.scopeId, params.scopeId),
+        eq(llmRuntimeProviderState.scopeId, persistedScopeId),
         eq(llmRuntimeProviderState.providerId, params.providerId),
       ),
     );
@@ -241,7 +254,7 @@ export async function getRuntimeProviderState(params: {
   }
   return {
     scope: row.scope,
-    scopeId: row.scopeId,
+    scopeId: params.scopeId,
     providerId: row.providerId as LlmProviderId,
     lastTokenId: row.lastTokenId ?? null,
     lastModel: row.lastModel ?? null,
@@ -253,11 +266,12 @@ export async function upsertRuntimeProviderState(
 ): Promise<void> {
   const database = await db();
   const ts = nowDate();
+  const persistedScopeId = storageScopeId(params.scopeId);
   await database
     .insert(llmRuntimeProviderState)
     .values({
       scope: params.scope,
-      scopeId: params.scopeId,
+      scopeId: persistedScopeId,
       providerId: params.providerId,
       lastTokenId: params.lastTokenId,
       lastModel: params.lastModel,
@@ -281,10 +295,16 @@ export async function getProviderConfig(
   providerId: LlmProviderId,
 ): Promise<ProviderConfigRow> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmProviderConfigs)
-    .where(eq(llmProviderConfigs.id, providerId));
+    .where(
+      and(
+        eq(llmProviderConfigs.ownerId, ownerId),
+        eq(llmProviderConfigs.providerId, providerId)
+      )
+    );
 
   if (!rows[0]) {
     return { providerId, config: {} };
@@ -301,11 +321,13 @@ export async function upsertProviderConfig(
   const database = await db();
   const ts = nowDate();
   const configJson = JSON.stringify(config ?? {});
+  const ownerId = resolveTrustedOwnerId();
 
   await database
     .insert(llmProviderConfigs)
     .values({
-      id: providerId,
+      id: providerConfigId(ownerId, providerId),
+      ownerId,
       providerId,
       configJson,
       createdAt: ts,
@@ -323,10 +345,16 @@ export async function listTokens(
   providerId: LlmProviderId,
 ): Promise<LlmTokenListItem[]> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmTokens)
-    .where(eq(llmTokens.providerId, providerId));
+    .where(
+      and(
+        eq(llmTokens.ownerId, ownerId),
+        eq(llmTokens.providerId, providerId)
+      )
+    );
   return rows.map((r) => ({
     id: r.id,
     providerId: r.providerId as LlmProviderId,
@@ -344,6 +372,7 @@ export async function createToken(params: {
   token: string;
 }): Promise<LlmTokenListItem> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const id = uuidv4();
   const ts = nowDate();
   const ciphertext = encryptSecret(params.token);
@@ -351,6 +380,7 @@ export async function createToken(params: {
 
   await database.insert(llmTokens).values({
     id,
+    ownerId,
     providerId: params.providerId,
     name: params.name,
     ciphertext,
@@ -377,6 +407,7 @@ export async function updateToken(params: {
   token?: string;
 }): Promise<void> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const ts = nowDate();
 
   const set: Partial<typeof llmTokens.$inferInsert> = { updatedAt: ts };
@@ -388,11 +419,15 @@ export async function updateToken(params: {
     set.tokenHint = maskToken(params.token.trim());
   }
 
-  await database.update(llmTokens).set(set).where(eq(llmTokens.id, params.id));
+  await database
+    .update(llmTokens)
+    .set(set)
+    .where(and(eq(llmTokens.id, params.id), eq(llmTokens.ownerId, ownerId)));
 }
 
 export async function deleteToken(id: string): Promise<void> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   await database.transaction(async (tx) => {
     await tx
       .update(llmRuntimeSettings)
@@ -402,7 +437,9 @@ export async function deleteToken(id: string): Promise<void> {
       .update(llmRuntimeProviderState)
       .set({ lastTokenId: null, updatedAt: nowDate() })
       .where(eq(llmRuntimeProviderState.lastTokenId, id));
-    await tx.delete(llmTokens).where(eq(llmTokens.id, id));
+    await tx
+      .delete(llmTokens)
+      .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
   });
 }
 
@@ -428,10 +465,11 @@ export async function getTokenPlaintextResult(
   id: string,
 ): Promise<TokenPlaintextLookupResult> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmTokens)
-    .where(eq(llmTokens.id, id));
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
   const row = rows[0];
   if (!row) return { status: "missing" };
   try {
@@ -459,8 +497,9 @@ export async function getTokenPlaintext(id: string): Promise<string | null> {
 
 export async function touchTokenLastUsed(id: string): Promise<void> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   await database
     .update(llmTokens)
     .set({ lastUsedAt: nowDate(), updatedAt: nowDate() })
-    .where(eq(llmTokens.id, id));
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
 }

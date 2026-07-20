@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { chatEntries, entryVariants } from "../../db/schema";
 
@@ -74,7 +75,7 @@ export function createEntryWithVariant(
   params: CreateEntryWithVariantParams
 ): Promise<{ entry: Entry; variant: Variant }> | { entry: Entry; variant: Variant } {
   const run = (db: DbExecutor): { entry: Entry; variant: Variant } => {
-    const ownerId = params.ownerId ?? "global";
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
 
     const entryId = uuidv4();
     const variantId = uuidv4();
@@ -209,7 +210,16 @@ export async function listEntries(params: {
 
 export async function getEntryById(params: { entryId: string }): Promise<Entry | null> {
   const db = await initDb();
-  const rows = await db.select().from(chatEntries).where(eq(chatEntries.entryId, params.entryId)).limit(1);
+  const rows = await db
+    .select()
+    .from(chatEntries)
+    .where(
+      and(
+        eq(chatEntries.entryId, params.entryId),
+        eq(chatEntries.ownerId, resolveTrustedOwnerId())
+      )
+    )
+    .limit(1);
   const row = rows[0];
   return row ? entryRowToDomain(row) : null;
 }

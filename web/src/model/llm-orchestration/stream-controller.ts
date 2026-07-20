@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
+import { authFetch } from '../../api/auth-fetch';
 import { BASE_URL } from '../../const';
 
 export class StreamController {
@@ -20,7 +21,7 @@ export class StreamController {
 
 			// Отправляем запрос на прерывание на бэкенд
 			try {
-				await fetch(`${BASE_URL}/abort/${streamId}`, {
+				await authFetch(`${BASE_URL}/abort/${streamId}`, {
 					method: 'POST',
 				});
 			} catch (error) {

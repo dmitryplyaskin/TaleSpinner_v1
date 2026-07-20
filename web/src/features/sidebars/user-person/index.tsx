@@ -17,6 +17,7 @@ import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
 import { toaster } from '@ui/toaster';
 
+import { authFetch } from '../../../api/auth-fetch';
 import { BASE_URL } from '../../../const';
 
 import { UserPersonCard } from './user-person-card';
@@ -201,7 +202,7 @@ export const UserPersonSidebar: React.FC = () => {
 	const handleDeleteConfirm = async () => {
 		if (!deletingPerson) return;
 		try {
-			const response = await fetch(`${BASE_URL}/user-persons/${encodeURIComponent(deletingPerson.id)}`, {
+			const response = await authFetch(`${BASE_URL}/user-persons/${encodeURIComponent(deletingPerson.id)}`, {
 				method: 'DELETE',
 			});
 			if (!response.ok) {

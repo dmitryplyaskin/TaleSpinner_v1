@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { resolveSafePath } from "@core/files/safe-path";
 import { type AsyncRequestHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 import fileService from "@services/file-service";
 
 import { createDataPath } from "../../utils";
@@ -22,6 +23,16 @@ function readFilenameOrThrow(raw: unknown): string {
   const filename = Array.isArray(raw) ? raw[0] : raw;
   if (typeof filename !== "string" || filename.trim().length === 0) {
     throw new HttpError(400, "filename обязателен", "VALIDATION_ERROR");
+  }
+  const ownerId = resolveTrustedOwnerId();
+  const scopedSeparator = filename.indexOf("__");
+  if (
+    (ownerId !== "global" && !filename.startsWith(`${ownerId}__`)) ||
+    (ownerId === "global" &&
+      scopedSeparator >= 0 &&
+      !filename.startsWith("global__"))
+  ) {
+    throw new HttpError(404, "Файл не найден", "NOT_FOUND");
   }
   return filename;
 }
@@ -58,7 +69,7 @@ export const uploadFiles: AsyncRequestHandler = async (req) => {
   const uploadedFiles = await Promise.all(
     req.files.map(async (file) => {
       const fileExtension = path.extname(file.originalname);
-      const filename = `${uuidv4()}${fileExtension}`;
+      const filename = `${resolveTrustedOwnerId()}__${uuidv4()}${fileExtension}`;
       await fileService.saveFile(file.buffer, filename);
       return {
         originalName: file.originalname,
@@ -138,14 +149,15 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
 
   const cardImagesPath = path.join(
     createDataPath("media", "images"),
-    "agent-cards"
+    "agent-cards",
+    resolveTrustedOwnerId()
   );
   await fs.mkdir(cardImagesPath, { recursive: true });
 
   for (const file of req.files) {
     try {
       const fileExtension = path.extname(file.originalname).toLowerCase();
-      const filename = `${uuidv4()}${fileExtension}`;
+      const filename = `${resolveTrustedOwnerId()}__${uuidv4()}${fileExtension}`;
       const filePath = resolveSafePath(cardImagesPath, filename);
 
       if (fileExtension === ".png") {
@@ -167,7 +179,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/media/images/agent-cards/${filename}`,
+          path: `/media/images/agent-cards/${resolveTrustedOwnerId()}/${filename}`,
           characterData: [JSON.parse(characterData)],
           metadata: {
             ...metadata,
@@ -183,7 +195,7 @@ export const uploadCards: AsyncRequestHandler = async (req) => {
         processedFiles.push({
           originalName: file.originalname,
           filename,
-          path: `/media/images/agent-cards/${filename}`,
+          path: `/media/images/agent-cards/${resolveTrustedOwnerId()}/${filename}`,
           metadata: {
             width: 0,
             height: 0,
@@ -222,7 +234,8 @@ export const uploadImage: AsyncRequestHandler = async (req) => {
 
   const imageFolder = path.join(
     createDataPath("media", "images"),
-    sanitizedFolderName
+    sanitizedFolderName,
+    resolveTrustedOwnerId()
   );
 
   // Создаем папку, если она не существует
@@ -251,7 +264,7 @@ export const uploadImage: AsyncRequestHandler = async (req) => {
   return {
     data: {
       file: uploadedFile,
-      path: `/media/images/${sanitizedFolderName}/${filename}`,
+      path: `/media/images/${sanitizedFolderName}/${resolveTrustedOwnerId()}/${filename}`,
       message: "Изображение успешно загружено",
     },
   };

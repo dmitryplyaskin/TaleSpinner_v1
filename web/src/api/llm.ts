@@ -1,5 +1,7 @@
 import { BASE_URL } from '../const';
 
+import { authFetch } from './auth-fetch';
+
 import type {
 	LlmModel,
 	LlmOpenRouterEndpoint,
@@ -19,7 +21,7 @@ import type {
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${BASE_URL}${path}`, {
+	const res = await authFetch(`${BASE_URL}${path}`, {
 		...init,
 		headers: {
 			'Content-Type': 'application/json',

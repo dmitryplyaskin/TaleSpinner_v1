@@ -1,8 +1,9 @@
 import { randomUUID as uuidv4 } from "node:crypto";
 
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { userPersons, userPersonsSettings } from "../../db/schema";
 
@@ -68,19 +69,25 @@ export async function listUserPersons(params?: {
   ownerId?: string;
 }): Promise<UserPersonDto[]> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   const rows = await db
     .select()
     .from(userPersons)
-    .where(eq(userPersons.ownerId, params?.ownerId ?? "global"))
+    .where(eq(userPersons.ownerId, ownerId))
     .orderBy(asc(userPersons.name), desc(userPersons.updatedAt));
   return rows.map(rowToDto);
 }
 
 export async function getUserPersonById(
-  id: string
+  id: string,
+  params?: { ownerId?: string }
 ): Promise<UserPersonDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(userPersons).where(eq(userPersons.id, id));
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
+  const rows = await db
+    .select()
+    .from(userPersons)
+    .where(and(eq(userPersons.id, id), eq(userPersons.ownerId, ownerId)));
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
@@ -97,6 +104,7 @@ export async function createUserPerson(params: {
   updatedAt?: Date;
 }): Promise<UserPersonDto> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const now = new Date();
   const id =
     typeof params.id === "string" && params.id.length > 0 ? params.id : uuidv4();
@@ -105,7 +113,7 @@ export async function createUserPerson(params: {
 
   await db.insert(userPersons).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     name: params.name,
     prefix: typeof params.prefix === "string" ? params.prefix : null,
     avatarUrl: typeof params.avatarUrl === "string" ? params.avatarUrl : null,
@@ -122,11 +130,11 @@ export async function createUserPerson(params: {
     updatedAt,
   });
 
-  const created = await getUserPersonById(id);
+  const created = await getUserPersonById(id, { ownerId });
   if (!created) {
     return {
       id,
-      ownerId: params.ownerId ?? "global",
+      ownerId,
       name: params.name,
       prefix: params.prefix,
       avatarUrl: params.avatarUrl,
@@ -142,6 +150,7 @@ export async function createUserPerson(params: {
 
 export async function updateUserPerson(params: {
   id: string;
+  ownerId?: string;
   name?: string;
   prefix?: string;
   avatarUrl?: string;
@@ -151,7 +160,8 @@ export async function updateUserPerson(params: {
   updatedAt?: Date;
 }): Promise<UserPersonDto | null> {
   const db = await initDb();
-  const current = await getUserPersonById(params.id);
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const current = await getUserPersonById(params.id, { ownerId });
   if (!current) return null;
 
   const set: Partial<typeof userPersons.$inferInsert> = {
@@ -172,20 +182,29 @@ export async function updateUserPerson(params: {
   if (typeof params.contentTypeExtended !== "undefined")
     set.contentTypeExtendedJson = safeJsonStringify(params.contentTypeExtended, "[]");
 
-  await db.update(userPersons).set(set).where(eq(userPersons.id, params.id));
-  return getUserPersonById(params.id);
+  await db
+    .update(userPersons)
+    .set(set)
+    .where(and(eq(userPersons.id, params.id), eq(userPersons.ownerId, ownerId)));
+  return getUserPersonById(params.id, { ownerId });
 }
 
-export async function deleteUserPerson(id: string): Promise<void> {
+export async function deleteUserPerson(
+  id: string,
+  params?: { ownerId?: string }
+): Promise<void> {
   const db = await initDb();
-  await db.delete(userPersons).where(eq(userPersons.id, id));
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
+  await db
+    .delete(userPersons)
+    .where(and(eq(userPersons.id, id), eq(userPersons.ownerId, ownerId)));
 }
 
 export async function getUserPersonsSettings(params?: {
   ownerId?: string;
 }): Promise<UserPersonsSettingsDto> {
   const db = await initDb();
-  const ownerId = params?.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   const rows = await db
     .select()
     .from(userPersonsSettings)
@@ -231,7 +250,7 @@ export async function updateUserPersonsSettings(params: {
   sortType?: string | null;
 }): Promise<UserPersonsSettingsDto> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getUserPersonsSettings({ ownerId });
 
   const nextSelectedId =

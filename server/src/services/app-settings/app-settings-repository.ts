@@ -3,12 +3,11 @@ import fs from "node:fs/promises";
 import { type AppSettings } from "@shared/types/app-settings";
 import { eq } from "drizzle-orm";
 
-
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { uiAppSettings } from "../../db/schema";
 import { createDataPath } from "../../utils";
 
-const SETTINGS_ROW_ID = "global";
 const MAX_LEGACY_DATA_DEPTH = 32;
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -109,7 +108,7 @@ async function insertInitialSettings(settings: AppSettings): Promise<void> {
   await db
     .insert(uiAppSettings)
     .values({
-      id: SETTINGS_ROW_ID,
+      id: resolveTrustedOwnerId(),
       language: settings.language,
       openLastChat: settings.openLastChat,
       autoSelectCurrentPersona: settings.autoSelectCurrentPersona,
@@ -136,13 +135,13 @@ export async function getAppSettings(): Promise<AppSettings> {
   const rows = await db
     .select()
     .from(uiAppSettings)
-    .where(eq(uiAppSettings.id, SETTINGS_ROW_ID))
+    .where(eq(uiAppSettings.id, resolveTrustedOwnerId()))
     .limit(1);
 
   const existing = rows[0];
   if (existing) return rowToDto(existing);
 
-  const legacy = await tryReadLegacyFile();
+  const legacy = resolveTrustedOwnerId() === "global" ? await tryReadLegacyFile() : null;
   const normalized = normalizeLegacyAppSettings(legacy);
   await insertInitialSettings(normalized);
   return normalized;
@@ -159,7 +158,7 @@ export async function updateAppSettings(
   await db
     .insert(uiAppSettings)
     .values({
-      id: SETTINGS_ROW_ID,
+      id: resolveTrustedOwnerId(),
       language: next.language,
       openLastChat: next.openLastChat,
       autoSelectCurrentPersona: next.autoSelectCurrentPersona,

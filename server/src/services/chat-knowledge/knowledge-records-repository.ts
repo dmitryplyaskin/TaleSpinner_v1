@@ -2,6 +2,8 @@ import { randomUUID as uuidv4 } from "node:crypto";
 
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { initDb } from "../../db/client";
 import { knowledgeRecords } from "../../db/schema";
 
@@ -60,7 +62,7 @@ export async function getScopedKnowledgeRecordsByIds(params: {
     .from(knowledgeRecords)
     .where(
       and(
-        eq(knowledgeRecords.ownerId, params.ownerId ?? "global"),
+        eq(knowledgeRecords.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(knowledgeRecords.chatId, params.chatId),
         buildOverlayBranchScope(params.branchId),
         inArray(knowledgeRecords.id, params.ids)
@@ -82,7 +84,7 @@ export async function findKnowledgeRecordsByKeys(params: {
     .from(knowledgeRecords)
     .where(
       and(
-        eq(knowledgeRecords.ownerId, params.ownerId ?? "global"),
+        eq(knowledgeRecords.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(knowledgeRecords.chatId, params.chatId),
         buildOverlayBranchScope(params.branchId),
         inArray(knowledgeRecords.key, params.keys)
@@ -100,7 +102,7 @@ export async function listKnowledgeRecords(params: {
 }): Promise<KnowledgeRecordDto[]> {
   const db = await initDb();
   const where = [
-    eq(knowledgeRecords.ownerId, params.ownerId ?? "global"),
+    eq(knowledgeRecords.ownerId, resolveTrustedOwnerId(params.ownerId)),
     eq(knowledgeRecords.chatId, params.chatId),
     buildOverlayBranchScope(params.branchId),
   ];
@@ -183,7 +185,7 @@ export async function upsertKnowledgeRecord(params: {
   } else {
     await db.insert(knowledgeRecords).values({
       id: uuidv4(),
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       chatId: params.chatId,
       branchId: params.branchId,
       collectionId: params.collectionId,

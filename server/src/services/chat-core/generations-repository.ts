@@ -7,6 +7,7 @@ import {
   safeJsonStringify,
   safeJsonStringifyForLog,
 } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { llmGenerations } from "../../db/schema";
 
@@ -33,7 +34,7 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
 
   await db.insert(llmGenerations).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     chatId: params.chatId,
     branchId: params.branchId,
     messageId: params.messageId,
@@ -103,7 +104,16 @@ function rowToWithDebugDto(
 
 export async function getGenerationById(id: string): Promise<GenerationDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(llmGenerations).where(eq(llmGenerations.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(
+      and(
+        eq(llmGenerations.id, id),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+      )
+    )
+    .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
@@ -119,6 +129,7 @@ export async function getActiveGenerationForChatBranch(params: {
       and(
         eq(llmGenerations.chatId, params.chatId),
         eq(llmGenerations.branchId, params.branchId),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId()),
         eq(llmGenerations.status, "streaming")
       )
     )

@@ -1,5 +1,6 @@
 import { getChromaConfig } from "../../config/chroma-config";
 import { HttpError } from "../../core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { generateRagEmbedding } from "../rag.service";
 import { normalizeWorldInfoBookEntries } from "../world-info/world-info-normalizer";
 import {
@@ -70,7 +71,22 @@ function toNonEmptyString(value: unknown): string | null {
 function resolveCollectionName(collectionName?: string): string {
   const fallback = getChromaConfig().worldInfoCollection;
   const normalized = toNonEmptyString(collectionName);
-  return normalized ?? fallback;
+  const logicalName = normalized ?? fallback;
+  const ownerId = resolveTrustedOwnerId();
+  if (ownerId === "global") {
+    return looksOwnerNamespaced(logicalName) ? `global__${logicalName}` : logicalName;
+  }
+  return `${ownerId}__${logicalName}`;
+}
+
+function looksOwnerNamespaced(name: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f-]{27}__/i.test(name);
+}
+
+function isVisibleCollectionName(name: string): boolean {
+  const ownerId = resolveTrustedOwnerId();
+  if (ownerId === "global") return !looksOwnerNamespaced(name);
+  return name.startsWith(`${ownerId}__`);
 }
 
 function normalizePeekResult(raw: unknown): ChromaPeekItem[] {
@@ -242,7 +258,8 @@ export function createChromaRagService(
     },
 
     async listCollections(): Promise<ChromaCollectionListItem[]> {
-      return deps.chroma.listCollections();
+      const collections = await deps.chroma.listCollections();
+      return collections.filter((collection) => isVisibleCollectionName(collection.name));
     },
 
     async createCollection(params: {
@@ -253,8 +270,9 @@ export function createChromaRagService(
       if (!name) {
         throw new HttpError(400, "Collection name is required", "VALIDATION_ERROR");
       }
+      const storedName = resolveCollectionName(name);
       await deps.chroma.getOrCreateCollection({
-        name,
+        name: storedName,
         metadata: toMetadataRecord(params.metadata),
       });
       return { name };
@@ -265,7 +283,7 @@ export function createChromaRagService(
       if (!normalized) {
         throw new HttpError(400, "Collection name is required", "VALIDATION_ERROR");
       }
-      await deps.chroma.deleteCollection(normalized);
+      await deps.chroma.deleteCollection(resolveCollectionName(normalized));
       return { name: normalized };
     },
 
@@ -397,7 +415,7 @@ export function createChromaRagService(
       durationMs: number;
     }> {
       const startedAt = Date.now();
-      const ownerId = toNonEmptyString(params.ownerId) ?? "global";
+      const ownerId = resolveTrustedOwnerId(toNonEmptyString(params.ownerId) ?? undefined);
       const collectionName = resolveCollectionName(params.collectionName);
       const books = await deps.listBooksForIndexing({ ownerId });
       const docs: ChromaDocInput[] = [];

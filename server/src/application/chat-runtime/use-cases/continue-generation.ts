@@ -1,4 +1,5 @@
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { withDbTransaction } from "../../../db/client";
 import { getChatById } from "../../../services/chat-core/chats-repository";
@@ -35,7 +36,7 @@ export async function continueGeneration(
   const chat = await getChatById(params.chatId);
   if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
-  const ownerId = params.body.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.body.ownerId);
   const branchId = params.body.branchId || chat.activeBranchId;
   if (!branchId) {
     throw new HttpError(400, "branchId обязателен (нет activeBranchId)", "VALIDATION_ERROR");

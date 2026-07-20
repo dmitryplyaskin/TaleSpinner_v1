@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { chatEntries, entryVariants } from "../../db/schema";
 
@@ -33,7 +34,7 @@ export function createVariant(params: CreateVariantParams & { executor: DbExecut
 export function createVariant(params: CreateVariantParams): Promise<Variant>;
 export function createVariant(params: CreateVariantParams): Promise<Variant> | Variant {
   const run = (db: DbExecutor): Variant => {
-    const ownerId = params.ownerId ?? "global";
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
 
     const variantId = uuidv4();
     const createdAtMs = Date.now();

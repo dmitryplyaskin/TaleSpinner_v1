@@ -62,29 +62,48 @@ export const llmProviders = sqliteTable("llm_providers", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-export const llmProviderConfigs = sqliteTable("llm_provider_configs", {
-  id: text("id").primaryKey(),
-  providerId: text("provider_id")
-    .notNull()
-    .references(() => llmProviders.id, { onDelete: "cascade" }),
-  // Provider-specific fields are stored in JSON to avoid schema churn.
-  configJson: text("config_json").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-});
+export const llmProviderConfigs = sqliteTable(
+  "llm_provider_configs",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => llmProviders.id, { onDelete: "cascade" }),
+    configJson: text("config_json").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => ({
+    ownerProviderIndex: uniqueIndex("llm_provider_configs_owner_provider_uq").on(
+      table.ownerId,
+      table.providerId
+    ),
+  })
+);
 
-export const llmTokens = sqliteTable("llm_tokens", {
-  id: text("id").primaryKey(),
-  providerId: text("provider_id")
-    .notNull()
-    .references(() => llmProviders.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  ciphertext: text("ciphertext").notNull(),
-  tokenHint: text("token_hint").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-  lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
-});
+export const llmTokens = sqliteTable(
+  "llm_tokens",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("global"),
+    providerId: text("provider_id")
+      .notNull()
+      .references(() => llmProviders.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    tokenHint: text("token_hint").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+  },
+  (table) => ({
+    ownerProviderIndex: index("llm_tokens_owner_provider_idx").on(
+      table.ownerId,
+      table.providerId
+    ),
+  })
+);
 
 export const llmRuntimeSettings = sqliteTable(
   "llm_runtime_settings",

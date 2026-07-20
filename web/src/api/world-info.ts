@@ -1,6 +1,7 @@
 import { BASE_URL } from '../const';
 
 import { apiJson } from './api-json';
+import { authFetch } from './auth-fetch';
 
 export type WorldInfoScope = 'global' | 'chat' | 'entity_profile' | 'persona';
 export type WorldInfoBindingRole = 'primary' | 'additional';
@@ -90,7 +91,7 @@ export type WorldInfoBookListResponse = {
 type ApiEnvelope<T> = { data: T; error?: unknown };
 
 async function apiForm<T>(path: string, form: FormData, init?: Omit<RequestInit, 'body'>): Promise<T> {
-	const res = await fetch(`${BASE_URL}${path}`, {
+	const res = await authFetch(`${BASE_URL}${path}`, {
 		...init,
 		method: init?.method ?? 'POST',
 		body: form,

@@ -2,6 +2,8 @@ import { randomUUID as uuidv4 } from "node:crypto";
 
 import { and, eq, isNull, or } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { initDb } from "../../db/client";
 import { knowledgeRecordLinks } from "../../db/schema";
 
@@ -28,7 +30,7 @@ export async function createKnowledgeRecordLinksBulk(params: {
     .values(
       params.items.map((item) => ({
         id: uuidv4(),
-        ownerId: params.ownerId ?? "global",
+        ownerId: resolveTrustedOwnerId(params.ownerId),
         chatId: params.chatId,
         branchId: params.branchId,
         fromRecordId: item.fromRecordId,
@@ -58,7 +60,7 @@ export async function listKnowledgeRecordLinks(params: {
     .from(knowledgeRecordLinks)
     .where(
       and(
-        eq(knowledgeRecordLinks.ownerId, params.ownerId ?? "global"),
+        eq(knowledgeRecordLinks.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(knowledgeRecordLinks.chatId, params.chatId),
         or(
           params.branchId === null

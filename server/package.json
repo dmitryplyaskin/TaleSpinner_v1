@@ -8,6 +8,7 @@
   "dependencies": {
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
+    "argon2": "0.44.0",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.0",
     "chromadb": "^3.3.1",

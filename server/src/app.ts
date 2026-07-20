@@ -5,7 +5,23 @@ import express, { type Express } from "express";
 import morgan from "morgan";
 
 import { routes } from "./api/_routes_";
+import { createAuthRouter } from "./api/auth.api";
 import staticRouter from "./api/static.api";
+import { resolveAccessPolicy } from "./core/auth/access-policy";
+import { resolveAuthConfig } from "./core/auth/auth-config";
+import {
+  createAuthContextMiddleware,
+  requireAuthenticatedApi,
+} from "./core/auth/auth-middleware";
+import {
+  createCsrfProtectionMiddleware,
+  createHttpsEnforcementMiddleware,
+  securityHeadersMiddleware,
+} from "./core/auth/security-middleware";
+import {
+  mediaOwnerMiddleware,
+  trustedOwnerMiddleware,
+} from "./core/auth/trusted-owner-middleware";
 import { runBackendBootstrap } from "./core/bootstrap/bootstrap-coordinator";
 import { structuredLogger } from "./core/logging/structured-logger";
 import { errorHandler } from "./core/middleware/error-handler";
@@ -30,8 +46,16 @@ function shouldUseRequestLogging(): boolean {
 
 export function createApp(): Express {
   const app = express();
+  const authConfig = resolveAuthConfig();
+  const accessPolicy = resolveAccessPolicy();
   const networkPolicy = resolveServerNetworkPolicy();
 
+  app.locals.accessPolicy = accessPolicy;
+  app.locals.authConfig = authConfig;
+  if (authConfig.trustProxy) app.set("trust proxy", 1);
+
+  app.use(securityHeadersMiddleware);
+  app.use(createHttpsEnforcementMiddleware(authConfig));
   if (shouldUseRequestLogging()) {
     app.use(morgan("dev"));
   }
@@ -39,10 +63,16 @@ export function createApp(): Express {
   app.use(
     cors({
       origin: (origin, callback) => callback(null, networkPolicy.isOriginAllowed(origin)),
+      credentials: true,
     })
   );
   app.use(express.json({ limit: "10mb" }));
   app.use(requestContextMiddleware);
+  app.use("/api", createAuthContextMiddleware(authConfig));
+  app.use("/media", createAuthContextMiddleware(authConfig));
+  app.use("/media", requireAuthenticatedApi, mediaOwnerMiddleware);
+  app.use("/api", trustedOwnerMiddleware);
+  app.use("/api", createCsrfProtectionMiddleware(authConfig));
   if (shouldUseRequestLogging()) {
     app.use(requestLifecycleLogger);
   }
@@ -50,7 +80,8 @@ export function createApp(): Express {
   app.use(express.static("public"));
 
   app.use(staticRouter);
-  app.use("/api", routes);
+  app.use("/api/auth", createAuthRouter(authConfig));
+  app.use("/api", requireAuthenticatedApi, routes);
 
   app.use(errorHandler(structuredLogger));
 
