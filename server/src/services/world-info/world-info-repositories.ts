@@ -376,7 +376,7 @@ export async function duplicateWorldInfoBook(params: {
   const src = await getWorldInfoBookById(params.id);
   if (!src) return null;
   return createWorldInfoBook({
-    ownerId: params.ownerId ?? src.ownerId,
+    ownerId: resolveTrustedOwnerId(params.ownerId ?? src.ownerId),
     name: params.name ?? `${src.name} (copy)`,
     slug: params.slug ?? `${src.slug}-copy`,
     description: src.description,
@@ -543,7 +543,12 @@ export async function replaceWorldInfoBindings(params: {
                   : safeJsonStringify(item.meta, "{}"),
             updatedAt: ts,
           })
-          .where(eq(worldInfoBindings.id, found.id))
+          .where(
+            and(
+              eq(worldInfoBindings.id, found.id),
+              eq(worldInfoBindings.ownerId, ownerId)
+            )
+          )
           .run();
         continue;
       }
@@ -576,7 +581,12 @@ export async function replaceWorldInfoBindings(params: {
     if (toDelete.length > 0) {
       tx
         .delete(worldInfoBindings)
-        .where(inArray(worldInfoBindings.id, toDelete.map((item) => item.id)))
+        .where(
+          and(
+            inArray(worldInfoBindings.id, toDelete.map((item) => item.id)),
+            eq(worldInfoBindings.ownerId, ownerId)
+          )
+        )
         .run();
     }
   });
@@ -607,7 +617,14 @@ export async function listWorldInfoTimedEffects(params: {
 export async function deleteWorldInfoTimedEffectsByIds(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   const db = await initDb();
-  await db.delete(worldInfoTimedEffects).where(inArray(worldInfoTimedEffects.id, ids));
+  await db
+    .delete(worldInfoTimedEffects)
+    .where(
+      and(
+        inArray(worldInfoTimedEffects.id, ids),
+        eq(worldInfoTimedEffects.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function upsertWorldInfoTimedEffect(params: {
@@ -692,6 +709,7 @@ export async function getBranchMessageIndex(params: {
       .from(chatEntries)
       .where(
         and(
+          eq(chatEntries.ownerId, resolveTrustedOwnerId()),
           eq(chatEntries.chatId, params.chatId),
           eq(chatEntries.branchId, params.branchId),
           eq(chatEntries.softDeleted, false)
@@ -702,6 +720,7 @@ export async function getBranchMessageIndex(params: {
       .from(chatMessages)
       .where(
         and(
+          eq(chatMessages.ownerId, resolveTrustedOwnerId()),
           eq(chatMessages.chatId, params.chatId),
           eq(chatMessages.branchId, params.branchId),
           sql`not (

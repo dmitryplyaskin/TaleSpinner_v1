@@ -12,8 +12,10 @@ import { authSessions } from "../../db/schema";
 
 import {
   createAuthSession,
+  cleanupAuthSessions,
   resolveAuthSession,
   revokeAuthSession,
+  rotateSessionCsrfToken,
   verifySessionCsrfToken,
 } from "./session-service";
 import {
@@ -82,6 +84,20 @@ describe("session service", () => {
     expect(verifySessionCsrfToken(principal, "wrong-token", config)).toBe(
       false
     );
+
+    const firstRefresh = await rotateSessionCsrfToken(
+      created.sessionId,
+      config
+    );
+    const secondRefresh = await rotateSessionCsrfToken(
+      created.sessionId,
+      config
+    );
+    expect(firstRefresh).toBe(created.csrfToken);
+    expect(secondRefresh).toBe(created.csrfToken);
+    expect(
+      verifySessionCsrfToken(principal, firstRefresh, config)
+    ).toBe(true);
   });
 
   test("does not resolve revoked sessions", async () => {
@@ -91,5 +107,44 @@ describe("session service", () => {
     await expect(
       resolveAuthSession({ token: created.token, config })
     ).resolves.toBeNull();
+  });
+
+  test("cleans up expired and old revoked sessions", async () => {
+    const expired = await createFixture();
+    const user = await getUserCredentialsById("user-1");
+    if (!user) throw new Error("Missing fixture user");
+    const revoked = await createAuthSession({
+      user,
+      authMethod: "local",
+      config,
+    });
+    const active = await createAuthSession({
+      user,
+      authMethod: "local",
+      config,
+    });
+    const db = await initDb();
+    const now = new Date("2026-07-27T12:00:00.000Z");
+    await db
+      .update(authSessions)
+      .set({ expiresAt: new Date(now.getTime() - 1) })
+      .where(eq(authSessions.id, expired.sessionId));
+    await db
+      .update(authSessions)
+      .set({
+        revokedAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(now.getTime() + 60_000),
+      })
+      .where(eq(authSessions.id, revoked.sessionId));
+    await db
+      .update(authSessions)
+      .set({ expiresAt: new Date(now.getTime() + 60_000) })
+      .where(eq(authSessions.id, active.sessionId));
+
+    await expect(cleanupAuthSessions({ now })).resolves.toBe(2);
+    const remaining = await db.select().from(authSessions);
+    expect(remaining.map((session) => session.id)).toEqual([
+      active.sessionId,
+    ]);
   });
 });

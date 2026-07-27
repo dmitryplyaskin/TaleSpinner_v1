@@ -2,7 +2,13 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "path";
 
-import { initDb } from "./client";
+import { sql } from "drizzle-orm";
+
+import {
+  backupCurrentDatabase,
+  getCurrentDbPath,
+  initDb,
+} from "./client";
 
 export function resolveMigrationsFolder(): string {
   const cwdPath = path.resolve(process.cwd(), "drizzle");
@@ -86,6 +92,29 @@ export async function applyMigrations(): Promise<void> {
   const db = await initDb();
   const migrationsFolder = resolveMigrationsFolder();
   const migrations = readMigrationFilesSafe(migrationsFolder);
+  const tables = await db.all<{ name: string }>(
+    sql`SELECT name FROM sqlite_master WHERE type = 'table'`
+  );
+  const tableNames = new Set(tables.map((table) => table.name));
+  if (
+    tableNames.has("__drizzle_migrations") &&
+    !tableNames.has("users")
+  ) {
+    const dbPath = getCurrentDbPath();
+    if (!dbPath) {
+      throw new Error("Unable to resolve database path for migration backup.");
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupPath = path.join(
+      path.dirname(dbPath),
+      "backups",
+      `db-pre-user-accounts-${timestamp}.sqlite`
+    );
+    await backupCurrentDatabase(backupPath);
+    console.info("[db] created pre-user-accounts migration backup", {
+      backupPath,
+    });
+  }
 
   // Drizzle internal API. We intentionally bypass the default migrator so we can
   // sanitize migration chunks and avoid empty-SQL crashes.

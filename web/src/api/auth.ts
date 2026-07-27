@@ -104,3 +104,37 @@ export async function createAuthUser(params: {
 		body: JSON.stringify(params),
 	});
 }
+
+export async function updateAuthUser(params: {
+	id: string;
+	role?: 'admin' | 'user';
+	status?: 'active' | 'disabled';
+}): Promise<AuthUser> {
+	const { id, ...body } = params;
+	return authJson<AuthUser>(`/users/${encodeURIComponent(id)}`, {
+		method: 'PATCH',
+		body: JSON.stringify(body),
+	});
+}
+
+export async function resetAuthUserPassword(params: {
+	id: string;
+	newPassword: string;
+}): Promise<AuthUser> {
+	return authJson<AuthUser>(`/users/${encodeURIComponent(params.id)}/password`, {
+		method: 'POST',
+		body: JSON.stringify({ newPassword: params.newPassword }),
+	});
+}
+
+export async function changeOwnPassword(params: {
+	currentPassword: string;
+	newPassword: string;
+}): Promise<AuthResult> {
+	const result = await authJson<AuthResult>('/password', {
+		method: 'POST',
+		body: JSON.stringify(params),
+	});
+	setAuthCsrfToken(result.csrfToken);
+	return result;
+}

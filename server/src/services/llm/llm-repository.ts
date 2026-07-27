@@ -1,12 +1,13 @@
 import { randomUUID as uuidv4 } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 
 import {
   decryptSecret,
   encryptSecret,
   maskToken,
 } from "@core/crypto/secret-box";
+import { HttpError } from "@core/middleware/error-handler";
 import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb, type Db } from "../../db/client";
@@ -68,7 +69,7 @@ function nowDate(): Date {
 
 function storageScopeId(scopeId: string): string {
   const ownerId = resolveTrustedOwnerId();
-  return ownerId === "global" ? scopeId : `${ownerId}:${scopeId}`;
+  return `${ownerId}:${scopeId}`;
 }
 
 function providerConfigId(ownerId: string, providerId: LlmProviderId): string {
@@ -113,13 +114,14 @@ export async function ensureDefaultProviders(): Promise<void> {
 
 export async function ensureDefaultRuntimeGlobal(): Promise<void> {
   const database = await db();
+  const persistedScopeId = storageScopeId("global");
   const existing = await database
     .select()
     .from(llmRuntimeSettings)
     .where(
       and(
         eq(llmRuntimeSettings.scope, "global"),
-        eq(llmRuntimeSettings.scopeId, "global"),
+        eq(llmRuntimeSettings.scopeId, persistedScopeId),
       ),
     );
 
@@ -127,7 +129,7 @@ export async function ensureDefaultRuntimeGlobal(): Promise<void> {
 
   await database.insert(llmRuntimeSettings).values({
     scope: "global",
-    scopeId: "global",
+    scopeId: persistedScopeId,
     activeProviderId: "openrouter",
     activeTokenId: null,
     activeModel: null,
@@ -200,6 +202,23 @@ export async function upsertRuntime(
   const database = await db();
   const ts = nowDate();
   const persistedScopeId = storageScopeId(runtime.scopeId);
+  const ownerId = resolveTrustedOwnerId();
+
+  if (runtime.activeTokenId) {
+    const token = await database
+      .select({ id: llmTokens.id })
+      .from(llmTokens)
+      .where(
+        and(
+          eq(llmTokens.id, runtime.activeTokenId),
+          eq(llmTokens.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!token[0]) {
+      throw new HttpError(404, "LLM token not found", "NOT_FOUND");
+    }
+  }
 
   await database
     .insert(llmRuntimeSettings)
@@ -267,6 +286,22 @@ export async function upsertRuntimeProviderState(
   const database = await db();
   const ts = nowDate();
   const persistedScopeId = storageScopeId(params.scopeId);
+  const ownerId = resolveTrustedOwnerId();
+  if (params.lastTokenId) {
+    const token = await database
+      .select({ id: llmTokens.id })
+      .from(llmTokens)
+      .where(
+        and(
+          eq(llmTokens.id, params.lastTokenId),
+          eq(llmTokens.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!token[0]) {
+      throw new HttpError(404, "LLM token not found", "NOT_FOUND");
+    }
+  }
   await database
     .insert(llmRuntimeProviderState)
     .values({
@@ -428,18 +463,38 @@ export async function updateToken(params: {
 export async function deleteToken(id: string): Promise<void> {
   const database = await db();
   const ownerId = resolveTrustedOwnerId();
-  await database.transaction(async (tx) => {
-    await tx
+  const ownedToken = await database
+    .select({ id: llmTokens.id })
+    .from(llmTokens)
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)))
+    .limit(1);
+  if (!ownedToken[0]) return;
+
+  database.transaction((tx) => {
+    tx
       .update(llmRuntimeSettings)
       .set({ activeTokenId: null, updatedAt: nowDate() })
-      .where(eq(llmRuntimeSettings.activeTokenId, id));
-    await tx
+      .where(
+        and(
+          eq(llmRuntimeSettings.activeTokenId, id),
+          like(llmRuntimeSettings.scopeId, `${ownerId}:%`)
+        )
+      )
+      .run();
+    tx
       .update(llmRuntimeProviderState)
       .set({ lastTokenId: null, updatedAt: nowDate() })
-      .where(eq(llmRuntimeProviderState.lastTokenId, id));
-    await tx
+      .where(
+        and(
+          eq(llmRuntimeProviderState.lastTokenId, id),
+          like(llmRuntimeProviderState.scopeId, `${ownerId}:%`)
+        )
+      )
+      .run();
+    tx
       .delete(llmTokens)
-      .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
+      .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)))
+      .run();
   });
 }
 

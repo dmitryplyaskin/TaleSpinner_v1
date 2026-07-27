@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { operationProfileSettings } from "../../db/schema";
 
@@ -9,6 +10,7 @@ export type OperationProfileSettingsDto = {
 };
 
 async function ensureSettingsRow(ownerId: string): Promise<OperationProfileSettingsDto> {
+  ownerId = resolveTrustedOwnerId(ownerId);
   const db = await initDb();
   const rows = await db
     .select()
@@ -36,6 +38,7 @@ async function ensureSettingsRow(ownerId: string): Promise<OperationProfileSetti
 export async function getOperationProfileSettings(params: {
   ownerId: string;
 }): Promise<OperationProfileSettingsDto> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   return ensureSettingsRow(params.ownerId);
 }
 
@@ -43,6 +46,7 @@ export async function setActiveOperationProfile(params: {
   ownerId: string;
   activeProfileId: string | null;
 }): Promise<OperationProfileSettingsDto> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const current = await ensureSettingsRow(params.ownerId);
   const now = new Date();

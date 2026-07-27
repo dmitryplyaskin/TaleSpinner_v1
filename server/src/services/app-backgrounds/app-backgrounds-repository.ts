@@ -21,7 +21,9 @@ import type {
   AppBackgroundCatalog,
 } from "@shared/types/app-background";
 
-const APP_BACKGROUNDS_FOLDER = createDataPath("media", "images", "app-backgrounds");
+function getAppBackgroundsFolder(): string {
+  return createDataPath("media", "images", "app-backgrounds");
+}
 
 type AppBackgroundRow = typeof uiAppBackgrounds.$inferSelect;
 
@@ -30,7 +32,10 @@ function rowToAsset(row: AppBackgroundRow): AppBackgroundAsset {
     id: row.id,
     name: row.name,
     source: "uploaded",
-    imageUrl: `/media/images/app-backgrounds/${encodeURIComponent(row.fileName)}`,
+    imageUrl: `/media/images/app-backgrounds/${row.fileName
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`,
     deletable: true,
   };
 }
@@ -38,6 +43,18 @@ function rowToAsset(row: AppBackgroundRow): AppBackgroundAsset {
 function resolveUploadedBackgroundName(originalName: string): string {
   const baseName = path.basename(originalName, path.extname(originalName)).trim();
   return baseName.length > 0 ? baseName : "Imported background";
+}
+
+function resolveBackgroundFilePath(fileName: string, ownerId: string): string {
+  const segments = fileName.split("/").filter(Boolean);
+  if (segments.length === 1 && ownerId === "global") {
+    return resolveSafePath(getAppBackgroundsFolder(), segments[0]);
+  }
+  if (segments.length !== 2 || segments[0] !== ownerId) {
+    throw new HttpError(404, "App background not found", "NOT_FOUND");
+  }
+  const ownerFolder = resolveSafePath(getAppBackgroundsFolder(), ownerId);
+  return resolveSafePath(ownerFolder, segments[1]);
 }
 
 async function ensureSettingsRow(): Promise<void> {
@@ -144,12 +161,13 @@ export async function importAppBackground(params: {
   originalName: string;
 }): Promise<AppBackgroundAsset> {
   const ownerId = resolveTrustedOwnerId();
-  const ownerFolder = resolveSafePath(APP_BACKGROUNDS_FOLDER, ownerId);
+  const ownerFolder = resolveSafePath(getAppBackgroundsFolder(), ownerId);
   await fs.mkdir(ownerFolder, { recursive: true });
 
   const extension = path.extname(params.originalName).toLowerCase();
-  const filename = `${ownerId}/${randomUUID()}${extension}`;
-  const filePath = resolveSafePath(APP_BACKGROUNDS_FOLDER, filename);
+  const storedFileName = `${randomUUID()}${extension}`;
+  const filename = `${ownerId}/${storedFileName}`;
+  const filePath = resolveSafePath(ownerFolder, storedFileName);
   await fs.writeFile(filePath, params.fileBuffer);
 
   const now = new Date();
@@ -205,7 +223,7 @@ export async function deleteAppBackground(params: {
         eq(uiAppBackgrounds.ownerId, resolveTrustedOwnerId())
       )
     );
-  await fs.rm(resolveSafePath(APP_BACKGROUNDS_FOLDER, row.fileName), {
+  await fs.rm(resolveBackgroundFilePath(row.fileName, resolveTrustedOwnerId()), {
     force: true,
   });
 

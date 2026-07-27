@@ -89,6 +89,12 @@ function isVisibleCollectionName(name: string): boolean {
   return name.startsWith(`${ownerId}__`);
 }
 
+function toVisibleCollectionName(name: string): string {
+  const ownerId = resolveTrustedOwnerId();
+  if (ownerId === "global") return name;
+  return name.slice(`${ownerId}__`.length);
+}
+
 function normalizePeekResult(raw: unknown): ChromaPeekItem[] {
   if (Array.isArray(raw)) {
     return raw
@@ -259,7 +265,12 @@ export function createChromaRagService(
 
     async listCollections(): Promise<ChromaCollectionListItem[]> {
       const collections = await deps.chroma.listCollections();
-      return collections.filter((collection) => isVisibleCollectionName(collection.name));
+      return collections
+        .filter((collection) => isVisibleCollectionName(collection.name))
+        .map((collection) => ({
+          ...collection,
+          name: toVisibleCollectionName(collection.name),
+        }));
     },
 
     async createCollection(params: {

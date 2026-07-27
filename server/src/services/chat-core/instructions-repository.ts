@@ -213,13 +213,25 @@ export async function updateInstruction(params: {
   await db
     .update(instructions)
     .set(set)
-    .where(eq(instructions.id, params.id));
+    .where(
+      and(
+        eq(instructions.id, params.id),
+        eq(instructions.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return getInstructionById(params.id);
 }
 
 export async function deleteInstruction(id: string): Promise<void> {
   const db = await initDb();
-  await db.delete(instructions).where(eq(instructions.id, id));
+  await db
+    .delete(instructions)
+    .where(
+      and(
+        eq(instructions.id, id),
+        eq(instructions.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function pickInstructionForChat(params: {

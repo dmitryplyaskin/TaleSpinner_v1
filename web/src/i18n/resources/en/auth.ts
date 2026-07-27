@@ -22,6 +22,7 @@ export default {
 		passwordOptional: 'A password is optional in local mode',
 		setupToken: 'Initial setup token',
 	},
+	loading: 'Checking session',
 	retry: 'Retry',
 	accounts: {
 		title: 'Accounts',
@@ -29,7 +30,14 @@ export default {
 		users: 'Users',
 		role: 'Role',
 		roles: { user: 'User', admin: 'Administrator' },
+		status: 'Status',
+		statuses: { active: 'Active', disabled: 'Disabled' },
 		create: 'Create user',
+		changeOwnPassword: 'Change my password',
+		currentPassword: 'Current password',
+		newPassword: 'New password',
+		changePassword: 'Change password',
+		resetPassword: 'Reset password',
 		logout: 'Sign out',
 	},
 };

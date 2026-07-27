@@ -6,7 +6,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte, or } from "drizzle-orm";
 
 import { initDb } from "../../db/client";
 import { authSessions } from "../../db/schema";
@@ -45,6 +45,16 @@ function hashToken(token: string, secret: string | null): string {
     : createHash("sha256").update(token).digest("hex");
 }
 
+function deriveCsrfToken(params: {
+  sessionId: string;
+  tokenHash: string;
+  secret: string | null;
+}): string {
+  return createHmac("sha256", params.secret ?? params.tokenHash)
+    .update(`csrf:${params.sessionId}:${params.tokenHash}`)
+    .digest("base64url");
+}
+
 function safeUser(credentials: UserCredentials): UserDto {
   const {
     normalizedUsername: _normalizedUsername,
@@ -64,13 +74,18 @@ export async function createAuthSession(params: {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + params.config.sessionTtlMs);
   const token = generateToken();
-  const csrfToken = generateToken();
   const sessionId = randomUUID();
+  const tokenHash = hashToken(token, params.config.sessionSecret);
+  const csrfToken = deriveCsrfToken({
+    sessionId,
+    tokenHash,
+    secret: params.config.sessionSecret,
+  });
 
   await db.insert(authSessions).values({
     id: sessionId,
     userId: params.user.id,
-    tokenHash: hashToken(token, params.config.sessionSecret),
+    tokenHash,
     csrfTokenHash: hashToken(csrfToken, params.config.sessionSecret),
     authMethod: params.authMethod,
     credentialVersion: params.user.credentialVersion,
@@ -109,6 +124,11 @@ export async function resolveAuthSession(params: {
   ) {
     return null;
   }
+
+  await db
+    .update(authSessions)
+    .set({ lastSeenAt: new Date() })
+    .where(eq(authSessions.id, session.id));
 
   return {
     sessionId: session.id,
@@ -156,7 +176,27 @@ export async function rotateSessionCsrfToken(
   config: AuthConfig
 ): Promise<string> {
   const db = await initDb();
-  const csrfToken = generateToken();
+  const rows = await db
+    .select({
+      tokenHash: authSessions.tokenHash,
+    })
+    .from(authSessions)
+    .where(
+      and(
+        eq(authSessions.id, sessionId),
+        isNull(authSessions.revokedAt)
+      )
+    )
+    .limit(1);
+  const session = rows[0];
+  if (!session) {
+    throw new Error("Active authentication session not found.");
+  }
+  const csrfToken = deriveCsrfToken({
+    sessionId,
+    tokenHash: session.tokenHash,
+    secret: config.sessionSecret,
+  });
   await db
     .update(authSessions)
     .set({
@@ -165,4 +205,27 @@ export async function rotateSessionCsrfToken(
     })
     .where(eq(authSessions.id, sessionId));
   return csrfToken;
+}
+
+export async function cleanupAuthSessions(params?: {
+  now?: Date;
+  revokedRetentionMs?: number;
+}): Promise<number> {
+  const db = await initDb();
+  const now = params?.now ?? new Date();
+  const revokedCutoff = new Date(
+    now.getTime() - (params?.revokedRetentionMs ?? 7 * 24 * 60 * 60 * 1000)
+  );
+  const result = await db
+    .delete(authSessions)
+    .where(
+      or(
+        lte(authSessions.expiresAt, now),
+        and(
+          isNotNull(authSessions.revokedAt),
+          lte(authSessions.revokedAt, revokedCutoff)
+        )
+      )
+    );
+  return result.changes;
 }

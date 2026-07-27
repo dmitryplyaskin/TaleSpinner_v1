@@ -47,3 +47,9 @@ CREATE INDEX `llm_tokens_owner_provider_idx` ON `llm_tokens` (`owner_id`,`provid
 ALTER TABLE `ui_app_backgrounds` ADD `owner_id` text DEFAULT 'global' NOT NULL;
 --> statement-breakpoint
 CREATE INDEX `ui_app_backgrounds_owner_id_idx` ON `ui_app_backgrounds` (`owner_id`);
+--> statement-breakpoint
+UPDATE `llm_runtime_settings`
+SET `scope_id` = 'global:' || `scope_id`;
+--> statement-breakpoint
+UPDATE `llm_runtime_provider_state`
+SET `scope_id` = 'global:' || `scope_id`;

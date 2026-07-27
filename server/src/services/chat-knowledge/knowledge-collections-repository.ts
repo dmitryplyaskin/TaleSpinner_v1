@@ -5,7 +5,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb } from "../../db/client";
-import { knowledgeCollections } from "../../db/schema";
+import { chatBranches, chats, knowledgeCollections } from "../../db/schema";
 
 import { listKnowledgeRecordAccessState, upsertKnowledgeAccessState } from "./knowledge-access-repository";
 import {
@@ -50,9 +50,30 @@ export async function createKnowledgeCollection(params: {
   const db = await initDb();
   const id = uuidv4();
   const now = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const chat = await db
+    .select({ id: chats.id })
+    .from(chats)
+    .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)))
+    .limit(1);
+  if (!chat[0]) throw new Error("Chat not found");
+  if (params.branchId) {
+    const branch = await db
+      .select({ id: chatBranches.id })
+      .from(chatBranches)
+      .where(
+        and(
+          eq(chatBranches.id, params.branchId),
+          eq(chatBranches.chatId, params.chatId),
+          eq(chatBranches.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!branch[0]) throw new Error("Chat branch not found");
+  }
   await db.insert(knowledgeCollections).values({
     id,
-    ownerId: resolveTrustedOwnerId(params.ownerId),
+    ownerId,
     chatId: params.chatId,
     branchId: params.branchId,
     scope: params.scope,
@@ -78,7 +99,12 @@ export async function getKnowledgeCollectionById(
   const rows = await db
     .select()
     .from(knowledgeCollections)
-    .where(eq(knowledgeCollections.id, id))
+    .where(
+      and(
+        eq(knowledgeCollections.id, id),
+        eq(knowledgeCollections.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   return rows[0] ? rowToKnowledgeCollectionDto(rows[0]) : null;
 }
@@ -115,7 +141,13 @@ export async function exportKnowledgeCollection(params: {
   mode: KnowledgeExportMode;
 }): Promise<KnowledgeCollectionExportPayload> {
   const collection = await getKnowledgeCollectionById(params.collectionId);
-  if (!collection) throw new Error("Knowledge collection not found");
+  if (
+    !collection ||
+    collection.chatId !== params.chatId ||
+    (collection.branchId !== null && collection.branchId !== params.branchId)
+  ) {
+    throw new Error("Knowledge collection not found");
+  }
 
   const records = (await listKnowledgeRecords({
     ownerId: params.ownerId,
@@ -172,7 +204,9 @@ export async function importKnowledgeCollection(params: {
   payload: KnowledgeCollectionExportPayload;
 }): Promise<KnowledgeCollectionImportResult> {
   const collection = await createKnowledgeCollection({
-    ownerId: params.ownerId ?? params.payload.collection.ownerId,
+    ownerId: resolveTrustedOwnerId(
+      params.ownerId ?? params.payload.collection.ownerId
+    ),
     chatId: params.chatId,
     branchId: params.branchId,
     scope: params.payload.collection.scope,
@@ -189,7 +223,7 @@ export async function importKnowledgeCollection(params: {
   const importedRecords = [];
   for (const item of params.payload.records) {
     const created = await upsertKnowledgeRecord({
-      ownerId: params.ownerId ?? item.ownerId,
+      ownerId: resolveTrustedOwnerId(params.ownerId ?? item.ownerId),
       chatId: params.chatId,
       branchId: params.branchId,
       collectionId: collection.id,
@@ -234,7 +268,7 @@ export async function importKnowledgeCollection(params: {
     if (!nextRecordId) continue;
     importedAccessState.push(
       await upsertKnowledgeAccessState({
-        ownerId: params.ownerId ?? item.ownerId,
+        ownerId: resolveTrustedOwnerId(params.ownerId ?? item.ownerId),
         chatId: params.chatId,
         branchId: params.branchId,
         recordId: nextRecordId,

@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { operationBlocks } from "../../db/schema";
 
@@ -60,6 +61,7 @@ export function resolveImportedOperationBlockName(input: string, existingNames: 
 export async function listOperationBlocks(params: {
   ownerId: string;
 }): Promise<OperationBlock[]> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const rows = await db
     .select()
@@ -72,6 +74,7 @@ export async function listOperationBlocks(params: {
 export async function getOperationBlockById(
   params: { ownerId: string; blockId: string }
 ): Promise<OperationBlock | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const rows = await db
     .select()
@@ -90,6 +93,7 @@ export async function createOperationBlock(params: {
   ownerId: string;
   input: OperationBlockUpsertInput;
 }): Promise<OperationBlock> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const ts = new Date();
   const blockId = uuidv4();
@@ -133,6 +137,7 @@ export async function updateOperationBlock(params: {
   blockId: string;
   patch: Partial<OperationBlockUpsertInput>;
 }): Promise<OperationBlock | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const current = await getOperationBlockById({
     ownerId: params.ownerId,
@@ -188,6 +193,7 @@ export async function deleteOperationBlock(params: {
   ownerId: string;
   blockId: string;
 }): Promise<boolean> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const deleted = await db
     .delete(operationBlocks)

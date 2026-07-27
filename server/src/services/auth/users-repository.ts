@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import { initDb } from "../../db/client";
 import { users } from "../../db/schema";
@@ -200,4 +200,96 @@ export async function recordUserLogin(id: string): Promise<void> {
     .update(users)
     .set({ lastLoginAt: now, updatedAt: now })
     .where(eq(users.id, id));
+}
+
+export type PatchUserAdministrationResult =
+  | { status: "updated"; user: UserDto }
+  | { status: "not_found" }
+  | { status: "last_admin" };
+
+export async function patchUserAdministration(params: {
+  userId: string;
+  role?: UserRole;
+  status?: UserStatus;
+}): Promise<PatchUserAdministrationResult> {
+  const db = await initDb();
+  return db.transaction((tx) => {
+    const current = tx
+      .select()
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1)
+      .get();
+    if (!current) return { status: "not_found" };
+
+    const nextRole = params.role ?? current.role;
+    const nextStatus = params.status ?? current.status;
+    const removesActiveAdmin =
+      current.role === "admin" &&
+      current.status === "active" &&
+      (nextRole !== "admin" || nextStatus !== "active");
+    if (removesActiveAdmin) {
+      const activeAdmins = tx
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(eq(users.role, "admin"), eq(users.status, "active"))
+        )
+        .all();
+      if (activeAdmins.length <= 1) return { status: "last_admin" };
+    }
+
+    tx.update(users)
+      .set({
+        role: nextRole,
+        status: nextStatus,
+        credentialVersion: sql`${users.credentialVersion} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, params.userId))
+      .run();
+    const updated = tx
+      .select()
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1)
+      .get();
+    if (!updated) return { status: "not_found" };
+    return { status: "updated", user: rowToDto(updated) };
+  });
+}
+
+export async function updateUserPassword(
+  userId: string,
+  passwordHash: string | null
+): Promise<UserDto | null> {
+  const db = await initDb();
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      credentialVersion: sql`${users.credentialVersion} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  return getUserById(userId);
+}
+
+export async function recoverAdminPassword(params: {
+  username: string;
+  passwordHash: string;
+}): Promise<UserDto | null> {
+  const db = await initDb();
+  const current = await getUserCredentialsByUsername(params.username);
+  if (!current || current.role !== "admin") return null;
+  await db
+    .update(users)
+    .set({
+      passwordHash: params.passwordHash,
+      status: "active",
+      credentialVersion: sql`${users.credentialVersion} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(users.id, current.id), eq(users.role, "admin")));
+  return getUserById(current.id);
 }

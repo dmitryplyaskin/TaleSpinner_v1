@@ -232,26 +232,32 @@ async function upsertRagPreset(input: RagPreset): Promise<RagPreset> {
   const createdAt = toDate(parsed.createdAt, now);
   const updatedAt = toDate(parsed.updatedAt, now);
 
-  await db
-    .insert(ragPresets)
-    .values({
+  const existing = await getRagPresetRowById(parsed.id);
+  if (existing) {
+    await db
+      .update(ragPresets)
+      .set({
+        name: parsed.name,
+        payloadJson: safeJsonStringify(parsed.payload, "{}"),
+        createdAt,
+        updatedAt,
+      })
+      .where(
+        and(
+          eq(ragPresets.id, parsed.id),
+          eq(ragPresets.ownerId, currentOwnerId())
+        )
+      );
+  } else {
+    await db.insert(ragPresets).values({
       id: parsed.id,
       ownerId: currentOwnerId(),
       name: parsed.name,
       payloadJson: safeJsonStringify(parsed.payload, "{}"),
       createdAt,
       updatedAt,
-    })
-    .onConflictDoUpdate({
-      target: ragPresets.id,
-      set: {
-        ownerId: currentOwnerId(),
-        name: parsed.name,
-        payloadJson: safeJsonStringify(parsed.payload, "{}"),
-        createdAt,
-        updatedAt,
-      },
     });
+  }
 
   const row = await getRagPresetRowById(parsed.id);
   if (!row) throw new HttpError(500, "Failed to save RAG preset");
@@ -447,6 +453,9 @@ export const ragService = {
       const next = {
         selectedId: config.selectedId ?? null,
       };
+      if (next.selectedId && !(await getRagPresetRowById(next.selectedId))) {
+        throw new HttpError(404, "RAG preset not found", "NOT_FOUND");
+      }
 
       await db
         .insert(ragPresetSettings)
@@ -477,6 +486,15 @@ export const ragService = {
       const db = await initDb();
       const parsed = ragRuntimeSchema.parse(config);
       const now = new Date();
+      if (parsed.activeTokenId) {
+        if (parsed.activeProviderId !== "openrouter") {
+          throw new HttpError(400, "RAG token is not supported by this provider");
+        }
+        const tokens = await listTokens("openrouter");
+        if (!tokens.some((token) => token.id === parsed.activeTokenId)) {
+          throw new HttpError(404, "RAG token not found", "NOT_FOUND");
+        }
+      }
 
       await db
         .insert(ragRuntimeSettings)

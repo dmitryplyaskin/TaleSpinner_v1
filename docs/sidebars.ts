@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
       label: 'User Guide',
       items: [
         'user/getting-started',
+        'user/accounts-and-security',
         'user/chat-basics',
         'user/world-info',
         'user/operations',

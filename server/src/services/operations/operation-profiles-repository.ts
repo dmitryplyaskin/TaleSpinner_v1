@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
@@ -48,6 +49,7 @@ function rowToDto(row: typeof operationProfiles.$inferSelect): OperationProfile 
 export async function listOperationProfiles(params: {
   ownerId: string;
 }): Promise<OperationProfile[]> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const rows = await db
     .select()
@@ -60,6 +62,7 @@ export async function listOperationProfiles(params: {
 export async function getOperationProfileById(
   params: { ownerId: string; profileId: string }
 ): Promise<OperationProfile | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const rows = await db
     .select()
@@ -78,6 +81,7 @@ export async function createOperationProfile(params: {
   ownerId: string;
   input: OperationProfileUpsertInput;
 }): Promise<OperationProfile> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const ts = new Date();
   const profileId = uuidv4();
@@ -136,6 +140,7 @@ export async function updateOperationProfile(params: {
   profileId: string;
   patch: Partial<OperationProfileUpsertInput>;
 }): Promise<OperationProfile | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const current = await getOperationProfileById({
     ownerId: params.ownerId,
@@ -212,6 +217,7 @@ export async function deleteOperationProfile(params: {
   ownerId: string;
   profileId: string;
 }): Promise<boolean> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const deleted = await db
     .delete(operationProfiles)

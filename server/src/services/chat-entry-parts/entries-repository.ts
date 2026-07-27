@@ -3,9 +3,10 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { HttpError } from "../../core/middleware/error-handler";
 import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
-import { chatEntries, entryVariants } from "../../db/schema";
+import { chatBranches, chatEntries, chats, entryVariants } from "../../db/schema";
 
 import { listPartsForVariants } from "./parts-repository";
 
@@ -76,6 +77,23 @@ export function createEntryWithVariant(
 ): Promise<{ entry: Entry; variant: Variant }> | { entry: Entry; variant: Variant } {
   const run = (db: DbExecutor): { entry: Entry; variant: Variant } => {
     const ownerId = resolveTrustedOwnerId(params.ownerId);
+    const parent = db
+      .select({ chatId: chats.id })
+      .from(chats)
+      .innerJoin(
+        chatBranches,
+        and(
+          eq(chatBranches.id, params.branchId),
+          eq(chatBranches.chatId, chats.id),
+          eq(chatBranches.ownerId, ownerId)
+        )
+      )
+      .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)))
+      .limit(1)
+      .get();
+    if (!parent) {
+      throw new HttpError(404, "Chat branch not found", "NOT_FOUND");
+    }
 
     const entryId = uuidv4();
     const variantId = uuidv4();
@@ -143,7 +161,11 @@ export async function listEntriesPage(params: {
   includeSoftDeleted?: boolean;
 }): Promise<EntriesPageResult> {
   const db = await initDb();
-  const where = [eq(chatEntries.chatId, params.chatId), eq(chatEntries.branchId, params.branchId)];
+  const where = [
+    eq(chatEntries.ownerId, resolveTrustedOwnerId()),
+    eq(chatEntries.chatId, params.chatId),
+    eq(chatEntries.branchId, params.branchId),
+  ];
   if (!params.includeSoftDeleted) {
     where.push(eq(chatEntries.softDeleted, false));
   }
@@ -231,7 +253,12 @@ export async function getActiveVariantWithParts(params: {
   const rows = await db
     .select()
     .from(entryVariants)
-    .where(eq(entryVariants.variantId, params.entry.activeVariantId))
+    .where(
+      and(
+        eq(entryVariants.variantId, params.entry.activeVariantId),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const row = rows[0];
   if (!row) return null;
@@ -272,7 +299,12 @@ export async function listEntriesWithActiveVariants(params: {
   const variantRows = await db
     .select()
     .from(entryVariants)
-    .where(inArray(entryVariants.variantId, variantIds));
+    .where(
+      and(
+        inArray(entryVariants.variantId, variantIds),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   const partsMap = await listPartsForVariants({ variantIds });
 
@@ -326,7 +358,12 @@ export async function listEntriesWithActiveVariantsPage(params: {
   const variantRows = await db
     .select()
     .from(entryVariants)
-    .where(inArray(entryVariants.variantId, variantIds));
+    .where(
+      and(
+        inArray(entryVariants.variantId, variantIds),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   const partsMap = await listPartsForVariants({ variantIds });
   const variantById = new Map<string, Variant>();
@@ -358,6 +395,7 @@ export async function getLatestSelectedPersonaIdForChatBranch(params: {
     .from(chatEntries)
     .where(
       and(
+        eq(chatEntries.ownerId, resolveTrustedOwnerId()),
         eq(chatEntries.chatId, params.chatId),
         eq(chatEntries.branchId, params.branchId),
         eq(chatEntries.role, "user"),
@@ -383,7 +421,12 @@ export async function softDeleteEntry(params: { entryId: string; by: "user" | "a
       softDeletedAt: new Date(),
       softDeletedBy: params.by,
     })
-    .where(eq(chatEntries.entryId, params.entryId));
+    .where(
+      and(
+        eq(chatEntries.entryId, params.entryId),
+        eq(chatEntries.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function softDeleteEntries(params: {
@@ -397,7 +440,12 @@ export async function softDeleteEntries(params: {
   const rows = await db
     .select({ entryId: chatEntries.entryId })
     .from(chatEntries)
-    .where(inArray(chatEntries.entryId, dedupedEntryIds));
+    .where(
+      and(
+        inArray(chatEntries.entryId, dedupedEntryIds),
+        eq(chatEntries.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   const foundEntryIds = rows.map((row) => row.entryId);
   if (foundEntryIds.length === 0) return [];
@@ -409,7 +457,12 @@ export async function softDeleteEntries(params: {
       softDeletedAt: new Date(),
       softDeletedBy: params.by,
     })
-    .where(inArray(chatEntries.entryId, foundEntryIds));
+    .where(
+      and(
+        inArray(chatEntries.entryId, foundEntryIds),
+        eq(chatEntries.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   return foundEntryIds;
 }
@@ -429,7 +482,12 @@ export function updateEntryMeta(params: UpdateEntryMetaParams): Promise<void> | 
       .set({
         metaJson: params.meta === null ? null : safeJsonStringify(params.meta),
       })
-      .where(eq(chatEntries.entryId, params.entryId))
+      .where(
+        and(
+          eq(chatEntries.entryId, params.entryId),
+          eq(chatEntries.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .run();
   };
 
@@ -450,6 +508,7 @@ export async function hasActiveUserEntriesInBranch(params: {
     .from(chatEntries)
     .where(
       and(
+        eq(chatEntries.ownerId, resolveTrustedOwnerId()),
         eq(chatEntries.chatId, params.chatId),
         eq(chatEntries.branchId, params.branchId),
         eq(chatEntries.role, "user"),

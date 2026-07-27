@@ -5,7 +5,12 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { configureLlmOpenAiCompatible, createEntityProfileAndChat } from "../helpers/fixtures";
-import { collectSse, type SseEvent } from "../helpers/http";
+import {
+  clearTestAuthHeaders,
+  collectSse,
+  setupTestAccount,
+  type SseEvent,
+} from "../helpers/http";
 import { startMockAiServer, type RunningMockAiServer } from "../helpers/mock-ai-server";
 import { createTempDataDir, removeTempDataDir } from "../helpers/tmp-dir";
 
@@ -38,7 +43,7 @@ async function waitForServer(baseUrl: string): Promise<void> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 25_000) {
     try {
-      const response = await fetch(`${baseUrl}/api/llm/providers`);
+      const response = await fetch(`${baseUrl}/api/auth/status`);
       if (response.ok) return;
     } catch {
       // retry
@@ -69,7 +74,10 @@ describe("backend e2e blackbox smoke", () => {
         env: {
           ...process.env,
           PORT: String(port),
+          DATA_DIR: dataDir,
+          DB_PATH: path.join(dataDir, "db.sqlite"),
           TALESPINNER_DATA_DIR: dataDir,
+          TALESPINNER_ACCESS_MODE: "local",
           TOKENS_MASTER_KEY: "blackbox-master-key-012345",
         },
         stdio: "pipe",
@@ -81,6 +89,7 @@ describe("backend e2e blackbox smoke", () => {
     });
 
     await waitForServer(baseUrl);
+    await setupTestAccount(baseUrl);
   });
 
   afterAll(async () => {
@@ -95,6 +104,7 @@ describe("backend e2e blackbox smoke", () => {
       });
     }
     await mockAiServer?.close();
+    clearTestAuthHeaders(baseUrl);
     await removeTempDataDir(dataDir);
   });
 

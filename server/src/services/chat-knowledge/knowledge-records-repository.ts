@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb } from "../../db/client";
-import { knowledgeRecords } from "../../db/schema";
+import { knowledgeCollections, knowledgeRecords } from "../../db/schema";
 
 import {
   buildKnowledgeSearchText,
@@ -38,14 +38,31 @@ export async function getKnowledgeRecordById(
   id: string
 ): Promise<KnowledgeRecordDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(knowledgeRecords).where(eq(knowledgeRecords.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(knowledgeRecords)
+    .where(
+      and(
+        eq(knowledgeRecords.id, id),
+        eq(knowledgeRecords.ownerId, resolveTrustedOwnerId())
+      )
+    )
+    .limit(1);
   return rows[0] ? rowToKnowledgeRecordDto(rows[0]) : null;
 }
 
 export async function getKnowledgeRecordsByIds(ids: string[]): Promise<KnowledgeRecordDto[]> {
   if (ids.length === 0) return [];
   const db = await initDb();
-  const rows = await db.select().from(knowledgeRecords).where(inArray(knowledgeRecords.id, ids));
+  const rows = await db
+    .select()
+    .from(knowledgeRecords)
+    .where(
+      and(
+        inArray(knowledgeRecords.id, ids),
+        eq(knowledgeRecords.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return rows.map(rowToKnowledgeRecordDto);
 }
 
@@ -136,6 +153,26 @@ export async function upsertKnowledgeRecord(params: {
 }): Promise<KnowledgeRecordDto> {
   const db = await initDb();
   const now = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const collection = await db
+    .select({ id: knowledgeCollections.id })
+    .from(knowledgeCollections)
+    .where(
+      and(
+        eq(knowledgeCollections.id, params.collectionId),
+        eq(knowledgeCollections.ownerId, ownerId),
+        eq(knowledgeCollections.chatId, params.chatId),
+        params.branchId === null
+          ? isNull(knowledgeCollections.branchId)
+          : or(
+              isNull(knowledgeCollections.branchId),
+              eq(knowledgeCollections.branchId, params.branchId)
+            )
+      )
+    )
+    .limit(1);
+  if (!collection[0]) throw new Error("Knowledge collection not found");
+
   const searchText = buildKnowledgeSearchText({
     title: params.title,
     aliases: params.aliases,
@@ -149,6 +186,7 @@ export async function upsertKnowledgeRecord(params: {
     .from(knowledgeRecords)
     .where(
       and(
+        eq(knowledgeRecords.ownerId, ownerId),
         eq(knowledgeRecords.chatId, params.chatId),
         buildExactBranchScope(params.branchId),
         eq(knowledgeRecords.collectionId, params.collectionId),
@@ -181,11 +219,16 @@ export async function upsertKnowledgeRecord(params: {
         metaJson: typeof params.meta === "undefined" ? null : encodeJson(params.meta, "null"),
         updatedAt: now,
       })
-      .where(eq(knowledgeRecords.id, current.id));
+      .where(
+        and(
+          eq(knowledgeRecords.id, current.id),
+          eq(knowledgeRecords.ownerId, ownerId)
+        )
+      );
   } else {
     await db.insert(knowledgeRecords).values({
       id: uuidv4(),
-      ownerId: resolveTrustedOwnerId(params.ownerId),
+      ownerId,
       chatId: params.chatId,
       branchId: params.branchId,
       collectionId: params.collectionId,
@@ -217,6 +260,7 @@ export async function upsertKnowledgeRecord(params: {
     .from(knowledgeRecords)
     .where(
       and(
+        eq(knowledgeRecords.ownerId, ownerId),
         eq(knowledgeRecords.chatId, params.chatId),
         buildExactBranchScope(params.branchId),
         eq(knowledgeRecords.collectionId, params.collectionId),

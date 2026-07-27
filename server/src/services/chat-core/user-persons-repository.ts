@@ -261,6 +261,12 @@ export async function updateUserPersonsSettings(params: {
     typeof params.pageSize === "undefined" ? current.pageSize : params.pageSize;
   const nextSortType =
     typeof params.sortType === "undefined" ? current.sortType ?? null : params.sortType;
+  if (
+    nextSelectedId &&
+    !(await getUserPersonById(nextSelectedId, { ownerId }))
+  ) {
+    throw new Error("User person не найден");
+  }
 
   await db
     .update(userPersonsSettings)

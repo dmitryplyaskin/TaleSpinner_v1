@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
-import { generationRuntimeControl } from "../../db/schema";
+import { generationRuntimeControl, llmGenerations } from "../../db/schema";
 
 export type GenerationControlStatus = "active" | "abort_requested";
 
@@ -31,6 +32,22 @@ function rowToRecord(
   };
 }
 
+function isOwnedGeneration(db: DbExecutor, generationId: string): boolean {
+  return Boolean(
+    db
+      .select({ id: llmGenerations.id })
+      .from(llmGenerations)
+      .where(
+        and(
+          eq(llmGenerations.id, generationId),
+          eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+        )
+      )
+      .limit(1)
+      .get()
+  );
+}
+
 type UpsertGenerationControlLeaseParams = {
   generationId: string;
   runInstanceId: string;
@@ -49,6 +66,7 @@ export function upsertGenerationControlLease(
   params: UpsertGenerationControlLeaseParams
 ): Promise<void> | void {
   const run = (db: DbExecutor): void => {
+    if (!isOwnedGeneration(db, params.generationId)) return;
     db.insert(generationRuntimeControl)
       .values({
         generationId: params.generationId,
@@ -99,6 +117,7 @@ export function heartbeatGenerationControlLease(
   params: HeartbeatGenerationControlLeaseParams
 ): Promise<void> | void {
   const run = (db: DbExecutor): void => {
+    if (!isOwnedGeneration(db, params.generationId)) return;
     db.update(generationRuntimeControl)
       .set({
         heartbeatAt: params.heartbeatAt,
@@ -125,6 +144,7 @@ export async function getGenerationControlByGenerationId(
   generationId: string
 ): Promise<GenerationControlRecord | null> {
   const db = await initDb();
+  if (!isOwnedGeneration(db, generationId)) return null;
   const rows = await db
     .select()
     .from(generationRuntimeControl)
@@ -149,6 +169,7 @@ export function markGenerationAbortRequested(
   params: MarkGenerationAbortRequestedParams
 ): Promise<void> | void {
   const run = (db: DbExecutor): void => {
+    if (!isOwnedGeneration(db, params.generationId)) return;
     db.update(generationRuntimeControl)
       .set({
         status: "abort_requested",
@@ -181,6 +202,7 @@ export function clearGenerationControlLease(
   params: ClearGenerationControlLeaseParams
 ): Promise<void> | void {
   const run = (db: DbExecutor): void => {
+    if (!isOwnedGeneration(db, params.generationId)) return;
     db.delete(generationRuntimeControl)
       .where(eq(generationRuntimeControl.generationId, params.generationId))
       .run();

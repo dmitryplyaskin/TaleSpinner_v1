@@ -6,7 +6,12 @@ import type { RequestHandler } from "express";
 
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
-const CSRF_EXEMPT_PATHS = new Set(["/auth/login", "/auth/setup"]);
+const CSRF_EXEMPT_PATHS = new Set([
+  "/auth/login",
+  "/auth/recover",
+  "/auth/register",
+  "/auth/setup",
+]);
 
 export const securityHeadersMiddleware: RequestHandler = (
   _request,
@@ -93,27 +98,35 @@ export function createLoginRateLimitMiddleware(
       !current || current.resetAt <= now
         ? { count: 0, resetAt: now + windowMs }
         : current;
-    entry.count += 1;
-    entries.set(key, entry);
 
     if (entries.size > 10_000) {
       for (const [entryKey, value] of entries) {
         if (value.resetAt <= now) entries.delete(entryKey);
       }
     }
-    if (entry.count <= maxAttempts) {
-      next();
+    if (entry.count >= maxAttempts) {
+      response.setHeader(
+        "Retry-After",
+        String(Math.max(1, Math.ceil((entry.resetAt - now) / 1000)))
+      );
+      response.status(429).json({
+        error: {
+          code: "AUTH_RATE_LIMITED",
+          message: "Too many authentication attempts. Try again later.",
+        },
+      });
       return;
     }
-    response.setHeader(
-      "Retry-After",
-      String(Math.max(1, Math.ceil((entry.resetAt - now) / 1000)))
-    );
-    response.status(429).json({
-      error: {
-        code: "AUTH_RATE_LIMITED",
-        message: "Too many authentication attempts. Try again later.",
-      },
+
+    entry.count += 1;
+    entries.set(key, entry);
+    response.once("finish", () => {
+      if (response.statusCode === 401 || response.statusCode === 403) return;
+      const latest = entries.get(key);
+      if (!latest || latest.resetAt !== entry.resetAt) return;
+      latest.count = Math.max(0, latest.count - 1);
+      if (latest.count === 0) entries.delete(key);
     });
+    next();
   };
 }

@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../../core/request-context/owner-scope-storage";
 import { initDb } from "../../../db/client";
 import { chatRuntimeState } from "../../../db/schema";
 import { INITIAL_OPERATION_ACTIVATION_STATE } from "../operations/operation-activation-intervals";
@@ -117,12 +118,13 @@ function rowToRecord(row: typeof chatRuntimeState.$inferSelect): ChatRuntimeStat
 export class ChatRuntimeStateRepository {
   static async getByScope(params: ChatRuntimeStateScope): Promise<ChatRuntimeStateRecord | null> {
     const db = await initDb();
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const rows = await db
       .select()
       .from(chatRuntimeState)
       .where(
         and(
-          eq(chatRuntimeState.ownerId, params.ownerId),
+          eq(chatRuntimeState.ownerId, ownerId),
           eq(chatRuntimeState.chatId, params.chatId),
           eq(chatRuntimeState.branchId, params.branchId),
           eq(chatRuntimeState.profileId, params.profileId),
@@ -140,16 +142,18 @@ export class ChatRuntimeStateRepository {
   }): Promise<ChatRuntimeStateRecord> {
     const db = await initDb();
     const now = new Date();
+    const ownerId = resolveTrustedOwnerId(params.scope.ownerId);
+    const scope = { ...params.scope, ownerId };
 
     await db
       .insert(chatRuntimeState)
       .values({
         id: uuidv4(),
-        ownerId: params.scope.ownerId,
-        chatId: params.scope.chatId,
-        branchId: params.scope.branchId,
-        profileId: params.scope.profileId,
-        operationProfileSessionId: params.scope.operationProfileSessionId,
+        ownerId: scope.ownerId,
+        chatId: scope.chatId,
+        branchId: scope.branchId,
+        profileId: scope.profileId,
+        operationProfileSessionId: scope.operationProfileSessionId,
         stateJson: safeJsonStringify(params.payload, "{}"),
         updatedAt: now,
       })
@@ -167,10 +171,10 @@ export class ChatRuntimeStateRepository {
         },
       });
 
-    const reloaded = await this.getByScope(params.scope);
+    const reloaded = await this.getByScope(scope);
     if (reloaded) return reloaded;
     return {
-      scope: params.scope,
+      scope,
       payload: normalizePayload(params.payload),
       updatedAt: now,
     };

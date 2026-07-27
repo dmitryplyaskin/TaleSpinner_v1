@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { HttpError } from "../../core/middleware/error-handler";
 import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { chatEntries, entryVariants } from "../../db/schema";
@@ -35,6 +36,20 @@ export function createVariant(params: CreateVariantParams): Promise<Variant>;
 export function createVariant(params: CreateVariantParams): Promise<Variant> | Variant {
   const run = (db: DbExecutor): Variant => {
     const ownerId = resolveTrustedOwnerId(params.ownerId);
+    const parent = db
+      .select({ entryId: chatEntries.entryId })
+      .from(chatEntries)
+      .where(
+        and(
+          eq(chatEntries.entryId, params.entryId),
+          eq(chatEntries.ownerId, ownerId)
+        )
+      )
+      .limit(1)
+      .get();
+    if (!parent) {
+      throw new HttpError(404, "Chat entry not found", "NOT_FOUND");
+    }
 
     const variantId = uuidv4();
     const createdAtMs = Date.now();
@@ -72,7 +87,12 @@ export async function listVariantsByIds(params: { variantIds: string[] }): Promi
   const rows = await db
     .select()
     .from(entryVariants)
-    .where(inArray(entryVariants.variantId, params.variantIds));
+    .where(
+      and(
+        inArray(entryVariants.variantId, params.variantIds),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   const map = new Map<string, Variant>();
   for (const r of rows) {
@@ -91,10 +111,31 @@ export function selectActiveVariant(params: SelectActiveVariantParams & { execut
 export function selectActiveVariant(params: SelectActiveVariantParams): Promise<void>;
 export function selectActiveVariant(params: SelectActiveVariantParams): Promise<void> | void {
   const run = (db: DbExecutor): void => {
+    const ownerId = resolveTrustedOwnerId();
+    const variant = db
+      .select({ variantId: entryVariants.variantId })
+      .from(entryVariants)
+      .where(
+        and(
+          eq(entryVariants.variantId, params.variantId),
+          eq(entryVariants.entryId, params.entryId),
+          eq(entryVariants.ownerId, ownerId)
+        )
+      )
+      .limit(1)
+      .get();
+    if (!variant) {
+      throw new HttpError(404, "Entry variant not found", "NOT_FOUND");
+    }
     db
       .update(chatEntries)
       .set({ activeVariantId: params.variantId })
-      .where(eq(chatEntries.entryId, params.entryId))
+      .where(
+        and(
+          eq(chatEntries.entryId, params.entryId),
+          eq(chatEntries.ownerId, ownerId)
+        )
+      )
       .run();
   };
 
@@ -107,7 +148,15 @@ export function selectActiveVariant(params: SelectActiveVariantParams): Promise<
 
 export async function listEntryVariants(params: { entryId: string }): Promise<Variant[]> {
   const db = await initDb();
-  const rows = await db.select().from(entryVariants).where(eq(entryVariants.entryId, params.entryId));
+  const rows = await db
+    .select()
+    .from(entryVariants)
+    .where(
+      and(
+        eq(entryVariants.entryId, params.entryId),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    );
   const variantIds = rows.map((r) => r.variantId);
   const partsMap = await listPartsForVariants({ variantIds });
   return rows
@@ -128,7 +177,12 @@ export function updateVariantDerived(params: UpdateVariantDerivedParams): Promis
     db
       .update(entryVariants)
       .set({ derivedJson: params.derived === null ? null : safeJsonStringify(params.derived) })
-      .where(eq(entryVariants.variantId, params.variantId))
+      .where(
+        and(
+          eq(entryVariants.variantId, params.variantId),
+          eq(entryVariants.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .run();
   };
 
@@ -144,7 +198,12 @@ export async function getVariantById(params: { variantId: string }): Promise<Var
   const rows = await db
     .select()
     .from(entryVariants)
-    .where(eq(entryVariants.variantId, params.variantId))
+    .where(
+      and(
+        eq(entryVariants.variantId, params.variantId),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const row = rows[0];
   return row ? variantRowToDomain(row, []) : null;
@@ -170,10 +229,16 @@ export function deleteVariant(
   const run = (
     db: DbExecutor
   ): { entryId: string; activeVariantId: string; deletedVariantId: string } => {
+    const ownerId = resolveTrustedOwnerId();
     const entryRows = db
       .select({ activeVariantId: chatEntries.activeVariantId })
       .from(chatEntries)
-      .where(eq(chatEntries.entryId, params.entryId))
+      .where(
+        and(
+          eq(chatEntries.entryId, params.entryId),
+          eq(chatEntries.ownerId, ownerId)
+        )
+      )
       .limit(1)
       .all();
     const entryRow = entryRows[0];
@@ -182,7 +247,12 @@ export function deleteVariant(
     const variantRows = db
       .select({ variantId: entryVariants.variantId, createdAt: entryVariants.createdAt })
       .from(entryVariants)
-      .where(eq(entryVariants.entryId, params.entryId))
+      .where(
+        and(
+          eq(entryVariants.entryId, params.entryId),
+          eq(entryVariants.ownerId, ownerId)
+        )
+      )
       .all();
 
     const variantsSorted = variantRows
@@ -212,13 +282,24 @@ export function deleteVariant(
       db
         .update(chatEntries)
         .set({ activeVariantId: nextActiveVariantId })
-        .where(eq(chatEntries.entryId, params.entryId))
+        .where(
+          and(
+            eq(chatEntries.entryId, params.entryId),
+            eq(chatEntries.ownerId, ownerId)
+          )
+        )
         .run();
     }
 
     db
       .delete(entryVariants)
-      .where(and(eq(entryVariants.entryId, params.entryId), eq(entryVariants.variantId, params.variantId)))
+      .where(
+        and(
+          eq(entryVariants.entryId, params.entryId),
+          eq(entryVariants.variantId, params.variantId),
+          eq(entryVariants.ownerId, ownerId)
+        )
+      )
       .run();
 
     return {

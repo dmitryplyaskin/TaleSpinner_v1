@@ -11,20 +11,7 @@ import { getWorldInfoBookById } from "../../services/world-info/world-info-repos
 import { asyncHandler } from "../middleware/async-handler";
 import { runWithOwnerScope } from "../request-context/owner-scope-storage";
 
-import type { Request, RequestHandler } from "express";
-
-function injectTrustedOwner(request: Request, ownerId: string): void {
-  if (
-    request.body &&
-    typeof request.body === "object" &&
-    !Array.isArray(request.body)
-  ) {
-    (request.body as Record<string, unknown>).ownerId = ownerId;
-  }
-  if (request.query && typeof request.query === "object") {
-    (request.query as Record<string, unknown>).ownerId = ownerId;
-  }
-}
+import type { RequestHandler } from "express";
 
 async function resolveResourceOwner(
   path: string,
@@ -71,7 +58,6 @@ export const trustedOwnerMiddleware: RequestHandler = asyncHandler(
       return;
     }
     await runWithOwnerScope(userId, async () => {
-      injectTrustedOwner(request, userId);
       const resourceOwner = await resolveResourceOwner(request.path, userId);
       if (resourceOwner === undefined || resourceOwner === userId) {
         next();
@@ -87,6 +73,20 @@ export const trustedOwnerMiddleware: RequestHandler = asyncHandler(
   }
 );
 
+const UUID_SEGMENT =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function canAccessMediaPath(userId: string, requestPath: string): boolean {
+  const segments = requestPath.split("/").filter(Boolean);
+  const isNamespacedImage = segments[0] === "images" && segments.length >= 4;
+  if (!isNamespacedImage) return userId === "global";
+
+  const namespaceOwnerId = segments[2] ?? "";
+  if (namespaceOwnerId === userId) return true;
+  if (userId !== "global") return false;
+  return !UUID_SEGMENT.test(namespaceOwnerId);
+}
+
 export const mediaOwnerMiddleware: RequestHandler = (
   request,
   response,
@@ -97,22 +97,7 @@ export const mediaOwnerMiddleware: RequestHandler = (
     response.status(401).end();
     return;
   }
-  const segments = request.path.split("/").filter(Boolean);
-  if (userId === "global") {
-    const isNamespacedUpload =
-      segments[0] === "images" &&
-      segments.length >= 4 &&
-      ["app-backgrounds", "user-persons", "entity-profiles", "agent-cards"].includes(
-        segments[1] ?? ""
-      );
-    if (!isNamespacedUpload || segments[2] === "global") {
-      next();
-      return;
-    }
-    response.status(404).end();
-    return;
-  }
-  if (segments.includes(userId)) {
+  if (canAccessMediaPath(userId, request.path)) {
     next();
     return;
   }

@@ -5,7 +5,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb } from "../../db/client";
-import { knowledgeRecordAccessState } from "../../db/schema";
+import { knowledgeRecordAccessState, knowledgeRecords } from "../../db/schema";
 
 import {
   encodeJson,
@@ -91,11 +91,24 @@ export async function upsertKnowledgeAccessState(params: {
 }): Promise<KnowledgeRecordAccessStateDto> {
   const db = await initDb();
   const now = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const record = await db
+    .select({ id: knowledgeRecords.id })
+    .from(knowledgeRecords)
+    .where(
+      and(
+        eq(knowledgeRecords.id, params.recordId),
+        eq(knowledgeRecords.ownerId, ownerId),
+        eq(knowledgeRecords.chatId, params.chatId)
+      )
+    )
+    .limit(1);
+  if (!record[0]) throw new Error("Knowledge record not found");
   await db
     .insert(knowledgeRecordAccessState)
     .values({
       id: uuidv4(),
-      ownerId: resolveTrustedOwnerId(params.ownerId),
+      ownerId,
       chatId: params.chatId,
       branchId: params.branchId,
       recordId: params.recordId,

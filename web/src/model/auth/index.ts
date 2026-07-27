@@ -1,12 +1,15 @@
 import { combine, createEffect, createEvent, createStore, sample } from 'effector';
 
 import {
-	getAuthStatus,
+	changeOwnPassword,
 	createAuthUser,
+	getAuthStatus,
 	loginAccount,
 	listAuthUsers,
 	logoutAccount,
+	resetAuthUserPassword,
 	setupAccount,
+	updateAuthUser,
 	type AuthStatus,
 } from '../../api/auth';
 
@@ -17,6 +20,9 @@ export const loginSubmitted = createEvent<Parameters<typeof loginAccount>[0]>();
 export const logoutRequested = createEvent();
 export const accountManagerOpened = createEvent();
 export const createUserSubmitted = createEvent<Parameters<typeof createAuthUser>[0]>();
+export const userAdministrationSubmitted = createEvent<Parameters<typeof updateAuthUser>[0]>();
+export const userPasswordResetSubmitted = createEvent<Parameters<typeof resetAuthUserPassword>[0]>();
+export const ownPasswordChangeSubmitted = createEvent<Parameters<typeof changeOwnPassword>[0]>();
 
 export const loadAuthStatusFx = createEffect(getAuthStatus);
 export const setupAccountFx = createEffect(setupAccount);
@@ -24,6 +30,9 @@ export const loginAccountFx = createEffect(loginAccount);
 export const logoutAccountFx = createEffect(logoutAccount);
 export const loadAuthUsersFx = createEffect(listAuthUsers);
 export const createAuthUserFx = createEffect(createAuthUser);
+export const updateAuthUserFx = createEffect(updateAuthUser);
+export const resetAuthUserPasswordFx = createEffect(resetAuthUserPassword);
+export const changeOwnPasswordFx = createEffect(changeOwnPassword);
 
 const defaultStatus: AuthStatus = {
 	mode: 'local',
@@ -49,14 +58,42 @@ export const $authStatus = createStore<AuthStatus>(defaultStatus)
 		user: result.user,
 		accounts: [],
 		csrfToken: result.csrfToken,
+	}))
+	.on(changeOwnPasswordFx.doneData, (state, result) => ({
+		...state,
+		authenticated: true,
+		user: result.user,
+		csrfToken: result.csrfToken,
 	}));
+
+export const $authInitialized = createStore(false)
+	.on(authStarted, () => false)
+	.on([loadAuthStatusFx.done, loadAuthStatusFx.fail], () => true);
 
 export const $authError = createStore<string | null>(null)
 	.on(
-		[loadAuthStatusFx.failData, setupAccountFx.failData, loginAccountFx.failData, logoutAccountFx.failData],
+		[
+			loadAuthStatusFx.failData,
+			setupAccountFx.failData,
+			loginAccountFx.failData,
+			logoutAccountFx.failData,
+			createAuthUserFx.failData,
+			updateAuthUserFx.failData,
+			resetAuthUserPasswordFx.failData,
+			changeOwnPasswordFx.failData,
+		],
 		(_, error) => (error instanceof Error ? error.message : String(error)),
 	)
-	.reset(authRetryRequested, setupSubmitted, loginSubmitted, logoutRequested);
+	.reset(
+		authRetryRequested,
+		setupSubmitted,
+		loginSubmitted,
+		logoutRequested,
+		createUserSubmitted,
+		userAdministrationSubmitted,
+		userPasswordResetSubmitted,
+		ownPasswordChangeSubmitted,
+	);
 
 export const $authPending = combine(
 	[loadAuthStatusFx.pending, setupAccountFx.pending, loginAccountFx.pending, logoutAccountFx.pending],
@@ -72,7 +109,16 @@ sample({ clock: [authStarted, authRetryRequested], target: loadAuthStatusFx });
 sample({ clock: setupSubmitted, target: setupAccountFx });
 sample({ clock: loginSubmitted, target: loginAccountFx });
 sample({ clock: logoutRequested, target: logoutAccountFx });
-sample({ clock: logoutAccountFx.done, target: loadAuthStatusFx });
 sample({ clock: accountManagerOpened, target: loadAuthUsersFx });
 sample({ clock: createUserSubmitted, target: createAuthUserFx });
-sample({ clock: createAuthUserFx.done, target: loadAuthUsersFx });
+sample({ clock: userAdministrationSubmitted, target: updateAuthUserFx });
+sample({ clock: userPasswordResetSubmitted, target: resetAuthUserPasswordFx });
+sample({ clock: ownPasswordChangeSubmitted, target: changeOwnPasswordFx });
+sample({
+	clock: [createAuthUserFx.done, updateAuthUserFx.done, resetAuthUserPasswordFx.done],
+	target: loadAuthUsersFx,
+});
+
+logoutAccountFx.done.watch(() => {
+	if (typeof window !== 'undefined') window.location.reload();
+});

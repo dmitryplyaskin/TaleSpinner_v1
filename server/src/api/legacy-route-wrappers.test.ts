@@ -26,7 +26,17 @@ async function requestJson(requestPath: string): Promise<Response> {
     if (!address || typeof address === "string") {
       throw new Error("Failed to resolve test server address");
     }
-    return await fetch(`http://127.0.0.1:${address.port}${requestPath}`);
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const setup = await fetch(`${baseUrl}/api/auth/setup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "test-admin", password: "" }),
+    });
+    const setCookie = setup.headers.get("set-cookie");
+    if (!setCookie) throw new Error("Auth setup did not return a session cookie");
+    return await fetch(`${baseUrl}${requestPath}`, {
+      headers: { cookie: setCookie.split(";")[0] },
+    });
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));

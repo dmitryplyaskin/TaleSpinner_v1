@@ -1,4 +1,4 @@
-import { Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Center, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { appStarted } from '@model/app-init';
 import {
 	$authError,
+	$authInitialized,
 	$authPending,
 	$authStatus,
 	authRetryRequested,
@@ -16,8 +17,9 @@ import {
 
 export function AuthGate({ children }: { children: ReactNode }) {
 	const { t } = useTranslation();
-	const [status, pending, error, start, retry, setup, login] = useUnit([
+	const [status, initialized, pending, error, start, retry, setup, login] = useUnit([
 		$authStatus,
+		$authInitialized,
 		$authPending,
 		$authError,
 		authStarted,
@@ -41,6 +43,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
 		appStartedRef.current = true;
 		appStarted();
 	}, [status.authenticated]);
+
+	if (!initialized) {
+		return (
+			<Center mih="100vh">
+				<Loader aria-label={t('auth.loading')} />
+			</Center>
+		);
+	}
 
 	if (status.authenticated) return <>{children}</>;
 

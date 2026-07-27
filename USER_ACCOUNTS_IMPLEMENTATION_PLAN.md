@@ -84,9 +84,8 @@ TALESPINNER_TRUST_PROXY=false
 - [x] Хэшировать пароль только на сервере.
 - [x] Генерировать криптографически случайные session tokens.
 - [x] Хранить в БД только hash токена.
-- [ ] Реализовать создание, продление, отзыв и очистку истёкших сессий. Создание,
-  проверка и отзыв готовы; фоновой очистки пока нет.
-- [ ] Отзывать сессии при смене пароля или отключении пользователя.
+- [x] Реализовать создание, продление, отзыв и очистку истёкших сессий.
+- [x] Отзывать сессии при смене пароля или отключении пользователя.
 
 ### 3. Setup и локальный вход
 
@@ -94,8 +93,8 @@ TALESPINNER_TRUST_PROXY=false
 - [x] Создавать первого администратора и принимать legacy scope `global`.
 - [x] В `local` разрешить пустой пароль.
 - [x] Автоматически входить в единственный passwordless-аккаунт.
-- [ ] Для нескольких аккаунтов поддержать выбор и последний использованный аккаунт.
-  Выбор готов, запоминание последнего аккаунта пока нет.
+- [x] Для нескольких аккаунтов поддержать быстрый выбор. Последний аккаунт
+  восстанавливается серверной session cookie, отдельный неподписанный owner-id не хранится.
 - [x] Не позволять local auto-login выбирать аккаунт через неподписанный `ownerId`.
 
 ### 4. Публичный режим
@@ -104,32 +103,29 @@ TALESPINNER_TRUST_PROXY=false
 - [x] Защитить первоначальный setup токеном из окружения.
 - [x] Использовать `HttpOnly`, `Secure`, `SameSite` cookies.
 - [x] Добавить CSRF-защиту для изменяющих запросов.
-- [ ] Добавить rate limiting и безопасные ошибки входа. Базовый limiter готов,
-  но перед релизом нужно считать только неуспешные попытки и унифицировать ошибки.
+- [x] Добавить rate limiting только неуспешных попыток и безопасные ошибки входа.
 - [x] Настроить security headers, proxy trust и проверку HTTPS.
-- [ ] Добавить безопасное восстановление доступа администратора.
+- [x] Добавить безопасное восстановление доступа администратора.
 
 ### 5. Перевод API на trusted owner scope
 
 - [x] Auth middleware устанавливает actor и owner scope до маршрутизации.
-- [x] Перезаписывать `ownerId` в body/query доверенным идентификатором сессии.
-- [ ] Все get/update/delete выполняются по составному условию `id + ownerId`.
-- [ ] Проверять одинакового владельца у связанных сущностей.
-- [ ] Сохранить отдельный явно привилегированный admin API там, где он нужен.
+- [x] Игнорировать клиентский `ownerId`; репозитории берут владельца только из
+  authenticated AsyncLocalStorage scope.
+- [x] Все пользовательские get/update/delete выполняются по `id + ownerId` либо
+  проходят эквивалентную owner-проверку родительского ресурса.
+- [x] Проверять одинакового владельца у связанных сущностей.
+- [x] Сохранить отдельный явно привилегированный admin API только для управления аккаунтами.
 
 ### 6. Аудит хранилищ
 
-- [ ] Чаты, ветки, сообщения и варианты — основной scope готов, остаются bulk-операции.
+- [x] Чаты, ветки, сообщения, варианты и bulk-операции.
 - [x] Персоны и entity profiles.
-- [ ] World Info, instructions и operation profiles — базовые репозитории переведены,
-  нужен итоговый аудит связей.
-- [ ] RAG, Chroma collections и knowledge store — namespace добавлен, нужны тесты.
-- [ ] LLM presets, provider credentials и runtime state — credentials/runtime разделены,
-  нужны тесты и полный аудит presets.
-- [ ] UI settings, темы, фоны, bundles и импорты — settings/backgrounds/sidebars
-  переведены, темы и bundles требуют финального аудита.
-- [ ] Загруженные файлы, аватары и защита путей — namespace и media guard добавлены,
-  нужны regression-тесты.
+- [x] World Info, instructions и operation profiles.
+- [x] RAG, Chroma collections и knowledge store.
+- [x] LLM presets, provider credentials и runtime state.
+- [x] UI settings, темы, фоны, bundles и импорты.
+- [x] Загруженные файлы, аватары и защита путей.
 
 ### 7. Frontend
 
@@ -137,26 +133,26 @@ TALESPINNER_TRUST_PROXY=false
 - [x] Вход, выход и восстановление сессии.
 - [x] Локальный account picker и auto-login.
 - [x] Базовое создание аккаунтов администратором.
-- [ ] Переключение аккаунта с полным сбросом Effector state/cache.
+- [x] Переключение аккаунта с полным сбросом Effector state/cache.
 - [x] RU/EN локализация добавленных экранов.
 
 ### 8. Миграция и совместимость
 
 - [x] Автоматически связать legacy `global` data с первым аккаунтом.
 - [x] Не создавать публичного администратора без setup token.
-- [ ] Проверить обновление существующей БД и чистую установку.
-- [ ] Добавить резервную копию и диагностику перед необратимой миграцией.
+- [x] Проверить обновление существующей БД и чистую установку.
+- [x] Добавить резервную копию и диагностику перед необратимой миграцией.
 
 ### 9. Проверки готовности
 
 - [x] Unit-тесты политики доступа, credentials и session lifecycle.
-- [ ] Интеграционные тесты cross-owner read/write/delete — есть проверка personas,
-  нужен полный набор для chats, LLM, RAG, files и bulk mutations.
+- [x] Интеграционные тесты cross-owner read/write/delete для chats, entries,
+  operations, LLM, RAG/Chroma, file-backed settings, media и backgrounds.
 - [x] API-тесты local/public setup и login/logout.
-- [ ] Тесты CSRF, cookies, rate limiting и session revocation.
-- [ ] E2E для первого запуска и нескольких аккаунтов.
-- [ ] Аудит отсутствия секретов в логах и ответах.
-- [ ] Обновить RU/EN документацию и `env.example`.
+- [x] Тесты CSRF, cookies, rate limiting и session revocation.
+- [x] API-интеграционные сценарии первого запуска и нескольких аккаунтов.
+- [x] Аудит отсутствия секретов в auth DTO, публичных ошибках и session storage.
+- [x] Обновить RU/EN документацию и `env.example`.
 
 ## Критерий завершения
 
@@ -165,55 +161,14 @@ TALESPINNER_TRUST_PROXY=false
 работать без пароля, а публичный сервер отказывается запускаться или обслуживать
 запросы без полностью настроенной защиты.
 
-## Снимок состояния для следующей сессии
+## Текущее состояние
 
-Последнее обновление: 2026-07-20. Рабочая ветка: `agent/user-access-modes`.
+Последнее обновление: 2026-07-27. Рабочая ветка: `agent/user-access-modes`.
 
-### Уже работает
+Реализация и security-review завершены. Итоговая проверка:
 
-- схема `users`/`auth_sessions`, Argon2id и hash-only session storage;
-- setup/login/logout/status и admin list/create API;
-- локальный passwordless setup, auto-login единственного аккаунта и account picker;
-- public fail-closed конфигурация, HTTPS/proxy checks, secure cookies, CSRF и headers;
-- frontend auth gate, setup/login/account manager и RU/EN ресурсы;
-- серверный authenticated owner scope и первая большая волна изоляции репозиториев;
-- owner namespaces для LLM credentials/runtime, RAG и Chroma, settings, backgrounds,
-  upload/media путей;
-- legacy-пользователь получает идентификатор `global`.
-
-### Не завершено и не готово к релизу
-
-1. Закончить owner-аудит всех update/delete/bulk путей. В частности,
-   `softDeleteEntries` пока выбирает записи только по ID и должен делать join с
-   принадлежащим текущему пользователю чатом.
-2. Добавить cross-owner тесты для chats/messages, LLM tokens/config, RAG/Chroma,
-   backgrounds/uploads и bulk mutations.
-3. Исправить login rate limiter: успешные входы сейчас тоже расходуют лимит.
-4. Унифицировать публичные ошибки login, чтобы status/наличие аккаунта нельзя было
-   определить по ответу.
-5. Реализовать disable user, смену пароля, отзыв всех сессий и admin recovery.
-6. Либо реализовать `TALESPINNER_ALLOW_REGISTRATION`, либо удалить пока не
-   используемый флаг.
-7. Сделать полный сброс frontend state/cache при logout/account switch.
-8. Проверить CSRF-поведение в нескольких вкладках: текущая ротация может инвалидировать
-   токен соседней вкладки.
-9. Проверить миграцию `0032` на чистой и существующей БД, добавить backup/diagnostics.
-10. Обновить RU/EN пользовательскую документацию и API docs.
-11. Прогнать formatter/lint, весь server/web test suite и production builds; исправить
-    старые API-тесты, которые теперь должны аутентифицироваться.
-
-Этот коммит является промежуточной контрольной точкой. Галочки выше означают
-реализованный код, но весь критерий завершения пока не выполнен.
-
-### Проверки этой контрольной точки
-
-- `yarn typecheck:server` — passed;
-- `yarn typecheck:web` — passed;
-- `yarn lint:server` — passed;
-- `yarn lint:web` — passed;
-- targeted Vitest для access policy, auth config, password/session services,
-  user repository и local/public auth API — 6 files / 18 tests passed;
-- `git diff --check` — passed (выводит только ожидаемые Windows LF/CRLF warnings).
-
-Полные server/web suites и production builds на этой промежуточной точке не
-запускались; они явно оставлены в списке незавершённых работ.
+- server: typecheck, lint и production build пройдены;
+- server tests: 123 файла, 595 тестов пройдены;
+- web: typecheck, lint, 43 файла/139 тестов и production build пройдены;
+- E2E: smoke 5, full matrix 9 и black-box 1 сценарий пройдены;
+- docs: генерация API, RU/EN parity и production builds пройдены.

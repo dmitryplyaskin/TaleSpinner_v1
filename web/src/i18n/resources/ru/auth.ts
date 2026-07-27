@@ -22,6 +22,7 @@ export default {
 		passwordOptional: 'В локальном режиме пароль необязателен',
 		setupToken: 'Код первоначальной настройки',
 	},
+	loading: 'Проверка сессии',
 	retry: 'Повторить',
 	accounts: {
 		title: 'Аккаунты',
@@ -29,7 +30,14 @@ export default {
 		users: 'Пользователи',
 		role: 'Роль',
 		roles: { user: 'Пользователь', admin: 'Администратор' },
+		status: 'Статус',
+		statuses: { active: 'Активен', disabled: 'Отключён' },
 		create: 'Создать пользователя',
+		changeOwnPassword: 'Изменить мой пароль',
+		currentPassword: 'Текущий пароль',
+		newPassword: 'Новый пароль',
+		changePassword: 'Изменить пароль',
+		resetPassword: 'Сбросить пароль',
 		logout: 'Выйти',
 	},
 };
