@@ -17,7 +17,9 @@ uploaded files.
 
 - An account may have an empty password.
 - A single passwordless account signs in automatically.
-- With multiple accounts, the app displays an account picker.
+- With multiple accounts, the app displays an account picker. Passwordless
+  accounts open immediately; protected accounts request their password.
+- A new local account can be created from the chooser through a separate action.
 - A password can be added later in Account Manager.
 - An administrator can create, disable, and configure other accounts.
 
@@ -64,17 +66,21 @@ missing.
 
 Account Manager can:
 
+- switch to another account without signing out first;
 - create a user or administrator;
 - change your own password;
 - let an administrator change a role, disable an account, or reset its password.
+
+These actions are separated into Account, Security, and Manage tabs, so password
+and user-creation forms stay out of the way until they are needed.
 
 Disabling an account or changing its password revokes its active sessions. The
 last active administrator cannot be disabled or demoted.
 
 `TALESPINNER_ALLOW_REGISTRATION=true` enables the
 `POST /api/auth/register` API for regular-user self-registration in public
-mode. The built-in UI currently creates accounts through an administrator.
-Keep it `false` when external clients must not register accounts themselves.
+mode and displays a create-account action on the welcome screen. Keep it
+`false` when only an administrator should create accounts.
 
 ## Upgrading an existing installation
 

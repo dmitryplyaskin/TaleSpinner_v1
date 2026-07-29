@@ -52,6 +52,7 @@ describe("auth API in local mode", () => {
     await expect(initialStatus.json()).resolves.toMatchObject({
       data: {
         mode: "local",
+        registrationAllowed: true,
         setupRequired: true,
         authenticated: false,
       },
@@ -155,5 +156,123 @@ describe("auth API in local mode", () => {
       { headers: { cookie: userCookie } }
     );
     expect(directRead.status).toBe(404);
+  });
+
+  test("registers a local account from the welcome screen", async () => {
+    await fetch(`${baseUrl}/auth/setup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "" }),
+    });
+
+    const registered = await fetch(`${baseUrl}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        username: "player",
+        displayName: "Player",
+        password: "",
+      }),
+    });
+
+    expect(registered.status).toBe(201);
+    expect(registered.headers.get("set-cookie")).toContain("HttpOnly");
+    await expect(registered.json()).resolves.toMatchObject({
+      data: {
+        user: {
+          username: "player",
+          displayName: "Player",
+          role: "user",
+          hasPassword: false,
+        },
+      },
+    });
+  });
+
+  test("switches accounts only after valid credentials", async () => {
+    const setup = await fetch(`${baseUrl}/auth/setup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "" }),
+    });
+    const adminCookie = cookieFrom(setup);
+
+    const created = await fetch(`${baseUrl}/auth/users`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: adminCookie,
+      },
+      body: JSON.stringify({
+        username: "protected-player",
+        password: "player-password",
+        role: "user",
+      }),
+    });
+    const createdBody = (await created.json()) as { data: { id: string } };
+
+    const authenticatedStatus = await fetch(`${baseUrl}/auth/status`, {
+      headers: { cookie: adminCookie },
+    });
+    await expect(authenticatedStatus.json()).resolves.toMatchObject({
+      data: {
+        authenticated: true,
+        registrationAllowed: true,
+        accounts: [
+          { username: "admin", hasPassword: false },
+          { username: "protected-player", hasPassword: true },
+        ],
+      },
+    });
+
+    const rejected = await fetch(`${baseUrl}/auth/switch`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: adminCookie,
+      },
+      body: JSON.stringify({
+        userId: createdBody.data.id,
+        password: "wrong-password",
+      }),
+    });
+    expect(rejected.status).toBe(401);
+
+    const preserved = await fetch(`${baseUrl}/auth/status`, {
+      headers: { cookie: adminCookie },
+    });
+    await expect(preserved.json()).resolves.toMatchObject({
+      data: { authenticated: true, user: { username: "admin" } },
+    });
+
+    const switched = await fetch(`${baseUrl}/auth/switch`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: adminCookie,
+      },
+      body: JSON.stringify({
+        userId: createdBody.data.id,
+        password: "player-password",
+      }),
+    });
+    expect(switched.status).toBe(200);
+    const playerCookie = cookieFrom(switched);
+    await expect(switched.json()).resolves.toMatchObject({
+      data: { user: { username: "protected-player" } },
+    });
+
+    const oldSession = await fetch(`${baseUrl}/auth/status`, {
+      headers: { cookie: adminCookie },
+    });
+    await expect(oldSession.json()).resolves.toMatchObject({
+      data: { authenticated: false },
+    });
+    const newSession = await fetch(`${baseUrl}/auth/status`, {
+      headers: { cookie: playerCookie },
+    });
+    await expect(newSession.json()).resolves.toMatchObject({
+      data: { authenticated: true, user: { username: "protected-player" } },
+    });
   });
 });

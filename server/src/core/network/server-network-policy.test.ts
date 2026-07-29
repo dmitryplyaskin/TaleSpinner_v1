@@ -57,4 +57,33 @@ describe("server network policy", () => {
       });
     }
   });
+
+  test("serves default images to an allowed frontend origin", async () => {
+    const app = createApp();
+    const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
+      const started = app.listen(0, "127.0.0.1", () => resolve(started));
+    });
+
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Missing test address");
+      const response = await fetch(
+        `http://127.0.0.1:${address.port}/defaults/backgrounds/default-bg.png`,
+        { headers: { origin: "http://localhost:5173" } }
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        "http://localhost:5173"
+      );
+      expect(response.headers.get("cross-origin-resource-policy")).toBe(
+        "cross-origin"
+      );
+      expect(response.headers.get("content-type")).toContain("image/png");
+      await response.arrayBuffer();
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
+  });
 });

@@ -132,6 +132,34 @@ describe("auth API in public mode", () => {
       }),
     });
     expect(accepted.status).toBe(201);
+    const created = (await accepted.json()) as { data: { id: string } };
+
+    const rejectedSwitch = await fetch(`${baseUrl}/auth/switch`, {
+      method: "POST",
+      headers: { ...secureHeaders, cookie },
+      body: JSON.stringify({
+        userId: created.data.id,
+        password: "another-strong-password",
+      }),
+    });
+    expect(rejectedSwitch.status).toBe(403);
+
+    const acceptedSwitch = await fetch(`${baseUrl}/auth/switch`, {
+      method: "POST",
+      headers: {
+        ...secureHeaders,
+        cookie,
+        "x-csrf-token": body.data.csrfToken,
+      },
+      body: JSON.stringify({
+        userId: created.data.id,
+        password: "another-strong-password",
+      }),
+    });
+    expect(acceptedSwitch.status).toBe(200);
+    await expect(acceptedSwitch.json()).resolves.toMatchObject({
+      data: { user: { username: "bob" } },
+    });
   });
 
   test("rate limits failed logins without penalizing successful logins", async () => {

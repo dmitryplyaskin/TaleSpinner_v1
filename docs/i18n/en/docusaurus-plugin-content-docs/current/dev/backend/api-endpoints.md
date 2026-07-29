@@ -176,18 +176,19 @@ Sources:
 | GET | /api/world-info/settings | `server/src/api/world-info.core.api.ts` | L320 |
 | PUT | /api/world-info/settings | `server/src/api/world-info.core.api.ts` | L330 |
 | USE | /defaults/backgrounds | `server/src/api/static.api.ts` | L36 |
-| POST | /login | `server/src/api/auth.api.ts` | L245 |
-| POST | /logout | `server/src/api/auth.api.ts` | L320 |
+| POST | /login | `server/src/api/auth.api.ts` | L253 |
+| POST | /logout | `server/src/api/auth.api.ts` | L345 |
 | USE | /media | `server/src/api/static.api.ts` | L22 |
-| POST | /password | `server/src/api/auth.api.ts` | L330 |
-| POST | /recover | `server/src/api/auth.api.ts` | L297 |
-| POST | /register | `server/src/api/auth.api.ts` | L260 |
-| POST | /setup | `server/src/api/auth.api.ts` | L226 |
-| GET | /status | `server/src/api/auth.api.ts` | L157 |
-| GET | /users | `server/src/api/auth.api.ts` | L349 |
-| POST | /users | `server/src/api/auth.api.ts` | L360 |
-| PATCH | /users/:id | `server/src/api/auth.api.ts` | L378 |
-| POST | /users/:id/password | `server/src/api/auth.api.ts` | L401 |
+| POST | /password | `server/src/api/auth.api.ts` | L355 |
+| POST | /recover | `server/src/api/auth.api.ts` | L322 |
+| POST | /register | `server/src/api/auth.api.ts` | L268 |
+| POST | /setup | `server/src/api/auth.api.ts` | L234 |
+| GET | /status | `server/src/api/auth.api.ts` | L159 |
+| POST | /switch | `server/src/api/auth.api.ts` | L305 |
+| GET | /users | `server/src/api/auth.api.ts` | L374 |
+| POST | /users | `server/src/api/auth.api.ts` | L385 |
+| PATCH | /users/:id | `server/src/api/auth.api.ts` | L403 |
+| POST | /users/:id/password | `server/src/api/auth.api.ts` | L426 |
 
 ## Notes
 

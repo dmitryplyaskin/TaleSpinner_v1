@@ -15,6 +15,7 @@ export type AuthUser = {
 
 export type AuthStatus = {
 	mode: AccessMode;
+	registrationAllowed: boolean;
 	setupRequired: boolean;
 	authenticated: boolean;
 	user: AuthUser | null;
@@ -77,6 +78,32 @@ export async function loginAccount(params: {
 	password: string;
 }): Promise<AuthResult> {
 	const result = await authJson<AuthResult>('/login', {
+		method: 'POST',
+		body: JSON.stringify(params),
+	});
+	setAuthCsrfToken(result.csrfToken);
+	return result;
+}
+
+export async function registerAccount(params: {
+	username: string;
+	displayName?: string;
+	password: string;
+}): Promise<AuthResult> {
+	const result = await authJson<AuthResult>('/register', {
+		method: 'POST',
+		body: JSON.stringify(params),
+	});
+	setAuthCsrfToken(result.csrfToken);
+	return result;
+}
+
+export async function switchAccount(params: {
+	username?: string;
+	userId?: string;
+	password: string;
+}): Promise<AuthResult> {
+	const result = await authJson<AuthResult>('/switch', {
 		method: 'POST',
 		body: JSON.stringify(params),
 	});

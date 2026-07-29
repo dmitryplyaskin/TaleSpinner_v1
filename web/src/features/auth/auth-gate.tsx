@@ -1,7 +1,13 @@
-import { Button, Center, Loader, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import {
+	Button,
+	Center,
+	Group,
+	Loader,
+} from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LuPlus } from 'react-icons/lu';
 
 import { appStarted } from '@model/app-init';
 import {
@@ -12,12 +18,19 @@ import {
 	authRetryRequested,
 	authStarted,
 	loginSubmitted,
+	registerSubmitted,
 	setupSubmitted,
 } from '@model/auth';
 
+import { AccountChooser } from './account-chooser';
+import { AuthCredentialsForm } from './auth-credentials-form';
+import { AuthWelcomeShell } from './auth-welcome-shell';
+
+type AuthView = 'welcome' | 'login' | 'create';
+
 export function AuthGate({ children }: { children: ReactNode }) {
 	const { t } = useTranslation();
-	const [status, initialized, pending, error, start, retry, setup, login] = useUnit([
+	const [status, initialized, pending, error, start, retry, setup, register, login] = useUnit([
 		$authStatus,
 		$authInitialized,
 		$authPending,
@@ -25,15 +38,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
 		authStarted,
 		authRetryRequested,
 		setupSubmitted,
+		registerSubmitted,
 		loginSubmitted,
 	]);
 	const appStartedRef = useRef(false);
-	const [username, setUsername] = useState('');
-	const [displayName, setDisplayName] = useState('');
-	const [password, setPassword] = useState('');
-	const [setupToken, setSetupToken] = useState('');
+	const [view, setView] = useState<AuthView>('welcome');
 
 	useEffect(() => start(), [start]);
+	useEffect(() => setView('welcome'), [status.mode, status.setupRequired]);
 	useEffect(() => {
 		if (!status.authenticated) {
 			appStartedRef.current = false;
@@ -51,90 +63,91 @@ export function AuthGate({ children }: { children: ReactNode }) {
 			</Center>
 		);
 	}
-
 	if (status.authenticated) return <>{children}</>;
 
-	const submitSetup = () =>
-		setup({
-			username,
-			displayName: displayName || undefined,
-			password,
-			setupToken: setupToken || undefined,
-		});
-	const submitLogin = () => login({ username, password });
+	const hasLocalAccounts = status.mode === 'local' && status.accounts.length > 0;
+	const title = hasLocalAccounts
+		? t('auth.chooser.title')
+		: status.setupRequired
+			? t('auth.welcome.emptyTitle')
+			: t('auth.welcome.title');
 
 	return (
-		<Center mih="100vh" p="md">
-			<Paper withBorder shadow="md" radius="md" p="xl" w="100%" maw={440}>
-				<Stack>
-					<Title order={2}>{status.setupRequired ? t('auth.setup.title') : t('auth.login.title')}</Title>
-					<Text c="dimmed">
-						{status.setupRequired
-							? t(`auth.setup.description.${status.mode}`)
-							: t(`auth.login.description.${status.mode}`)}
-					</Text>
-
-					{!status.setupRequired && status.mode === 'local' && status.accounts.length > 0 && (
-						<Stack gap="xs">
-							{status.accounts.map((account) => (
-								<Button
-									key={account.id}
-									variant="light"
-									loading={pending}
-									onClick={() =>
-										account.hasPassword
-											? setUsername(account.username)
-											: login({ userId: account.id, password: '' })
-									}
-								>
-									{account.displayName}
-								</Button>
-							))}
-						</Stack>
-					)}
-
-					<TextInput
-						label={t('auth.fields.username')}
-						value={username}
-						onChange={(event) => setUsername(event.currentTarget.value)}
-						autoComplete="username"
-					/>
-					{status.setupRequired && (
-						<TextInput
-							label={t('auth.fields.displayName')}
-							value={displayName}
-							onChange={(event) => setDisplayName(event.currentTarget.value)}
-						/>
-					)}
-					<PasswordInput
-						label={t('auth.fields.password')}
-						description={status.mode === 'local' ? t('auth.fields.passwordOptional') : undefined}
-						value={password}
-						onChange={(event) => setPassword(event.currentTarget.value)}
-						autoComplete={status.setupRequired ? 'new-password' : 'current-password'}
-					/>
-					{status.setupRequired && status.mode === 'public' && (
-						<PasswordInput
-							label={t('auth.fields.setupToken')}
-							value={setupToken}
-							onChange={(event) => setSetupToken(event.currentTarget.value)}
-						/>
-					)}
-					{error && <Text c="red">{error}</Text>}
-					<Button
-						loading={pending}
-						disabled={!username.trim()}
-						onClick={status.setupRequired ? submitSetup : submitLogin}
-					>
-						{status.setupRequired ? t('auth.setup.submit') : t('auth.login.submit')}
-					</Button>
-					{error && (
-						<Button variant="subtle" onClick={() => retry()}>
-							{t('auth.retry')}
+		<AuthWelcomeShell
+			mode={status.mode}
+			title={title}
+			description={
+				hasLocalAccounts
+					? t('auth.chooser.description')
+					: t(
+							status.setupRequired
+								? `auth.welcome.emptyDescription.${status.mode}`
+								: `auth.welcome.description.${status.mode}`,
+						)
+			}
+			error={error}
+			onRetry={retry}
+		>
+			{view === 'welcome' && hasLocalAccounts && (
+				<>
+					<AccountChooser accounts={status.accounts} pending={pending} onSelect={login} />
+					{status.registrationAllowed && (
+						<Button
+							variant="subtle"
+							leftSection={<LuPlus size={17} />}
+							onClick={() => setView('create')}
+						>
+							{t('auth.register.open')}
 						</Button>
 					)}
-				</Stack>
-			</Paper>
-		</Center>
+				</>
+			)}
+
+			{view === 'welcome' && !hasLocalAccounts && (
+				<Group grow>
+					{!status.setupRequired && (
+						<Button onClick={() => setView('login')}>{t('auth.login.open')}</Button>
+					)}
+					{(status.setupRequired || status.registrationAllowed) && (
+						<Button
+							variant={status.setupRequired ? 'filled' : 'light'}
+							leftSection={<LuPlus size={17} />}
+							onClick={() => setView('create')}
+						>
+							{status.setupRequired ? t('auth.setup.open') : t('auth.register.open')}
+						</Button>
+					)}
+				</Group>
+			)}
+
+			{view === 'login' && (
+				<AuthCredentialsForm
+					kind="login"
+					mode={status.mode}
+					pending={pending}
+					onCancel={() => setView('welcome')}
+					onLogin={login}
+				/>
+			)}
+
+			{view === 'create' && (
+				<AuthCredentialsForm
+					kind="create"
+					mode={status.mode}
+					firstAccount={status.setupRequired}
+					pending={pending}
+					onCancel={() => setView('welcome')}
+					onCreate={(values) =>
+						status.setupRequired
+							? setup(values)
+							: register({
+									username: values.username,
+									displayName: values.displayName,
+									password: values.password,
+								})
+					}
+				/>
+			)}
+		</AuthWelcomeShell>
 	);
 }

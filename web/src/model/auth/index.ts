@@ -7,8 +7,10 @@ import {
 	loginAccount,
 	listAuthUsers,
 	logoutAccount,
+	registerAccount,
 	resetAuthUserPassword,
 	setupAccount,
+	switchAccount,
 	updateAuthUser,
 	type AuthStatus,
 } from '../../api/auth';
@@ -17,6 +19,8 @@ export const authStarted = createEvent();
 export const authRetryRequested = createEvent();
 export const setupSubmitted = createEvent<Parameters<typeof setupAccount>[0]>();
 export const loginSubmitted = createEvent<Parameters<typeof loginAccount>[0]>();
+export const registerSubmitted = createEvent<Parameters<typeof registerAccount>[0]>();
+export const switchAccountSubmitted = createEvent<Parameters<typeof switchAccount>[0]>();
 export const logoutRequested = createEvent();
 export const accountManagerOpened = createEvent();
 export const createUserSubmitted = createEvent<Parameters<typeof createAuthUser>[0]>();
@@ -27,6 +31,8 @@ export const ownPasswordChangeSubmitted = createEvent<Parameters<typeof changeOw
 export const loadAuthStatusFx = createEffect(getAuthStatus);
 export const setupAccountFx = createEffect(setupAccount);
 export const loginAccountFx = createEffect(loginAccount);
+export const registerAccountFx = createEffect(registerAccount);
+export const switchAccountFx = createEffect(switchAccount);
 export const logoutAccountFx = createEffect(logoutAccount);
 export const loadAuthUsersFx = createEffect(listAuthUsers);
 export const createAuthUserFx = createEffect(createAuthUser);
@@ -36,6 +42,7 @@ export const changeOwnPasswordFx = createEffect(changeOwnPassword);
 
 const defaultStatus: AuthStatus = {
 	mode: 'local',
+	registrationAllowed: true,
 	setupRequired: false,
 	authenticated: false,
 	user: null,
@@ -59,6 +66,21 @@ export const $authStatus = createStore<AuthStatus>(defaultStatus)
 		accounts: [],
 		csrfToken: result.csrfToken,
 	}))
+	.on(registerAccountFx.doneData, (state, result) => ({
+		...state,
+		setupRequired: false,
+		authenticated: true,
+		user: result.user,
+		accounts: [],
+		csrfToken: result.csrfToken,
+	}))
+	.on(switchAccountFx.doneData, (state, result) => ({
+		...state,
+		authenticated: true,
+		user: result.user,
+		accounts: [],
+		csrfToken: result.csrfToken,
+	}))
 	.on(changeOwnPasswordFx.doneData, (state, result) => ({
 		...state,
 		authenticated: true,
@@ -76,6 +98,8 @@ export const $authError = createStore<string | null>(null)
 			loadAuthStatusFx.failData,
 			setupAccountFx.failData,
 			loginAccountFx.failData,
+			registerAccountFx.failData,
+			switchAccountFx.failData,
 			logoutAccountFx.failData,
 			createAuthUserFx.failData,
 			updateAuthUserFx.failData,
@@ -88,6 +112,8 @@ export const $authError = createStore<string | null>(null)
 		authRetryRequested,
 		setupSubmitted,
 		loginSubmitted,
+		registerSubmitted,
+		switchAccountSubmitted,
 		logoutRequested,
 		createUserSubmitted,
 		userAdministrationSubmitted,
@@ -96,7 +122,14 @@ export const $authError = createStore<string | null>(null)
 	);
 
 export const $authPending = combine(
-	[loadAuthStatusFx.pending, setupAccountFx.pending, loginAccountFx.pending, logoutAccountFx.pending],
+	[
+		loadAuthStatusFx.pending,
+		setupAccountFx.pending,
+		loginAccountFx.pending,
+		registerAccountFx.pending,
+		switchAccountFx.pending,
+		logoutAccountFx.pending,
+	],
 	(pendingStates) => pendingStates.some(Boolean),
 );
 
@@ -108,6 +141,8 @@ export const $authUsers = createStore<Awaited<ReturnType<typeof listAuthUsers>>>
 sample({ clock: [authStarted, authRetryRequested], target: loadAuthStatusFx });
 sample({ clock: setupSubmitted, target: setupAccountFx });
 sample({ clock: loginSubmitted, target: loginAccountFx });
+sample({ clock: registerSubmitted, target: registerAccountFx });
+sample({ clock: switchAccountSubmitted, target: switchAccountFx });
 sample({ clock: logoutRequested, target: logoutAccountFx });
 sample({ clock: accountManagerOpened, target: loadAuthUsersFx });
 sample({ clock: createUserSubmitted, target: createAuthUserFx });
@@ -118,7 +153,15 @@ sample({
 	clock: [createAuthUserFx.done, updateAuthUserFx.done, resetAuthUserPasswordFx.done],
 	target: loadAuthUsersFx,
 });
+sample({
+	clock: [setupAccountFx.done, loginAccountFx.done, registerAccountFx.done, createAuthUserFx.done],
+	target: loadAuthStatusFx,
+});
 
 logoutAccountFx.done.watch(() => {
+	if (typeof window !== 'undefined') window.location.reload();
+});
+
+switchAccountFx.done.watch(() => {
 	if (typeof window !== 'undefined') window.location.reload();
 });

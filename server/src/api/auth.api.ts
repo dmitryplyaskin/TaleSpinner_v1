@@ -153,6 +153,8 @@ function applyAuthResult(
 export function createAuthRouter(config: AuthConfig) {
   const router = express.Router();
   const authRateLimit = createLoginRateLimitMiddleware(config);
+  const registrationAllowed =
+    config.policy.mode === "local" || config.allowRegistration;
 
   router.get(
     "/status",
@@ -163,6 +165,7 @@ export function createAuthRouter(config: AuthConfig) {
         return {
           data: {
             mode: config.policy.mode,
+            registrationAllowed,
             setupRequired: true,
             authenticated: false,
             user: null,
@@ -172,6 +175,8 @@ export function createAuthRouter(config: AuthConfig) {
       }
 
       if (request.auth) {
+        const accounts =
+          config.policy.mode === "local" ? await listActiveUsers() : [];
         const csrfToken = await rotateSessionCsrfToken(
           request.auth.sessionId,
           config
@@ -179,10 +184,11 @@ export function createAuthRouter(config: AuthConfig) {
         return {
           data: {
             mode: config.policy.mode,
+            registrationAllowed,
             setupRequired: false,
             authenticated: true,
             user: request.auth.user,
-            accounts: [],
+            accounts,
             csrfToken,
           },
         };
@@ -203,6 +209,7 @@ export function createAuthRouter(config: AuthConfig) {
         return {
           data: {
             mode: config.policy.mode,
+            registrationAllowed,
             setupRequired: false,
             authenticated: true,
             ...applyAuthResult(response, result, config),
@@ -214,6 +221,7 @@ export function createAuthRouter(config: AuthConfig) {
       return {
         data: {
           mode: config.policy.mode,
+          registrationAllowed,
           setupRequired: false,
           authenticated: false,
           user: null,
@@ -262,7 +270,7 @@ export function createAuthRouter(config: AuthConfig) {
     authRateLimit,
     validate({ body: setupBodySchema }),
     asyncHandler(async (request: Request, response: Response) => {
-      if (config.policy.mode !== "public" || !config.allowRegistration) {
+      if (!registrationAllowed) {
         throw new HttpError(
           403,
           "Public registration is disabled.",
@@ -290,6 +298,23 @@ export function createAuthRouter(config: AuthConfig) {
         };
       } catch (error) {
         mapAuthError(error, config);
+      }
+    })
+  );
+
+  router.post(
+    "/switch",
+    authRateLimit,
+    requireAuthenticatedApi,
+    validate({ body: loginBodySchema }),
+    asyncHandler(async (request: Request, response: Response) => {
+      const body = loginBodySchema.parse(request.body);
+      try {
+        const result = await loginUser({ ...body, config });
+        await revokeAuthSession(request.auth!.sessionId);
+        return { data: applyAuthResult(response, result, config) };
+      } catch (error) {
+        mapAuthError(error, config, "login");
       }
     })
   );

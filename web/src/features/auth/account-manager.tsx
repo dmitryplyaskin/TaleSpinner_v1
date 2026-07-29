@@ -1,26 +1,33 @@
-import { Button, Group, PasswordInput, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Tabs } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LuCircleAlert, LuKeyRound, LuShield, LuUserRound } from 'react-icons/lu';
 
 import {
-	$authStatus,
 	$authError,
+	$authStatus,
 	$authUsers,
 	accountManagerOpened,
 	changeOwnPasswordFx,
 	createAuthUserFx,
 	createUserSubmitted,
+	loadAuthUsersFx,
+	logoutAccountFx,
 	logoutRequested,
 	ownPasswordChangeSubmitted,
 	resetAuthUserPasswordFx,
+	switchAccountFx,
+	switchAccountSubmitted,
 	updateAuthUserFx,
 	userAdministrationSubmitted,
 	userPasswordResetSubmitted,
 } from '@model/auth';
 import { Dialog } from '@ui/dialog';
 
-import { AccountUserRow } from './account-user-row';
+import { AccountOverviewSection } from './account-overview-section';
+import { AccountSecuritySection } from './account-security-section';
+import { AccountUsersSection } from './account-users-section';
 
 export function AccountManager({ opened, onClose }: { opened: boolean; onClose: () => void }) {
 	const { t } = useTranslation();
@@ -33,11 +40,15 @@ export function AccountManager({ opened, onClose }: { opened: boolean; onClose: 
 		updateUser,
 		resetUserPassword,
 		changePassword,
+		switchUser,
 		logout,
+		loadingUsers,
 		creating,
 		updating,
 		resetting,
 		changingPassword,
+		switching,
+		loggingOut,
 	] = useUnit([
 		$authStatus,
 		$authUsers,
@@ -47,18 +58,16 @@ export function AccountManager({ opened, onClose }: { opened: boolean; onClose: 
 		userAdministrationSubmitted,
 		userPasswordResetSubmitted,
 		ownPasswordChangeSubmitted,
+		switchAccountSubmitted,
 		logoutRequested,
+		loadAuthUsersFx.pending,
 		createAuthUserFx.pending,
 		updateAuthUserFx.pending,
 		resetAuthUserPasswordFx.pending,
 		changeOwnPasswordFx.pending,
+		switchAccountFx.pending,
+		logoutAccountFx.pending,
 	]);
-	const [username, setUsername] = useState('');
-	const [displayName, setDisplayName] = useState('');
-	const [password, setPassword] = useState('');
-	const [role, setRole] = useState<'admin' | 'user'>('user');
-	const [currentPassword, setCurrentPassword] = useState('');
-	const [newPassword, setNewPassword] = useState('');
 
 	useEffect(() => {
 		if (opened && status.user?.role === 'admin') load();
@@ -71,87 +80,62 @@ export function AccountManager({ opened, onClose }: { opened: boolean; onClose: 
 				if (!next) onClose();
 			}}
 			title={t('auth.accounts.title')}
-			size="md"
+			size="lg"
 			footer={
-				<Button color="red" variant="light" onClick={() => logout()}>
-					{t('auth.accounts.logout')}
+				<Button variant="subtle" onClick={onClose}>
+					{t('common.close')}
 				</Button>
 			}
 		>
-			<Stack>
-				<Text>{t('auth.accounts.signedInAs', { name: status.user?.displayName })}</Text>
-				<Text fw={600}>{t('auth.accounts.changeOwnPassword')}</Text>
-				<PasswordInput
-					label={t('auth.accounts.currentPassword')}
-					value={currentPassword}
-					onChange={(event) => setCurrentPassword(event.currentTarget.value)}
-				/>
-				<PasswordInput
-					label={t('auth.accounts.newPassword')}
-					description={status.mode === 'local' ? t('auth.fields.passwordOptional') : undefined}
-					value={newPassword}
-					onChange={(event) => setNewPassword(event.currentTarget.value)}
-				/>
-				<Group justify="flex-end">
-					<Button
-						variant="light"
-						loading={changingPassword}
-						disabled={status.mode === 'public' && !newPassword}
-						onClick={() => changePassword({ currentPassword, newPassword })}
-					>
-						{t('auth.accounts.changePassword')}
-					</Button>
-				</Group>
-				{error && <Text c="red">{error}</Text>}
+			{error && (
+				<Alert color="red" variant="light" icon={<LuCircleAlert size={18} />}>
+					{error}
+				</Alert>
+			)}
+			<Tabs defaultValue="account" keepMounted={false}>
+				<Tabs.List grow mb="lg">
+					<Tabs.Tab value="account" leftSection={<LuUserRound size={16} />}>
+						{t('auth.accounts.tabs.account')}
+					</Tabs.Tab>
+					<Tabs.Tab value="security" leftSection={<LuKeyRound size={16} />}>
+						{t('auth.accounts.tabs.security')}
+					</Tabs.Tab>
+					{status.user?.role === 'admin' && (
+						<Tabs.Tab value="users" leftSection={<LuShield size={16} />}>
+							{t('auth.accounts.tabs.users')}
+						</Tabs.Tab>
+					)}
+				</Tabs.List>
+
+				<Tabs.Panel value="account">
+					<AccountOverviewSection
+						status={status}
+						pending={switching || loggingOut}
+						onSwitch={switchUser}
+						onLogout={logout}
+					/>
+				</Tabs.Panel>
+				<Tabs.Panel value="security">
+					<AccountSecuritySection
+						status={status}
+						pending={changingPassword}
+						onChangePassword={changePassword}
+					/>
+				</Tabs.Panel>
 				{status.user?.role === 'admin' && (
-					<>
-						<Text fw={600}>{t('auth.accounts.users')}</Text>
-						{users.map((user) => (
-							<AccountUserRow
-								key={user.id}
-								user={user}
-								allowEmptyPassword={status.mode === 'local'}
-								pending={updating || resetting}
-								onUpdate={updateUser}
-								onResetPassword={resetUserPassword}
-							/>
-						))}
-						<TextInput label={t('auth.fields.username')} value={username} onChange={(e) => setUsername(e.currentTarget.value)} />
-						<TextInput label={t('auth.fields.displayName')} value={displayName} onChange={(e) => setDisplayName(e.currentTarget.value)} />
-						<PasswordInput
-							label={t('auth.fields.password')}
-							description={status.mode === 'local' ? t('auth.fields.passwordOptional') : undefined}
-							value={password}
-							onChange={(e) => setPassword(e.currentTarget.value)}
+					<Tabs.Panel value="users">
+						<AccountUsersSection
+							mode={status.mode}
+							users={users}
+							loading={loadingUsers}
+							mutating={creating || updating || resetting}
+							onCreate={create}
+							onUpdate={updateUser}
+							onResetPassword={resetUserPassword}
 						/>
-						<Select
-							label={t('auth.accounts.role')}
-							value={role}
-							onChange={(value) => setRole(value === 'admin' ? 'admin' : 'user')}
-							data={[
-								{ value: 'user', label: t('auth.accounts.roles.user') },
-								{ value: 'admin', label: t('auth.accounts.roles.admin') },
-							]}
-						/>
-						<Group justify="flex-end">
-							<Button
-								loading={creating}
-								disabled={!username.trim()}
-								onClick={() =>
-									create({
-										username,
-										displayName: displayName || undefined,
-										password,
-										role,
-									})
-								}
-							>
-								{t('auth.accounts.create')}
-							</Button>
-						</Group>
-					</>
+					</Tabs.Panel>
 				)}
-			</Stack>
+			</Tabs>
 		</Dialog>
 	);
 }

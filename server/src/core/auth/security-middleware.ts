@@ -14,7 +14,7 @@ const CSRF_EXEMPT_PATHS = new Set([
 ]);
 
 export const securityHeadersMiddleware: RequestHandler = (
-  _request,
+  request,
   response,
   next
 ) => {
@@ -22,7 +22,13 @@ export const securityHeadersMiddleware: RequestHandler = (
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Referrer-Policy", "no-referrer");
   response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  const embeddableResource =
+    request.path.startsWith("/media/") ||
+    request.path.startsWith("/defaults/");
+  response.setHeader(
+    "Cross-Origin-Resource-Policy",
+    embeddableResource ? "cross-origin" : "same-origin"
+  );
   next();
 };
 
