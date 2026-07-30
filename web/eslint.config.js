@@ -3,7 +3,7 @@ import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 
 export default tseslint.config(
 	{ ignores: ['dist'] },
@@ -19,10 +19,10 @@ export default tseslint.config(
 		plugins: {
 			'react-hooks': reactHooks,
 			'react-refresh': reactRefresh,
-			import: importPlugin,
+			'import-x': importPlugin,
 		},
 		settings: {
-			'import/resolver': {
+			'import-x/resolver': {
 				typescript: {},
 			},
 		},
@@ -39,9 +39,9 @@ export default tseslint.config(
 			'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
 			// Imports hygiene
-			'import/no-duplicates': 'error',
-			'import/newline-after-import': 'error',
-			'import/order': [
+			'import-x/no-duplicates': 'error',
+			'import-x/newline-after-import': 'error',
+			'import-x/order': [
 				'error',
 				{
 					groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
@@ -53,6 +53,8 @@ export default tseslint.config(
 			// Practical correctness
 			eqeqeq: ['error', 'always'],
 			'no-debugger': 'error',
+			// ESLint 10 addition needs a dedicated cleanup pass before becoming blocking.
+			'no-useless-assignment': 'off',
 			'no-console': ['warn', { allow: ['warn', 'error'] }],
 
 			// TS defaults tweaks

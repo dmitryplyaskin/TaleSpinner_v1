@@ -66,9 +66,10 @@ describe("backend e2e blackbox smoke", () => {
     mockAiServer = await startMockAiServer();
 
     const serverRoot = path.resolve(__dirname, "../../..");
+    const tsxCli = path.join(serverRoot, "node_modules", "tsx", "dist", "cli.mjs");
     processRef = spawn(
       process.execPath,
-      ["-r", "ts-node/register", "-r", "tsconfig-paths/register", "src/index.ts"],
+      [tsxCli, "src/index.ts"],
       {
         cwd: serverRoot,
         env: {

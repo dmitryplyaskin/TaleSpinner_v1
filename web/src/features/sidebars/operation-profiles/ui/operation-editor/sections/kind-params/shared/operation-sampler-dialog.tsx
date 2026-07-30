@@ -9,19 +9,19 @@ import { SamplerSettingsGrid } from '../../../../../../../llm-provider/sampler-s
 import { pickNumericSamplers, type OperationSamplerFields } from '../../../../../form/operation-llm-form-utils';
 
 import type { SamplersItemType } from '@shared/types/samplers';
-import type { Control } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
 
-type Props = {
+type Props<TFieldValues extends FieldValues> = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	control: Control<any>;
+	control: Control<TFieldValues>;
 	fieldPrefix: string;
 	samplerFields: OperationSamplerFields;
 	samplerPresets: SamplersItemType[];
 	onSamplerFieldsChange: (patch: Partial<OperationSamplerFields>) => void;
 };
 
-export const OperationSamplerDialog: React.FC<Props> = ({
+export function OperationSamplerDialog<TFieldValues extends FieldValues>({
 	open,
 	onOpenChange,
 	control,
@@ -29,7 +29,7 @@ export const OperationSamplerDialog: React.FC<Props> = ({
 	samplerFields,
 	samplerPresets,
 	onSamplerFieldsChange,
-}) => {
+}: Props<TFieldValues>) {
 	const { t } = useTranslation();
 	const llmSettingsFields = getLlmSettingsFields(t);
 	const options = useMemo(
@@ -77,4 +77,4 @@ export const OperationSamplerDialog: React.FC<Props> = ({
 			</Stack>
 		</Dialog>
 	);
-};
+}

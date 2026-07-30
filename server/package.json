@@ -5,12 +5,17 @@
   "main": "index.js",
   "author": "Dmitry Plyaskin",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.22.2",
+    "yarn": "1.x"
+  },
+  "resolutions": {
+    "**/@esbuild-kit/core-utils/esbuild": "^0.25.0"
+  },
   "dependencies": {
-    "@types/react": "^19.2.8",
-    "@types/react-dom": "^19.2.3",
-    "argon2": "0.44.0",
+    "argon2": "0.45.1",
     "axios": "^1.13.2",
-    "better-sqlite3": "^12.6.0",
+    "better-sqlite3": "^13.0.2",
     "chromadb": "^3.3.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -19,12 +24,9 @@
     "liquidjs": "^10.24.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "nodemon": "^3.1.11",
-    "openai": "^6.16.0",
-    "sharp": "^0.34.5",
-    "uuid": "^13.0.0",
-    "zod": "^4.3.5",
-    "zod-express-middleware": "^1.4.0"
+    "openai": "^7.1.0",
+    "sharp": "^0.35.3",
+    "zod": "^4.3.5"
   },
   "scripts": {
     "start": "node dist/server/src/index.js",
@@ -35,53 +37,42 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot",
     "test:watch": "node --no-warnings ./node_modules/vitest/vitest.mjs",
-    "test:e2e:smoke": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.ts src/e2e/smoke/backend.smoke.e2e.spec.ts",
-    "test:e2e:full": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.ts src/e2e/full-matrix.e2e.spec.ts src/e2e/full-matrix-extra.e2e.spec.ts",
-    "test:e2e:stability": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.ts src/e2e/stability/smoke-repeat.e2e.spec.ts",
-    "test:e2e:blackbox": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.ts src/e2e/smoke/blackbox.smoke.e2e.spec.ts",
-    "seed:chat:large": "ts-node -r tsconfig-paths/register src/scripts/seed-large-chat.ts",
-    "seed:chat:extreme": "ts-node -r tsconfig-paths/register src/scripts/seed-large-chat.ts --extreme",
+    "test:e2e:smoke": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.mts src/e2e/smoke/backend.smoke.e2e.spec.ts",
+    "test:e2e:full": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.mts src/e2e/full-matrix.e2e.spec.ts src/e2e/full-matrix-extra.e2e.spec.ts",
+    "test:e2e:stability": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.mts src/e2e/stability/smoke-repeat.e2e.spec.ts",
+    "test:e2e:blackbox": "node --no-warnings ./node_modules/vitest/vitest.mjs run --silent=passed-only --reporter=dot -c vitest.e2e.config.mts src/e2e/smoke/blackbox.smoke.e2e.spec.ts",
+    "seed:chat:large": "tsx src/scripts/seed-large-chat.ts",
+    "seed:chat:extreme": "tsx src/scripts/seed-large-chat.ts --extreme",
     "lint": "eslint . --config eslint.config.mjs",
     "lint:fix": "eslint . --config eslint.config.mjs --fix",
     "lint:ci": "eslint . --config eslint.config.mjs --max-warnings=0",
     "verify": "yarn typecheck && yarn lint",
     "db:generate": "drizzle-kit generate",
     "db:generate:init": "drizzle-kit generate --name init",
-    "db:migrate": "ts-node -r tsconfig-paths/register ./src/db/migrate.ts",
+    "db:migrate": "tsx ./src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "nodemon"
   },
-  "nodemonConfig": {
-    "watch": [
-      "src"
-    ],
-    "ext": ".ts,.js",
-    "ignore": [
-      "src/**/*.spec.ts"
-    ],
-    "exec": "ts-node ./src/index.js"
-  },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
-    "@types/node": "^25.0.9",
+    "@types/node": "^22.0.0",
     "drizzle-kit": "^0.31.8",
-    "eslint": "^9.39.2",
+    "eslint": "^10.8.0",
     "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-x": "^4.17.1",
     "globals": "^17.0.0",
+    "nodemon": "^3.1.11",
     "peggy": "^5.1.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3",
+    "tsx": "^4.23.1",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.53.0",
-    "vite-tsconfig-paths": "^6.0.5",
-    "vitest": "3"
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
   }
 }
