@@ -3,9 +3,9 @@ import { useUnit } from 'effector-react';
 import { useEffect, useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuRotateCcw } from 'react-icons/lu';
 
 import { ragProviderModel } from '@model/rag-provider';
+import { ArrowCounterClockwiseIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { LlmDisclosureSection } from '../../llm-provider/llm-disclosure-section';
@@ -249,7 +249,7 @@ export const RagSettingsTab = () => {
 				) : null}
 				<Divider />
 				<Group justify="space-between" wrap="wrap">
-					<Button variant="subtle" leftSection={<LuRotateCcw />} disabled={!formState.isDirty} onClick={resetChanges}>
+					<Button variant="subtle" leftSection={<ArrowCounterClockwiseIcon />} disabled={!formState.isDirty} onClick={resetChanges}>
 						{t('rag.actions.reset')}
 					</Button>
 					<Button loading={isSaving} disabled={!formState.isDirty || !validate(getValues())} onClick={() => void save()}>

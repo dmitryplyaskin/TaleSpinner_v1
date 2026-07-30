@@ -1,7 +1,10 @@
 import { ActionIcon, Tooltip, type ActionIconProps, type ElementProps, type TooltipProps } from '@mantine/core';
 import { cloneElement, type ReactElement, type ReactNode } from 'react';
 
+import { ICON_GRAPHIC_STYLE, resolveIconSize } from './icon-presentation';
 import { TOOLTIP_PORTAL_SETTINGS } from './z-index';
+
+import type { IconProps } from './icons';
 
 type ChakraCompatVariant = 'ghost' | 'outline' | 'solid' | 'subtle';
 
@@ -9,7 +12,7 @@ type Props = Omit<ActionIconProps, 'children'> &
 	ElementProps<'button', keyof ActionIconProps> & {
 		tooltip: ReactNode;
 		tooltipSettings?: Omit<TooltipProps, 'children' | 'label'>;
-		icon: ReactElement<{ size?: number }>;
+		icon: ReactElement<IconProps>;
 		iconSize?: number;
 		active?: boolean;
 		/** Chakra compatibility */
@@ -44,32 +47,6 @@ function mapColor(color?: string): string | undefined {
 	}
 }
 
-function resolveIconSize(size: ActionIconProps['size'] | undefined, iconSize?: number): number {
-	if (typeof iconSize === 'number') return iconSize;
-	if (typeof size === 'number') return Math.max(14, Math.floor(size * 0.48));
-
-	switch (size) {
-		case 'input-sm':
-			return 14;
-		case 'input-md':
-			return 16;
-		case 'input-lg':
-			return 17;
-		case 'xs':
-			return 14;
-		case 'sm':
-			return 16;
-		case 'md':
-			return 18;
-		case 'lg':
-			return 19;
-		case 'xl':
-			return 21;
-		default:
-			return 16;
-	}
-}
-
 export const IconButtonWithTooltip = ({
 	icon,
 	tooltip,
@@ -83,7 +60,16 @@ export const IconButtonWithTooltip = ({
 	...buttonProps
 }: Props) => {
 	const ariaLabel = buttonProps['aria-label'] || 'icon-button';
-	const normalizedIcon = cloneElement(icon, { size: icon.props.size ?? resolveIconSize(size, iconSize) });
+	const normalizedIcon = cloneElement(icon, {
+		'aria-hidden': true,
+		focusable: false,
+		size: icon.props.size ?? resolveIconSize(size, iconSize),
+		weight: icon.props.weight ?? (active ? 'fill' : 'bold'),
+		style: {
+			...ICON_GRAPHIC_STYLE,
+			...icon.props.style,
+		},
+	});
 	const resolvedTooltipSettings = { ...TOOLTIP_PORTAL_SETTINGS, ...tooltipSettings };
 
 	return (

@@ -2,7 +2,7 @@ import { Accordion, Button, Group, Stack, Text, TextInput, Textarea } from '@man
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus } from 'react-icons/lu';
+
 
 import { $currentBranchId, $currentChat, $currentEntityProfile } from '@model/chat-core';
 import { $selectedInstruction, instructionEditorDraftChanged } from '@model/instructions';
@@ -10,6 +10,7 @@ import {
 	createEmptyStBaseConfig,
 	resolvePreferredPromptOrder,
 } from '@model/instructions/st-preset';
+import { PlusIcon } from '@ui/icons';
 import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { prerenderInstruction } from '../../../api/instructions';
@@ -306,7 +307,7 @@ export const InstructionEditor = () => {
 						<Button
 							size="sm"
 							variant={createBlockOpened ? 'default' : 'light'}
-							leftSection={<LuPlus size={14} />}
+							leftSection={<PlusIcon size={14} />}
 							onClick={() => setCreateBlockOpened(true)}
 						>
 							{t('instructions.actions.addPromptBlock')}

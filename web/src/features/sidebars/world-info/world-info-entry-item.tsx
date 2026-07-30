@@ -2,10 +2,11 @@ import { Accordion, Group, NumberInput, Select, Stack, TagsInput, Text } from '@
 import React, { memo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuCopy, LuTrash2 } from 'react-icons/lu';
+
 
 import { FormInput, FormMultiSelect, FormSwitch, FormTextarea } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { ArrowDownIcon, ArrowUpIcon, CopyIcon, TrashIcon } from '@ui/icons';
 
 import {
 	parseNullableBool,
@@ -55,7 +56,7 @@ export const WorldInfoEntryItem: React.FC<Props> = memo(({ index, entryId, canMo
 					</Stack>
 					<Group gap={4} wrap="nowrap">
 						<IconButtonWithTooltip
-							icon={<LuArrowUp />}
+							icon={<ArrowUpIcon />}
 							tooltip={t('worldInfo.editor.actions.moveUp')}
 							aria-label={t('worldInfo.editor.actions.moveUp')}
 							disabled={!canMoveUp}
@@ -70,7 +71,7 @@ export const WorldInfoEntryItem: React.FC<Props> = memo(({ index, entryId, canMo
 							}}
 						/>
 						<IconButtonWithTooltip
-							icon={<LuArrowDown />}
+							icon={<ArrowDownIcon />}
 							tooltip={t('worldInfo.editor.actions.moveDown')}
 							aria-label={t('worldInfo.editor.actions.moveDown')}
 							disabled={!canMoveDown}
@@ -85,7 +86,7 @@ export const WorldInfoEntryItem: React.FC<Props> = memo(({ index, entryId, canMo
 							}}
 						/>
 						<IconButtonWithTooltip
-							icon={<LuCopy />}
+							icon={<CopyIcon />}
 							tooltip={t('worldInfo.editor.duplicateEntry')}
 							aria-label={t('worldInfo.editor.duplicateEntry')}
 							onMouseDown={(event) => {
@@ -99,7 +100,7 @@ export const WorldInfoEntryItem: React.FC<Props> = memo(({ index, entryId, canMo
 							}}
 						/>
 						<IconButtonWithTooltip
-							icon={<LuTrash2 />}
+							icon={<TrashIcon />}
 							tooltip={t('worldInfo.editor.deleteEntry')}
 							aria-label={t('worldInfo.editor.deleteEntry')}
 							colorPalette="red"

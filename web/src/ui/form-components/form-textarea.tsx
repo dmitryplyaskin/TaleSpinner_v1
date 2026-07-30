@@ -2,8 +2,8 @@ import { Group, Input, Textarea, type InputWrapperProps, type TextareaProps } fr
 import { useState } from 'react';
 import { useController, type UseControllerProps, useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuExpand } from 'react-icons/lu';
 
+import { ArrowsOutIcon } from '@ui/icons';
 import { InfoTip } from '@ui/info-tip';
 import { LiquidDocsButton, type LiquidDocsContextId } from '@ui/liquid-template-docs';
 
@@ -54,7 +54,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
 			{label}
 			<IconButtonWithTooltip
 				aria-label={t('dialogs.textarea.openFullscreen')}
-				icon={<LuExpand />}
+				icon={<ArrowsOutIcon />}
 				size="sm"
 				variant="outline"
 				tooltip={t('dialogs.textarea.openFullscreen')}

@@ -2,9 +2,10 @@ import { ActionIcon, Button, Group, Stack, Text, TextInput, UnstyledButton } fro
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuRefreshCw, LuSearch } from 'react-icons/lu';
 
 import { Dialog } from '@ui/dialog';
+import { ArrowsClockwiseIcon, MagnifyingGlassIcon } from '@ui/icons';
+
 
 import { filterModels, getModelMetadata, type ModelFilter } from './llm-model-utils';
 
@@ -73,7 +74,7 @@ export const LlmModelPickerDialog: React.FC<Props> = ({
 					<TextInput
 						label={t('provider.modelPicker.searchLabel')}
 						placeholder={t('provider.modelPicker.searchPlaceholder')}
-						leftSection={<LuSearch />}
+						leftSection={<MagnifyingGlassIcon />}
 						value={query}
 						onChange={(event) => setQuery(event.currentTarget.value)}
 						style={{ flex: 1 }}
@@ -86,7 +87,7 @@ export const LlmModelPickerDialog: React.FC<Props> = ({
 						onClick={() => void onRefresh()}
 						aria-label={t('provider.modelPicker.refresh')}
 					>
-						<LuRefreshCw />
+						<ArrowsClockwiseIcon />
 					</ActionIcon>
 				</Group>
 

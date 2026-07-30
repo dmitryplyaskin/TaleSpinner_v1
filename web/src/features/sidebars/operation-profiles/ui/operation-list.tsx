@@ -4,7 +4,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuSearch, LuSlidersHorizontal } from 'react-icons/lu';
+
+import { PlusIcon, MagnifyingGlassIcon, SlidersHorizontalIcon } from '@ui/icons';
 
 import { isOperationKind } from '../utils/operation-kind';
 
@@ -190,7 +191,7 @@ export const OperationList: React.FC<Props> = ({
 						</Text>
 					</Stack>
 
-					<Button size="xs" leftSection={<LuPlus />} onClick={onQuickAdd}>
+					<Button size="xs" leftSection={<PlusIcon />} onClick={onQuickAdd}>
 						{t('common.add')}
 					</Button>
 				</Group>
@@ -201,7 +202,7 @@ export const OperationList: React.FC<Props> = ({
 					value={filters.query}
 					onChange={(event) => setFilters((prev) => ({ ...prev, query: event.currentTarget.value }))}
 					placeholder={t('operationProfiles.filters.searchPlaceholder')}
-					leftSection={<LuSearch />}
+					leftSection={<MagnifyingGlassIcon />}
 					aria-label={t('operationProfiles.filters.searchAria')}
 					style={{ flex: 1 }}
 				/>
@@ -210,7 +211,7 @@ export const OperationList: React.FC<Props> = ({
 						<Button
 							variant="default"
 							px="sm"
-							leftSection={<LuSlidersHorizontal />}
+							leftSection={<SlidersHorizontalIcon />}
 							rightSection={activeFilterCount > 0 ? <Badge size="xs">{activeFilterCount}</Badge> : undefined}
 						>
 							{t('operationProfiles.filters.title')}

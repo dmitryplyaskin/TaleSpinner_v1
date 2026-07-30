@@ -2,7 +2,7 @@ import { Alert, Button, Tabs } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCircleAlert, LuKeyRound, LuShield, LuUserRound } from 'react-icons/lu';
+
 
 import {
 	$authError,
@@ -24,6 +24,7 @@ import {
 	userPasswordResetSubmitted,
 } from '@model/auth';
 import { Dialog } from '@ui/dialog';
+import { WarningCircleIcon, KeyIcon, ShieldCheckIcon, UserIcon } from '@ui/icons';
 
 import { AccountOverviewSection } from './account-overview-section';
 import { AccountSecuritySection } from './account-security-section';
@@ -88,20 +89,20 @@ export function AccountManager({ opened, onClose }: { opened: boolean; onClose: 
 			}
 		>
 			{error && (
-				<Alert color="red" variant="light" icon={<LuCircleAlert size={18} />}>
+				<Alert color="red" variant="light" icon={<WarningCircleIcon size={18} />}>
 					{error}
 				</Alert>
 			)}
 			<Tabs defaultValue="account" keepMounted={false}>
 				<Tabs.List grow mb="lg">
-					<Tabs.Tab value="account" leftSection={<LuUserRound size={16} />}>
+					<Tabs.Tab value="account" leftSection={<UserIcon size={16} />}>
 						{t('auth.accounts.tabs.account')}
 					</Tabs.Tab>
-					<Tabs.Tab value="security" leftSection={<LuKeyRound size={16} />}>
+					<Tabs.Tab value="security" leftSection={<KeyIcon size={16} />}>
 						{t('auth.accounts.tabs.security')}
 					</Tabs.Tab>
 					{status.user?.role === 'admin' && (
-						<Tabs.Tab value="users" leftSection={<LuShield size={16} />}>
+						<Tabs.Tab value="users" leftSection={<ShieldCheckIcon size={16} />}>
 							{t('auth.accounts.tabs.users')}
 						</Tabs.Tab>
 					)}

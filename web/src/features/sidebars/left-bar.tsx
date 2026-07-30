@@ -2,33 +2,33 @@ import { Box } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type IconType } from 'react-icons';
-import { LuBookOpen, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuUsers, LuWorkflow } from 'react-icons/lu';
+
 
 import { $sidebars, toggleSidebarOpen, type SidebarName } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { BookOpenIcon, FileTextIcon, FlowArrowIcon, GearIcon, IdentificationCardIcon, SlidersHorizontalIcon, UserSquareIcon, UsersIcon, type Icon } from '@ui/icons';
 
 import { AccountManager } from '../auth/account-manager';
 
 type SidebarButton = {
 	name: SidebarName;
 	labelKey: string;
-	icon: IconType;
+	icon: Icon;
 };
 
 const sidebarButtons: SidebarButton[] = [
-	{ name: 'agentCards', labelKey: 'leftRail.agentCards', icon: LuIdCard },
-	{ name: 'settings', labelKey: 'leftRail.settings', icon: LuSettings },
-	{ name: 'userPersons', labelKey: 'leftRail.userPersons', icon: LuSquareUser },
-	{ name: 'instructions', labelKey: 'leftRail.instructions', icon: LuFileText },
-	{ name: 'worldInfo', labelKey: 'leftRail.worldInfo', icon: LuBookOpen },
-	{ name: 'operationProfiles', labelKey: 'leftRail.operationProfiles', icon: LuWorkflow },
+	{ name: 'agentCards', labelKey: 'leftRail.agentCards', icon: IdentificationCardIcon },
+	{ name: 'settings', labelKey: 'leftRail.settings', icon: GearIcon },
+	{ name: 'userPersons', labelKey: 'leftRail.userPersons', icon: UserSquareIcon },
+	{ name: 'instructions', labelKey: 'leftRail.instructions', icon: FileTextIcon },
+	{ name: 'worldInfo', labelKey: 'leftRail.worldInfo', icon: BookOpenIcon },
+	{ name: 'operationProfiles', labelKey: 'leftRail.operationProfiles', icon: FlowArrowIcon },
 ];
 
 const appSettingsButton: SidebarButton = {
 	name: 'appSettings',
 	labelKey: 'leftRail.appSettings',
-	icon: LuSettings2,
+	icon: SlidersHorizontalIcon,
 };
 
 export const LeftBar = () => {
@@ -66,7 +66,7 @@ export const LeftBar = () => {
 					<IconButtonWithTooltip
 						tooltip={t('auth.accounts.title')}
 						aria-label={t('auth.accounts.title')}
-						icon={<LuUsers />}
+						icon={<UsersIcon />}
 						variant="ghost"
 						onClick={() => setAccountsOpened(true)}
 					/>

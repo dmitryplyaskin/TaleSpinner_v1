@@ -2,10 +2,11 @@ import { Group, Paper, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuArrowLeft, LuArrowRight } from 'react-icons/lu';
+
 
 import { $variantsByEntryId, $variantsLoadingByEntryId, loadVariantsRequested, regenerateRequested, selectVariantRequested } from '@model/chat-entry-parts';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { ArrowLeftIcon, ArrowRightIcon } from '@ui/icons';
 
 import { pickActiveVariantIndex, resolveNextVariantAction, resolvePreviousVariantAction, type VariantNavigationAction } from './variant-navigation';
 
@@ -100,11 +101,11 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 		<Paper withBorder radius="md" p={6} style={{ marginLeft: 'auto', borderColor: 'var(--ts-border-soft)', backgroundColor: 'var(--ts-surface-elevated)' }}>
 			<Group gap="xs" align="center">
 				<IconButtonWithTooltip
-					size="xs"
+					size="sm"
 					variant="ghost"
 					colorPalette="cyan"
 					disabled={leftDisabled}
-					icon={<LuArrowLeft />}
+					icon={<ArrowLeftIcon />}
 					tooltip={t('chat.variants.previous')}
 					onClick={handleLeft}
 				/>
@@ -114,10 +115,10 @@ export const VariantControls: React.FC<Props> = ({ entry, isLast }) => {
 				</Text>
 
 				<IconButtonWithTooltip
-					size="xs"
+					size="sm"
 					variant="ghost"
 					colorPalette="cyan"
-					icon={<LuArrowRight />}
+					icon={<ArrowRightIcon />}
 					disabled={rightDisabled}
 					tooltip={
 						total === 0

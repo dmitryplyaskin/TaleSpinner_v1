@@ -3,7 +3,7 @@ import { type UserPersonType } from '@shared/types/user-person';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuSlidersHorizontal } from 'react-icons/lu';
+
 
 import { createEmptyUserPerson, userPersonsModel } from '@model/user-persons';
 import {
@@ -15,6 +15,7 @@ import {
 import { Dialog } from '@ui/dialog';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { PlusIcon, SlidersHorizontalIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { authFetch } from '../../../api/auth-fetch';
@@ -229,7 +230,7 @@ export const UserPersonSidebar: React.FC = () => {
 					<Group justify="space-between" align="center" wrap="nowrap" className="ts-sidebar-toolbar">
 						<Button
 							onClick={() => userPersonsModel.createItemFx(createEmptyUserPerson())}
-							leftSection={<LuPlus />}
+							leftSection={<PlusIcon />}
 							color="cyan"
 						>
 							{t('sidebars.addPerson')}
@@ -249,7 +250,7 @@ export const UserPersonSidebar: React.FC = () => {
 
 					<Group align="flex-end" justify="space-between" wrap="nowrap">
 						<IconButtonWithTooltip
-							icon={<LuSlidersHorizontal />}
+							icon={<SlidersHorizontalIcon />}
 							tooltip={
 								advancedFiltersOpen
 									? t('userPersons.filters.hideAdvancedTooltip')
@@ -266,7 +267,7 @@ export const UserPersonSidebar: React.FC = () => {
 						/>
 					</Group>
 
-					<Collapse in={advancedFiltersOpen}>
+					<Collapse expanded={advancedFiltersOpen}>
 						<Group align="flex-end" grow>
 							<Select
 								label={t('userPersons.filters.sortLabel')}

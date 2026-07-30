@@ -1,7 +1,8 @@
 import { Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuFileText } from 'react-icons/lu';
+
+import { FileTextIcon } from '@ui/icons';
 
 import { Dialog } from './dialog';
 import { IconButtonWithTooltip } from './icon-button-with-tooltip';
@@ -229,7 +230,7 @@ export const LiquidDocsButton: React.FC<LiquidDocsButtonProps> = ({ context, siz
 			<Group gap={0}>
 				<IconButtonWithTooltip
 					aria-label={t('dialogs.liquidDocs.open')}
-					icon={<LuFileText />}
+					icon={<FileTextIcon />}
 					size={size}
 					variant={variant}
 					tooltip={t('dialogs.liquidDocs.open')}

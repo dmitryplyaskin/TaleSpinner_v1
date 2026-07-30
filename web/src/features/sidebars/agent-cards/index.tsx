@@ -2,7 +2,7 @@ import { Box, Button, Checkbox, Collapse, Group, MultiSelect, NumberInput, Pagin
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuSlidersHorizontal } from 'react-icons/lu';
+
 
 import {
 	$currentEntityProfile,
@@ -26,6 +26,7 @@ import {
 import { Dialog } from '@ui/dialog';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { PlusIcon, SlidersHorizontalIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import {
@@ -456,7 +457,7 @@ export const AgentCardsSidebar = () => {
 					<Group gap="md" className="ts-sidebar-toolbar">
 						<Button
 							onClick={() => createEntityProfileFx({ name: `New profile ${new Date().toLocaleTimeString()}` })}
-							leftSection={<LuPlus />}
+							leftSection={<PlusIcon />}
 							color="cyan"
 						>
 							{t('sidebars.createProfile')}
@@ -487,7 +488,7 @@ export const AgentCardsSidebar = () => {
 							/>
 						</Stack>
 						<IconButtonWithTooltip
-							icon={<LuSlidersHorizontal />}
+							icon={<SlidersHorizontalIcon />}
 							tooltip={
 								advancedFiltersOpen
 									? t('agentCards.filters.hideAdvancedTooltip')
@@ -504,7 +505,7 @@ export const AgentCardsSidebar = () => {
 						/>
 					</Group>
 
-					<Collapse in={advancedFiltersOpen}>
+					<Collapse expanded={advancedFiltersOpen}>
 						<Stack gap="sm">
 							<Group align="flex-end" grow>
 								<Select

@@ -1,10 +1,11 @@
 import { Group, Select } from '@mantine/core';
 import { type CommonModelItemType, type CommonModelSettingsType } from '@shared/types/common-model-types';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuCopy, LuTrash2 } from 'react-icons/lu';
+
 
 import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from '@ui/file-transfer-icons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { PlusIcon, CopyIcon, TrashIcon } from '@ui/icons';
 
 import { useFileOperations } from './use-file-operations';
 
@@ -67,20 +68,20 @@ export const SidebarHeader = <SettingsType extends CommonModelSettingsType, Item
 				<Group gap="xs" wrap="nowrap" className="ts-sidebar-toolbar__actions">
 					<IconButtonWithTooltip
 						tooltip={labels.createTooltip}
-						icon={<LuPlus />}
+						icon={<PlusIcon />}
 						aria-label={labels.createAriaLabel}
 						onClick={() => model.createItemFx(createEmptyItem())}
 					/>
 					<IconButtonWithTooltip
 						tooltip={labels.duplicateTooltip}
-						icon={<LuCopy />}
+						icon={<CopyIcon />}
 						aria-label={labels.duplicateAriaLabel}
 						disabled={!settings.selectedId}
 						onClick={() => model.duplicateItemFx(items.find((item) => item.id === settings.selectedId) as ItemType)}
 					/>
 					<IconButtonWithTooltip
 						tooltip={labels.deleteTooltip}
-						icon={<LuTrash2 />}
+						icon={<TrashIcon />}
 						aria-label={labels.deleteAriaLabel}
 						disabled={!settings.selectedId}
 						onClick={() => model.deleteItemFx(settings.selectedId as string)}

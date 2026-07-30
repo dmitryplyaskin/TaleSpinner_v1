@@ -1,6 +1,7 @@
 import { ActionIcon, Box, Flex, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { LuX } from 'react-icons/lu';
+
+import { XIcon } from '@ui/icons';
 
 export type ChatAvatarPreview = {
 	src: string;
@@ -36,7 +37,7 @@ export const AvatarPreviewPanel: React.FC<AvatarPreviewPanelProps> = ({ preview,
 					aria-label={t('chat.avatarPreview.close')}
 					title={t('chat.avatarPreview.close')}
 				>
-					<LuX />
+					<XIcon />
 				</ActionIcon>
 			</Flex>
 

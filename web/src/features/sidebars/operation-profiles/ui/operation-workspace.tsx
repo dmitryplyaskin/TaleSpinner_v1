@@ -1,7 +1,8 @@
 import { Button, Stack, Text } from '@mantine/core';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuArrowLeft, LuPlus, LuWorkflow } from 'react-icons/lu';
+
+import { ArrowLeftIcon, PlusIcon, FlowArrowIcon } from '@ui/icons';
 
 import { OperationList } from './operation-list';
 import { getOperationListLayout } from './operation-list-layout';
@@ -50,14 +51,14 @@ export const OperationWorkspace: React.FC<Props> = ({
 	if (rows.length === 0) {
 		return (
 			<section className="op-emptyState">
-				<LuWorkflow size={28} aria-hidden />
+				<FlowArrowIcon size={28} aria-hidden />
 				<Stack gap={4} align="center">
 					<Text fw={650}>{t('operationProfiles.operations.emptyTitle')}</Text>
 					<Text size="sm" c="dimmed" ta="center">
 						{t('operationProfiles.operations.empty')}
 					</Text>
 				</Stack>
-				<Button leftSection={<LuPlus />} onClick={onAdd}>
+				<Button leftSection={<PlusIcon />} onClick={onAdd}>
 					{t('operationProfiles.actions.addOperation')}
 				</Button>
 			</section>
@@ -90,7 +91,7 @@ export const OperationWorkspace: React.FC<Props> = ({
 	return (
 		<section className="op-compactScreen op-compactInspector">
 			<header className="op-compactNav">
-				<Button variant="subtle" size="compact-sm" leftSection={<LuArrowLeft />} onClick={onBackToList}>
+				<Button variant="subtle" size="compact-sm" leftSection={<ArrowLeftIcon />} onClick={onBackToList}>
 					{t('operationProfiles.inspector.backToOperations')}
 				</Button>
 				<Text size="xs" c="dimmed">

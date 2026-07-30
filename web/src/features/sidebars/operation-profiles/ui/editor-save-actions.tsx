@@ -1,7 +1,8 @@
 import { Button, Group, Text } from '@mantine/core';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuSave, LuUndo2 } from 'react-icons/lu';
+
+import { FloppyDiskIcon, ArrowUUpLeftIcon } from '@ui/icons';
 
 export type EditorSaveState = {
 	canSave: boolean;
@@ -30,13 +31,13 @@ export const EditorSaveActions: React.FC<Props> = ({ state, compact = false }) =
 				<Button
 					size="sm"
 					variant="default"
-					leftSection={<LuUndo2 />}
+					leftSection={<ArrowUUpLeftIcon />}
 					disabled={!state.canDiscard}
 					onClick={state.onDiscard}
 				>
 					{t('operationProfiles.actions.discard')}
 				</Button>
-				<Button size="sm" leftSection={<LuSave />} disabled={!state.canSave} onClick={state.onSave}>
+				<Button size="sm" leftSection={<FloppyDiskIcon />} disabled={!state.canSave} onClick={state.onSave}>
 					{t('common.save')}
 				</Button>
 			</Group>

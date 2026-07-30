@@ -12,7 +12,8 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuChevronRight, LuKeyRound } from 'react-icons/lu';
+
+import { CheckIcon, CaretRightIcon, KeyIcon } from '@ui/icons';
 
 import type { AuthUser } from '../../api/auth';
 
@@ -88,7 +89,7 @@ export function AccountChooser({
 											{account.displayName}
 										</Text>
 										{current && (
-											<Badge size="xs" variant="light" leftSection={<LuCheck size={11} />}>
+											<Badge size="xs" variant="light" leftSection={<CheckIcon size={11} />}>
 												{t('auth.chooser.current')}
 											</Badge>
 										)}
@@ -98,18 +99,18 @@ export function AccountChooser({
 									</Text>
 								</Box>
 								{account.hasPassword ? (
-									<LuKeyRound
+									<KeyIcon
 										size={17}
 										aria-label={t('auth.chooser.passwordProtected')}
 										color="var(--mantine-color-dimmed)"
 									/>
 								) : (
-									<LuChevronRight size={18} color="var(--mantine-color-dimmed)" />
+									<CaretRightIcon size={18} color="var(--mantine-color-dimmed)" />
 								)}
 							</Group>
 						</UnstyledButton>
 
-						<Collapse in={selected && !current}>
+						<Collapse expanded={selected && !current}>
 							<Stack
 								gap="sm"
 								p="sm"

@@ -1,7 +1,8 @@
 import { Group, Select, Stack, Text } from '@mantine/core';
-import { LuCopy, LuPencil, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { CopyIcon, PencilSimpleIcon, PlusIcon, FloppyDiskIcon, TrashIcon } from '@ui/icons';
+
 
 import type { ReactNode } from 'react';
 
@@ -61,16 +62,16 @@ export const PresetControls: React.FC<Props> = ({
 }) => {
 	const actionButtons = (
 		<>
-			<IconButtonWithTooltip icon={<LuPlus />} tooltip={labels.create} aria-label={labels.create} onClick={onCreate} />
+			<IconButtonWithTooltip icon={<PlusIcon />} tooltip={labels.create} aria-label={labels.create} onClick={onCreate} />
 			<IconButtonWithTooltip
-				icon={<LuPencil />}
+				icon={<PencilSimpleIcon />}
 				tooltip={labels.rename}
 				aria-label={labels.rename}
 				onClick={onRename}
 				disabled={disableRename}
 			/>
 			<IconButtonWithTooltip
-				icon={<LuCopy />}
+				icon={<CopyIcon />}
 				tooltip={labels.duplicate}
 				aria-label={labels.duplicate}
 				onClick={onDuplicate}
@@ -79,7 +80,7 @@ export const PresetControls: React.FC<Props> = ({
 			{extraActions}
 			{showSaveAction ? (
 				<IconButtonWithTooltip
-					icon={<LuSave />}
+					icon={<FloppyDiskIcon />}
 					tooltip={labels.save}
 					aria-label={labels.save}
 					onClick={onSave}
@@ -88,7 +89,7 @@ export const PresetControls: React.FC<Props> = ({
 				/>
 			) : null}
 			<IconButtonWithTooltip
-				icon={<LuTrash2 />}
+				icon={<TrashIcon />}
 				tooltip={labels.delete}
 				aria-label={labels.delete}
 				onClick={onDelete}

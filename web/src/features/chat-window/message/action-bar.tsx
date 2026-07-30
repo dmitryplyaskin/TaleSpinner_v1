@@ -1,9 +1,10 @@
 import { Box, Flex, Paper } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuEllipsis, LuEye, LuEyeOff, LuFileSearch, LuPen, LuTrash, LuUndo2, LuX } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { ArrowUUpLeftIcon, CheckIcon, DotsThreeIcon, EyeIcon, EyeSlashIcon, FileMagnifyingGlassIcon, ListBulletsIcon, PencilSimpleIcon, TrashIcon, XIcon } from '@ui/icons';
+
 
 type ActionBarProps = {
 	isEditing: boolean;
@@ -57,8 +58,8 @@ export const ActionBar = ({
 		<Flex gap={6} align="center">
 			{isEditing ? (
 				<Flex gap={4}>
-					<IconButtonWithTooltip size="xs" variant="solid" colorPalette="red" icon={<LuX />} tooltip={t('chat.actions.cancelEdit')} aria-label={t('chat.actions.cancelEdit')} onClick={onCancelEdit} />
-					<IconButtonWithTooltip size="xs" variant="solid" colorPalette="green" icon={<LuCheck />} tooltip={t('chat.actions.confirmEdit')} aria-label={t('chat.actions.confirmEdit')} onClick={onConfirmEdit} />
+					<IconButtonWithTooltip size="sm" variant="solid" colorPalette="red" icon={<XIcon />} tooltip={t('chat.actions.cancelEdit')} aria-label={t('chat.actions.cancelEdit')} onClick={onCancelEdit} />
+					<IconButtonWithTooltip size="sm" variant="solid" colorPalette="green" icon={<CheckIcon />} tooltip={t('chat.actions.confirmEdit')} aria-label={t('chat.actions.confirmEdit')} onClick={onConfirmEdit} />
 				</Flex>
 			) : (
 				<Paper withBorder radius="md" p={6} style={{ borderColor: 'var(--ts-border-soft)', backgroundColor: 'var(--ts-surface-elevated)' }}>
@@ -73,10 +74,10 @@ export const ActionBar = ({
 							<Flex gap={4} align="center" wrap="nowrap">
 								{canDeleteVariant && (
 									<IconButtonWithTooltip
-										size="xs"
+										size="sm"
 										variant="ghost"
 										colorPalette="red"
-										icon={<LuTrash />}
+										icon={<TrashIcon />}
 										tooltip={t('chat.variants.delete')}
 										aria-label={t('chat.variants.delete')}
 										onClick={() => {
@@ -86,10 +87,10 @@ export const ActionBar = ({
 									/>
 								)}
 								<IconButtonWithTooltip
-									size="xs"
+									size="sm"
 									variant="ghost"
 									colorPalette="red"
-									icon={<LuTrash />}
+									icon={<TrashIcon />}
 									tooltip={t('chat.actions.deleteMessage')}
 									aria-label={t('chat.actions.deleteMessage')}
 									onClick={() => {
@@ -98,10 +99,10 @@ export const ActionBar = ({
 									}}
 								/>
 								<IconButtonWithTooltip
-									size="xs"
+									size="sm"
 									variant="ghost"
 									colorPalette={isPromptExcluded ? 'gray' : 'cyan'}
-									icon={isPromptExcluded ? <LuEye /> : <LuEyeOff />}
+									icon={isPromptExcluded ? <EyeIcon /> : <EyeSlashIcon />}
 									tooltip={isPromptExcluded ? t('chat.actions.showInPrompt') : t('chat.actions.hideFromPrompt')}
 									aria-label={isPromptExcluded ? t('chat.actions.showInPrompt') : t('chat.actions.hideFromPrompt')}
 									onClick={() => {
@@ -111,10 +112,10 @@ export const ActionBar = ({
 								/>
 								{showUndoCanonicalizationAction && (
 									<IconButtonWithTooltip
-										size="xs"
+										size="sm"
 										variant="ghost"
 										colorPalette={canOpenUndoCanonicalization ? 'orange' : 'gray'}
-										icon={<LuUndo2 />}
+										icon={<ArrowUUpLeftIcon />}
 										tooltip={
 											canOpenUndoCanonicalization
 												? t('chat.actions.undoCanonicalization')
@@ -130,10 +131,10 @@ export const ActionBar = ({
 								)}
 								{showPromptInspectorAction && (
 									<IconButtonWithTooltip
-										size="xs"
+										size="sm"
 										variant="ghost"
 										colorPalette={canOpenPromptInspector ? 'cyan' : 'gray'}
-										icon={<LuFileSearch />}
+										icon={<FileMagnifyingGlassIcon />}
 										tooltip={
 											canOpenPromptInspector
 												? t('chat.actions.viewPrompt')
@@ -148,10 +149,10 @@ export const ActionBar = ({
 									/>
 								)}
 								<IconButtonWithTooltip
-									size="xs"
+									size="sm"
 									variant="ghost"
 									colorPalette="teal"
-									icon={<LuFileSearch />}
+									icon={<ListBulletsIcon />}
 									tooltip={t('chat.actions.openPartsEditor')}
 									aria-label={t('chat.actions.openPartsEditor')}
 									onClick={() => {
@@ -162,20 +163,20 @@ export const ActionBar = ({
 							</Flex>
 						</Box>
 						<IconButtonWithTooltip
-							size="xs"
+							size="sm"
 							variant="ghost"
 							colorPalette="gray"
-							icon={<LuEllipsis />}
+							icon={<DotsThreeIcon />}
 							tooltip={actionsOpen ? t('chat.actions.hideActions') : t('chat.actions.showActions')}
 							aria-label={actionsOpen ? t('chat.actions.hideActions') : t('chat.actions.showActions')}
 							active={actionsOpen}
 							onClick={() => setActionsOpen((prev) => !prev)}
 						/>
 						<IconButtonWithTooltip
-							size="xs"
+							size="sm"
 							variant="ghost"
 							colorPalette="violet"
-							icon={<LuPen />}
+							icon={<PencilSimpleIcon />}
 							tooltip={t('chat.actions.editMessage')}
 							aria-label={t('chat.actions.editMessage')}
 							onClick={onOpenEdit}

@@ -3,11 +3,12 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuPlus } from 'react-icons/lu';
+
 
 import { Dialog } from '@ui/dialog';
 import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { PlusIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import {
@@ -291,7 +292,7 @@ export const WorldInfoEditorModal = ({ opened, book, saving, onClose, onSave }: 
 
 						<Group justify="space-between" align="center">
 							<Text fw={600}>{t('worldInfo.editor.entriesTitle')}</Text>
-							<IconButtonWithTooltip icon={<LuPlus />} tooltip={t('worldInfo.editor.addEntry')} aria-label={t('worldInfo.editor.addEntry')} onClick={addEntry} />
+							<IconButtonWithTooltip icon={<PlusIcon />} tooltip={t('worldInfo.editor.addEntry')} aria-label={t('worldInfo.editor.addEntry')} onClick={addEntry} />
 						</Group>
 
 						<Group grow align="end" wrap={isMobile ? 'wrap' : 'nowrap'}>

@@ -8,13 +8,14 @@ import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuChevronDown, LuChevronUp, LuFolderPlus, LuPlus, LuTrash2 } from 'react-icons/lu';
+
 
 import { $currentBranchId, $currentChat, $currentEntityProfile } from '@model/chat-core';
 import { userPersonsModel } from '@model/user-persons';
 import { Dialog } from '@ui/dialog';
 import { FormInput, FormSwitch, FormTextarea } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { ArrowDownIcon, ArrowUpIcon, CaretDownIcon, CaretUpIcon, FolderPlusIcon, PlusIcon, TrashIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { BACKEND_ORIGIN } from '../../../api/chat-core';
@@ -396,7 +397,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 										{!sectionsState.additionalCollapsed && (
 											<>
 												<IconButtonWithTooltip
-													icon={<LuPlus />}
+													icon={<PlusIcon />}
 													tooltip={t('userPersons.additional.actions.addItem')}
 													aria-label={t('userPersons.additional.actions.addItem')}
 													onClick={addTopLevelItem}
@@ -404,7 +405,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 													variant="outline"
 												/>
 												<IconButtonWithTooltip
-													icon={<LuFolderPlus />}
+													icon={<FolderPlusIcon />}
 													tooltip={t('userPersons.additional.actions.addGroup')}
 													aria-label={t('userPersons.additional.actions.addGroup')}
 													onClick={addTopLevelGroup}
@@ -414,7 +415,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 											</>
 										)}
 										<IconButtonWithTooltip
-											icon={sectionsState.additionalCollapsed ? <LuChevronDown /> : <LuChevronUp />}
+											icon={sectionsState.additionalCollapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 											tooltip={
 												sectionsState.additionalCollapsed
 													? t('userPersons.additional.actions.expand')
@@ -432,7 +433,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 									</Group>
 								</Group>
 
-								<Collapse in={!sectionsState.additionalCollapsed}>
+								<Collapse expanded={!sectionsState.additionalCollapsed}>
 									{Array.isArray(watchedBlocks) && watchedBlocks.length > 0 ? (
 									<Stack gap="sm">
 										{watchedBlocks.map((block, blockIndex) => {
@@ -475,7 +476,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																		)}
 																	/>
 																	<IconButtonWithTooltip
-																		icon={<LuArrowUp />}
+																		icon={<ArrowUpIcon />}
 																		tooltip={t('common.up')}
 																		aria-label={t('common.up')}
 																		onClick={() => moveTopLevelBlock(blockIndex, -1)}
@@ -484,7 +485,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																		disabled={blockIndex === 0}
 																	/>
 																	<IconButtonWithTooltip
-																		icon={<LuArrowDown />}
+																		icon={<ArrowDownIcon />}
 																		tooltip={t('common.down')}
 																		aria-label={t('common.down')}
 																		onClick={() => moveTopLevelBlock(blockIndex, 1)}
@@ -493,7 +494,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																		disabled={blockIndex >= watchedBlocks.length - 1}
 																	/>
 																	<IconButtonWithTooltip
-																		icon={<LuTrash2 />}
+																		icon={<TrashIcon />}
 																		tooltip={t('common.delete')}
 																		aria-label={t('common.delete')}
 																		onClick={() => removeTopLevelBlock(blockIndex)}
@@ -502,7 +503,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																		colorPalette="red"
 																	/>
 																	<IconButtonWithTooltip
-																		icon={block.collapsed ? <LuChevronDown /> : <LuChevronUp />}
+																		icon={block.collapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 																		tooltip={
 																			block.collapsed
 																				? t('userPersons.additional.actions.expand')
@@ -533,7 +534,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																		<Button
 																			variant="light"
 																			size="xs"
-																			leftSection={<LuPlus />}
+																			leftSection={<PlusIcon />}
 																			onClick={() => addItemToGroup(blockIndex)}
 																		>
 																			{t('userPersons.additional.actions.addItem')}
@@ -580,7 +581,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																									)}
 																								/>
 																								<IconButtonWithTooltip
-																									icon={<LuArrowUp />}
+																									icon={<ArrowUpIcon />}
 																									tooltip={t('common.up')}
 																									aria-label={t('common.up')}
 																									onClick={() => moveGroupItem(blockIndex, itemIndex, -1)}
@@ -589,7 +590,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																									disabled={itemIndex === 0}
 																								/>
 																								<IconButtonWithTooltip
-																									icon={<LuArrowDown />}
+																									icon={<ArrowDownIcon />}
 																									tooltip={t('common.down')}
 																									aria-label={t('common.down')}
 																									onClick={() => moveGroupItem(blockIndex, itemIndex, 1)}
@@ -598,7 +599,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																									disabled={itemIndex >= block.items.length - 1}
 																								/>
 																								<IconButtonWithTooltip
-																									icon={<LuTrash2 />}
+																									icon={<TrashIcon />}
 																									tooltip={t('common.delete')}
 																									aria-label={t('common.delete')}
 																									onClick={() => removeGroupItem(blockIndex, itemIndex)}
@@ -607,7 +608,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																									colorPalette="red"
 																								/>
 																								<IconButtonWithTooltip
-																									icon={item.collapsed ? <LuChevronDown /> : <LuChevronUp />}
+																									icon={item.collapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 																									tooltip={
 																										item.collapsed
 																											? t('userPersons.additional.actions.expand')
@@ -692,7 +693,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																	)}
 																/>
 																<IconButtonWithTooltip
-																	icon={<LuArrowUp />}
+																	icon={<ArrowUpIcon />}
 																	tooltip={t('common.up')}
 																	aria-label={t('common.up')}
 																	onClick={() => moveTopLevelBlock(blockIndex, -1)}
@@ -701,7 +702,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																	disabled={blockIndex === 0}
 																/>
 																<IconButtonWithTooltip
-																	icon={<LuArrowDown />}
+																	icon={<ArrowDownIcon />}
 																	tooltip={t('common.down')}
 																	aria-label={t('common.down')}
 																	onClick={() => moveTopLevelBlock(blockIndex, 1)}
@@ -710,7 +711,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																	disabled={blockIndex >= watchedBlocks.length - 1}
 																/>
 																<IconButtonWithTooltip
-																	icon={<LuTrash2 />}
+																	icon={<TrashIcon />}
 																	tooltip={t('common.delete')}
 																	aria-label={t('common.delete')}
 																	onClick={() => removeTopLevelBlock(blockIndex)}
@@ -719,7 +720,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 																	colorPalette="red"
 																/>
 																<IconButtonWithTooltip
-																	icon={block.collapsed ? <LuChevronDown /> : <LuChevronUp />}
+																	icon={block.collapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 																	tooltip={block.collapsed ? t('userPersons.additional.actions.expand') : t('userPersons.additional.actions.collapse')}
 																	aria-label={block.collapsed ? t('userPersons.additional.actions.expand') : t('userPersons.additional.actions.collapse')}
 																	onClick={() =>
@@ -761,7 +762,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 								>
 									<Text fw={600}>{t('userPersons.settings.title')}</Text>
 									<IconButtonWithTooltip
-										icon={sectionsState.settingsCollapsed ? <LuChevronDown /> : <LuChevronUp />}
+										icon={sectionsState.settingsCollapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 										tooltip={
 											sectionsState.settingsCollapsed
 												? t('userPersons.additional.actions.expand')
@@ -777,7 +778,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 										variant="outline"
 									/>
 								</Group>
-								<Collapse in={!sectionsState.settingsCollapsed}>
+								<Collapse expanded={!sectionsState.settingsCollapsed}>
 									<Stack gap="sm">
 										<FormInput
 											name="additionalJoiner"
@@ -806,7 +807,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 								>
 									<Text fw={600}>{t('userPersons.preview.title')}</Text>
 									<IconButtonWithTooltip
-										icon={sectionsState.previewCollapsed ? <LuChevronDown /> : <LuChevronUp />}
+										icon={sectionsState.previewCollapsed ? <CaretDownIcon /> : <CaretUpIcon />}
 										tooltip={
 											sectionsState.previewCollapsed
 												? t('userPersons.additional.actions.expand')
@@ -822,7 +823,7 @@ export const UserPersonEditor: React.FC<UserPersonEditorProps> = ({ opened, data
 										variant="outline"
 									/>
 								</Group>
-								<Collapse in={!sectionsState.previewCollapsed}>
+								<Collapse expanded={!sectionsState.previewCollapsed}>
 									<Stack gap="sm">
 										<Text size="xs" c="dimmed">
 											{t('userPersons.preview.info', { count: preview.enabledTexts.length })}

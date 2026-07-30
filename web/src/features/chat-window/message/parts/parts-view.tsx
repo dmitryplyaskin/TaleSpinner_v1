@@ -2,10 +2,11 @@ import { Box, Collapse, Group, Paper, Stack, Text, Textarea } from '@mantine/cor
 import { useUnit } from 'effector-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCheck, LuPen, LuTrash, LuX } from 'react-icons/lu';
+
 
 import { $appDebugEnabled } from '@model/app-debug';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { CheckIcon, PencilSimpleIcon, TrashIcon, XIcon } from '@ui/icons';
 import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { getUiProjection } from './projection';
@@ -100,7 +101,7 @@ const PartsViewInner: React.FC<Props> = ({
 											size="xs"
 											variant="solid"
 											colorPalette="red"
-											icon={<LuX />}
+											icon={<XIcon />}
 											tooltip={t('chat.actions.cancelEdit')}
 											aria-label={t('chat.actions.cancelEdit')}
 											onClick={onCancelEditPart}
@@ -109,7 +110,7 @@ const PartsViewInner: React.FC<Props> = ({
 											size="xs"
 											variant="solid"
 											colorPalette="green"
-											icon={<LuCheck />}
+											icon={<CheckIcon />}
 											tooltip={t('chat.actions.confirmEdit')}
 											aria-label={t('chat.actions.confirmEdit')}
 											onClick={onConfirmEditPart}
@@ -125,7 +126,7 @@ const PartsViewInner: React.FC<Props> = ({
 											size="xs"
 											variant="ghost"
 											colorPalette="red"
-											icon={<LuTrash />}
+											icon={<TrashIcon />}
 											tooltip={t('chat.actions.deletePart')}
 											aria-label={t('chat.actions.deletePart')}
 											onClick={() => onDeletePart(p)}
@@ -136,7 +137,7 @@ const PartsViewInner: React.FC<Props> = ({
 											size="xs"
 											variant="ghost"
 											colorPalette="violet"
-											icon={<LuPen />}
+											icon={<PencilSimpleIcon />}
 											tooltip={t('chat.actions.editPart')}
 											aria-label={t('chat.actions.editPart')}
 											onClick={() => onEditPart(p)}
@@ -186,7 +187,7 @@ const PartsViewInner: React.FC<Props> = ({
 								{reasoningOpen ? t('chat.reasoning.hide') : t('chat.reasoning.show')}
 							</Text>
 						</Group>
-						<Collapse in={reasoningOpen}>
+						<Collapse expanded={reasoningOpen}>
 							<Box mt="xs">{renderList(reasoningParts)}</Box>
 						</Collapse>
 					</Paper>
@@ -213,7 +214,7 @@ const PartsViewInner: React.FC<Props> = ({
 							{reasoningOpen ? t('chat.reasoning.hide') : t('chat.reasoning.show')}
 						</Text>
 					</Group>
-					<Collapse in={reasoningOpen}>
+					<Collapse expanded={reasoningOpen}>
 						<Box mt="xs">{renderList(reasoningParts)}</Box>
 					</Collapse>
 				</Paper>
@@ -229,7 +230,7 @@ const PartsViewInner: React.FC<Props> = ({
 				</Text>
 			</Group>
 
-			<Collapse in={inspectorOpen}>
+			<Collapse expanded={inspectorOpen}>
 				<Paper withBorder radius="md" p="sm">
 					<Text size="xs" fw={600} mb="xs">
 						{t('chat.debug.rawParts')}

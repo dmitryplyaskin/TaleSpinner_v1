@@ -2,10 +2,11 @@ import { Badge, Button, Collapse, Group, Loader, Paper, Stack, Text, UnstyledBut
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuActivity, LuChevronDown, LuChevronRight, LuCircleCheck, LuCircleMinus, LuCircleX, LuMessageCircle } from 'react-icons/lu';
+
 
 import { $lastRunTrace } from '@model/operation-run-trace';
 import { toggleSidebarOpen } from '@model/sidebars';
+import { PulseIcon, CaretDownIcon, CaretRightIcon, CheckCircleIcon, MinusCircleIcon, XCircleIcon, ChatCircleIcon } from '@ui/icons';
 
 import { describeDestination, describeOperationSummary, runStatusColor } from './run-trace-summary';
 
@@ -15,9 +16,9 @@ const HOOK_ORDER = ['before_main_llm', 'after_main_llm'];
 
 const StatusIcon: React.FC<{ status: TraceOperation['status'] }> = ({ status }) => {
 	if (status === 'running') return <Loader size={14} />;
-	if (status === 'done') return <LuCircleCheck size={15} color="var(--mantine-color-teal-6)" />;
-	if (status === 'skipped') return <LuCircleMinus size={15} color="var(--mantine-color-yellow-7)" />;
-	return <LuCircleX size={15} color="var(--mantine-color-red-6)" />;
+	if (status === 'done') return <CheckCircleIcon size={15} color="var(--mantine-color-teal-6)" />;
+	if (status === 'skipped') return <MinusCircleIcon size={15} color="var(--mantine-color-yellow-7)" />;
+	return <XCircleIcon size={15} color="var(--mantine-color-red-6)" />;
 };
 
 const OperationRow: React.FC<{ trace: RunTrace; op: TraceOperation }> = ({ trace, op }) => {
@@ -55,13 +56,13 @@ const OperationRow: React.FC<{ trace: RunTrace; op: TraceOperation }> = ({ trace
 					</Stack>
 					{hasDetails && (
 						<span style={{ marginTop: 2, flexShrink: 0, color: 'var(--mantine-color-dimmed)' }}>
-							{opened ? <LuChevronDown size={14} /> : <LuChevronRight size={14} />}
+							{opened ? <CaretDownIcon size={14} /> : <CaretRightIcon size={14} />}
 						</span>
 					)}
 				</Group>
 			</UnstyledButton>
 
-			<Collapse in={opened}>
+			<Collapse expanded={opened}>
 				<Stack gap="xs" mt="xs" pl={23}>
 					{op.errorMessage && (
 						<Text size="xs" c="red">
@@ -113,7 +114,7 @@ export const RunTracePanel: React.FC = () => {
 		return (
 			<section className="op-runEmpty">
 				<div className="op-runEmptyIcon">
-					<LuActivity size={26} aria-hidden />
+					<PulseIcon size={26} aria-hidden />
 				</div>
 				<Stack gap={6} align="center">
 					<Text fw={700} size="lg">
@@ -128,7 +129,7 @@ export const RunTracePanel: React.FC = () => {
 				</Stack>
 				<Button
 					variant="light"
-					leftSection={<LuMessageCircle />}
+					leftSection={<ChatCircleIcon />}
 					onClick={() => toggleSidebarOpen({ name: 'operationProfiles', isOpen: false })}
 				>
 					{t('operationProfiles.runTrace.emptyAction')}

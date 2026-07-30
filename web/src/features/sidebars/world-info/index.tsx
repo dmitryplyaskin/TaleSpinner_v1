@@ -3,7 +3,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useUnit } from 'effector-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCopy, LuPencilLine, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu';
+
 
 import {
 	$worldInfoGlobalBookId,
@@ -33,6 +33,7 @@ import {
 import { Drawer } from '@ui/drawer';
 import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from '@ui/file-transfer-icons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { CopyIcon, PencilSimpleIcon, PlusIcon, ArrowsClockwiseIcon, TrashIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { exportWorldInfoBookToStNative, type WorldInfoSettingsDto } from '../../../api/world-info';
@@ -181,10 +182,10 @@ export const WorldInfoSidebar = () => {
 						/>
 
 						<Group gap="xs" wrap="nowrap" className="ts-sidebar-toolbar__actions">
-							<IconButtonWithTooltip tooltip={t('common.create')} icon={<LuPlus />} aria-label={t('worldInfo.actions.createBook')} onClick={() => worldInfoBookCreateRequested()} />
+							<IconButtonWithTooltip tooltip={t('common.create')} icon={<PlusIcon />} aria-label={t('worldInfo.actions.createBook')} onClick={() => worldInfoBookCreateRequested()} />
 							<IconButtonWithTooltip
 								tooltip={t('common.duplicate')}
-								icon={<LuCopy />}
+								icon={<CopyIcon />}
 								aria-label={t('worldInfo.actions.duplicateBook')}
 								disabled={!selectedId}
 								onClick={() => {
@@ -196,14 +197,14 @@ export const WorldInfoSidebar = () => {
 							<IconButtonWithTooltip tooltip={t('common.export')} icon={<EXPORT_FILE_ICON />} aria-label={t('worldInfo.actions.exportBook')} disabled={!selectedId} onClick={() => void handleExport()} />
 							<IconButtonWithTooltip
 								tooltip={t('worldInfo.actions.openEditor')}
-								icon={<LuPencilLine />}
+								icon={<PencilSimpleIcon />}
 								aria-label={t('worldInfo.actions.openEditor')}
 								disabled={!selectedBook}
 								onClick={() => setEditorOpen(true)}
 							/>
 							<IconButtonWithTooltip
 								tooltip={t('common.refresh')}
-								icon={<LuRefreshCw />}
+								icon={<ArrowsClockwiseIcon />}
 								aria-label={t('worldInfo.actions.refresh')}
 								onClick={() => {
 									void loadWorldInfoBooksFx();
@@ -213,7 +214,7 @@ export const WorldInfoSidebar = () => {
 							/>
 							<IconButtonWithTooltip
 								tooltip={t('common.delete')}
-								icon={<LuTrash2 />}
+								icon={<TrashIcon />}
 								aria-label={t('worldInfo.actions.deleteBook')}
 								color="red"
 								variant="outline"
@@ -270,7 +271,7 @@ export const WorldInfoSidebar = () => {
 							<Text size="xs" c="dimmed">slug: {selectedBook.slug}</Text>
 							{selectedBook.description && <Text size="sm" c="dimmed">{selectedBook.description}</Text>}
 
-							<Button leftSection={<LuPencilLine />} onClick={() => setEditorOpen(true)}>
+							<Button leftSection={<PencilSimpleIcon />} onClick={() => setEditorOpen(true)}>
 								{t('worldInfo.actions.openEditor')}
 							</Button>
 						</Stack>

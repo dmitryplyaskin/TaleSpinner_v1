@@ -1,9 +1,10 @@
 import { Avatar, Badge, Card, Group, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { LuBookMarked, LuPencil, LuStar, LuTrash2 } from 'react-icons/lu';
+
 
 import { selectEntityProfile } from '@model/chat-core';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { BookBookmarkIcon, PencilSimpleIcon, StarIcon, TrashIcon } from '@ui/icons';
 
 import { BACKEND_ORIGIN } from '../../../api/chat-core';
 
@@ -80,7 +81,7 @@ export const AgentCard = ({
 								if (!event.altKey) return;
 								onWorldInfoStatusAltClick(data);
 							}}
-							icon={<LuBookMarked />}
+							icon={<BookBookmarkIcon />}
 						/>
 						{isActive && (
 							<Badge size="xs" color="cyan" variant="light">
@@ -133,7 +134,7 @@ export const AgentCard = ({
 						e.stopPropagation();
 						onEdit(data);
 					}}
-					icon={<LuPencil />}
+					icon={<PencilSimpleIcon />}
 				/>
 				<IconButtonWithTooltip
 					tooltip={data.isFavorite ? t('agentCards.actions.unfavorite') : t('agentCards.actions.favorite')}
@@ -148,7 +149,7 @@ export const AgentCard = ({
 						e.stopPropagation();
 						onToggleFavorite(data);
 					}}
-					icon={<LuStar />}
+					icon={<StarIcon />}
 				/>
 				<IconButtonWithTooltip
 					tooltip={t('common.delete')}
@@ -161,7 +162,7 @@ export const AgentCard = ({
 						e.stopPropagation();
 						onDelete(data);
 					}}
-					icon={<LuTrash2 />}
+					icon={<TrashIcon />}
 				/>
 			</Group>
 		</Card>

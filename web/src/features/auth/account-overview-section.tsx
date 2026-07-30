@@ -10,7 +10,8 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuLogOut, LuRefreshCw } from 'react-icons/lu';
+
+import { SignOutIcon, ArrowsClockwiseIcon } from '@ui/icons';
 
 import { AccountChooser } from './account-chooser';
 import { AuthCredentialsForm } from './auth-credentials-form';
@@ -78,7 +79,7 @@ export function AccountOverviewSection({
 				{status.mode === 'public' && !manualSwitch && (
 					<Button
 						variant="light"
-						leftSection={<LuRefreshCw size={17} />}
+						leftSection={<ArrowsClockwiseIcon size={17} />}
 						onClick={() => setManualSwitch(true)}
 					>
 						{t('auth.accounts.switchAction')}
@@ -107,7 +108,7 @@ export function AccountOverviewSection({
 				<Button
 					color="red"
 					variant="subtle"
-					leftSection={<LuLogOut size={17} />}
+					leftSection={<SignOutIcon size={17} />}
 					loading={pending}
 					onClick={onLogout}
 				>

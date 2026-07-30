@@ -2,7 +2,6 @@ import { Button, Select, Stack, Tabs, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuGitFork } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -25,6 +24,7 @@ import {
 import { $sidebars } from '@model/sidebars';
 import { Drawer } from '@ui/drawer';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { GitForkIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
@@ -260,7 +260,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 							<div className="op-commandRow op-commandRowSecondary">
 								{preferSplitLayout ? (
 									<Button
-										leftSection={<LuGitFork />}
+										leftSection={<GitForkIcon />}
 										variant="light"
 										className="op-nodeButton"
 										disabled={!selectedBlock}
@@ -273,7 +273,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 									<IconButtonWithTooltip
 										aria-label={t('operationProfiles.actions.openNodeEditor')}
 										tooltip={t('operationProfiles.actions.openNodeEditor')}
-										icon={<LuGitFork />}
+										icon={<GitForkIcon />}
 										size="input-sm"
 										variant="ghost"
 										tooltipSettings={TOOLBAR_TOOLTIP_SETTINGS}

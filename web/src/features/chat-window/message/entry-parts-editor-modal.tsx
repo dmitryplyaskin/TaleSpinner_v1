@@ -2,7 +2,6 @@ import { ActionIcon, Alert, Button, Group, Modal, Paper, ScrollArea, Select, Sta
 import { useUnit } from 'effector-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuPlus, LuStar, LuTrash } from 'react-icons/lu';
 
 import {
 	$entries,
@@ -11,6 +10,8 @@ import {
 	closeEntryPartsEditorRequested,
 	saveEntryPartsEditorRequested,
 } from '@model/chat-entry-parts';
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon, StarIcon, TrashIcon } from '@ui/icons';
+
 
 import {
 	buildEntryPartsEditorRequestParts,
@@ -193,7 +194,7 @@ export const EntryPartsEditorModal = () => {
 							</Alert>
 						)}
 						<Group justify="flex-end">
-							<Button size="xs" variant="light" leftSection={<LuPlus size={14} />} onClick={addPart}>
+							<Button size="xs" variant="light" leftSection={<PlusIcon size={14} />} onClick={addPart}>
 								{t('chat.partsEditor.actions.addPart')}
 							</Button>
 						</Group>
@@ -227,7 +228,7 @@ export const EntryPartsEditorModal = () => {
 															disabled={index <= 0}
 															aria-label={t('chat.partsEditor.actions.moveUp')}
 														>
-															<LuArrowUp size={14} />
+															<ArrowUpIcon size={14} />
 														</ActionIcon>
 														<ActionIcon
 															variant="subtle"
@@ -235,13 +236,13 @@ export const EntryPartsEditorModal = () => {
 															disabled={index >= draftParts.length - 1}
 															aria-label={t('chat.partsEditor.actions.moveDown')}
 														>
-															<LuArrowDown size={14} />
+															<ArrowDownIcon size={14} />
 														</ActionIcon>
 														<Button
 															size="xs"
 															variant={isMain ? 'filled' : 'light'}
 															color={isMain ? 'yellow' : 'gray'}
-															leftSection={<LuStar size={12} />}
+															leftSection={<StarIcon size={12} />}
 															disabled={!canSelectAsMain}
 															onClick={() => setMainPartId(part.id)}
 														>
@@ -253,7 +254,7 @@ export const EntryPartsEditorModal = () => {
 															onClick={() => removePart(part.id)}
 															aria-label={t('chat.partsEditor.actions.removePart')}
 														>
-															<LuTrash size={14} />
+															<TrashIcon size={14} />
 														</ActionIcon>
 													</Group>
 												</Group>
