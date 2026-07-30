@@ -1,7 +1,8 @@
 import { ActionIcon, Button, Group, MultiSelect, Select, Stack, Switch, Text } from '@mantine/core';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuX } from 'react-icons/lu';
+
+import { ArrowDownIcon, ArrowUpIcon, XIcon } from '@ui/icons';
 
 import { LlmDisclosureSection } from './llm-disclosure-section';
 import { formatContextLength, formatPricePerMillion } from './llm-model-utils';
@@ -128,7 +129,7 @@ export const OpenRouterRoutingEditor: React.FC<Props> = ({
 												onClick={() => move(index, -1)}
 												aria-label={t('provider.routing.moveUp')}
 											>
-												<LuArrowUp />
+												<ArrowUpIcon />
 											</ActionIcon>
 											<ActionIcon
 												variant="subtle"
@@ -136,7 +137,7 @@ export const OpenRouterRoutingEditor: React.FC<Props> = ({
 												onClick={() => move(index, 1)}
 												aria-label={t('provider.routing.moveDown')}
 											>
-												<LuArrowDown />
+												<ArrowDownIcon />
 											</ActionIcon>
 											<ActionIcon
 												variant="subtle"
@@ -144,7 +145,7 @@ export const OpenRouterRoutingEditor: React.FC<Props> = ({
 												onClick={() => patch({ providerOrder: providerOrder.filter((item) => item !== tag) })}
 												aria-label={t('common.delete')}
 											>
-												<LuX />
+												<XIcon />
 											</ActionIcon>
 										</Group>
 									</Group>

@@ -7,7 +7,7 @@ import {
 import { useUnit } from 'effector-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus } from 'react-icons/lu';
+
 
 import { appStarted } from '@model/app-init';
 import {
@@ -21,6 +21,7 @@ import {
 	registerSubmitted,
 	setupSubmitted,
 } from '@model/auth';
+import { PlusIcon } from '@ui/icons';
 
 import { AccountChooser } from './account-chooser';
 import { AuthCredentialsForm } from './auth-credentials-form';
@@ -94,7 +95,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 					{status.registrationAllowed && (
 						<Button
 							variant="subtle"
-							leftSection={<LuPlus size={17} />}
+							leftSection={<PlusIcon size={17} />}
 							onClick={() => setView('create')}
 						>
 							{t('auth.register.open')}
@@ -111,7 +112,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 					{(status.setupRequired || status.registrationAllowed) && (
 						<Button
 							variant={status.setupRequired ? 'filled' : 'light'}
-							leftSection={<LuPlus size={17} />}
+							leftSection={<PlusIcon size={17} />}
 							onClick={() => setView('create')}
 						>
 							{status.setupRequired ? t('auth.setup.open') : t('auth.register.open')}

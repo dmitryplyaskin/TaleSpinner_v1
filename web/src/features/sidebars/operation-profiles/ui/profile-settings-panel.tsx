@@ -2,10 +2,11 @@ import { Collapse, Stack, Text, UnstyledButton } from '@mantine/core';
 import React from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuChevronDown, LuRotateCcw } from 'react-icons/lu';
+
 
 import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { CaretDownIcon, ArrowCounterClockwiseIcon } from '@ui/icons';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 type Props = {
@@ -37,7 +38,7 @@ export const ProfileSettingsPanel: React.FC<Props> = ({ blockCount, onResetSessi
 					aria-expanded={opened}
 				>
 					<div className="op-settingsIdentity">
-						<LuChevronDown className="op-settingsChevron" data-opened={opened || undefined} />
+						<CaretDownIcon className="op-settingsChevron" data-opened={opened || undefined} />
 						<Stack gap={1} className="op-settingsCopy">
 							<Text fw={650} lineClamp={1}>
 								{profileName}
@@ -57,7 +58,7 @@ export const ProfileSettingsPanel: React.FC<Props> = ({ blockCount, onResetSessi
 				</div>
 			</div>
 
-			<Collapse in={opened}>
+			<Collapse expanded={opened}>
 				<div className="op-profileSettingsFields">
 					<div className="op-profileIdentityFields">
 						<FormInput name="name" label={t('operationProfiles.profileSettings.profileName')} />
@@ -91,7 +92,7 @@ export const ProfileSettingsPanel: React.FC<Props> = ({ blockCount, onResetSessi
 						<IconButtonWithTooltip
 							aria-label={t('operationProfiles.actions.resetSessionId')}
 							tooltip={t('operationProfiles.actions.resetSessionId')}
-							icon={<LuRotateCcw />}
+							icon={<ArrowCounterClockwiseIcon />}
 							size="input-sm"
 							variant="ghost"
 							tooltipSettings={TOOLTIP_PORTAL_SETTINGS}

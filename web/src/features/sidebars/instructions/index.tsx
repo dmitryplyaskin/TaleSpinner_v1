@@ -2,7 +2,7 @@ import { Button, Group, Modal, Select, Stack, Text, TextInput } from '@mantine/c
 import { useUnit } from 'effector-react';
 import { type ChangeEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuLink2, LuLink2Off, LuPencil, LuPlus, LuSave, LuTrash2 } from 'react-icons/lu';
+
 
 import { $appSettings, updateAppSettings } from '@model/app-settings';
 import {
@@ -25,6 +25,7 @@ import {
 import { Drawer } from '@ui/drawer';
 import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from '@ui/file-transfer-icons';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { LinkIcon, LinkBreakIcon, PencilSimpleIcon, PlusIcon, FloppyDiskIcon, TrashIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { getDefaultStPreset } from '../../../api/instructions';
@@ -717,7 +718,7 @@ export const InstructionsSidebar = () => {
 					<Group justify="flex-end" gap="xs" wrap="wrap">
 						<IconButtonWithTooltip
 							tooltip={t('instructions.actions.create')}
-							icon={<LuPlus size={16} />}
+							icon={<PlusIcon size={16} />}
 							aria-label={t('instructions.actions.create')}
 							onClick={openCreateDialog}
 						/>
@@ -729,9 +730,9 @@ export const InstructionsSidebar = () => {
 							}
 							icon={
 								appSettings.bindChatCompletionPresetToConnection ? (
-									<LuLink2 size={16} />
+									<LinkIcon size={16} />
 								) : (
-									<LuLink2Off size={16} />
+									<LinkBreakIcon size={16} />
 								)
 							}
 							aria-label={t('instructions.presets.actions.bind')}
@@ -758,7 +759,7 @@ export const InstructionsSidebar = () => {
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('instructions.presets.actions.delete')}
-							icon={<LuTrash2 size={16} />}
+							icon={<TrashIcon size={16} />}
 							aria-label={t('instructions.presets.actions.delete')}
 							color="red"
 							variant="outline"
@@ -767,7 +768,7 @@ export const InstructionsSidebar = () => {
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('instructions.actions.updateCurrent')}
-							icon={<LuSave size={16} />}
+							icon={<FloppyDiskIcon size={16} />}
 							aria-label={t('instructions.actions.updateCurrent')}
 							variant="solid"
 							disabled={!selectedInstruction || !hasUnsavedChanges}
@@ -775,7 +776,7 @@ export const InstructionsSidebar = () => {
 						/>
 						<IconButtonWithTooltip
 							tooltip={t('instructions.actions.rename')}
-							icon={<LuPencil size={16} />}
+							icon={<PencilSimpleIcon size={16} />}
 							aria-label={t('instructions.actions.rename')}
 							disabled={!selectedInstruction}
 							onClick={promptForRename}

@@ -2,7 +2,7 @@ import { ActionIcon, Badge, Box, Button, Checkbox, Group, Menu, Paper, Stack, Te
 import { useUnit } from 'effector-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuBookMarked, LuBookOpenText, LuCheck, LuFolderGit2, LuMessageSquare, LuPencil, LuPlus, LuSettings2, LuTrash2, LuX } from 'react-icons/lu';
+
 
 import {
 	$branches,
@@ -24,6 +24,7 @@ import {
 import { $isBulkDeleteMode, enterBulkDeleteMode } from '@model/chat-entry-parts';
 import { Dialog } from '@ui/dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { BookBookmarkIcon, BookOpenTextIcon, CheckIcon, GitBranchIcon, ChatTextIcon, PencilSimpleIcon, PlusIcon, SlidersHorizontalIcon, TrashIcon, XIcon } from '@ui/icons';
 import { Z_INDEX } from '@ui/z-index';
 
 import { getLatestWorldInfoActivations, type LatestWorldInfoActivationsResponse } from '../../../api/chat-entry-parts';
@@ -146,7 +147,7 @@ export const ChatManagementMenu = () => {
 						<IconButtonWithTooltip
 							tooltip={t('chat.management.openMenu')}
 							aria-label={t('chat.management.openMenu')}
-							icon={<LuSettings2 />}
+							icon={<SlidersHorizontalIcon />}
 						/>
 					</span>
 				</Menu.Target>
@@ -162,34 +163,34 @@ export const ChatManagementMenu = () => {
 						</Text>
 					</Box>
 					<Menu.Divider />
-					<Menu.Item leftSection={<LuPlus />} onClick={() => handleQuickCreateOpenChange(true)}>
+					<Menu.Item leftSection={<PlusIcon />} onClick={() => handleQuickCreateOpenChange(true)}>
 						{t('chat.management.quickCreateChat')}
 					</Menu.Item>
-					<Menu.Item leftSection={<LuMessageSquare />} onClick={() => setChatsModalOpen(true)}>
+					<Menu.Item leftSection={<ChatTextIcon />} onClick={() => setChatsModalOpen(true)}>
 						{t('chat.management.manageChats')}
 					</Menu.Item>
 					<Menu.Item
-						leftSection={<LuFolderGit2 />}
+						leftSection={<GitBranchIcon />}
 						disabled={!canManageBranches}
 						onClick={() => setBranchesModalOpen(true)}
 					>
 						{t('chat.management.manageBranches')}
 					</Menu.Item>
 					<Menu.Item
-						leftSection={<LuTrash2 />}
+						leftSection={<TrashIcon />}
 						disabled={!currentChatId || isBulkDeleteMode}
 						onClick={() => startBulkDeleteMode()}
 					>
 						{t('chat.management.bulkDelete')}
 					</Menu.Item>
 					<Menu.Item
-						leftSection={<LuBookMarked />}
+						leftSection={<BookBookmarkIcon />}
 						disabled={!currentChatId}
 						onClick={() => setChatWorldInfoModalOpen(true)}
 					>
 						{t('chat.management.worldInfoBinding')}
 					</Menu.Item>
-					<Menu.Item leftSection={<LuBookOpenText />} disabled={!currentChatId} onClick={() => void loadLatestWorldInfoActivations()}>
+					<Menu.Item leftSection={<BookOpenTextIcon />} disabled={!currentChatId} onClick={() => void loadLatestWorldInfoActivations()}>
 						{t('chat.management.latestWorldInfoActivations')}
 					</Menu.Item>
 				</Menu.Dropdown>
@@ -250,7 +251,7 @@ export const ChatManagementMenu = () => {
 						aria-label={t('chat.management.createChat')}
 						onClick={() => createChatRequested({})}
 					>
-						<LuPlus />
+						<PlusIcon />
 					</ActionIcon>
 				</Group>
 
@@ -311,7 +312,7 @@ export const ChatManagementMenu = () => {
 										{isEditing ? (
 											<>
 												<ActionIcon variant="subtle" color="green" onClick={handleSaveEditChat} aria-label={t('chat.management.saveRename')}>
-													<LuCheck />
+													<CheckIcon />
 												</ActionIcon>
 												<ActionIcon
 													variant="subtle"
@@ -322,7 +323,7 @@ export const ChatManagementMenu = () => {
 													}}
 													aria-label={t('chat.management.cancelRename')}
 												>
-													<LuX />
+													<XIcon />
 												</ActionIcon>
 											</>
 										) : (
@@ -332,7 +333,7 @@ export const ChatManagementMenu = () => {
 												onClick={() => handleStartEditChat(chat.id, chat.title)}
 												aria-label={t('chat.management.renameChat')}
 											>
-												<LuPencil />
+												<PencilSimpleIcon />
 											</ActionIcon>
 										)}
 										<ActionIcon
@@ -344,7 +345,7 @@ export const ChatManagementMenu = () => {
 												deleteChatRequested({ chatId: chat.id });
 											}}
 										>
-											<LuTrash2 />
+											<TrashIcon />
 										</ActionIcon>
 									</Group>
 								</Group>
@@ -375,7 +376,7 @@ export const ChatManagementMenu = () => {
 						disabled={!currentChatId || !hasCurrentBranch}
 						onClick={() => createBranchRequested({})}
 					>
-						<LuPlus />
+						<PlusIcon />
 					</ActionIcon>
 				</Group>
 
@@ -438,7 +439,7 @@ export const ChatManagementMenu = () => {
 											{isEditing ? (
 												<>
 													<ActionIcon variant="subtle" color="green" onClick={handleSaveEditBranch} aria-label={t('chat.management.saveRename')}>
-														<LuCheck />
+														<CheckIcon />
 													</ActionIcon>
 													<ActionIcon
 														variant="subtle"
@@ -449,7 +450,7 @@ export const ChatManagementMenu = () => {
 														}}
 														aria-label={t('chat.management.cancelRename')}
 													>
-														<LuX />
+														<XIcon />
 													</ActionIcon>
 												</>
 											) : (
@@ -459,7 +460,7 @@ export const ChatManagementMenu = () => {
 													onClick={() => handleStartEditBranch(branch.id, branchTitle)}
 													aria-label={t('chat.management.renameBranch')}
 												>
-													<LuPencil />
+													<PencilSimpleIcon />
 												</ActionIcon>
 											)}
 											<ActionIcon
@@ -472,7 +473,7 @@ export const ChatManagementMenu = () => {
 													deleteBranchRequested({ chatId: currentChatId, branchId: branch.id });
 												}}
 											>
-												<LuTrash2 />
+												<TrashIcon />
 											</ActionIcon>
 										</Group>
 									</Group>

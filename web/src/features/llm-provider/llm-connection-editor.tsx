@@ -1,7 +1,8 @@
 import { Button, Group, Input, Select, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuKeyRound, LuSearch } from 'react-icons/lu';
+
+import { KeyIcon, MagnifyingGlassIcon } from '@ui/icons';
 
 import { LlmModelPickerDialog } from './llm-model-picker-dialog';
 import { getModelMetadata } from './llm-model-utils';
@@ -117,7 +118,7 @@ export const LlmConnectionSelector: React.FC<LlmConnectionSelectorProps> = ({
 						onClick={() => setTokenManagerOpen(true)}
 						aria-label={t('provider.tokens.manage')}
 					>
-						<LuKeyRound />
+						<KeyIcon />
 					</Button>
 				</Group>
 			</Input.Wrapper>
@@ -132,7 +133,7 @@ export const LlmConnectionSelector: React.FC<LlmConnectionSelectorProps> = ({
 					/>
 					<Button
 						variant="default"
-						leftSection={<LuSearch />}
+						leftSection={<MagnifyingGlassIcon />}
 						disabled={!tokenId}
 						onClick={() => setModelPickerOpen(true)}
 					>
@@ -165,7 +166,7 @@ export const LlmConnectionSelector: React.FC<LlmConnectionSelectorProps> = ({
 									</Text>
 								) : null}
 							</Stack>
-							<LuSearch />
+							<MagnifyingGlassIcon />
 						</Group>
 					</UnstyledButton>
 				</Input.Wrapper>

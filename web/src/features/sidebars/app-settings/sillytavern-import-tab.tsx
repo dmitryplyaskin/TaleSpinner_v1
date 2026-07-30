@@ -14,7 +14,6 @@ import {
 import { useUnit } from 'effector-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuDownload, LuRefreshCw } from 'react-icons/lu';
 
 import {
 	$sillyTavernImportResult,
@@ -37,6 +36,8 @@ import {
 	sillyTavernRootChanged,
 	sillyTavernScanRequested,
 } from '@model/sillytavern-import';
+import { DownloadSimpleIcon, ArrowsClockwiseIcon } from '@ui/icons';
+
 
 import type { SillyTavernImportKind, SillyTavernImportScanItem } from '@shared/types/sillytavern-import';
 
@@ -89,11 +90,11 @@ export const SillyTavernImportTab = () => {
 						disabled={isBusy}
 					/>
 					<Group gap="xs">
-						<Button leftSection={<LuRefreshCw size={16} />} loading={scanPending} disabled={!rootPath.trim()} onClick={() => sillyTavernScanRequested()}>
+						<Button leftSection={<ArrowsClockwiseIcon size={16} />} loading={scanPending} disabled={!rootPath.trim()} onClick={() => sillyTavernScanRequested()}>
 							{t('appSettings.sillytavern.actions.scan')}
 						</Button>
 						<Button
-							leftSection={<LuDownload size={16} />}
+							leftSection={<DownloadSimpleIcon size={16} />}
 							loading={importPending}
 							disabled={!scan || selectedCount === 0 || isBusy}
 							onClick={() => sillyTavernImportRequested()}

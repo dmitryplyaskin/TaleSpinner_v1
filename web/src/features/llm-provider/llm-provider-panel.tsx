@@ -3,9 +3,9 @@ import { useUnit } from 'effector-react';
 import { useEffect, useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuRotateCcw } from 'react-icons/lu';
 
 import { llmProviderModel } from '@model/provider';
+import { ArrowCounterClockwiseIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import { LlmConnectionEditor } from './llm-connection-editor';
@@ -354,7 +354,7 @@ export const LlmProviderPanel: React.FC<Props> = ({ scope, scopeId }) => {
 				) : null}
 				<Divider />
 				<Group justify="space-between" wrap="wrap">
-					<Button variant="subtle" leftSection={<LuRotateCcw />} disabled={!formState.isDirty} onClick={resetChanges}>
+					<Button variant="subtle" leftSection={<ArrowCounterClockwiseIcon />} disabled={!formState.isDirty} onClick={resetChanges}>
 						{t('provider.actions.reset')}
 					</Button>
 					<Button loading={isSaving} disabled={!canSave} onClick={() => void save()}>

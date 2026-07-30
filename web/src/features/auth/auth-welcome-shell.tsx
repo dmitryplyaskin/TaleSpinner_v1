@@ -14,7 +14,8 @@ import {
 } from '@mantine/core';
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuCircleAlert, LuSparkles } from 'react-icons/lu';
+
+import { WarningCircleIcon, SparkleIcon } from '@ui/icons';
 
 import type { AccessMode } from '../../api/auth';
 
@@ -60,7 +61,7 @@ export function AuthWelcomeShell({
 							<Group justify="space-between" align="flex-start">
 								<Group gap="sm">
 									<ThemeIcon size={42} radius="md" variant="light" color="cyan">
-										<LuSparkles size={22} />
+										<SparkleIcon size={22} />
 									</ThemeIcon>
 									<Box>
 										<Title order={1} size="h2">
@@ -85,7 +86,7 @@ export function AuthWelcomeShell({
 								</Text>
 							</Stack>
 							{error && (
-								<Alert color="red" variant="light" icon={<LuCircleAlert size={18} />}>
+								<Alert color="red" variant="light" icon={<WarningCircleIcon size={18} />}>
 									{error}
 								</Alert>
 							)}

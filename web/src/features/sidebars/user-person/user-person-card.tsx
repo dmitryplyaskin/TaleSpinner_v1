@@ -2,9 +2,10 @@ import { Avatar, Group, Paper, Stack, Text } from '@mantine/core';
 import { type UserPersonType } from '@shared/types/user-person';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuBookMarked, LuPencil, LuTrash2 } from 'react-icons/lu';
 
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { BookBookmarkIcon, PencilSimpleIcon, TrashIcon } from '@ui/icons';
+
 
 import { BACKEND_ORIGIN } from '../../../api/chat-core';
 
@@ -59,7 +60,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({
 								colorPalette={worldInfoBookName ? 'cyan' : 'gray'}
 								size="xs"
 								aria-label={t('userPersons.worldInfo.statusAria')}
-								icon={<LuBookMarked />}
+								icon={<BookBookmarkIcon />}
 							/>
 							{isActive && (
 								<Text c="cyan" size="xs" fw={600}>
@@ -86,7 +87,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({
 							event.stopPropagation();
 							onEdit(data);
 						}}
-						icon={<LuPencil />}
+						icon={<PencilSimpleIcon />}
 					/>
 					<IconButtonWithTooltip
 						tooltip={t('common.delete')}
@@ -99,7 +100,7 @@ export const UserPersonCard: React.FC<UserPersonCardProps> = ({
 							event.stopPropagation();
 							onDelete(data);
 						}}
-						icon={<LuTrash2 />}
+						icon={<TrashIcon />}
 					/>
 				</Group>
 			</Group>

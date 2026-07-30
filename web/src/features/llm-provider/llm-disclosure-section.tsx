@@ -1,6 +1,7 @@
 import { Collapse, Group, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useId, useState } from 'react';
-import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
+
+import { CaretDownIcon, CaretUpIcon } from '@ui/icons';
 
 import type { ReactNode } from 'react';
 
@@ -23,10 +24,10 @@ export const LlmDisclosureSection: React.FC<Props> = ({ title, children }) => {
 			>
 				<Group justify="space-between" wrap="nowrap">
 					<Text fw={600}>{title}</Text>
-					{open ? <LuChevronUp size={16} /> : <LuChevronDown size={16} />}
+					{open ? <CaretUpIcon size={16} /> : <CaretDownIcon size={16} />}
 				</Group>
 			</UnstyledButton>
-			<Collapse in={open} id={contentId}>
+			<Collapse expanded={open} id={contentId}>
 				<Stack gap="md" pb="md">
 					{children}
 				</Stack>

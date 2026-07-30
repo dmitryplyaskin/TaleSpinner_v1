@@ -1,8 +1,8 @@
 import { ActionIcon, Button, Group, Menu } from '@mantine/core';
 import React, { useRef } from 'react';
-import { LuCopyPlus, LuEllipsis, LuPlus, LuTrash2 } from 'react-icons/lu';
 
 import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from '@ui/file-transfer-icons';
+import { CopyIcon, DotsThreeIcon, PlusIcon, TrashIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 type Selection = { id: string; name: string } | null;
@@ -51,18 +51,18 @@ export const EntityActionsMenu: React.FC<Props> = ({
 
 	return (
 		<Group gap="xs" wrap="nowrap" className="op-profileActions">
-			<Button size="sm" leftSection={<LuPlus />} onClick={onCreate}>
+			<Button size="sm" leftSection={<PlusIcon />} onClick={onCreate}>
 				{labels.create}
 			</Button>
 			<Menu position="bottom-end" withinPortal={false} shadow="md">
 				<Menu.Target>
 					<ActionIcon size="input-sm" variant="default" aria-label={labels.more} title={labels.more}>
-						<LuEllipsis />
+						<DotsThreeIcon />
 					</ActionIcon>
 				</Menu.Target>
 				<Menu.Dropdown>
 					<Menu.Item
-						leftSection={<LuCopyPlus size={15} />}
+						leftSection={<CopyIcon size={15} />}
 						disabled={!selected}
 						onClick={() => selected && onDuplicate(selected.id)}
 					>
@@ -88,7 +88,7 @@ export const EntityActionsMenu: React.FC<Props> = ({
 					<Menu.Divider />
 					<Menu.Item
 						color="red"
-						leftSection={<LuTrash2 size={15} />}
+						leftSection={<TrashIcon size={15} />}
 						disabled={!selected}
 						onClick={() => {
 							if (!selected || !window.confirm(labels.confirmRemove)) return;

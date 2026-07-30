@@ -1,5 +1,6 @@
 import { ActionIcon, Box, Group, Title } from '@mantine/core';
-import { LuArrowLeftToLine, LuArrowRightToLine, LuFullscreen, LuMinimize2, LuX } from 'react-icons/lu';
+
+import { CornersInIcon, CornersOutIcon, SidebarSimpleIcon, XIcon } from '@ui/icons';
 
 import type { ReactNode } from 'react';
 
@@ -41,13 +42,13 @@ export const SidebarShell = ({
 
 				<Box className="ts-sidebar-shell__controls">
 					<ActionIcon aria-label={labels.toggleFullscreen} variant={isFullscreen ? 'filled' : 'subtle'} onClick={onToggleFullscreen}>
-						{isFullscreen ? <LuMinimize2 /> : <LuFullscreen />}
+						{isFullscreen ? <CornersInIcon /> : <CornersOutIcon />}
 					</ActionIcon>
 					<ActionIcon aria-label={labels.togglePlacement} variant="subtle" onClick={onTogglePlacement}>
-						{placement === 'start' ? <LuArrowRightToLine /> : <LuArrowLeftToLine />}
+						<SidebarSimpleIcon mirrored={placement === 'start'} />
 					</ActionIcon>
 					<ActionIcon aria-label={labels.close} variant="subtle" onClick={onClose}>
-						<LuX />
+						<XIcon />
 					</ActionIcon>
 				</Box>
 			</Group>

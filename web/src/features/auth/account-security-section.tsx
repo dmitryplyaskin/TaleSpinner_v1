@@ -1,7 +1,8 @@
 import { Box, Button, Group, PasswordInput, Stack, Text } from '@mantine/core';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuKeyRound } from 'react-icons/lu';
+
+import { KeyIcon } from '@ui/icons';
 
 import type { AuthStatus } from '../../api/auth';
 
@@ -38,7 +39,7 @@ export function AccountSecuritySection({
 				{hasPassword && (
 					<PasswordInput
 						label={t('auth.accounts.currentPassword')}
-						leftSection={<LuKeyRound size={16} />}
+						leftSection={<KeyIcon size={16} />}
 						value={currentPassword}
 						onChange={(event) => setCurrentPassword(event.currentTarget.value)}
 						autoComplete="current-password"
@@ -47,7 +48,7 @@ export function AccountSecuritySection({
 				<PasswordInput
 					label={t('auth.accounts.newPassword')}
 					description={status.mode === 'local' ? t('auth.fields.passwordOptional') : undefined}
-					leftSection={<LuKeyRound size={16} />}
+					leftSection={<KeyIcon size={16} />}
 					value={newPassword}
 					onChange={(event) => setNewPassword(event.currentTarget.value)}
 					autoComplete="new-password"

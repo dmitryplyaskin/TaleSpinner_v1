@@ -14,7 +14,6 @@ import {
 import { useUnit } from "effector-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { LuTrash2 } from "react-icons/lu";
 
 import {
   $activeAppBackgroundId,
@@ -25,6 +24,8 @@ import {
   loadAppBackgroundCatalogFx,
   setActiveAppBackgroundFx,
 } from "@model/app-backgrounds";
+import { TrashIcon } from "@ui/icons";
+
 
 import { toAbsoluteAppBackgroundUrl } from "../../../api/app-backgrounds";
 
@@ -164,7 +165,7 @@ export const BackgroundsTab = () => {
                           void deleteAppBackgroundFx(item.id);
                         }}
                       >
-                        <LuTrash2 size={16} />
+                        <TrashIcon size={16} />
                       </ActionIcon>
                     ) : null}
                   </Group>

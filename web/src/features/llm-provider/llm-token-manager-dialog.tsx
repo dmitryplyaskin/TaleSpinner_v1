@@ -2,10 +2,11 @@ import { Alert, Badge, Button, Divider, Group, Menu, PasswordInput, Stack, Text,
 import { useUnit } from 'effector-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuEllipsis, LuKeyRound, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
+
 
 import { llmProviderModel } from '@model/provider';
 import { Dialog } from '@ui/dialog';
+import { DotsThreeIcon, KeyIcon, PencilSimpleIcon, PlusIcon, TrashIcon } from '@ui/icons';
 import { toaster } from '@ui/toaster';
 
 import type { LlmProviderId, LlmTokenListItem } from '@shared/types/llm';
@@ -153,14 +154,14 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 								{t('tokenManager.savedHint')}
 							</Text>
 						</Stack>
-						<Button size="xs" leftSection={<LuPlus />} onClick={startCreate}>
+						<Button size="xs" leftSection={<PlusIcon />} onClick={startCreate}>
 							{t('tokenManager.addToken')}
 						</Button>
 					</Group>
 
 					{tokens.length === 0 ? (
 						<Stack align="center" gap="xs" py="xl">
-							<LuKeyRound size={28} />
+							<KeyIcon size={28} />
 							<Text fw={600}>{t('tokenManager.emptyTitle')}</Text>
 							<Text size="sm" c="dimmed" ta="center">
 								{t('tokenManager.empty')}
@@ -203,14 +204,14 @@ export const LlmTokenManagerDialog: React.FC<Props> = ({
 											<Menu position="bottom-end" withinPortal>
 												<Menu.Target>
 													<Button variant="subtle" size="compact-sm" px={8} aria-label={t('tokenManager.actions')}>
-														<LuEllipsis />
+														<DotsThreeIcon />
 													</Button>
 												</Menu.Target>
 												<Menu.Dropdown>
-													<Menu.Item leftSection={<LuPencil />} onClick={() => startEdit(token)}>
+													<Menu.Item leftSection={<PencilSimpleIcon />} onClick={() => startEdit(token)}>
 														{t('common.edit')}
 													</Menu.Item>
-													<Menu.Item color="red" leftSection={<LuTrash2 />} onClick={() => setDeletingToken(token)}>
+													<Menu.Item color="red" leftSection={<TrashIcon />} onClick={() => setDeletingToken(token)}>
 														{t('common.delete')}
 													</Menu.Item>
 												</Menu.Dropdown>

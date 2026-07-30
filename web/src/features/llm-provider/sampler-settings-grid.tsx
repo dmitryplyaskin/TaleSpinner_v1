@@ -2,7 +2,8 @@ import { ActionIcon, Box, Group, NumberInput, Select, SimpleGrid, Slider, Switch
 import React from 'react';
 import { useController, type Control } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuInfo } from 'react-icons/lu';
+
+import { InfoIcon } from '@ui/icons';
 
 import type { LLMSettingField } from '@model/llm-settings';
 
@@ -78,7 +79,7 @@ const SamplerSettingsGridItem: React.FC<ItemProps> = ({ columns, control, field,
 				</Text>
 				<Tooltip label={field.tooltip} position="bottom" withArrow>
 					<ActionIcon variant="subtle" size="sm" aria-label={t('common.info')}>
-							<LuInfo />
+							<InfoIcon />
 						</ActionIcon>
 					</Tooltip>
 			</Group>

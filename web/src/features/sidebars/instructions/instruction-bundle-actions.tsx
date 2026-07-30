@@ -2,7 +2,6 @@ import { Button, Checkbox, Group, Modal, Stack, Text } from "@mantine/core";
 import { useUnit } from "effector-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LuPackage, LuPackageOpen } from "react-icons/lu";
 
 import { $currentChat, $currentEntityProfile, $entityProfiles, loadEntityProfilesFx, selectEntityProfile, setChatInstructionRequested } from "@model/chat-core";
 import { instructionSelected, loadInstructionsFx } from "@model/instructions";
@@ -11,6 +10,7 @@ import { $operationProfileSettings, $operationProfiles, loadActiveOperationProfi
 import { samplersModel } from "@model/samplers";
 import { $activeUiThemePreset, loadUiThemePresetsFx, loadUiThemeSettingsFx, patchUiThemeSettingsFx } from "@model/ui-themes";
 import { $worldInfoBooks, $worldInfoChatBindings, loadWorldInfoBooksFx, worldInfoBookSelected } from "@model/world-info";
+import { EXPORT_FILE_ICON, IMPORT_FILE_ICON } from "@ui/file-transfer-icons";
 import { IconButtonWithTooltip } from "@ui/icon-button-with-tooltip";
 import { toaster } from "@ui/toaster";
 
@@ -272,13 +272,13 @@ export const InstructionBundleActions: React.FC<Props> = ({ selectedInstruction 
 
       <IconButtonWithTooltip
         tooltip={t("instructions.bundle.actions.import")}
-        icon={<LuPackageOpen size={16} />}
+        icon={<IMPORT_FILE_ICON size={16} />}
         aria-label={t("instructions.bundle.actions.import")}
         onClick={() => fileInputRef.current?.click()}
       />
       <IconButtonWithTooltip
         tooltip={t("instructions.bundle.actions.export")}
-        icon={<LuPackage size={16} />}
+        icon={<EXPORT_FILE_ICON size={16} />}
         aria-label={t("instructions.bundle.actions.export")}
         disabled={!selectedInstruction}
         onClick={() => setOpened(true)}

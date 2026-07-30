@@ -14,7 +14,8 @@ import {
 } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuChevronDown, LuKeyRound } from 'react-icons/lu';
+
+import { CaretDownIcon, KeyIcon } from '@ui/icons';
 
 import type { AuthUser } from '../../api/auth';
 
@@ -65,7 +66,7 @@ export function AccountUserRow({
 					aria-label={t('auth.accounts.manageUser', { name: user.displayName })}
 					onClick={() => setOpened((value) => !value)}
 				>
-					<LuChevronDown
+					<CaretDownIcon
 						size={18}
 						style={{
 							transform: opened ? 'rotate(180deg)' : undefined,
@@ -75,7 +76,7 @@ export function AccountUserRow({
 				</ActionIcon>
 			</Group>
 
-			<Collapse in={opened}>
+			<Collapse expanded={opened}>
 				<Stack gap="md" pt="md">
 					<SimpleGrid cols={{ base: 1, sm: 2 }}>
 						<Select
@@ -107,7 +108,7 @@ export function AccountUserRow({
 						<PasswordInput
 							label={t('auth.accounts.newPassword')}
 							description={allowEmptyPassword ? t('auth.fields.passwordOptional') : undefined}
-							leftSection={<LuKeyRound size={16} />}
+							leftSection={<KeyIcon size={16} />}
 							value={newPassword}
 							disabled={pending}
 							onChange={(event) => setNewPassword(event.currentTarget.value)}

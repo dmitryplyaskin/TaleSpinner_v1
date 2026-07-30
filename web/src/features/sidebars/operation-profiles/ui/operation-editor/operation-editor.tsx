@@ -2,10 +2,11 @@ import { Badge, Button, Group, Select, Stack, Text } from '@mantine/core';
 import React, { memo } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuTrash2 } from 'react-icons/lu';
+
 
 import { FormInput } from '@ui/form-components';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { TrashIcon } from '@ui/icons';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 import { makeDefaultGuardKindParams, type FormGuardKindParams } from '../../form/guard-kind-form';
@@ -103,7 +104,7 @@ export const OperationEditor: React.FC<Props> = memo(({ index, title, status, ca
 						<IconButtonWithTooltip
 							aria-label={t('operationProfiles.actions.deleteOperation')}
 							tooltip={t('operationProfiles.actions.deleteOperation')}
-							icon={<LuTrash2 />}
+							icon={<TrashIcon />}
 							colorPalette="red"
 							size="input-sm"
 							variant="ghost"

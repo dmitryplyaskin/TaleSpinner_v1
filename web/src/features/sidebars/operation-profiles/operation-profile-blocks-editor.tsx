@@ -3,10 +3,10 @@ import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
+import { ArrowDownIcon, ArrowUpIcon, PencilSimpleIcon, PlusIcon, TrashIcon } from '@ui/icons';
 
 import { ProfileSettingsPanel } from './ui/profile-settings-panel';
 
@@ -127,7 +127,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 								style={{ flex: 1 }}
 							/>
 							<Button
-								leftSection={<LuPlus />}
+								leftSection={<PlusIcon />}
 								disabled={!newBlockId}
 								onClick={() => {
 									if (!newBlockId) return;
@@ -165,7 +165,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 													onClick={() => index > 0 && move(index, index - 1)}
 													disabled={index === 0}
 												>
-													<LuArrowUp size={16} />
+													<ArrowUpIcon size={16} />
 												</ActionIcon>
 												<ActionIcon
 													variant="subtle"
@@ -173,7 +173,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 													onClick={() => index < fields.length - 1 && move(index, index + 1)}
 													disabled={index >= fields.length - 1}
 												>
-													<LuArrowDown size={16} />
+													<ArrowDownIcon size={16} />
 												</ActionIcon>
 												<ActionIcon
 													variant="subtle"
@@ -182,7 +182,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 													disabled={!onEditBlock}
 													onClick={() => onEditBlock?.(field.blockId)}
 												>
-													<LuPencil size={16} />
+													<PencilSimpleIcon size={16} />
 												</ActionIcon>
 												<ActionIcon
 													color="red"
@@ -190,7 +190,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 													aria-label={t('operationProfiles.blocks.actions.removeBlockRef')}
 													onClick={() => remove(index)}
 												>
-													<LuTrash2 size={16} />
+													<TrashIcon size={16} />
 												</ActionIcon>
 											</Group>
 										</Group>

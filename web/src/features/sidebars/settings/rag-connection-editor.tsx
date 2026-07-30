@@ -1,7 +1,8 @@
 import { Button, Group, Input, Select, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuKeyRound, LuSearch } from 'react-icons/lu';
+
+import { KeyIcon, MagnifyingGlassIcon } from '@ui/icons';
 
 import { LlmModelPickerDialog } from '../../llm-provider/llm-model-picker-dialog';
 import { LlmTokenManagerDialog } from '../../llm-provider/llm-token-manager-dialog';
@@ -98,7 +99,7 @@ export const RagConnectionEditor: React.FC<Props> = ({
 							onClick={() => setTokenManagerOpen(true)}
 							aria-label={t('rag.tokens.manage')}
 						>
-							<LuKeyRound />
+							<KeyIcon />
 						</Button>
 					</Group>
 				</Input.Wrapper>
@@ -126,7 +127,7 @@ export const RagConnectionEditor: React.FC<Props> = ({
 								</Text>
 								{modelId ? <Text size="xs" c="dimmed" truncate>{modelId}</Text> : null}
 							</Stack>
-							<LuSearch />
+							<MagnifyingGlassIcon />
 						</Group>
 					</UnstyledButton>
 				</Input.Wrapper>

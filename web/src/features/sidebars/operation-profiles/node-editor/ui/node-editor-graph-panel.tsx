@@ -16,7 +16,8 @@ import {
 } from '@xyflow/react';
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuTrash2 } from 'react-icons/lu';
+
+import { PlusIcon, TrashIcon } from '@ui/icons';
 
 import { OperationFlowNode, type OperationFlowNodeData } from '../flow/operation-flow-node';
 
@@ -138,14 +139,14 @@ export const NodeEditorGraphPanel: React.FC<Props> = memo(
 						<Panel position="top-left">
 							<Stack gap={6} className="opNodeToolbar">
 								<Group gap="xs" wrap="nowrap">
-									<Button size="xs" leftSection={<LuPlus />} onClick={onAddOperation}>
+									<Button size="xs" leftSection={<PlusIcon />} onClick={onAddOperation}>
 										{t('common.add')}
 									</Button>
 									<Button
 										size="xs"
 										color="red"
 										variant="light"
-										leftSection={<LuTrash2 />}
+										leftSection={<TrashIcon />}
 										disabled={selectedNodeCount === 0 && !hasSelectedOperation}
 										onClick={onDeleteSelected}
 									>

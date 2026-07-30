@@ -1,7 +1,8 @@
 import { ActionIcon, Group, Stack, Switch, Text } from '@mantine/core';
 import { useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuGripVertical, LuPencil, LuTrash2 } from 'react-icons/lu';
+
+import { DotsSixVerticalIcon, PencilSimpleIcon, TrashIcon } from '@ui/icons';
 
 import { movePromptOrderItem, type PromptOrderItem } from './prompt-order';
 import { StPromptBlockEditorModal } from './st-prompt-block-editor-modal';
@@ -156,7 +157,7 @@ export function StPromptBlockList({
 									title={t('instructions.actions.reorderBlock')}
 									style={{ cursor: draggedIndex === index ? 'grabbing' : 'grab' }}
 								>
-									<LuGripVertical size={16} />
+									<DotsSixVerticalIcon size={16} />
 								</ActionIcon>
 								<Text size="sm" fw={500}>
 									{prompt.name || t('instructions.defaults.unnamedPromptBlock')}
@@ -189,7 +190,7 @@ export function StPromptBlockList({
 									aria-label={t('instructions.actions.editBlock')}
 									title={t('instructions.actions.editBlock')}
 								>
-									<LuPencil size={16} />
+									<PencilSimpleIcon size={16} />
 								</ActionIcon>
 								{deletable ? (
 									<ActionIcon
@@ -199,7 +200,7 @@ export function StPromptBlockList({
 										aria-label={t('common.delete')}
 										title={t('common.delete')}
 									>
-										<LuTrash2 size={16} />
+										<TrashIcon size={16} />
 									</ActionIcon>
 								) : null}
 							</Group>

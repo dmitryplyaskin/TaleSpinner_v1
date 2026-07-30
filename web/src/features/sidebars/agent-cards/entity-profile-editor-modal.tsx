@@ -12,13 +12,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormProvider, Controller, useController, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuExpand, LuPlus, LuStar, LuTrash2 } from 'react-icons/lu';
+
 
 import { Dialog } from '@ui/dialog';
 import { EXPORT_FILE_ICON } from '@ui/file-transfer-icons';
 import { FormInput, FormTextarea } from '@ui/form-components';
 import { TextareaFullscreenDialog } from '@ui/form-components/components/textarea-fullscreen-dialog';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+import { ArrowDownIcon, ArrowUpIcon, ArrowsOutIcon, PlusIcon, StarIcon, TrashIcon } from '@ui/icons';
 import { LiquidDocsButton } from '@ui/liquid-template-docs';
 
 import { BACKEND_ORIGIN } from '../../../api/chat-core';
@@ -134,7 +135,7 @@ const GreetingItemField = ({
 					</Text>
 					<Group gap={4} wrap="nowrap">
 						<IconButtonWithTooltip
-							icon={<LuExpand />}
+							icon={<ArrowsOutIcon />}
 							tooltip={openFullscreenLabel}
 							aria-label={openFullscreenLabel}
 							size="sm"
@@ -144,7 +145,7 @@ const GreetingItemField = ({
 						/>
 						<LiquidDocsButton context="entity_profile" />
 						<IconButtonWithTooltip
-							icon={<LuArrowUp />}
+							icon={<ArrowUpIcon />}
 							tooltip={moveUpLabel}
 							aria-label={moveUpLabel}
 							size="sm"
@@ -153,7 +154,7 @@ const GreetingItemField = ({
 							onClick={onMoveUp}
 						/>
 						<IconButtonWithTooltip
-							icon={<LuArrowDown />}
+							icon={<ArrowDownIcon />}
 							tooltip={moveDownLabel}
 							aria-label={moveDownLabel}
 							size="sm"
@@ -162,7 +163,7 @@ const GreetingItemField = ({
 							onClick={onMoveDown}
 						/>
 						<IconButtonWithTooltip
-							icon={<LuTrash2 />}
+							icon={<TrashIcon />}
 							tooltip={removeLabel}
 							aria-label={removeLabel}
 							colorPalette="red"
@@ -397,7 +398,7 @@ export const EntityProfileEditorModal = ({
 
 								<Group gap="xs" align="center" wrap="wrap">
 									<IconButtonWithTooltip
-										icon={<LuStar />}
+										icon={<StarIcon />}
 										tooltip={profile.isFavorite ? t('agentCards.actions.unfavorite') : t('agentCards.actions.favorite')}
 										aria-label={profile.isFavorite ? t('agentCards.actions.unfavorite') : t('agentCards.actions.favorite')}
 										active={profile.isFavorite}
@@ -406,7 +407,7 @@ export const EntityProfileEditorModal = ({
 										onClick={() => onToggleFavorite(profile)}
 									/>
 									<IconButtonWithTooltip
-										icon={<LuTrash2 />}
+										icon={<TrashIcon />}
 										tooltip={t('common.delete')}
 										aria-label={t('common.delete')}
 										colorPalette="red"
@@ -517,7 +518,7 @@ export const EntityProfileEditorModal = ({
 											type="button"
 											size="xs"
 											variant="light"
-											leftSection={<LuPlus />}
+											leftSection={<PlusIcon />}
 											onClick={() => append({ value: '' })}
 											disabled={isBusy}
 										>

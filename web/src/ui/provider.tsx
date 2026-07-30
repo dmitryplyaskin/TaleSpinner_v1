@@ -6,6 +6,8 @@ import { useEffect } from "react";
 
 import { $activeUiThemePreset, $uiThemeSettings } from "../model/ui-themes";
 
+import { ICON_CONTEXT_VALUE } from "./icon-presentation";
+import { IconContext } from "./icons";
 import { buildAppTheme } from "./theme";
 import { applyUiThemeRuntime } from "./ui-theme-runtime";
 import { Z_INDEX } from "./z-index";
@@ -65,13 +67,15 @@ export function Provider({ children }: PropsWithChildren) {
   const appTheme = getCachedAppTheme(typographySignature, activePreset?.payload.typography);
 
   return (
-    <MantineProvider theme={appTheme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
-      <ModalsProvider modalProps={{ zIndex: Z_INDEX.overlay.modal }}>
-        <Notifications zIndex={Z_INDEX.overlay.alert} position="top-right" />
-        <UiThemeSync />
-        {children}
-      </ModalsProvider>
-    </MantineProvider>
+    <IconContext.Provider value={ICON_CONTEXT_VALUE}>
+      <MantineProvider theme={appTheme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager}>
+        <ModalsProvider modalProps={{ zIndex: Z_INDEX.overlay.modal }}>
+          <Notifications zIndex={Z_INDEX.overlay.alert} position="top-right" />
+          <UiThemeSync />
+          {children}
+        </ModalsProvider>
+      </MantineProvider>
+    </IconContext.Provider>
   );
 }
 

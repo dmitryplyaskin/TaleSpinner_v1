@@ -1,8 +1,8 @@
 import { ActionIcon, Badge, Button, Group, Stack, Text, Tooltip } from '@mantine/core';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuInfo, LuLayoutDashboard, LuPanelRightClose, LuPanelRightOpen, LuSave, LuX } from 'react-icons/lu';
 
+import { FloppyDiskIcon, InfoIcon, SidebarSimpleIcon, TreeStructureIcon, XIcon } from '@ui/icons';
 import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
 
 type Props = {
@@ -49,21 +49,21 @@ export const NodeEditorHeader: React.FC<Props> = ({
 			<Group gap="xs" wrap="nowrap">
 				<Tooltip label={t('operationProfiles.nodeEditor.help.open')} {...TOOLTIP_PORTAL_SETTINGS}>
 					<ActionIcon variant="subtle" aria-label={t('operationProfiles.nodeEditor.help.open')} onClick={onOpenHelp}>
-						<LuInfo size={18} />
+						<InfoIcon size={18} />
 					</ActionIcon>
 				</Tooltip>
 				{showInspectorToggle && (
-					<Button variant="default" leftSection={isInspectorVisible ? <LuPanelRightClose /> : <LuPanelRightOpen />} onClick={onToggleInspector}>
+					<Button variant="default" leftSection={<SidebarSimpleIcon mirrored weight={isInspectorVisible ? 'fill' : 'regular'} />} onClick={onToggleInspector}>
 						{isInspectorVisible ? t('operationProfiles.nodeEditor.hideOperation') : t('operationProfiles.nodeEditor.showOperation')}
 					</Button>
 				)}
-				<Button variant="light" leftSection={<LuLayoutDashboard />} loading={isAutoLayouting} onClick={onAutoLayout}>
+				<Button variant="light" leftSection={<TreeStructureIcon />} loading={isAutoLayouting} onClick={onAutoLayout}>
 					{t('operationProfiles.nodeEditor.autoLayout')}
 				</Button>
-				<Button leftSection={<LuSave />} disabled={!isDirty} onClick={onSave}>
+				<Button leftSection={<FloppyDiskIcon />} disabled={!isDirty} onClick={onSave}>
 					{t('common.save')}
 				</Button>
-				<Button variant="default" leftSection={<LuX />} onClick={onClose}>
+				<Button variant="default" leftSection={<XIcon />} onClick={onClose}>
 					{t('common.close')}
 				</Button>
 			</Group>

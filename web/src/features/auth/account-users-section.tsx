@@ -13,7 +13,8 @@ import {
 } from '@mantine/core';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuUsers } from 'react-icons/lu';
+
+import { PlusIcon, UsersIcon } from '@ui/icons';
 
 import { AccountUserRow } from './account-user-row';
 
@@ -66,7 +67,7 @@ export function AccountUsersSection({
 			<Group justify="space-between" align="flex-start">
 				<Box>
 					<Group gap="xs">
-						<LuUsers size={18} />
+						<UsersIcon size={18} />
 						<Text fw={650}>{t('auth.accounts.users')}</Text>
 					</Group>
 					<Text size="sm" c="dimmed">
@@ -75,14 +76,14 @@ export function AccountUsersSection({
 				</Box>
 				<Button
 					variant={creating ? 'subtle' : 'light'}
-					leftSection={<LuPlus size={17} />}
+					leftSection={<PlusIcon size={17} />}
 					onClick={() => setCreating((value) => !value)}
 				>
 					{creating ? t('common.cancel') : t('auth.accounts.create')}
 				</Button>
 			</Group>
 
-			<Collapse in={creating}>
+			<Collapse expanded={creating}>
 				<Box
 					component="form"
 					onSubmit={submit}

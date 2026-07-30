@@ -1,5 +1,6 @@
 import { ActionIcon, Popover, type PopoverProps } from '@mantine/core';
-import { HiOutlineInformationCircle } from 'react-icons/hi';
+
+import { InfoIcon } from '@ui/icons';
 
 import { Z_INDEX } from './z-index';
 
@@ -15,7 +16,7 @@ export const InfoTip = ({ content, ariaLabel = 'info', ...popoverProps }: InfoTi
 		<Popover withinPortal zIndex={Z_INDEX.overlay.popup} shadow="md" position="top" withArrow {...popoverProps}>
 			<Popover.Target>
 				<ActionIcon variant="subtle" color="gray" size="sm" aria-label={ariaLabel}>
-					<HiOutlineInformationCircle />
+					<InfoIcon />
 				</ActionIcon>
 			</Popover.Target>
 			<Popover.Dropdown>{content}</Popover.Dropdown>

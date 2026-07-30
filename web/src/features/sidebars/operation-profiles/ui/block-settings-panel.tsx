@@ -2,9 +2,10 @@ import { Badge, Collapse, Stack, Text, UnstyledButton } from '@mantine/core';
 import React from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuChevronDown } from 'react-icons/lu';
 
 import { FormInput, FormSwitch } from '@ui/form-components';
+import { CaretDownIcon } from '@ui/icons';
+
 
 type Props = {
 	operationCount: number;
@@ -24,7 +25,7 @@ export const BlockSettingsPanel: React.FC<Props> = ({ operationCount }) => {
 				aria-expanded={opened}
 			>
 				<div className="op-settingsIdentity">
-					<LuChevronDown className="op-settingsChevron" data-opened={opened || undefined} />
+					<CaretDownIcon className="op-settingsChevron" data-opened={opened || undefined} />
 					<Stack gap={1} className="op-settingsCopy">
 						<Text fw={650} lineClamp={1}>
 							{blockName}
@@ -39,7 +40,7 @@ export const BlockSettingsPanel: React.FC<Props> = ({ operationCount }) => {
 				</Badge>
 			</UnstyledButton>
 
-			<Collapse in={opened}>
+			<Collapse expanded={opened}>
 				<div className="op-settingsFields">
 					<FormInput name="name" label={t('operationProfiles.blocks.blockName')} />
 					<FormInput name="description" label={t('operationProfiles.sectionsLabels.description')} />
