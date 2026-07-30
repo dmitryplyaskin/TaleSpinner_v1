@@ -42,7 +42,7 @@
     ]
   },
   "engines": {
-    "node": ">=22.22.2 <23",
+    "node": ">=22.22.2",
     "yarn": "1.x"
   },
   "resolutions": {

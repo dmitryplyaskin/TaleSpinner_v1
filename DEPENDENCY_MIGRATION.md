@@ -1,6 +1,6 @@
 # Dependency migration baseline
 
-This repository uses Yarn Classic 1.x and targets Node.js `>=22.22.2 <23`.
+This repository uses Yarn Classic 1.x and targets Node.js `>=22.22.2`.
 `.nvmrc` pins Node.js 22.23.1 so local development and CI can reproduce the
 validated runtime.
 
