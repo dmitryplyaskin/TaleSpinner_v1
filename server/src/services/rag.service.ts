@@ -5,7 +5,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 import { getTokenPlaintext, listTokens } from "@services/llm/llm-repository";
+import { probeRagProviderConnection } from "@services/rag/rag-connection-check";
 
 import { safeJsonParse, safeJsonStringify } from "../chat-core/json";
 import { initDb } from "../db/client";
@@ -22,6 +24,7 @@ import type {
   RagPresetPayload,
   RagPresetSettings,
   RagProviderConfig,
+  RagProviderConnectionCheckResult,
   RagProviderDefinition,
   RagProviderId,
   RagRuntime,
@@ -29,8 +32,18 @@ import type {
 
 const MODELS_REQUEST_TIMEOUT_MS = 7000;
 const DEFAULT_RAG_PRESET_NAME = "Default RAG preset";
-const DEFAULT_OWNER_ID = "global";
-const RUNTIME_ROW_ID = "global";
+function currentOwnerId(): string {
+  return resolveTrustedOwnerId();
+}
+
+function runtimeRowId(): string {
+  return currentOwnerId();
+}
+
+function storedRagProviderId(providerId: RagProviderId): string {
+  const ownerId = currentOwnerId();
+  return ownerId === "global" ? providerId : `${ownerId}:${providerId}`;
+}
 
 const DEFAULT_PROVIDER_CONFIGS: Record<RagProviderId, RagProviderConfig> = {
   openrouter: { defaultModel: "text-embedding-3-small", encodingFormat: "float" },
@@ -207,7 +220,7 @@ async function getRagPresetRowById(
   const rows = await db
     .select()
     .from(ragPresets)
-    .where(and(eq(ragPresets.id, id), eq(ragPresets.ownerId, DEFAULT_OWNER_ID)))
+    .where(and(eq(ragPresets.id, id), eq(ragPresets.ownerId, currentOwnerId())))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -219,26 +232,32 @@ async function upsertRagPreset(input: RagPreset): Promise<RagPreset> {
   const createdAt = toDate(parsed.createdAt, now);
   const updatedAt = toDate(parsed.updatedAt, now);
 
-  await db
-    .insert(ragPresets)
-    .values({
-      id: parsed.id,
-      ownerId: DEFAULT_OWNER_ID,
-      name: parsed.name,
-      payloadJson: safeJsonStringify(parsed.payload, "{}"),
-      createdAt,
-      updatedAt,
-    })
-    .onConflictDoUpdate({
-      target: ragPresets.id,
-      set: {
-        ownerId: DEFAULT_OWNER_ID,
+  const existing = await getRagPresetRowById(parsed.id);
+  if (existing) {
+    await db
+      .update(ragPresets)
+      .set({
         name: parsed.name,
         payloadJson: safeJsonStringify(parsed.payload, "{}"),
         createdAt,
         updatedAt,
-      },
+      })
+      .where(
+        and(
+          eq(ragPresets.id, parsed.id),
+          eq(ragPresets.ownerId, currentOwnerId())
+        )
+      );
+  } else {
+    await db.insert(ragPresets).values({
+      id: parsed.id,
+      ownerId: currentOwnerId(),
+      name: parsed.name,
+      payloadJson: safeJsonStringify(parsed.payload, "{}"),
+      createdAt,
+      updatedAt,
     });
+  }
 
   const row = await getRagPresetRowById(parsed.id);
   if (!row) throw new HttpError(500, "Failed to save RAG preset");
@@ -250,14 +269,14 @@ async function ensureRuntimeRow(): Promise<typeof ragRuntimeSettings.$inferSelec
   const rows = await db
     .select()
     .from(ragRuntimeSettings)
-    .where(eq(ragRuntimeSettings.id, RUNTIME_ROW_ID))
+    .where(eq(ragRuntimeSettings.id, runtimeRowId()))
     .limit(1);
 
   if (rows[0]) return rows[0];
 
   const now = new Date();
   await db.insert(ragRuntimeSettings).values({
-    id: RUNTIME_ROW_ID,
+    id: runtimeRowId(),
     activeProviderId: DEFAULT_RAG_RUNTIME.activeProviderId,
     activeTokenId: DEFAULT_RAG_RUNTIME.activeTokenId,
     activeModel: DEFAULT_RAG_RUNTIME.activeModel,
@@ -265,7 +284,7 @@ async function ensureRuntimeRow(): Promise<typeof ragRuntimeSettings.$inferSelec
   });
 
   return {
-    id: RUNTIME_ROW_ID,
+    id: runtimeRowId(),
     activeProviderId: DEFAULT_RAG_RUNTIME.activeProviderId,
     activeTokenId: DEFAULT_RAG_RUNTIME.activeTokenId,
     activeModel: DEFAULT_RAG_RUNTIME.activeModel,
@@ -280,20 +299,20 @@ async function ensurePresetSettingsRow(): Promise<
   const rows = await db
     .select()
     .from(ragPresetSettings)
-    .where(eq(ragPresetSettings.ownerId, DEFAULT_OWNER_ID))
+    .where(eq(ragPresetSettings.ownerId, currentOwnerId()))
     .limit(1);
 
   if (rows[0]) return rows[0];
 
   const now = new Date();
   await db.insert(ragPresetSettings).values({
-    ownerId: DEFAULT_OWNER_ID,
+    ownerId: currentOwnerId(),
     selectedId: null,
     updatedAt: now,
   });
 
   return {
-    ownerId: DEFAULT_OWNER_ID,
+    ownerId: currentOwnerId(),
     selectedId: null,
     updatedAt: now,
   };
@@ -312,7 +331,7 @@ async function ensureDefaultProviderConfigs(): Promise<void> {
     await db
       .insert(ragProviderConfigs)
       .values({
-        providerId,
+        providerId: storedRagProviderId(providerId),
         configJson: safeJsonStringify(config, "{}"),
         createdAt: now,
         updatedAt: now,
@@ -395,7 +414,7 @@ export const ragService = {
       const rows = await db
         .select()
         .from(ragPresets)
-        .where(eq(ragPresets.ownerId, DEFAULT_OWNER_ID))
+        .where(eq(ragPresets.ownerId, currentOwnerId()))
         .orderBy(desc(ragPresets.createdAt));
 
       return rows.map(rowToRagPreset);
@@ -416,7 +435,7 @@ export const ragService = {
 
       await db
         .delete(ragPresets)
-        .where(and(eq(ragPresets.id, id), eq(ragPresets.ownerId, DEFAULT_OWNER_ID)));
+        .where(and(eq(ragPresets.id, id), eq(ragPresets.ownerId, currentOwnerId())));
 
       return id;
     },
@@ -434,11 +453,14 @@ export const ragService = {
       const next = {
         selectedId: config.selectedId ?? null,
       };
+      if (next.selectedId && !(await getRagPresetRowById(next.selectedId))) {
+        throw new HttpError(404, "RAG preset not found", "NOT_FOUND");
+      }
 
       await db
         .insert(ragPresetSettings)
         .values({
-          ownerId: DEFAULT_OWNER_ID,
+          ownerId: currentOwnerId(),
           selectedId: next.selectedId,
           updatedAt: now,
         })
@@ -464,11 +486,20 @@ export const ragService = {
       const db = await initDb();
       const parsed = ragRuntimeSchema.parse(config);
       const now = new Date();
+      if (parsed.activeTokenId) {
+        if (parsed.activeProviderId !== "openrouter") {
+          throw new HttpError(400, "RAG token is not supported by this provider");
+        }
+        const tokens = await listTokens("openrouter");
+        if (!tokens.some((token) => token.id === parsed.activeTokenId)) {
+          throw new HttpError(404, "RAG token not found", "NOT_FOUND");
+        }
+      }
 
       await db
         .insert(ragRuntimeSettings)
         .values({
-          id: RUNTIME_ROW_ID,
+          id: runtimeRowId(),
           activeProviderId: parsed.activeProviderId,
           activeTokenId: parsed.activeTokenId,
           activeModel: parsed.activeModel,
@@ -496,10 +527,10 @@ export const ragService = {
       await ensureDefaultProviderConfigs();
       const db = await initDb();
       const rows = await db.select().from(ragProviderConfigs);
-      const map = new Map(rows.map((row) => [row.providerId as RagProviderId, row]));
+      const map = new Map(rows.map((row) => [row.providerId, row]));
 
-      const openrouterRaw = map.get("openrouter")?.configJson;
-      const ollamaRaw = map.get("ollama")?.configJson;
+      const openrouterRaw = map.get(storedRagProviderId("openrouter"))?.configJson;
+      const ollamaRaw = map.get(storedRagProviderId("ollama"))?.configJson;
 
       return {
         openrouter: normalizeRagConfig(
@@ -530,7 +561,7 @@ export const ragService = {
         await db
           .insert(ragProviderConfigs)
           .values({
-            providerId,
+            providerId: storedRagProviderId(providerId),
             configJson: safeJsonStringify(next[providerId], "{}"),
             createdAt: now,
             updatedAt: now,
@@ -549,10 +580,10 @@ export const ragService = {
   },
 };
 
-let ensureRagPresetStateInFlight: Promise<{
+const ensureRagPresetStateInFlight = new Map<string, Promise<{
   presets: RagPreset[];
   settings: RagPresetSettings;
-}> | null = null;
+}>>();
 
 export function normalizeRagPresetSettings(input: unknown): RagPresetSettings {
   const parsed = ragPresetSettingsSchema.safeParse(input);
@@ -631,15 +662,20 @@ export async function ensureRagPresetState(): Promise<{
   presets: RagPreset[];
   settings: RagPresetSettings;
 }> {
-  if (ensureRagPresetStateInFlight) {
-    return ensureRagPresetStateInFlight;
+  const ownerId = currentOwnerId();
+  const existing = ensureRagPresetStateInFlight.get(ownerId);
+  if (existing) {
+    return existing;
   }
 
-  ensureRagPresetStateInFlight = ensureRagPresetStateUnsafe();
+  const pending = ensureRagPresetStateUnsafe();
+  ensureRagPresetStateInFlight.set(ownerId, pending);
   try {
-    return await ensureRagPresetStateInFlight;
+    return await pending;
   } finally {
-    ensureRagPresetStateInFlight = null;
+    if (ensureRagPresetStateInFlight.get(ownerId) === pending) {
+      ensureRagPresetStateInFlight.delete(ownerId);
+    }
   }
 }
 
@@ -698,6 +734,16 @@ export async function listRagModels(params: {
     });
     return [];
   }
+}
+
+export async function checkRagProviderConnection(params: {
+  providerId: RagProviderId;
+  tokenId: string | null;
+  configOverride?: RagProviderConfig;
+}): Promise<RagProviderConnectionCheckResult> {
+  const savedConfig = await getRagProviderConfig(params.providerId);
+  const config = ragConfigSchema.parse({ ...savedConfig, ...(params.configOverride ?? {}) });
+  return probeRagProviderConnection({ ...params, config });
 }
 
 export async function getRagRuntime(): Promise<RagRuntime> {

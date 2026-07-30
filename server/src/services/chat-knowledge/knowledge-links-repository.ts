@@ -1,9 +1,11 @@
 import { randomUUID as uuidv4 } from "node:crypto";
 
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
+
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb } from "../../db/client";
-import { knowledgeRecordLinks } from "../../db/schema";
+import { knowledgeRecordLinks, knowledgeRecords } from "../../db/schema";
 
 import { encodeJson, rowToKnowledgeRecordLinkDto } from "./knowledge-helpers";
 
@@ -23,12 +25,31 @@ export async function createKnowledgeRecordLinksBulk(params: {
   if (params.items.length === 0) return [];
   const db = await initDb();
   const now = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const referencedIds = [
+    ...new Set(
+      params.items.flatMap((item) => [item.fromRecordId, item.toRecordId])
+    ),
+  ];
+  const ownedRecords = await db
+    .select({ id: knowledgeRecords.id })
+    .from(knowledgeRecords)
+    .where(
+      and(
+        eq(knowledgeRecords.ownerId, ownerId),
+        eq(knowledgeRecords.chatId, params.chatId),
+        inArray(knowledgeRecords.id, referencedIds)
+      )
+    );
+  if (ownedRecords.length !== referencedIds.length) {
+    throw new Error("Knowledge record not found");
+  }
   await db
     .insert(knowledgeRecordLinks)
     .values(
       params.items.map((item) => ({
         id: uuidv4(),
-        ownerId: params.ownerId ?? "global",
+        ownerId,
         chatId: params.chatId,
         branchId: params.branchId,
         fromRecordId: item.fromRecordId,
@@ -58,7 +79,7 @@ export async function listKnowledgeRecordLinks(params: {
     .from(knowledgeRecordLinks)
     .where(
       and(
-        eq(knowledgeRecordLinks.ownerId, params.ownerId ?? "global"),
+        eq(knowledgeRecordLinks.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(knowledgeRecordLinks.chatId, params.chatId),
         or(
           params.branchId === null

@@ -1,11 +1,14 @@
 import { Box } from '@mantine/core';
 import { useUnit } from 'effector-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type IconType } from 'react-icons';
-import { LuBookOpen, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuWorkflow } from 'react-icons/lu';
+import { LuBookOpen, LuFileText, LuIdCard, LuSettings, LuSettings2, LuSquareUser, LuUsers, LuWorkflow } from 'react-icons/lu';
 
 import { $sidebars, toggleSidebarOpen, type SidebarName } from '@model/sidebars';
 import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
+
+import { AccountManager } from '../auth/account-manager';
 
 type SidebarButton = {
 	name: SidebarName;
@@ -31,6 +34,7 @@ const appSettingsButton: SidebarButton = {
 export const LeftBar = () => {
 	const { t } = useTranslation();
 	const sidebars = useUnit($sidebars);
+	const [accountsOpened, setAccountsOpened] = useState(false);
 
 	const renderButton = (button: SidebarButton) => {
 		const section = t(button.labelKey);
@@ -55,9 +59,21 @@ export const LeftBar = () => {
 	};
 
 	return (
-		<Box className="ts-left-rail">
-			<Box className="ts-left-rail__top">{sidebarButtons.map(renderButton)}</Box>
-			<Box className="ts-left-rail__bottom">{renderButton(appSettingsButton)}</Box>
-		</Box>
+		<>
+			<Box className="ts-left-rail">
+				<Box className="ts-left-rail__top">{sidebarButtons.map(renderButton)}</Box>
+				<Box className="ts-left-rail__bottom">
+					<IconButtonWithTooltip
+						tooltip={t('auth.accounts.title')}
+						aria-label={t('auth.accounts.title')}
+						icon={<LuUsers />}
+						variant="ghost"
+						onClick={() => setAccountsOpened(true)}
+					/>
+					{renderButton(appSettingsButton)}
+				</Box>
+			</Box>
+			<AccountManager opened={accountsOpened} onClose={() => setAccountsOpened(false)} />
+		</>
 	);
 };

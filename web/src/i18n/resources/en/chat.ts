@@ -261,6 +261,8 @@
 				operationFinishedSkipped: 'Operation {{name}} ({{hook}}) skipped',
 				operationFinishedError: 'Operation {{name}} ({{hook}}) failed',
 				operationFinishedAborted: 'Operation {{name}} ({{hook}}) aborted',
+				operationFallbackName: 'operation',
+				operationFallbackHook: 'unknown phase',
 			},
 		};
 

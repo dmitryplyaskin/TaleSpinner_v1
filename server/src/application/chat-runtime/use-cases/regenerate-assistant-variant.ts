@@ -1,4 +1,5 @@
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { withDbTransaction } from "../../../db/client";
 import { getChatById } from "../../../services/chat-core/chats-repository";
@@ -41,7 +42,7 @@ export async function regenerateAssistantVariant(
   const chat = await getChatById(entry.chatId);
   if (!chat) throw new HttpError(404, "Chat не найден", "NOT_FOUND");
 
-  const ownerId = params.body.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.body.ownerId);
   const currentTurn = await getBranchCurrentTurn({ branchId: entry.branchId });
   const userTurnTarget = await resolveRegenerateUserTurnTarget({
     chatId: entry.chatId,

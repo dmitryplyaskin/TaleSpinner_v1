@@ -132,6 +132,26 @@ describe('reduceRunTrace', () => {
 		expect(trace?.operations[1]?.guard).toMatchObject({ outputKey: 'need_translate', actual: false });
 	});
 
+	it('records actionable operation error details', () => {
+		let trace = startedTrace();
+		trace = reduceRunTrace(
+			trace,
+			env('operation.finished', {
+				runId: 'run-1',
+				hook: 'before_main_llm',
+				opId: 'op-error',
+				name: 'Summarize',
+				status: 'error',
+				error: { code: 'LLM_PROVIDER_ERROR', message: 'Provider request failed' },
+			}),
+		);
+
+		expect(trace?.operations[0]).toMatchObject({
+			status: 'error',
+			errorMessage: 'Provider request failed',
+		});
+	});
+
 	it('attaches commit results to the operation', () => {
 		let trace = startedTrace();
 		trace = reduceRunTrace(

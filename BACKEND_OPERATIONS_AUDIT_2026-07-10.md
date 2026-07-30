@@ -38,12 +38,17 @@
 
 ## Прогресс исправлений
 
-Обновлено: 2026-07-13.
+Обновлено: 2026-07-14.
 
 | Задача | Статус | Коммит | Результат |
 | --- | --- | --- | --- |
 | OPS-001 | Выполнено | `baa690b` | Preparation failures наблюдаемы в SSE; созданная generation финализируется; пустой assistant scaffolding удаляется при ошибке до создания generation. |
 | OPS-002 | Выполнено | `3dad07e` | Assistant rewrite сохраняется в main-part; required/optional persistence failures соблюдают policy; UI получает `turn.assistant.canonicalized`. |
+| OPS-026 | Выполнено | Текущие изменения | `operation.finished` передаёт stable error code, безопасное сообщение и abort reason; frontend показывает причину и сохраняет её в Run Trace; required barrier перечисляет проблемные operation IDs. |
+| OPS-003 | Выполнено | Текущие изменения | Backend слушает loopback по умолчанию; LAN требует opt-in; CORS использует allowlist и отклоняет чужие origins; request payload не переопределяет trusted owner. |
+| OPS-004 | Выполнено | Текущие изменения | Profile/block CRUD, export, activation, settings, bundle export и runtime resolution используют обязательный owner scope; cross-owner block refs запрещены. |
+| OPS-008 | Выполнено | Текущие изменения | Concurrent operation execution ограничен четырьмя задачами; queued DAG tasks сохраняют прежнюю abort semantics. |
+| OPS-009 | Выполнено | Текущие изменения | Добавлены лимиты blocks/operations/dependencies/templates/retries/LLM output, artifact values и history; лимиты проверяются на validation/runtime boundaries. |
 
 Проверки после OPS-002:
 
@@ -52,7 +57,31 @@
 - `yarn verify:server` и `yarn verify:web` прошли;
 - `yarn build:server` и `yarn build:web` прошли.
 
-Phase A завершена частично: OPS-001 и OPS-002 закрыты, передача operation errors в SSE остаётся следующей задачей.
+Проверки после OPS-026:
+
+- backend: 101 test files, 516 tests passed;
+- frontend: 37 test files, 124 tests passed;
+- `yarn verify:server` и `yarn verify:web` прошли;
+- `yarn build:server` и `yarn build:web` прошли.
+
+Phase A завершена: terminal generation state, assistant rewrite persistence и actionable operation errors покрыты regression-тестами.
+
+Проверки после OPS-003, OPS-004, OPS-008 и OPS-009:
+
+- backend: 106 test files, 544 tests passed;
+- `yarn verify:server` и `yarn build:server` прошли;
+- `yarn docs:check` прошёл для RU и EN.
+
+### Важные незакрытые задачи
+
+Security и bounded-execution core из Phase B завершены. Наиболее важный остаток:
+
+1. [ ] **OPS-014 (P1): compile/validate profile при create/update/import.** Activation теперь компилирует профиль заранее, но невалидную композицию всё ещё можно сохранить как неактивную.
+2. [ ] **OPS-005–OPS-007 + OPS-020 (P1): transaction/state correctness.** Knowledge mutations, activation counters и effects ещё способны оставить partial state или потерять updates при ошибках и concurrent runs.
+3. [ ] **OPS-021 + OPS-022 (P1): atomic import/cutover и optimistic concurrency.** Ошибка multi-write import оставляет orphan/partial records, а параллельное редактирование profile/block молча перетирает изменения.
+4. [ ] **OPS-013 (P1): строгая sampler validation.** Общие execution limits уже действуют, но provider samplers всё ещё требуют корректных диапазонов.
+
+После security и bounded-execution batch следует переходить к полной transaction redesign, а не смешивать её с небольшими contract fixes.
 
 ## Как Operations работают сейчас
 
@@ -160,7 +189,9 @@ Operation может закончиться как `done`, effect — как `ap
 - required rewrite failure завершает run ошибкой;
 - optional failure сохраняет исходный assistant text.
 
-### OPS-003. Local backend не имеет строгой сетевой границы
+### OPS-003. Local backend не имеет строгой сетевой границы — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -186,7 +217,9 @@ Operation может закончиться как `done`, effect — как `ap
 - неподтверждённые origins отклоняются;
 - body не может переопределить trusted owner scope.
 
-### OPS-004. Operation repositories не соблюдают owner scope
+### OPS-004. Operation repositories не соблюдают owner scope — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -269,7 +302,9 @@ Effects применяются по одному. При ошибке она з�
 - формализовать policy: `atomic_per_operation`, `atomic_per_hook` или `best_effort`;
 - для required operations по умолчанию использовать atomic semantics.
 
-### OPS-008. `concurrent` запускает неограниченное число операций
+### OPS-008. `concurrent` запускает неограниченное число операций — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -294,7 +329,9 @@ Runtime не передаёт `concurrency`, поэтому orchestrator исп�
 - предупреждать или отклонять чрезмерно дорогие profiles;
 - сохранять abort semantics для queued tasks.
 
-### OPS-009. Нет resource limits для operation profile и artifacts
+### OPS-009. Нет resource limits для operation profile и artifacts — выполнено
+
+Статус: выполнено 2026-07-19 в текущих изменениях.
 
 Код:
 
@@ -589,7 +626,9 @@ Update использует read-modify-write и считает `version + 1` в
 - при необходимости replay сохранять canonical compiled spec;
 - либо ввести immutable revisions/audit log profile и blocks.
 
-### OPS-026. Operation errors не попадают в SSE completion events
+### OPS-026. Operation errors не попадают в SSE completion events — выполнено
+
+Статус: выполнено 2026-07-14 в текущих изменениях.
 
 Код:
 
@@ -603,6 +642,15 @@ Update использует read-modify-write и считает `version + 1` в
 - включать stable error code, safe message и abort reason;
 - перечислять failing operation IDs в required barrier message;
 - редактировать provider errors и секретные данные.
+
+Результат:
+
+- terminal details добавлены в typed `orch.task.finished`;
+- `operation.finished` получает stable error code, sanitized message и abort reason;
+- сообщения ограничены по длине, credential-like values редактируются;
+- Run Trace сохраняет error message, а failure toast показывает actionable description;
+- required barrier message перечисляет failing operation IDs;
+- добавлены backend и frontend regression-тесты.
 
 ### OPS-027. Phase status не отражает реальные operation errors
 
@@ -907,7 +955,7 @@ Config revision и manual reset должны иметь раздельно оп�
 1. [x] Исправить OPS-001.
 2. [x] Добавить preparation failure events и cleanup.
 3. [x] Исправить assistant rewrite persistence из OPS-002.
-4. [ ] Добавить operation errors в SSE.
+4. [x] Добавить operation errors в SSE.
 5. [x] Сначала написать regression tests для выполненных задач.
 
 Критерии завершения:
@@ -919,10 +967,10 @@ Config revision и manual reset должны иметь раздельно оп�
 
 ### Phase B. Security и bounded execution
 
-1. Исправить owner scope.
-2. Bind на loopback и ограничить CORS.
-3. Ввести concurrency cap.
-4. Добавить profile/artifact resource limits.
+1. [x] Исправить owner scope.
+2. [x] Bind на loopback и ограничить CORS.
+3. [x] Ввести concurrency cap.
+4. [x] Добавить profile/artifact resource limits.
 5. Усилить sampler validation.
 
 Критерии завершения:
@@ -985,9 +1033,9 @@ Config revision и manual reset должны иметь раздельно оп�
 1. [x] Добавить failing tests на preparation errors и assistant rewrite persistence.
 2. [x] Изменить `runChatGenerationV3`, чтобы все failure paths завершались наблюдаемо.
 3. [x] Persist-ить `turn.assistant.replace_text` через отдельный handler.
-4. [ ] Передавать error information в `operation.finished`.
-5. [ ] Compile/validate profile до activation.
-6. [ ] Добавить conservative concurrency cap.
+4. [x] Передавать error information в `operation.finished`.
+5. [x] Compile/validate profile до activation.
+6. [x] Добавить conservative concurrency cap.
 
 Этот batch исправит пользовательскую correctness, не требуя одновременно завершать полную transaction redesign.
 

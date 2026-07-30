@@ -1,5 +1,3 @@
-import { randomUUID } from "crypto";
-import fs from "fs/promises";
 import path from "path";
 
 import express, { type Request } from "express";
@@ -7,14 +5,15 @@ import multer from "multer";
 
 import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { normalizeCharSpec } from "../chat-core/charspec/normalize";
 import { extractCharSpecFromPngBuffer } from "../chat-core/charspec/png";
+import { saveEntityProfileAvatarPng } from "../services/chat-core/entity-profile-media";
 import {
   createEntityProfile,
   type EntityProfileDto,
 } from "../services/chat-core/entity-profiles-repository";
-import { createDataPath } from "../utils";
 
 type ImportFailed = { originalName: string; error: string };
 
@@ -31,32 +30,9 @@ const upload = multer({
   },
 });
 
-function parseOwnerId(req: Request): string {
-  const raw = (req.body as { ownerId?: unknown } | undefined)?.ownerId;
-  if (typeof raw === "string" && raw.trim().length > 0) return raw.trim();
-  return "global";
-}
-
 function safeJsonParseBuffer(buffer: Buffer): unknown {
   const text = buffer.toString("utf-8");
   return JSON.parse(text) as unknown;
-}
-
-function getEntityProfileImagesDir(): string {
-  return createDataPath("media", "images", "entity-profiles");
-}
-
-async function saveEntityProfilePng(
-  fileBuffer: Buffer
-): Promise<{ urlPath: string; filename: string }> {
-  const dir = getEntityProfileImagesDir();
-  await fs.mkdir(dir, { recursive: true });
-
-  const filename = `${randomUUID()}.png`;
-  const filePath = path.join(dir, filename);
-  await fs.writeFile(filePath, fileBuffer);
-
-  return { filename, urlPath: `/media/images/entity-profiles/${filename}` };
 }
 
 router.post(
@@ -67,7 +43,7 @@ router.post(
       throw new HttpError(400, "Файлы не были загружены", "VALIDATION_ERROR");
     }
 
-    const ownerId = parseOwnerId(req);
+    const ownerId = resolveTrustedOwnerId();
 
     const created: EntityProfileDto[] = [];
     const failed: ImportFailed[] = [];
@@ -79,8 +55,7 @@ router.post(
         let avatarUrlPath: string | null = null;
 
         if (ext === ".png") {
-          const saved = await saveEntityProfilePng(file.buffer);
-          avatarUrlPath = saved.urlPath;
+          avatarUrlPath = await saveEntityProfileAvatarPng(file.buffer);
           rawSpec = await extractCharSpecFromPngBuffer(file.buffer);
         } else if (ext === ".json") {
           rawSpec = safeJsonParseBuffer(file.buffer);

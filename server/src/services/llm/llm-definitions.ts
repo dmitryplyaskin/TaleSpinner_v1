@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { LlmOpenRouterRoutingStrategy } from "@shared/types/llm";
+
 export type LlmProviderId = "openrouter" | "openai_compatible";
 export type LlmAnthropicCacheTtl = "5m" | "1h";
 
@@ -23,6 +25,36 @@ export const messageNormalizationSchema = z
     enabled: z.boolean().optional(),
   })
   .strict();
+
+export const openRouterRoutingSchema = z
+  .object({
+    strategy: z.enum([
+      "auto",
+      "price",
+      "throughput",
+      "latency",
+      "priority",
+      "only",
+    ] satisfies LlmOpenRouterRoutingStrategy[]),
+    providerOrder: z.array(z.string().trim().min(1)).max(20).optional(),
+    allowFallbacks: z.boolean().optional(),
+    zdr: z.boolean().optional(),
+    dataCollection: z.enum(["allow", "deny"]).optional(),
+    requireParameters: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (
+      (value.strategy === "priority" || value.strategy === "only") &&
+      (!value.providerOrder || value.providerOrder.length === 0)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providerOrder"],
+        message: "Select at least one OpenRouter endpoint provider",
+      });
+    }
+  });
 
 export type LlmProviderUiField =
   | {
@@ -97,6 +129,7 @@ export const openRouterConfigSchema = z
     tokenPolicy: tokenPolicySchema.optional(),
     anthropicCache: anthropicCacheSchema.optional(),
     messageNormalization: messageNormalizationSchema.optional(),
+    openRouterRouting: openRouterRoutingSchema.optional(),
   })
   .passthrough();
 
@@ -112,15 +145,16 @@ export const openAiCompatibleConfigSchema = z
   })
   .passthrough();
 
-export type OpenAiCompatibleConfig = z.infer<typeof openAiCompatibleConfigSchema>;
+export type OpenAiCompatibleConfig = z.infer<
+  typeof openAiCompatibleConfigSchema
+>;
 
 export function parseProviderConfig(
   providerId: LlmProviderId,
-  config: unknown
+  config: unknown,
 ): OpenRouterConfig | OpenAiCompatibleConfig {
   if (providerId === "openrouter") {
     return openRouterConfigSchema.parse(config ?? {});
   }
   return openAiCompatibleConfigSchema.parse(config ?? {});
 }
-

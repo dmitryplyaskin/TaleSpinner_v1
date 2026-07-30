@@ -8,5 +8,5 @@ type Props = {
 };
 
 export const ProviderPicker: React.FC<Props> = ({ scope, scopeId }) => {
-	return <LlmProviderPanel scope={scope} scopeId={scopeId} showRuntime showConfig showPresets />;
+	return <LlmProviderPanel scope={scope} scopeId={scopeId} />;
 };

@@ -1,10 +1,9 @@
 import { eq } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { uiSidebarsState } from "../../db/schema";
 import { type SidebarState } from "../../types";
-
-const SIDEBARS_STATE_ID = "global";
 
 function safeParseState(json: string): SidebarState {
   try {
@@ -21,7 +20,7 @@ export async function getSidebarsState(): Promise<SidebarState> {
   const rows = await db
     .select()
     .from(uiSidebarsState)
-    .where(eq(uiSidebarsState.id, SIDEBARS_STATE_ID));
+    .where(eq(uiSidebarsState.id, resolveTrustedOwnerId()));
 
   const row = rows[0];
   if (!row) return {};
@@ -35,7 +34,7 @@ export async function saveSidebarsState(state: SidebarState): Promise<SidebarSta
 
   await db
     .insert(uiSidebarsState)
-    .values({ id: SIDEBARS_STATE_ID, stateJson, updatedAt: ts })
+    .values({ id: resolveTrustedOwnerId(), stateJson, updatedAt: ts })
     .onConflictDoUpdate({
       target: uiSidebarsState.id,
       set: { stateJson, updatedAt: ts },

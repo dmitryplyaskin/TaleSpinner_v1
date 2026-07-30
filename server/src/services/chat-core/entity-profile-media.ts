@@ -2,17 +2,37 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { assertSafeFilenameOrThrow, resolveSafePath } from "@core/files/safe-path";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { createDataPath } from "../../utils";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-function getEntityProfileImagesDir(): string {
+function getEntityProfileImagesRoot(): string {
   return createDataPath("media", "images", "entity-profiles");
 }
 
 export function resolveEntityProfileMediaPath(avatarAssetId: string | null): string | null {
-  if (!avatarAssetId || !avatarAssetId.startsWith("/media/")) return null;
-  return createDataPath(avatarAssetId.replace(/^\/media\//, "media/"));
+  const prefix = "/media/images/entity-profiles/";
+  if (!avatarAssetId?.startsWith(prefix)) return null;
+
+  try {
+    const ownerId = resolveTrustedOwnerId();
+    const segments = avatarAssetId.slice(prefix.length).split("/").filter(Boolean);
+    if (segments.length === 1 && ownerId === "global") {
+      return resolveSafePath(getEntityProfileImagesRoot(), segments[0]);
+    }
+    if (segments.length !== 2 || segments[0] !== ownerId) return null;
+
+    const ownerFolder = resolveSafePath(
+      getEntityProfileImagesRoot(),
+      assertSafeFilenameOrThrow(ownerId)
+    );
+    return resolveSafePath(ownerFolder, segments[1]);
+  } catch {
+    return null;
+  }
 }
 
 export async function readEntityProfileAvatarFile(avatarAssetId: string | null): Promise<{
@@ -41,10 +61,11 @@ export async function saveEntityProfileAvatarPng(fileBuffer: Buffer): Promise<st
     throw new Error("Entity profile avatar must be a PNG image.");
   }
 
-  const dir = getEntityProfileImagesDir();
+  const ownerId = assertSafeFilenameOrThrow(resolveTrustedOwnerId());
+  const dir = resolveSafePath(getEntityProfileImagesRoot(), ownerId);
   await fs.mkdir(dir, { recursive: true });
 
   const fileName = `${randomUUID()}.png`;
   await fs.writeFile(path.join(dir, fileName), fileBuffer);
-  return `/media/images/entity-profiles/${fileName}`;
+  return `/media/images/entity-profiles/${ownerId}/${fileName}`;
 }

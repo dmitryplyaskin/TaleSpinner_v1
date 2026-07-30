@@ -1,10 +1,42 @@
-import { createEffect, createEvent, createStore, sample } from 'effector';
+import { createEvent, createStore, sample } from 'effector';
 
-import * as llmApi from '../../api/llm';
+import {
+	applyLlmPresetFx,
+	checkProviderConnectionFx,
+	createLlmPresetFx,
+	createTokenFx,
+	deleteLlmPresetFx,
+	deleteTokenFx,
+	patchLlmPresetSettingsFx,
+	patchTokenFx,
+	saveConnectionFx,
+	updateLlmPresetFx,
+} from './action-effects';
+import {
+	ensureLlmPresetSettingsFx,
+	ensureLlmPresetsFx,
+	ensureModelsFx,
+	ensureOpenRouterEndpointsFx,
+	ensureProviderConfigFx,
+	ensureProvidersFx,
+	ensureRuntimeFx,
+	ensureRuntimeProviderStateFx,
+	ensureTokensFx,
+	loadLlmPresetSettingsFx,
+	loadLlmPresetsFx,
+	loadModelsFx,
+	loadOpenRouterEndpointsFx,
+	loadProviderConfigFx,
+	loadProvidersFx,
+	loadRuntimeFx,
+	loadRuntimeProviderStateFx,
+	loadTokensFx,
+} from './resource-effects';
 
+import type { LlmPresetDto, LlmPresetSettingsDto } from '../../api/llm';
 import type {
 	LlmModel,
-	LlmPresetPayload,
+	LlmOpenRouterEndpoint,
 	LlmProviderConfig,
 	LlmProviderDefinition,
 	LlmProviderId,
@@ -17,158 +49,7 @@ export type ScopeKey = `${LlmScope}:${string}`;
 
 const toScopeKey = (scope: LlmScope, scopeId: string): ScopeKey => `${scope}:${scopeId}`;
 
-export const loadProvidersFx = createEffect(async (): Promise<LlmProviderDefinition[]> => {
-	return llmApi.getProviders();
-});
-
-export const loadRuntimeFx = createEffect(async (params: { scope: LlmScope; scopeId: string }): Promise<LlmRuntime> => {
-	return llmApi.getRuntime(params);
-});
-
-export const patchRuntimeFx = createEffect(
-	async (params: {
-		scope: LlmScope;
-		scopeId: string;
-		activeProviderId: LlmProviderId;
-		activeTokenId?: string | null;
-		activeModel?: string | null;
-	}): Promise<LlmRuntime> => {
-		return llmApi.patchRuntime(params);
-	},
-);
-
-export const loadProviderConfigFx = createEffect(
-	async (providerId: LlmProviderId): Promise<{ providerId: LlmProviderId; config: LlmProviderConfig }> => {
-		return llmApi.getProviderConfig(providerId);
-	},
-);
-
-export const patchProviderConfigFx = createEffect(
-	async (params: {
-		providerId: LlmProviderId;
-		config: LlmProviderConfig;
-	}): Promise<{ providerId: LlmProviderId; config: LlmProviderConfig }> => {
-		return llmApi.patchProviderConfig(params.providerId, params.config);
-	},
-);
-
-export const checkProviderConnectionFx = createEffect(
-	async (params: {
-		providerId: LlmProviderId;
-		scope: LlmScope;
-		scopeId: string;
-		tokenId?: string | null;
-		config?: LlmProviderConfig;
-	}) => {
-		return llmApi.checkProviderConnection(params);
-	},
-);
-
-export const loadTokensFx = createEffect(
-	async (providerId: LlmProviderId): Promise<{ providerId: LlmProviderId; tokens: LlmTokenListItem[] }> => {
-		const tokens = await llmApi.listTokens(providerId);
-		return { providerId, tokens };
-	},
-);
-
-export const createTokenFx = createEffect(
-	async (params: { providerId: LlmProviderId; name: string; token: string }): Promise<LlmTokenListItem> => {
-		return llmApi.createToken(params);
-	},
-);
-
-export const patchTokenFx = createEffect(
-	async (params: { id: string; name?: string; token?: string }): Promise<void> => {
-		return llmApi.patchToken(params);
-	},
-);
-
-export const deleteTokenFx = createEffect(async (id: string): Promise<void> => {
-	return llmApi.deleteToken(id);
-});
-
-export const loadModelsFx = createEffect(
-	async (params: {
-		providerId: LlmProviderId;
-		scope: LlmScope;
-		scopeId: string;
-		tokenId?: string | null;
-	}): Promise<{ key: string; models: LlmModel[] }> => {
-		const models = await llmApi.getModels(params);
-		const tokenKey = params.tokenId ?? 'none';
-		return { key: `${params.providerId}:${tokenKey}`, models };
-	},
-);
-
-export const loadLlmPresetsFx = createEffect(async (): Promise<llmApi.LlmPresetDto[]> => {
-	return llmApi.listLlmPresets('global');
-});
-
-export const loadLlmPresetSettingsFx = createEffect(async (): Promise<llmApi.LlmPresetSettingsDto> => {
-	return llmApi.getLlmPresetSettings('global');
-});
-
-export const createLlmPresetFx = createEffect(
-	async (params: { name: string; description?: string; payload: LlmPresetPayload }): Promise<llmApi.LlmPresetDto> => {
-		return llmApi.createLlmPreset({
-			ownerId: 'global',
-			name: params.name,
-			description: params.description,
-			payload: params.payload,
-		});
-	},
-);
-
-export const updateLlmPresetFx = createEffect(
-	async (params: {
-		presetId: string;
-		name?: string;
-		description?: string | null;
-		payload?: LlmPresetPayload;
-	}): Promise<llmApi.LlmPresetDto> => {
-		return llmApi.updateLlmPreset({
-			ownerId: 'global',
-			presetId: params.presetId,
-			name: params.name,
-			description: params.description,
-			payload: params.payload,
-		});
-	},
-);
-
-export const deleteLlmPresetFx = createEffect(async (presetId: string): Promise<{ id: string }> => {
-	return llmApi.deleteLlmPreset({ ownerId: 'global', presetId });
-});
-
-export const applyLlmPresetFx = createEffect(
-	async (params: { presetId: string; scope: LlmScope; scopeId: string }): Promise<{
-		preset: llmApi.LlmPresetDto;
-		runtime: LlmRuntime;
-		warnings: string[];
-	}> => {
-		return llmApi.applyLlmPreset({
-			ownerId: 'global',
-			presetId: params.presetId,
-			scope: params.scope,
-			scopeId: params.scopeId,
-		});
-	},
-);
-
-export const patchLlmPresetSettingsFx = createEffect(
-	async (params: { activePresetId?: string | null }): Promise<llmApi.LlmPresetSettingsDto> => {
-		return llmApi.patchLlmPresetSettings({
-			ownerId: 'global',
-			activePresetId: params.activePresetId,
-		});
-	},
-);
-
 export const providerPickerMounted = createEvent<{ scope: LlmScope; scopeId: string }>();
-export const providerSelected = createEvent<{ scope: LlmScope; scopeId: string; providerId: LlmProviderId }>();
-export const tokenSelected = createEvent<{ scope: LlmScope; scopeId: string; tokenId: string | null }>();
-export const modelSelected = createEvent<{ scope: LlmScope; scopeId: string; model: string | null }>();
-export const tokenManagerOpened = createEvent<boolean>();
 
 export const $providers = createStore<LlmProviderDefinition[]>([]);
 export const $runtimeByScopeKey = createStore<Record<ScopeKey, LlmRuntime>>({} as Record<ScopeKey, LlmRuntime>);
@@ -179,74 +60,84 @@ export const $tokensByProviderId = createStore<Record<LlmProviderId, LlmTokenLis
 	{} as Record<LlmProviderId, LlmTokenListItem[]>,
 );
 export const $modelsByProviderTokenKey = createStore<Record<string, LlmModel[]>>({});
-export const $isTokenManagerOpen = createStore(false);
-export const $llmPresets = createStore<llmApi.LlmPresetDto[]>([]);
-export const $llmPresetSettings = createStore<llmApi.LlmPresetSettingsDto | null>(null);
+export const $openRouterEndpointsByModel = createStore<Record<string, LlmOpenRouterEndpoint[]>>({});
+export const $llmPresets = createStore<LlmPresetDto[]>([]);
+export const $llmPresetSettings = createStore<LlmPresetSettingsDto | null>(null);
 
-$providers.on(loadProvidersFx.doneData, (_, providers) => providers);
+$providers.on([loadProvidersFx.doneData, ensureProvidersFx.doneData], (_, providers) => providers);
 
-$runtimeByScopeKey.on(loadRuntimeFx.doneData, (state, runtime) => ({
+$runtimeByScopeKey.on([loadRuntimeFx.doneData, ensureRuntimeFx.doneData], (state, runtime) => ({
 	...state,
 	[toScopeKey(runtime.scope, runtime.scopeId)]: runtime,
 }));
-$runtimeByScopeKey.on(patchRuntimeFx.doneData, (state, runtime) => ({
-	...state,
-	[toScopeKey(runtime.scope, runtime.scopeId)]: runtime,
-}));
-
-$providerConfigById.on(loadProviderConfigFx.doneData, (state, payload) => ({
-	...state,
-	[payload.providerId]: payload.config,
-}));
-$providerConfigById.on(patchProviderConfigFx.doneData, (state, payload) => ({
+$providerConfigById.on([loadProviderConfigFx.doneData, ensureProviderConfigFx.doneData], (state, payload) => ({
 	...state,
 	[payload.providerId]: payload.config,
 }));
 
-$tokensByProviderId.on(loadTokensFx.doneData, (state, payload) => ({
+$tokensByProviderId.on([loadTokensFx.doneData, ensureTokensFx.doneData], (state, payload) => ({
 	...state,
 	[payload.providerId]: payload.tokens,
 }));
 
-$modelsByProviderTokenKey.on(loadModelsFx.doneData, (state, payload) => ({
+$modelsByProviderTokenKey.on([loadModelsFx.doneData, ensureModelsFx.doneData], (state, payload) => ({
 	...state,
 	[payload.key]: payload.models,
 }));
 
-$isTokenManagerOpen.on(tokenManagerOpened, (_, isOpen) => isOpen);
-$llmPresets.on(loadLlmPresetsFx.doneData, (_, presets) => presets);
+$llmPresets.on([loadLlmPresetsFx.doneData, ensureLlmPresetsFx.doneData], (_, presets) => presets);
 $llmPresetSettings
-	.on(loadLlmPresetSettingsFx.doneData, (_, settings) => settings)
+	.on([loadLlmPresetSettingsFx.doneData, ensureLlmPresetSettingsFx.doneData], (_, settings) => settings)
 	.on(patchLlmPresetSettingsFx.doneData, (_, settings) => settings);
 $runtimeByScopeKey.on(applyLlmPresetFx.doneData, (state, payload) => ({
 	...state,
 	[toScopeKey(payload.runtime.scope, payload.runtime.scopeId)]: payload.runtime,
 }));
 
+$openRouterEndpointsByModel.on(
+	[loadOpenRouterEndpointsFx.doneData, ensureOpenRouterEndpointsFx.doneData],
+	(state, payload) => ({
+	...state,
+	[payload.modelId]: payload.endpoints,
+}),
+);
+
+$providerConfigById.on(saveConnectionFx.doneData, (state, payload) => ({
+	...state,
+	[payload.config.providerId]: payload.config.config,
+}));
+$runtimeByScopeKey.on(saveConnectionFx.doneData, (state, payload) => ({
+	...state,
+	[toScopeKey(payload.runtime.scope, payload.runtime.scopeId)]: payload.runtime,
+}));
+$llmPresets.on(saveConnectionFx.doneData, (state, payload) =>
+	payload.preset ? state.map((item) => (item.presetId === payload.preset?.presetId ? payload.preset : item)) : state,
+);
+
 sample({
 	clock: providerPickerMounted,
-	target: loadProvidersFx,
+	target: ensureProvidersFx,
 });
 
 sample({
 	clock: providerPickerMounted,
-	target: [loadLlmPresetsFx, loadLlmPresetSettingsFx],
+	target: [ensureLlmPresetsFx, ensureLlmPresetSettingsFx],
 });
 
 sample({
 	clock: providerPickerMounted,
 	fn: ({ scope, scopeId }) => ({ scope, scopeId }),
-	target: loadRuntimeFx,
+	target: ensureRuntimeFx,
 });
 
 sample({
-	clock: loadRuntimeFx.doneData,
+	clock: [loadRuntimeFx.doneData, ensureRuntimeFx.doneData],
 	fn: (runtime) => runtime.activeProviderId,
-	target: [loadTokensFx, loadProviderConfigFx],
+	target: [ensureTokensFx, ensureProviderConfigFx],
 });
 
 sample({
-	clock: loadRuntimeFx.doneData,
+	clock: [loadRuntimeFx.doneData, ensureRuntimeFx.doneData],
 	filter: (runtime) => Boolean(runtime.activeTokenId),
 	fn: (runtime) => ({
 		providerId: runtime.activeProviderId,
@@ -254,67 +145,7 @@ sample({
 		scopeId: runtime.scopeId,
 		tokenId: runtime.activeTokenId,
 	}),
-	target: loadModelsFx,
-});
-
-sample({
-	clock: providerSelected,
-	fn: ({ scope, scopeId, providerId }) => ({
-		scope,
-		scopeId,
-		activeProviderId: providerId,
-	}),
-	target: patchRuntimeFx,
-});
-
-sample({
-	clock: providerSelected,
-	fn: ({ providerId }) => providerId,
-	target: [loadTokensFx, loadProviderConfigFx],
-});
-
-sample({
-	clock: tokenSelected,
-	source: $runtimeByScopeKey,
-	fn: (runtimeByKey, { scope, scopeId, tokenId }) => {
-		const current = runtimeByKey[toScopeKey(scope, scopeId)];
-		return {
-			scope,
-			scopeId,
-			activeProviderId: current?.activeProviderId ?? 'openrouter',
-			activeTokenId: tokenId,
-			activeModel: current?.activeModel ?? null,
-		};
-	},
-	target: patchRuntimeFx,
-});
-
-sample({
-	clock: modelSelected,
-	source: $runtimeByScopeKey,
-	fn: (runtimeByKey, { scope, scopeId, model }) => {
-		const current = runtimeByKey[toScopeKey(scope, scopeId)];
-		return {
-			scope,
-			scopeId,
-			activeProviderId: current?.activeProviderId ?? 'openrouter',
-			activeTokenId: current?.activeTokenId ?? null,
-			activeModel: model,
-		};
-	},
-	target: patchRuntimeFx,
-});
-
-sample({
-	clock: patchRuntimeFx.doneData,
-	filter: (runtime) => Boolean(runtime.activeTokenId),
-	fn: (runtime) => ({
-		providerId: runtime.activeProviderId,
-		scope: runtime.scope,
-		scopeId: runtime.scopeId,
-		tokenId: runtime.activeTokenId,
-	}),
-	target: loadModelsFx,
+	target: ensureModelsFx,
 });
 
 sample({
@@ -352,7 +183,13 @@ sample({
 sample({
 	clock: applyLlmPresetFx.doneData,
 	fn: (payload) => payload.runtime.activeProviderId,
-	target: [loadTokensFx, loadProviderConfigFx],
+	target: ensureTokensFx,
+});
+
+sample({
+	clock: applyLlmPresetFx.doneData,
+	fn: (payload) => payload.runtime.activeProviderId,
+	target: loadProviderConfigFx,
 });
 
 export const llmProviderModel = {
@@ -361,29 +198,35 @@ export const llmProviderModel = {
 	$providerConfigById,
 	$tokensByProviderId,
 	$modelsByProviderTokenKey,
-	$isTokenManagerOpen,
+	$openRouterEndpointsByModel,
 	$llmPresets,
 	$llmPresetSettings,
 
 	providerPickerMounted,
-	providerSelected,
-	tokenSelected,
-	modelSelected,
-	tokenManagerOpened,
 
 	loadProvidersFx,
+	ensureProvidersFx,
 	loadRuntimeFx,
-	patchRuntimeFx,
+	ensureRuntimeFx,
+	loadRuntimeProviderStateFx,
+	ensureRuntimeProviderStateFx,
 	loadTokensFx,
+	ensureTokensFx,
 	createTokenFx,
 	patchTokenFx,
 	deleteTokenFx,
 	loadModelsFx,
+	ensureModelsFx,
+	loadOpenRouterEndpointsFx,
+	ensureOpenRouterEndpointsFx,
+	saveConnectionFx,
 	loadProviderConfigFx,
-	patchProviderConfigFx,
+	ensureProviderConfigFx,
 	checkProviderConnectionFx,
 	loadLlmPresetsFx,
+	ensureLlmPresetsFx,
 	loadLlmPresetSettingsFx,
+	ensureLlmPresetSettingsFx,
 	createLlmPresetFx,
 	updateLlmPresetFx,
 	deleteLlmPresetFx,

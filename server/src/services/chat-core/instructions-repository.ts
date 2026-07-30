@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { chats, instructions } from "../../db/schema";
 
@@ -81,7 +82,7 @@ export async function listInstructions(params: {
   ownerId?: string;
 }): Promise<InstructionDto[]> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const rows = await db
     .select()
     .from(instructions)
@@ -97,7 +98,12 @@ export async function getInstructionById(
   const rows = await db
     .select()
     .from(instructions)
-    .where(eq(instructions.id, id));
+    .where(
+      and(
+        eq(instructions.id, id),
+        eq(instructions.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
@@ -124,7 +130,7 @@ export async function createInstruction(params: {
 
   await db.insert(instructions).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     name: params.name,
     kind: params.kind,
     engine: params.engine ?? "liquidjs",
@@ -144,7 +150,7 @@ export async function createInstruction(params: {
     if (params.kind === "basic") {
       return {
         id,
-        ownerId: params.ownerId ?? "global",
+        ownerId: resolveTrustedOwnerId(params.ownerId),
         name: params.name,
         kind: "basic",
         engine: params.engine ?? "liquidjs",
@@ -157,7 +163,7 @@ export async function createInstruction(params: {
 
     return {
       id,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       name: params.name,
       kind: "st_base",
       engine: params.engine ?? "liquidjs",
@@ -207,13 +213,25 @@ export async function updateInstruction(params: {
   await db
     .update(instructions)
     .set(set)
-    .where(eq(instructions.id, params.id));
+    .where(
+      and(
+        eq(instructions.id, params.id),
+        eq(instructions.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return getInstructionById(params.id);
 }
 
 export async function deleteInstruction(id: string): Promise<void> {
   const db = await initDb();
-  await db.delete(instructions).where(eq(instructions.id, id));
+  await db
+    .delete(instructions)
+    .where(
+      and(
+        eq(instructions.id, id),
+        eq(instructions.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function pickInstructionForChat(params: {
@@ -221,7 +239,7 @@ export async function pickInstructionForChat(params: {
   chatId: string;
 }): Promise<InstructionDto | null> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
 
   const chatRows = await db
     .select({ instructionId: chats.instructionId })

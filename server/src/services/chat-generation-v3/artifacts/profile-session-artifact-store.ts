@@ -3,8 +3,14 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../../core/request-context/owner-scope-storage";
 import { initDb } from "../../../db/client";
 import { operationProfileSessionArtifacts } from "../../../db/schema";
+import {
+  assertArtifactHistoryItemLimit,
+  assertArtifactHistoryWithinLimits,
+  assertArtifactValueWithinLimits,
+} from "../../operations/operation-resource-limits";
 
 import type { ArtifactValue } from "../contracts";
 import type { OperationActivationState } from "../operations/operation-activation-intervals";
@@ -45,12 +51,13 @@ export class ProfileSessionArtifactStore {
     sessionKey: string;
   }): Promise<Record<string, ArtifactValue>> {
     const db = await initDb();
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const rows = await db
       .select()
       .from(operationProfileSessionArtifacts)
       .where(
         and(
-          eq(operationProfileSessionArtifacts.ownerId, params.ownerId),
+          eq(operationProfileSessionArtifacts.ownerId, ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey)
         )
       );
@@ -82,13 +89,14 @@ export class ProfileSessionArtifactStore {
     const opIds = Array.from(new Set(params.opIds.filter((opId) => opId.trim().length > 0)));
     if (opIds.length === 0) return {};
     const db = await initDb();
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const tagByOpId = new Map(opIds.map((opId) => [opId, buildOperationActivationStateTag(opId)]));
     const rows = await db
       .select()
       .from(operationProfileSessionArtifacts)
       .where(
         and(
-          eq(operationProfileSessionArtifacts.ownerId, params.ownerId),
+          eq(operationProfileSessionArtifacts.ownerId, ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey),
           inArray(operationProfileSessionArtifacts.tag, Array.from(tagByOpId.values()))
         )
@@ -120,12 +128,16 @@ export class ProfileSessionArtifactStore {
     };
     value: unknown;
   }): Promise<ArtifactValue> {
+    assertArtifactValueWithinLimits(params.value);
+    assertArtifactHistoryItemLimit(params.history.maxItems);
     const db = await initDb();
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const existingRows = await db
       .select()
       .from(operationProfileSessionArtifacts)
       .where(
         and(
+          eq(operationProfileSessionArtifacts.ownerId, ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey),
           eq(operationProfileSessionArtifacts.tag, params.tag)
         )
@@ -141,6 +153,7 @@ export class ProfileSessionArtifactStore {
           params.history.maxItems
         )
       : [];
+    assertArtifactHistoryWithinLimits(history);
 
     if (existing) {
       await db
@@ -152,11 +165,16 @@ export class ProfileSessionArtifactStore {
           historyJson: safeJsonStringify(history, "[]"),
           updatedAt: now,
         })
-        .where(eq(operationProfileSessionArtifacts.id, existing.id));
+        .where(
+          and(
+            eq(operationProfileSessionArtifacts.id, existing.id),
+            eq(operationProfileSessionArtifacts.ownerId, ownerId)
+          )
+        );
     } else {
       await db.insert(operationProfileSessionArtifacts).values({
         id: uuidv4(),
-        ownerId: params.ownerId,
+        ownerId,
         sessionKey: params.sessionKey,
         chatId: params.chatId,
         branchId: params.branchId,
@@ -192,12 +210,14 @@ export class ProfileSessionArtifactStore {
     state: OperationActivationState;
   }): Promise<void> {
     const db = await initDb();
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
     const tag = buildOperationActivationStateTag(params.opId);
     const existingRows = await db
       .select()
       .from(operationProfileSessionArtifacts)
       .where(
         and(
+          eq(operationProfileSessionArtifacts.ownerId, ownerId),
           eq(operationProfileSessionArtifacts.sessionKey, params.sessionKey),
           eq(operationProfileSessionArtifacts.tag, tag)
         )
@@ -212,13 +232,18 @@ export class ProfileSessionArtifactStore {
           valueJson: safeJsonStringify(params.state, "{}"),
           updatedAt: now,
         })
-        .where(eq(operationProfileSessionArtifacts.id, existingRows[0].id));
+        .where(
+          and(
+            eq(operationProfileSessionArtifacts.id, existingRows[0].id),
+            eq(operationProfileSessionArtifacts.ownerId, ownerId)
+          )
+        );
       return;
     }
 
     await db.insert(operationProfileSessionArtifacts).values({
       id: uuidv4(),
-      ownerId: params.ownerId,
+      ownerId,
       sessionKey: params.sessionKey,
       chatId: params.chatId,
       branchId: params.branchId,

@@ -83,6 +83,8 @@ Copy-Item .\env.example .\.env
 
 At minimum, you should review these values before regular use:
 
+- `TALESPINNER_ACCESS_MODE` — keep `local` for a trusted machine or use
+  `public` with the complete hardened configuration;
 - `TOKENS_MASTER_KEY` — master key used to encrypt stored tokens;
 - `PORT`, `DATA_DIR`, `DB_PATH` if you need custom runtime paths;
 - `CHROMA_*` only if you plan to use RAG/ChromaDB.
@@ -103,11 +105,12 @@ Vite prints the exact frontend URL in the terminal after startup.
 ### First working flow
 
 1. Open the app in your browser.
-2. Create your first profile.
-3. Connect an LLM provider in `LLM Settings`.
-4. Select a token and model.
-5. Create or open a chat.
-6. Configure `World Info` and `Operations` if needed.
+2. Create the first user account. In local mode its password may be empty.
+3. Create your first character profile.
+4. Connect an LLM provider in `LLM Settings`.
+5. Select a token and model.
+6. Create or open a chat.
+7. Configure `World Info` and `Operations` if needed.
 
 ## Useful commands
 
@@ -126,6 +129,7 @@ yarn --cwd server test
 The repository includes separate documentation for users and developers.
 
 - User onboarding: `docs/docs/user/getting-started.md`
+- Accounts and secure hosting: `docs/docs/user/accounts-and-security.md`
 - Everyday chat workflow: `docs/docs/user/chat-basics.md`
 - World Info: `docs/docs/user/world-info.md`
 - Operations: `docs/docs/user/operations.md`

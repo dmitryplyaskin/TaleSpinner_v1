@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { eq } from "drizzle-orm";
+
+import { assertSafeFilenameOrThrow, resolveSafePath } from "@core/files/safe-path";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { normalizeCharSpec } from "../../chat-core/charspec/normalize";
 import { extractCharSpecFromPngBuffer } from "../../chat-core/charspec/png";
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
@@ -101,16 +106,34 @@ async function readCharacter(filePath: string): Promise<{
   return { raw, normalized: normalizeCharSpec(raw) };
 }
 
-async function saveCharacterAvatar(filePath: string): Promise<string | undefined> {
-  if (path.extname(filePath).toLowerCase() !== ".png") return undefined;
-  const dir = createDataPath("media", "images", "entity-profiles");
+async function saveImportedMedia(
+  ownerId: string,
+  kind: "entity-profiles" | "user-persons",
+  sourcePath: string,
+  extension: string
+): Promise<string> {
+  const trustedOwnerId = assertSafeFilenameOrThrow(resolveTrustedOwnerId(ownerId));
+  const root = createDataPath("media", "images", kind);
+  const dir = resolveSafePath(root, trustedOwnerId);
   await fs.mkdir(dir, { recursive: true });
-  const filename = `${randomUUID()}.png`;
-  await fs.copyFile(filePath, path.join(dir, filename));
-  return `/media/images/entity-profiles/${filename}`;
+  const filename = `${randomUUID()}${extension}`;
+  await fs.copyFile(sourcePath, resolveSafePath(dir, filename));
+  return `/media/images/${kind}/${trustedOwnerId}/${filename}`;
 }
 
-async function savePersonaAvatar(profileRoot: string, avatarFile: string): Promise<string | undefined> {
+async function saveCharacterAvatar(
+  ownerId: string,
+  filePath: string
+): Promise<string | undefined> {
+  if (path.extname(filePath).toLowerCase() !== ".png") return undefined;
+  return saveImportedMedia(ownerId, "entity-profiles", filePath, ".png");
+}
+
+async function savePersonaAvatar(
+  ownerId: string,
+  profileRoot: string,
+  avatarFile: string
+): Promise<string | undefined> {
   const safeName = path.basename(avatarFile);
   if (!safeName) return undefined;
   const sourcePath = path.join(profileRoot, "User Avatars", safeName);
@@ -122,11 +145,7 @@ async function savePersonaAvatar(profileRoot: string, avatarFile: string): Promi
   } catch {
     return undefined;
   }
-  const dir = createDataPath("media", "images", "user-persons");
-  await fs.mkdir(dir, { recursive: true });
-  const filename = `${randomUUID()}${ext}`;
-  await fs.copyFile(sourcePath, path.join(dir, filename));
-  return `/media/images/user-persons/${filename}`;
+  return saveImportedMedia(ownerId, "user-persons", sourcePath, ext);
 }
 
 async function findExistingEntityId(ownerId: string, source: SillyTavernImportSourceMeta): Promise<string | null> {
@@ -191,7 +210,7 @@ async function importCharacter(ctx: ImportContext, item: SillyTavernImportScanIt
   const filePath = getFilePath(ctx, item);
   const { normalized } = await readCharacter(filePath);
   const name = normalized.name.trim() || item.name;
-  const avatarAssetId = await saveCharacterAvatar(filePath);
+  const avatarAssetId = await saveCharacterAvatar(ctx.ownerId, filePath);
   const profile = await createEntityProfile({
     ownerId: ctx.ownerId,
     name,
@@ -313,7 +332,10 @@ async function readChatMessages(filePath: string): Promise<{ meta: Record<string
 
 async function chatExists(ctx: ImportContext, source: SillyTavernImportSourceMeta): Promise<boolean> {
   const db = await initDb();
-  const rows = await db.select({ metaJson: chats.metaJson }).from(chats);
+  const rows = await db
+    .select({ metaJson: chats.metaJson })
+    .from(chats)
+    .where(eq(chats.ownerId, resolveTrustedOwnerId(ctx.ownerId)));
   return rows.some((row) => sourceMatches(safeJsonParse(row.metaJson, null), source));
 }
 
@@ -326,12 +348,13 @@ async function addSwipeVariants(params: {
   if (params.swipes.length <= 1) return;
   const db = await initDb();
   const now = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const extraVariants = params.swipes
     .map((text, idx) => ({ text, idx }))
     .filter((item) => item.idx !== params.selectedIndex)
     .map((item) => ({
       id: randomUUID(),
-      ownerId: params.ownerId,
+      ownerId,
       messageId: params.messageId,
       createdAt: now,
       kind: "import" as const,
@@ -408,7 +431,7 @@ async function importPersona(ctx: ImportContext, item: SillyTavernImportScanItem
   const avatarFile = item.relativePath.split("#persona:")[1] ?? "";
   if (existingPerson) {
     if (avatarFile && !existingPerson.avatarUrl?.startsWith("/media/")) {
-      const avatarUrl = await savePersonaAvatar(profileRoot, avatarFile);
+      const avatarUrl = await savePersonaAvatar(ctx.ownerId, profileRoot, avatarFile);
       if (avatarUrl) await updateUserPerson({ id: existingPerson.id, avatarUrl });
     }
     ctx.skipped.push({ kind: item.kind, itemId: item.id, name: item.name, reason: "duplicate" });
@@ -418,7 +441,9 @@ async function importPersona(ctx: ImportContext, item: SillyTavernImportScanItem
   const powerUser = isRecord(settings) && isRecord(settings.power_user) ? settings.power_user : {};
   const descriptions = isRecord(powerUser.persona_descriptions) ? powerUser.persona_descriptions : {};
   const rawDescription = isRecord(descriptions[avatarFile]) ? asString(descriptions[avatarFile].description) : "";
-  const avatarUrl = avatarFile ? await savePersonaAvatar(profileRoot, avatarFile) : undefined;
+  const avatarUrl = avatarFile
+    ? await savePersonaAvatar(ctx.ownerId, profileRoot, avatarFile)
+    : undefined;
   const person = await createUserPerson({
     ownerId: ctx.ownerId,
     name: item.name,
@@ -465,7 +490,7 @@ export async function importSillyTavernSelection(params: SillyTavernImportReques
   }
   const ctx: ImportContext = {
     rootPath: scan.rootPath,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     selectedIds: new Set(params.selection.itemIds),
     itemById,
     profileRootByHandle,

@@ -188,6 +188,80 @@ test("deterministic start order in concurrent mode (order, then taskId)", async 
   expect(started).toEqual(["B", "C", "D"]);
 });
 
+test("includes terminal error details in task finished events", async () => {
+  const events: OrchestratorEvent[] = [];
+  const codedError = new Error("provider request failed") as Error & { code: string };
+  codedError.code = "LLM_PROVIDER_ERROR";
+
+  await runOrchestrator(
+    {
+      runId: "run-terminal-details",
+      hook: "before_main_llm",
+      trigger: "generate",
+      executionMode: "sequential",
+      tasks: [
+        {
+          taskId: "failing-operation",
+          enabled: true,
+          required: false,
+          order: 1,
+          run: async () => {
+            throw codedError;
+          },
+        },
+      ],
+    },
+    { onEvent: (event) => events.push(event) }
+  );
+
+  expect(events).toContainEqual({
+    type: "orch.task.finished",
+    data: {
+      runId: "run-terminal-details",
+      taskId: "failing-operation",
+      status: "error",
+      error: { code: "LLM_PROVIDER_ERROR", message: "provider request failed" },
+    },
+  });
+});
+
+test("includes the abort reason in task finished events", async () => {
+  const events: OrchestratorEvent[] = [];
+  const abortError = new Error("user cancelled operation");
+  abortError.name = "AbortError";
+
+  await runOrchestrator(
+    {
+      runId: "run-abort-details",
+      hook: "after_main_llm",
+      trigger: "generate",
+      executionMode: "sequential",
+      tasks: [
+        {
+          taskId: "cancelled-operation",
+          enabled: true,
+          required: false,
+          order: 1,
+          run: async () => {
+            throw abortError;
+          },
+        },
+      ],
+    },
+    { onEvent: (event) => events.push(event) }
+  );
+
+  expect(events).toContainEqual({
+    type: "orch.task.finished",
+    data: {
+      runId: "run-abort-details",
+      taskId: "cancelled-operation",
+      status: "aborted",
+      reason: "user cancelled operation",
+    },
+  });
+});
+
 test("aborted before start skips all plan tasks", async () => {
   const ac = new AbortController();
   ac.abort("user_cancel");
@@ -236,4 +310,3 @@ test("aborted before start skips all plan tasks", async () => {
     reason: "orchestrator_aborted",
   });
 });
-

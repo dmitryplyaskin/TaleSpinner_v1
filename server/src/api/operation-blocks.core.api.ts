@@ -55,7 +55,10 @@ router.get(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const item = await getOperationBlockById(params.id);
+    const item = await getOperationBlockById({
+      ownerId: getRequestOwnerId(req),
+      blockId: params.id,
+    });
     if (!item) throw new HttpError(404, "OperationBlock не найден", "NOT_FOUND");
     return { data: item };
   })
@@ -95,7 +98,10 @@ router.get(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const item = await getOperationBlockById(params.id);
+    const item = await getOperationBlockById({
+      ownerId: getRequestOwnerId(req),
+      blockId: params.id,
+    });
     if (!item) throw new HttpError(404, "OperationBlock не найден", "NOT_FOUND");
     return {
       data: {

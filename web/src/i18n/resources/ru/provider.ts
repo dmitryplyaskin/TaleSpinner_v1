@@ -11,8 +11,15 @@ const ruProvider = {
 		title: 'Токены',
 		manage: 'Управление токенами',
 	},
+	connection: {
+		title: 'Подключение',
+		description: 'Выберите API, ключ и модель, которые будут использоваться в этом пресете.',
+		tokenRequired: 'Добавьте или выберите API-ключ, чтобы загрузить доступные модели.',
+		modelRequired: 'Выберите модель для завершения настройки подключения.',
+	},
 	config: {
 		title: 'Конфигурация провайдера',
+		advancedTitle: 'Дополнительные настройки',
 		baseUrl: 'Base URL',
 		defaultModel: 'Модель по умолчанию (опционально)',
 		checkConnection: 'Проверить подключение',
@@ -29,7 +36,8 @@ const ruProvider = {
 		messageNormalization: {
 			title: 'Нормализация сообщений',
 			enabled: 'Склеивать все system-инструкции в одно сообщение',
-			helpText: 'Включено по умолчанию для совместимости с провайдерами, которые принимают только одно system-сообщение.',
+			helpText:
+				'Включено по умолчанию для совместимости с провайдерами, которые принимают только одно system-сообщение.',
 		},
 		anthropicCache: {
 			title: 'Anthropic prompt cache',
@@ -45,8 +53,62 @@ const ruProvider = {
 		load: 'Загрузить модели',
 		manual: 'Ручной id модели',
 		manualPlaceholder: 'например anthropic/claude-3.5-sonnet',
+		manualCompatiblePlaceholder: 'например llama-3.1-8b-instruct',
+		browseCatalog: 'Выбрать из каталога API',
 		applyManual: 'Применить',
-		helpText: 'Если модель не выбрана, будет использоваться `defaultModel` провайдера (если задан) или дефолт провайдера.',
+		helpText:
+			'Если модель не выбрана, будет использоваться `defaultModel` провайдера (если задан) или дефолт провайдера.',
+	},
+	modelPicker: {
+		title: 'Выбор модели',
+		open: 'Открыть выбор модели',
+		searchLabel: 'Поиск',
+		searchPlaceholder: 'Название или ID модели',
+		refresh: 'Обновить каталог моделей',
+		visibleCount: 'Показано {{visible}} из {{total}}',
+		context: 'Контекст {{value}}',
+		inputPrice: 'Вход {{value}}/M',
+		outputPrice: 'Выход {{value}}/M',
+		useExactId: 'Использовать введённый ID',
+		loading: 'Загружаем модели…',
+		empty: 'Подходящие модели не найдены',
+		filters: {
+			all: 'Все',
+			free: 'Бесплатные',
+			vision: 'Vision',
+			reasoning: 'Reasoning',
+			tools: 'Tools',
+		},
+	},
+	routing: {
+		title: 'Маршрутизация OpenRouter',
+		strategy: 'Режим маршрутизации',
+		strategies: {
+			auto: 'По умолчанию OpenRouter',
+			price: 'sort: price — сначала дешевле',
+			latency: 'sort: latency — сначала ниже задержка',
+			throughput: 'sort: throughput — сначала выше скорость',
+			priority: 'provider.order — заданный порядок',
+			only: 'provider.only — только выбранные',
+		},
+		providers: 'Endpoint-провайдеры',
+		refreshProviders: 'Обновить',
+		providerPlaceholder: 'Выберите один или несколько endpoint-провайдеров',
+		selectModelFirst: 'Сначала выберите модель',
+		providerRequired: 'Для выбранного режима нужен хотя бы один endpoint-провайдер.',
+		allowFallbacks: 'Разрешить fallback на другие доступные endpoints',
+		privacyTitle: 'Приватность и совместимость',
+		zdr: 'Использовать только Zero Data Retention endpoints',
+		requireParameters: 'Требовать поддержку всех переданных параметров',
+		dataCollection: 'Сбор данных провайдерами',
+		dataCollectionAllow: 'Разрешён',
+		dataCollectionDeny: 'Запрещён',
+		moveUp: 'Поднять провайдера',
+		moveDown: 'Опустить провайдера',
+	},
+	actions: {
+		reset: 'Отменить изменения',
+		saveChanges: 'Сохранить изменения',
 	},
 	presets: {
 		title: 'Пресеты подключения',
@@ -77,6 +139,9 @@ const ruProvider = {
 		},
 	},
 	toasts: {
+		connectionSaved: 'Подключение сохранено',
+		connectionSaveFailed: 'Не удалось сохранить подключение',
+		incompleteConnection: 'Выберите ключ, модель и необходимые routing-провайдеры',
 		configSaved: 'Конфиг провайдера сохранён',
 		configSaveFailed: 'Не удалось сохранить конфиг провайдера',
 		connectionCheckPassed: 'Проверка провайдера прошла',
@@ -85,6 +150,7 @@ const ruProvider = {
 		modelsEmptyHelp:
 			'Провайдер не вернул ни одной модели. Проверьте Base URL, токен и используйте кнопку «Проверить подключение».',
 		modelsLoadFailed: 'Не удалось загрузить модели',
+		endpointsLoadFailed: 'Не удалось загрузить endpoint-провайдеров модели',
 	},
 };
 

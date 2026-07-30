@@ -1,0 +1,301 @@
+.op-ui .op-blockEditorRoot {
+	display: flex;
+	flex-direction: column;
+	gap: var(--op-space-sm);
+	min-height: 0;
+}
+
+.op-ui--fullscreen.op-ui--blocks .op-blockEditorRoot {
+	flex: 1 1 auto;
+	overflow: hidden;
+}
+
+.op-ui .op-settingsPanel {
+	flex: 0 0 auto;
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	border-radius: var(--op-radius-lg);
+	overflow: hidden;
+}
+
+.op-ui .op-settingsSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--op-space-sm);
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 10px 14px;
+	text-align: left;
+}
+
+.op-ui .op-settingsHeader {
+	display: flex;
+	align-items: center;
+}
+
+.op-ui .op-profileEnabledToggle {
+	flex: 0 0 auto;
+	padding: 10px 14px 10px 8px;
+	white-space: nowrap;
+}
+
+.op-ui .op-settingsIdentity {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.op-ui .op-settingsCopy {
+	min-width: 0;
+}
+
+.op-ui .op-settingsChevron {
+	flex: 0 0 auto;
+	transition: transform 160ms ease;
+}
+
+.op-ui .op-settingsChevron[data-opened='true'] {
+	transform: rotate(180deg);
+}
+
+.op-ui .op-settingsFields {
+	display: grid;
+	grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.4fr) auto;
+	gap: var(--op-space-sm);
+	align-items: end;
+	padding: var(--op-space-sm) 14px 14px;
+	border-top: 1px solid var(--op-border);
+}
+
+.op-ui .op-profileSettingsFields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--op-space-sm);
+	padding: var(--op-space-sm) 14px 14px;
+	border-top: 1px solid var(--op-border);
+}
+
+.op-ui .op-profileIdentityFields,
+.op-ui .op-profileRuntimeFields {
+	display: grid;
+	gap: var(--op-space-sm);
+	align-items: end;
+}
+
+.op-ui .op-profileIdentityFields {
+	grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.35fr);
+}
+
+.op-ui .op-profileRuntimeFields {
+	grid-template-columns: minmax(280px, 520px);
+}
+
+.op-ui .op-switchField {
+	display: flex;
+	align-items: center;
+	align-self: end;
+	min-height: 36px;
+}
+
+.op-ui--drawer .op-settingsFields,
+.op-ui--drawer .op-profileIdentityFields,
+.op-ui--drawer .op-profileRuntimeFields {
+	grid-template-columns: 1fr;
+}
+
+.op-ui .op-blockRefControls {
+	display: grid;
+	grid-template-columns: minmax(220px, 1fr) 160px;
+	gap: var(--op-space-md);
+	align-items: end;
+	margin-top: var(--op-space-xs);
+}
+
+.op-ui .op-compositionPanel,
+.op-ui .op-compactList,
+.op-ui .op-compactInspectorBody {
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	border-radius: var(--op-radius-lg);
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-compositionRow {
+	padding: var(--op-space-sm) 0;
+	border-top: 1px solid var(--op-border);
+}
+
+.op-ui .op-compositionRow:last-child {
+	padding-bottom: 0;
+}
+
+.op-ui .op-editorHeader {
+	display: flex;
+	gap: var(--op-space-sm);
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.op-ui .op-inspectorHeader {
+	flex: 0 0 auto;
+	padding: 14px var(--op-space-md) var(--op-space-sm);
+	border-bottom: 1px solid var(--op-border);
+}
+
+.op-ui .op-sectionToggle {
+	cursor: pointer;
+	user-select: none;
+}
+
+.op-ui .op-workspace {
+	display: grid;
+	grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+	gap: var(--op-space-md);
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.op-ui .op-listPane,
+.op-ui .op-inspectorPane {
+	min-height: 0;
+	background: var(--op-surface);
+	border: 1px solid var(--op-border);
+	border-radius: var(--op-radius-lg);
+	overflow: hidden;
+}
+
+.op-ui .op-listPane,
+.op-ui .op-inspectorPane,
+.op-ui .op-listLayout {
+	display: flex;
+	flex-direction: column;
+}
+
+.op-ui .op-listPane {
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-listHeader {
+	background: var(--op-surface);
+	padding-bottom: var(--op-space-sm);
+	border-bottom: 1px solid var(--op-border);
+	margin-bottom: var(--op-space-sm);
+}
+
+.op-ui .op-listLayout,
+.op-ui .op-inspectorScroll {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.op-ui .op-inspectorScroll {
+	overflow-y: auto;
+	padding: var(--op-space-md);
+}
+
+.op-ui .op-listScrollArea {
+	max-height: min(56vh, 640px);
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.op-ui .op-listScrollArea--fill {
+	flex: 1;
+	min-height: 0;
+	max-height: none;
+}
+
+.op-ui .op-compactScreen {
+	animation: op-panel-enter 160ms ease-out;
+}
+
+.op-ui .op-compactInspector {
+	min-width: 0;
+}
+
+.op-ui .op-compactNav {
+	position: sticky;
+	top: 0;
+	z-index: 7;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--op-space-sm);
+	margin-bottom: var(--op-space-sm);
+	padding: 8px 4px;
+	background: var(--ts-surface);
+	border-bottom: 1px solid var(--op-border);
+}
+
+.op-ui .op-emptyState,
+.op-ui .op-runEmpty {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--op-space-md);
+	padding: var(--op-space-xl);
+}
+
+.op-ui .op-emptyState {
+	min-height: 260px;
+	color: var(--op-muted);
+	background: var(--op-surface);
+	border: 1px dashed var(--op-border-strong);
+	border-radius: var(--op-radius-lg);
+}
+
+.op-ui .op-runEmpty {
+	min-height: 320px;
+	max-width: 480px;
+	margin: auto;
+}
+
+.op-ui .op-runEmptyIcon {
+	display: grid;
+	place-items: center;
+	width: 52px;
+	height: 52px;
+	color: var(--op-accent);
+	background: var(--op-accent-soft);
+	border-radius: 50%;
+}
+
+@keyframes op-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateX(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@media (max-width: 767px) {
+	.op-ui .op-settingsFields,
+	.op-ui .op-profileIdentityFields,
+	.op-ui .op-profileRuntimeFields,
+	.op-ui .op-blockRefControls {
+		grid-template-columns: 1fr;
+	}
+
+	.op-ui .op-profileEnabledToggle {
+		padding-left: 4px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.op-ui .op-compactScreen {
+		animation: none;
+	}
+
+	.op-ui .op-settingsChevron,
+	.op-ui .op-listRow {
+		transition: none;
+	}
+}

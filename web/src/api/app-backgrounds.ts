@@ -1,6 +1,7 @@
 import { BASE_URL } from "../const";
 
 import { apiJson } from "./api-json";
+import { authFetch } from "./auth-fetch";
 
 import type {
   AppBackgroundActiveSelection,
@@ -20,7 +21,7 @@ export async function importAppBackground(file: File): Promise<AppBackgroundAsse
   const form = new FormData();
   form.append("image", file);
 
-  const response = await fetch(`${BASE_URL}/app-backgrounds/import`, {
+  const response = await authFetch(`${BASE_URL}/app-backgrounds/import`, {
     method: "POST",
     body: form,
   });

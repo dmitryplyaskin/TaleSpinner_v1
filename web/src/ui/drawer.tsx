@@ -83,8 +83,8 @@ export const Drawer = ({
 			}
 			contentClassName={presentation.shellContentClassName}
 			labels={{
-				toggleFullscreen: t('drawer.toggleFullscreen'),
-				togglePlacement: t('drawer.togglePlacement'),
+				toggleFullscreen: fullScreen ? t('drawer.exitFullscreen') : t('drawer.enterFullscreen'),
+				togglePlacement: placement === 'start' ? t('drawer.moveToEnd') : t('drawer.moveToStart'),
 				close: t('drawer.close'),
 			}}
 		>

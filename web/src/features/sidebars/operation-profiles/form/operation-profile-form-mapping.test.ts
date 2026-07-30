@@ -316,11 +316,57 @@ describe('operation profile form mapping', () => {
 						providerId: 'openrouter',
 						credentialRef: 'cred-1',
 						model: 'gpt-test',
+						llmPresetId: 'preset-1',
 					},
 				},
 			},
 		});
 		expect((llm as { config: { params: { params: { samplers?: unknown } } } }).config.params.params.samplers).toBeUndefined();
+	});
+
+	it('restores the selected LLM preset from a saved operation', () => {
+		const profile: OperationProfileDto = {
+			profileId: 'profile-llm',
+			ownerId: 'owner-1',
+			name: 'Profile',
+			description: undefined,
+			enabled: true,
+			executionMode: 'sequential',
+			operationProfileSessionId: 'session-llm',
+			blockRefs: [],
+			operations: [
+				{
+					opId: 'llm-1',
+					name: 'LLM op',
+					kind: 'llm',
+					config: {
+						enabled: true,
+						required: false,
+						hooks: ['before_main_llm'],
+						triggers: ['generate'],
+						order: 10,
+						params: {
+							params: {
+								providerId: 'openrouter',
+								credentialRef: 'cred-1',
+								model: 'gpt-test',
+								llmPresetId: 'preset-1',
+								prompt: 'Prompt',
+							},
+							artifact: makeArtifact({ artifactId: 'artifact:llm-1', tag: 'llm_op' }),
+						},
+					},
+				},
+			],
+			meta: {},
+			version: 1,
+			createdAt: '2026-07-17T00:00:00.000Z',
+			updatedAt: '2026-07-17T00:00:00.000Z',
+		};
+
+		const form = toOperationProfileForm(profile);
+
+		expect(form.operations[0]?.config.params).toMatchObject({ llmPresetId: 'preset-1' });
 	});
 
 	it('normalizes knowledge operations into dedicated form params', () => {

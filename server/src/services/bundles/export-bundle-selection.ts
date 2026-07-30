@@ -81,7 +81,10 @@ export async function exportBundleSelection(params: {
     }
 
     if (handle.kind === "operation_block") {
-      const block = await getOperationBlockById(handle.id);
+      const block = await getOperationBlockById({
+        ownerId: params.ownerId,
+        blockId: handle.id,
+      });
       if (!block) throw new Error(`Operation block not found: ${handle.id}`);
       const resourceId = createBundleResourceId("operation_block", `${block.name}-${block.blockId}`);
       resources.push({
@@ -103,13 +106,19 @@ export async function exportBundleSelection(params: {
     }
 
     if (handle.kind === "operation_profile") {
-      const profile = await getOperationProfileById(handle.id);
+      const profile = await getOperationProfileById({
+        ownerId: params.ownerId,
+        profileId: handle.id,
+      });
       if (!profile) throw new Error(`Operation profile not found: ${handle.id}`);
 
       const enabledRefs = profile.blockRefs.filter((ref) => ref.enabled);
       const exportedBlockResources: Array<{ blockId: string; resourceId: string }> = [];
       for (const ref of enabledRefs) {
-        const block = await getOperationBlockById(ref.blockId);
+        const block = await getOperationBlockById({
+          ownerId: params.ownerId,
+          blockId: ref.blockId,
+        });
         if (!block || !block.enabled) continue;
         const resourceId = createBundleResourceId("operation_block", `${block.name}-${block.blockId}`);
         exportedBlockResources.push({ blockId: block.blockId, resourceId });

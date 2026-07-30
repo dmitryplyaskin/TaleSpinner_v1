@@ -2,6 +2,7 @@ import { type GenerateMessage, type StreamResponse } from '@shared/types/generat
 
 import { type LLMSettingsState } from '@model/llm-settings';
 
+import { authFetch } from '../../api/auth-fetch';
 import { BASE_URL } from '../../const';
 
 import { streamController } from './stream-controller';
@@ -23,7 +24,7 @@ export async function* streamMessage({ settings, messages, streamId }: Stream): 
 			return;
 		}
 
-		const response = await fetch(`${BASE_URL}/generate`, {
+		const response = await authFetch(`${BASE_URL}/generate`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

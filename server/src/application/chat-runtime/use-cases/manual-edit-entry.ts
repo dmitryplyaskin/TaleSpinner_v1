@@ -1,4 +1,5 @@
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { withDbTransaction } from "../../../db/client";
 import { getChatById } from "../../../services/chat-core/chats-repository";
@@ -53,7 +54,7 @@ export async function manualEditEntry(
     requestedPartId: params.body.partId,
   });
 
-  const ownerId = params.body.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.body.ownerId);
   const chat = await getChatById(entry.chatId);
   const templateContext = await buildInstructionRenderContext({
     ownerId,

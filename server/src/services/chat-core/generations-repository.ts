@@ -7,8 +7,9 @@ import {
   safeJsonStringify,
   safeJsonStringifyForLog,
 } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
-import { llmGenerations } from "../../db/schema";
+import { chatBranches, chats, llmGenerations } from "../../db/schema";
 
 export type GenerationStatus = "streaming" | "done" | "aborted" | "error";
 
@@ -30,10 +31,25 @@ export async function createGeneration(params: CreateGenerationParams): Promise<
   const db = await initDb();
   const id = uuidv4();
   const ts = new Date();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const branch = await db
+    .select({ id: chatBranches.id })
+    .from(chatBranches)
+    .innerJoin(chats, eq(chats.id, chatBranches.chatId))
+    .where(
+      and(
+        eq(chats.id, params.chatId),
+        eq(chats.ownerId, ownerId),
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!branch[0]) throw new Error("Chat branch не найден");
 
   await db.insert(llmGenerations).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     chatId: params.chatId,
     branchId: params.branchId,
     messageId: params.messageId,
@@ -103,7 +119,16 @@ function rowToWithDebugDto(
 
 export async function getGenerationById(id: string): Promise<GenerationDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(llmGenerations).where(eq(llmGenerations.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(llmGenerations)
+    .where(
+      and(
+        eq(llmGenerations.id, id),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+      )
+    )
+    .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
@@ -119,6 +144,7 @@ export async function getActiveGenerationForChatBranch(params: {
       and(
         eq(llmGenerations.chatId, params.chatId),
         eq(llmGenerations.branchId, params.branchId),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId()),
         eq(llmGenerations.status, "streaming")
       )
     )
@@ -137,6 +163,7 @@ type FinishGenerationParams = {
 export function finishGeneration(params: FinishGenerationParams & { executor: DbExecutor }): void;
 export function finishGeneration(params: FinishGenerationParams): Promise<void>;
 export function finishGeneration(params: FinishGenerationParams): Promise<void> | void {
+  const ownerId = resolveTrustedOwnerId();
   const run = (db: DbExecutor): void => {
     const finishedAt = new Date();
     db
@@ -146,7 +173,12 @@ export function finishGeneration(params: FinishGenerationParams): Promise<void> 
         finishedAt,
         error: params.error ?? null,
       })
-      .where(eq(llmGenerations.id, params.id))
+      .where(
+        and(
+          eq(llmGenerations.id, params.id),
+          eq(llmGenerations.ownerId, ownerId)
+        )
+      )
       .run();
   };
 
@@ -172,7 +204,15 @@ export async function updateGenerationPromptData(params: {
         : safeJsonStringifyForLog(params.promptSnapshot, { maxChars: 60_000, fallback: "{}" });
   }
   if (Object.keys(set).length === 0) return;
-  await db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id));
+  await db
+    .update(llmGenerations)
+    .set(set)
+    .where(
+      and(
+        eq(llmGenerations.id, params.id),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function getGenerationByIdWithDebug(
@@ -182,7 +222,12 @@ export async function getGenerationByIdWithDebug(
   const rows = await db
     .select()
     .from(llmGenerations)
-    .where(eq(llmGenerations.id, id))
+    .where(
+      and(
+        eq(llmGenerations.id, id),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   return rows[0] ? rowToWithDebugDto(rows[0]) : null;
 }
@@ -203,6 +248,7 @@ export function updateGenerationRunReports(
 export function updateGenerationRunReports(
   params: UpdateGenerationRunReportsParams
 ): Promise<void> | void {
+  const ownerId = resolveTrustedOwnerId();
   const run = (db: DbExecutor): void => {
     const set: Partial<typeof llmGenerations.$inferInsert> = {};
 
@@ -227,7 +273,16 @@ export function updateGenerationRunReports(
     }
 
     if (Object.keys(set).length === 0) return;
-    db.update(llmGenerations).set(set).where(eq(llmGenerations.id, params.id)).run();
+    db
+      .update(llmGenerations)
+      .set(set)
+      .where(
+        and(
+          eq(llmGenerations.id, params.id),
+          eq(llmGenerations.ownerId, ownerId)
+        )
+      )
+      .run();
   };
 
   if (params.executor) {
@@ -254,7 +309,12 @@ export async function updateGenerationDebugJson(params: {
               fallback: "{}",
             }),
     })
-    .where(eq(llmGenerations.id, params.id));
+    .where(
+      and(
+        eq(llmGenerations.id, params.id),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function getLatestGenerationByChatBranchWithDebug(params: {
@@ -268,7 +328,8 @@ export async function getLatestGenerationByChatBranchWithDebug(params: {
     .where(
       and(
         eq(llmGenerations.chatId, params.chatId),
-        eq(llmGenerations.branchId, params.branchId)
+        eq(llmGenerations.branchId, params.branchId),
+        eq(llmGenerations.ownerId, resolveTrustedOwnerId())
       )
     )
     .orderBy(desc(llmGenerations.startedAt), desc(llmGenerations.id))

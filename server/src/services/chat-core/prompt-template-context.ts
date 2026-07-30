@@ -1,3 +1,4 @@
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { listProjectedPromptMessages } from "../chat-entry-parts/prompt-history";
 import { resolveWorldInfoRuntimeForChat } from "../world-info/world-info-runtime";
 
@@ -492,7 +493,7 @@ export async function buildInstructionRenderContext(params: {
   excludeEntryIds?: string[];
   worldInfo?: InstructionWorldInfoInput;
 }): Promise<InstructionRenderContext> {
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
 
   // Default “empty” context: should never break Liquid rendering.
   const base: InstructionRenderContext = {

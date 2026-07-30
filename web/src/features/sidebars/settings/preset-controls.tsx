@@ -38,6 +38,7 @@ type Props = {
 	disableDelete?: boolean;
 	layout?: PresetControlsLayout;
 	extraActions?: ReactNode;
+	showSaveAction?: boolean;
 };
 
 export const PresetControls: React.FC<Props> = ({
@@ -56,11 +57,18 @@ export const PresetControls: React.FC<Props> = ({
 	disableDelete = false,
 	layout = 'inline',
 	extraActions,
+	showSaveAction = true,
 }) => {
 	const actionButtons = (
 		<>
 			<IconButtonWithTooltip icon={<LuPlus />} tooltip={labels.create} aria-label={labels.create} onClick={onCreate} />
-			<IconButtonWithTooltip icon={<LuPencil />} tooltip={labels.rename} aria-label={labels.rename} onClick={onRename} disabled={disableRename} />
+			<IconButtonWithTooltip
+				icon={<LuPencil />}
+				tooltip={labels.rename}
+				aria-label={labels.rename}
+				onClick={onRename}
+				disabled={disableRename}
+			/>
 			<IconButtonWithTooltip
 				icon={<LuCopy />}
 				tooltip={labels.duplicate}
@@ -69,15 +77,23 @@ export const PresetControls: React.FC<Props> = ({
 				disabled={disableDuplicate}
 			/>
 			{extraActions}
+			{showSaveAction ? (
+				<IconButtonWithTooltip
+					icon={<LuSave />}
+					tooltip={labels.save}
+					aria-label={labels.save}
+					onClick={onSave}
+					disabled={disableSave}
+					variant="solid"
+				/>
+			) : null}
 			<IconButtonWithTooltip
-				icon={<LuSave />}
-				tooltip={labels.save}
-				aria-label={labels.save}
-				onClick={onSave}
-				disabled={disableSave}
-				variant="solid"
+				icon={<LuTrash2 />}
+				tooltip={labels.delete}
+				aria-label={labels.delete}
+				onClick={onDelete}
+				disabled={disableDelete}
 			/>
-			<IconButtonWithTooltip icon={<LuTrash2 />} tooltip={labels.delete} aria-label={labels.delete} onClick={onDelete} disabled={disableDelete} />
 		</>
 	);
 

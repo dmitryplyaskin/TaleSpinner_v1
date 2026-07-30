@@ -45,6 +45,7 @@ import {
   __resetTokenTouchThrottleForTests,
   checkProviderConnection,
   getModels,
+  getOpenRouterModelEndpoints,
   getProvidersForUi,
   getTokensForUi,
   streamGlobalChat,
@@ -90,10 +91,7 @@ beforeEach(() => {
   }));
   mocks.axiosGet.mockResolvedValue({
     data: {
-      data: [
-        { id: "m1", name: "Model 1" },
-        { id: "m2" },
-      ],
+      data: [{ id: "m1", name: "Model 1" }, { id: "m2" }],
     },
   });
   mocks.llmGatewayStream.mockImplementation(async function* () {
@@ -136,7 +134,7 @@ describe("llm-service", () => {
         providerId: "openrouter",
         scope: "global",
         scopeId: "global",
-      })
+      }),
     ).resolves.toEqual([]);
   });
 
@@ -148,29 +146,103 @@ describe("llm-service", () => {
         providerId: "openrouter",
         scope: "global",
         scopeId: "global",
-      })
+      }),
     ).resolves.toEqual([]);
   });
 
   test("getModels fetches openrouter model list", async () => {
+    mocks.axiosGet.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            id: "m1",
+            name: "Model 1",
+            context_length: 128000,
+            pricing: { prompt: "0.000001", completion: "0.000002" },
+            architecture: {
+              input_modalities: ["text", "image"],
+              output_modalities: ["text"],
+            },
+            supported_parameters: ["tools", "reasoning"],
+            created: 123,
+          },
+          { id: "m2" },
+        ],
+      },
+    });
     const out = await getModels({
       providerId: "openrouter",
       scope: "global",
       scopeId: "global",
     });
 
-    expect(mocks.axiosGet).toHaveBeenCalledWith("https://openrouter.ai/api/v1/models", {
-      headers: {
-        "HTTP-Referer": "http://localhost:5000",
-        "X-Title": "TaleSpinner",
-        Authorization: "Bearer secret",
+    expect(mocks.axiosGet).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/models",
+      {
+        headers: {
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "TaleSpinner",
+          Authorization: "Bearer secret",
+        },
+        timeout: 7000,
       },
-      timeout: 7000,
-    });
+    );
     expect(out).toEqual([
-      { id: "m1", name: "Model 1" },
+      {
+        id: "m1",
+        name: "Model 1",
+        contextLength: 128000,
+        pricing: { prompt: "0.000001", completion: "0.000002" },
+        inputModalities: ["text", "image"],
+        outputModalities: ["text"],
+        supportedParameters: ["tools", "reasoning"],
+        createdAt: 123,
+      },
       { id: "m2", name: "m2" },
     ]);
+  });
+
+  test("getOpenRouterModelEndpoints maps endpoint routing metadata", async () => {
+    mocks.axiosGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          endpoints: [
+            {
+              name: "Google AI Studio | model",
+              provider_name: "Google AI Studio",
+              tag: "google-ai-studio",
+              context_length: 1048576,
+              max_completion_tokens: 65536,
+              quantization: "unknown",
+              pricing: { prompt: "0.0000005", completion: "0.000003" },
+              supported_parameters: ["tools", "reasoning"],
+              uptime_last_30m: 99.8,
+            },
+          ],
+        },
+      },
+    });
+
+    await expect(
+      getOpenRouterModelEndpoints({ modelId: "google/gemini-3-flash-preview" }),
+    ).resolves.toEqual([
+      {
+        name: "Google AI Studio | model",
+        providerName: "Google AI Studio",
+        tag: "google-ai-studio",
+        contextLength: 1048576,
+        maxCompletionTokens: 65536,
+        quantization: "unknown",
+        pricing: { prompt: "0.0000005", completion: "0.000003" },
+        supportedParameters: ["tools", "reasoning"],
+        uptimeLast30m: 99.8,
+      },
+    ]);
+
+    expect(mocks.axiosGet).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/models/google/gemini-3-flash-preview/endpoints",
+      { timeout: 7000 },
+    );
   });
 
   test("getModels fetches openai-compatible model list via resolved baseUrl", async () => {
@@ -185,12 +257,15 @@ describe("llm-service", () => {
       token: "secret",
       providerConfig: {},
     });
-    expect(mocks.axiosGet).toHaveBeenCalledWith("http://localhost:1234/v1/models", {
-      headers: {
-        Authorization: "Bearer secret",
+    expect(mocks.axiosGet).toHaveBeenCalledWith(
+      "http://localhost:1234/v1/models",
+      {
+        headers: {
+          Authorization: "Bearer secret",
+        },
+        timeout: 7000,
       },
-      timeout: 7000,
-    });
+    );
     expect(out).toEqual([
       { id: "m1", name: "Model 1" },
       { id: "m2", name: "m2" },
@@ -207,7 +282,7 @@ describe("llm-service", () => {
         providerId: "openrouter",
         scope: "global",
         scopeId: "global",
-      })
+      }),
     ).resolves.toEqual([]);
     expect(mocks.axiosGet).toHaveBeenCalledTimes(2);
   });
@@ -246,7 +321,9 @@ describe("llm-service", () => {
       checkedUrl: "http://localhost:1234/v1/models",
       statusCode: 404,
     });
-    expect(result.hints).toContain("For OpenAI-compatible backends the Base URL usually ends with /v1.");
+    expect(result.hints).toContain(
+      "For OpenAI-compatible backends the Base URL usually ends with /v1.",
+    );
   });
 
   test("checkProviderConnection returns success payload with model count", async () => {
@@ -285,13 +362,16 @@ describe("llm-service", () => {
 
     const error = await iter.next().then(
       () => null,
-      (err) => err
+      (err) => err,
     );
     expect(error).toBeInstanceOf(HttpError);
     expect(error).toMatchObject({
       code: "LLM_TOKEN_MISSING",
     });
-    await expect(iter.next()).resolves.toEqual({ value: undefined, done: true });
+    await expect(iter.next()).resolves.toEqual({
+      value: undefined,
+      done: true,
+    });
   });
 
   test("streamGlobalChat throws HttpError when active token is not found", async () => {
@@ -321,14 +401,20 @@ describe("llm-service", () => {
 
     await expect(iter.next()).rejects.toMatchObject({
       code: "LLM_TOKEN_NOT_FOUND",
-      message: "Active token cannot be decrypted with current TOKENS_MASTER_KEY",
+      message:
+        "Active token cannot be decrypted with current TOKENS_MASTER_KEY",
     });
   });
 
   test("streamGlobalChat falls back to next token when pre-stream error occurs", async () => {
     mocks.listTokens.mockResolvedValueOnce([
       { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
-      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+      {
+        id: "tok-2",
+        providerId: "openrouter",
+        name: "backup",
+        tokenHint: "***",
+      },
     ]);
     mocks.getProviderConfig.mockResolvedValueOnce({
       providerId: "openrouter",
@@ -352,24 +438,31 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "hi" }],
         settings: {},
-      })
+      }),
     );
 
-    expect(out).toEqual([{ content: "ok-from-second", reasoning: "", error: null }]);
+    expect(out).toEqual([
+      { content: "ok-from-second", reasoning: "", error: null },
+    ]);
     expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ token: "secret-1" })
+      expect.objectContaining({ token: "secret-1" }),
     );
     expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ token: "secret-2" })
+      expect.objectContaining({ token: "secret-2" }),
     );
   });
 
   test("streamGlobalChat does not fallback when error happens after first chunk", async () => {
     mocks.listTokens.mockResolvedValueOnce([
       { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
-      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+      {
+        id: "tok-2",
+        providerId: "openrouter",
+        name: "backup",
+        tokenHint: "***",
+      },
     ]);
     mocks.getProviderConfig.mockResolvedValueOnce({
       providerId: "openrouter",
@@ -389,7 +482,7 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "hi" }],
         settings: {},
-      })
+      }),
     );
 
     expect(out).toEqual([
@@ -403,8 +496,18 @@ describe("llm-service", () => {
     const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     mocks.listTokens.mockResolvedValueOnce([
       { id: "tok-1", providerId: "openrouter", name: "main", tokenHint: "***" },
-      { id: "tok-2", providerId: "openrouter", name: "backup-1", tokenHint: "***" },
-      { id: "tok-3", providerId: "openrouter", name: "backup-2", tokenHint: "***" },
+      {
+        id: "tok-2",
+        providerId: "openrouter",
+        name: "backup-1",
+        tokenHint: "***",
+      },
+      {
+        id: "tok-3",
+        providerId: "openrouter",
+        name: "backup-2",
+        tokenHint: "***",
+      },
     ]);
     mocks.getProviderConfig.mockResolvedValueOnce({
       providerId: "openrouter",
@@ -422,12 +525,12 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "hi" }],
         settings: {},
-      })
+      }),
     );
 
     expect(mocks.buildGatewayStreamRequest).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ token: "secret-tok-2" })
+      expect.objectContaining({ token: "secret-tok-2" }),
     );
     randomSpy.mockRestore();
   });
@@ -441,7 +544,12 @@ describe("llm-service", () => {
       activeModel: null,
     });
     mocks.listTokens.mockResolvedValueOnce([
-      { id: "tok-2", providerId: "openrouter", name: "backup", tokenHint: "***" },
+      {
+        id: "tok-2",
+        providerId: "openrouter",
+        name: "backup",
+        tokenHint: "***",
+      },
     ]);
     mocks.getTokenPlaintextResult.mockImplementation(async (id: string) => {
       if (id === "tok-2") return { status: "ok", plaintext: "secret-2" };
@@ -456,10 +564,12 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "hi" }],
         settings: {},
-      })
+      }),
     );
 
-    expect(out).toEqual([{ content: "from-backup", reasoning: "", error: null }]);
+    expect(out).toEqual([
+      { content: "from-backup", reasoning: "", error: null },
+    ]);
   });
 
   test("streamGlobalChat yields delta/reasoning/error events and stops on error", async () => {
@@ -474,7 +584,7 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "hi" }],
         settings: { temperature: 0.5 },
-      })
+      }),
     );
 
     expect(mocks.touchTokenLastUsed).toHaveBeenCalledWith("tok-1");
@@ -502,7 +612,11 @@ describe("llm-service", () => {
     });
     const ac = new AbortController();
 
-    const received: Array<{ content: string; reasoning: string; error: string | null }> = [];
+    const received: Array<{
+      content: string;
+      reasoning: string;
+      error: string | null;
+    }> = [];
     for await (const evt of streamGlobalChat({
       messages: [{ role: "user", content: "hi" }],
       settings: {},
@@ -512,7 +626,9 @@ describe("llm-service", () => {
       ac.abort();
     }
 
-    expect(received).toEqual([{ content: "first", reasoning: "", error: null }]);
+    expect(received).toEqual([
+      { content: "first", reasoning: "", error: null },
+    ]);
   });
 
   test("streamGlobalChat throttles touchTokenLastUsed for repeated immediate calls", async () => {
@@ -524,13 +640,13 @@ describe("llm-service", () => {
       streamGlobalChat({
         messages: [{ role: "user", content: "first" }],
         settings: {},
-      })
+      }),
     );
     await collect(
       streamGlobalChat({
         messages: [{ role: "user", content: "second" }],
         settings: {},
-      })
+      }),
     );
 
     expect(mocks.touchTokenLastUsed).toHaveBeenCalledTimes(1);

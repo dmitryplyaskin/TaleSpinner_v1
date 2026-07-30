@@ -1,9 +1,12 @@
 import { once } from "node:events";
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
+import path from "node:path";
 
 
 import { resetDbForTests } from "../../db/client";
+
+import { clearTestAuthHeaders, setupTestAccount } from "./http";
 
 export type RunningServer = {
   baseUrl: string;
@@ -16,7 +19,10 @@ type InProcessOptions = {
 };
 
 function setTestEnv(options: InProcessOptions): void {
+  process.env.DATA_DIR = options.dataDir;
+  process.env.DB_PATH = path.join(options.dataDir, "db.sqlite");
   process.env.TALESPINNER_DATA_DIR = options.dataDir;
+  process.env.TALESPINNER_ACCESS_MODE = "local";
   process.env.TOKENS_MASTER_KEY = options.tokensMasterKey;
 }
 
@@ -37,6 +43,7 @@ export async function startInProcessServer(options: InProcessOptions): Promise<R
 
   const addr = server.address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${addr.port}`;
+  await setupTestAccount(baseUrl);
 
   return {
     baseUrl,
@@ -47,6 +54,7 @@ export async function startInProcessServer(options: InProcessOptions): Promise<R
           else resolve();
         });
       });
+      clearTestAuthHeaders(baseUrl);
       resetDbForTests();
     },
   };

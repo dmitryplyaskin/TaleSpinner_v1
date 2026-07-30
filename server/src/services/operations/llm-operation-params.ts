@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  OPERATION_RESOURCE_LIMITS,
+  serializedJsonByteLength,
+} from "./operation-resource-limits";
+
 import type {
   LlmJsonParseMode,
   LlmOperationParams,
@@ -44,7 +49,7 @@ const samplersSchema: z.ZodType<LlmOperationSamplers> = z
 
 const retrySchema: z.ZodType<LlmOperationRetry> = z
   .object({
-    maxAttempts: z.number().int().min(1).max(10),
+    maxAttempts: z.number().int().min(1).max(3),
     backoffMs: z.number().int().min(0).max(120_000).optional(),
     retryOn: z.array(retryOnSchema).min(1).optional(),
   })
@@ -55,21 +60,45 @@ export const llmOperationParamsSchema: z.ZodType<LlmOperationParams> = z
     providerId: z.enum(["openrouter", "openai_compatible"]),
     credentialRef: z.string().trim().min(1),
     model: z.string().trim().min(1).optional(),
-    system: z.string().optional(),
-    prompt: z.string().min(1),
+    llmPresetId: z.string().trim().min(1).optional(),
+    system: z.string().max(OPERATION_RESOURCE_LIMITS.templateCharacters).optional(),
+    prompt: z
+      .string()
+      .min(1)
+      .max(OPERATION_RESOURCE_LIMITS.templateCharacters),
     strictVariables: z.boolean().optional(),
     outputMode: z.enum(["text", "json"]).optional(),
     jsonSchema: z.unknown().optional(),
     strictSchemaValidation: z.boolean().optional(),
     jsonParseMode: jsonParseModeSchema.optional(),
-    jsonCustomPattern: z.string().trim().min(1).optional(),
+    jsonCustomPattern: z.string().trim().min(1).max(2_000).optional(),
     jsonCustomFlags: z.string().trim().optional(),
     samplerPresetId: z.string().trim().min(1).optional(),
     samplers: samplersSchema.optional(),
-    timeoutMs: z.number().int().min(1).max(300_000).optional(),
+    timeoutMs: z.number().int().min(1).max(120_000).optional(),
     retry: retrySchema.optional(),
   })
   .superRefine((value, ctx) => {
+    if (typeof value.jsonSchema !== "undefined") {
+      let schemaBytes = Number.POSITIVE_INFINITY;
+      try {
+        schemaBytes = serializedJsonByteLength(value.jsonSchema);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["jsonSchema"],
+          message: "jsonSchema must be JSON serializable",
+        });
+      }
+      if (schemaBytes > OPERATION_RESOURCE_LIMITS.jsonSchemaBytes) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["jsonSchema"],
+          message: `jsonSchema exceeds ${OPERATION_RESOURCE_LIMITS.jsonSchemaBytes} bytes`,
+        });
+      }
+    }
+
     if (value.outputMode !== "json" && typeof value.jsonParseMode !== "undefined") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

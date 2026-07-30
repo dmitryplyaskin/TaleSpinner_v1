@@ -7,6 +7,23 @@
 	--op-space-lg: 20px;
 	--op-space-xl: 24px;
 	width: 100%;
+	min-height: 0;
+}
+
+.op-ui--fullscreen.op-ui--blocks {
+	height: 100%;
+	overflow: hidden;
+	gap: var(--op-space-sm) !important;
+}
+
+.op-ui--fullscreen.op-ui--run {
+	height: 100%;
+	overflow: hidden;
+}
+
+.op-ui--fullscreen.op-ui--blocks > .mantine-Tabs-root,
+.op-ui--fullscreen.op-ui--blocks > .op-command {
+	flex: 0 0 auto;
 }
 
 .op-ui .op-command {
@@ -43,6 +60,25 @@
 
 .op-ui .op-editorToolbarActions {
 	margin-left: auto;
+}
+
+.op-ui .op-compactSaveBar {
+	position: sticky;
+	top: 0;
+	z-index: 8;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--op-space-sm);
+	padding: 10px 12px;
+	background: color-mix(in srgb, var(--op-surface) 94%, var(--op-accent));
+	border: 1px solid var(--op-accent);
+	border-radius: var(--op-radius-md);
+	box-shadow: var(--op-shadow);
+}
+
+.op-ui .op-saveStatus {
+	color: var(--op-accent);
 }
 
 .op-ui .op-nodeButton {
@@ -82,88 +118,6 @@
 	border-radius: var(--op-radius-lg);
 	box-shadow: var(--op-shadow);
 	padding: var(--op-space-md);
-}
-
-.op-ui .op-editorHeader {
-	display: flex;
-	gap: var(--op-space-sm);
-	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-}
-
-.op-ui .op-stickyHeader {
-	position: sticky;
-	top: 0;
-	background: var(--op-surface);
-	z-index: 5;
-	padding-bottom: var(--op-space-sm);
-	border-bottom: 1px solid var(--op-border);
-}
-
-.op-ui .op-inspectorHeader {
-	margin-bottom: var(--op-space-sm);
-}
-
-.op-ui .op-sectionToggle {
-	cursor: pointer;
-	user-select: none;
-}
-
-.op-ui .op-workspace {
-	display: grid;
-	grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-	gap: var(--op-space-md);
-	align-items: start;
-}
-
-.op-ui .op-listPane {
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-}
-
-.op-ui .op-stickyPane {
-	position: sticky;
-	top: 0;
-	max-height: calc(100dvh - 180px);
-	overflow: hidden;
-}
-
-.op-ui .op-listPane,
-.op-ui .op-inspectorPane {
-	background: var(--op-surface);
-	border: 1px solid var(--op-border);
-	border-radius: var(--op-radius-lg);
-	box-shadow: var(--op-shadow);
-	padding: var(--op-space-md);
-}
-
-.op-ui .op-listHeader {
-	background: var(--op-surface);
-	padding-bottom: var(--op-space-sm);
-	border-bottom: 1px solid var(--op-border);
-	margin-bottom: var(--op-space-sm);
-}
-
-.op-ui .op-listLayout {
-	min-height: 0;
-}
-
-.op-ui .op-stickyPane .op-listLayout {
-	height: 100%;
-}
-
-.op-ui .op-listScrollArea {
-	max-height: min(56vh, 640px);
-	overflow-y: auto;
-	padding-right: 4px;
-}
-
-.op-ui .op-listScrollArea--fill {
-	flex: 1;
-	min-height: 0;
-	max-height: none;
 }
 
 .op-ui .op-listRows {
@@ -269,12 +223,6 @@
 	outline-offset: 2px;
 }
 
-@media (max-width: 1199px) {
-	.op-ui .op-workspace {
-		grid-template-columns: 1fr;
-	}
-}
-
 @media (max-width: 767px) {
 	.op-ui .op-command,
 	.op-ui .op-listPane,
@@ -319,4 +267,5 @@
 	.op-ui .op-listScrollArea {
 		max-height: 50vh;
 	}
+
 }

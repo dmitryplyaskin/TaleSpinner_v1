@@ -1,20 +1,23 @@
-import { Alert, Button, Card, Collapse, Group, Stack, Text } from '@mantine/core';
+import { Alert, Text } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuChevronDown, LuChevronUp, LuPlus } from 'react-icons/lu';
 
 import { updateOperationBlockFx } from '@model/operation-blocks';
-import { FormInput, FormSwitch } from '@ui/form-components';
 
 import { toOperationBlockFormValues } from './form/operation-block-form-values';
 import { fromOperationProfileForm, makeDefaultOperation, type OperationProfileFormValues } from './form/operation-profile-form-mapping';
 import { OperationBlockNodeEditorModal } from './node-editor/block-node-editor-modal';
+import { BlockSettingsPanel } from './ui/block-settings-panel';
 import { OperationEditor } from './ui/operation-editor/operation-editor';
-import { OperationList } from './ui/operation-list';
-import { getOperationListLayout } from './ui/operation-list-layout';
+import { OperationWorkspace } from './ui/operation-workspace';
+import {
+	resolveOperationWorkspaceMode,
+	shouldShowBlockSettings,
+	type CompactOperationView,
+} from './ui/operation-workspace-mode';
 import { isOperationKind } from './utils/operation-kind';
 
 import type { OperationListRowMeta } from './ui/types';
@@ -116,9 +119,8 @@ export const OperationBlockEditor: React.FC<Props> = ({
 }) => {
 	const { t } = useTranslation();
 	const doUpdate = useUnit(updateOperationBlockFx);
-	const isMobile = useMediaQuery('(max-width: 767px)');
-	const useSplitLayout = preferSplitLayout && !isMobile;
-	const operationListLayout = useMemo(() => getOperationListLayout(useSplitLayout), [useSplitLayout]);
+	const isCompactViewport = useMediaQuery('(max-width: 1023px)');
+	const useSplitLayout = preferSplitLayout && !isCompactViewport;
 
 	const initial = useMemo(() => toOperationBlockFormValues(block), [block]);
 	const methods = useForm<OperationProfileFormValues>({ defaultValues: initial });
@@ -152,10 +154,10 @@ export const OperationBlockEditor: React.FC<Props> = ({
 			.filter((row): row is OperationListRowMeta => row !== null);
 	}, [fields, watchedOperations]);
 
-	const [isProfileOpen, setIsProfileOpen] = useState(true);
 	const [jsonError, setJsonError] = useState<string | null>(null);
 	const [baselineValues, setBaselineValues] = useState<OperationProfileFormValues>(initial);
 	const [editingOpId, setEditingOpId] = useState<string | null>(() => resolveEditingOperationId(null, initial.operations));
+	const [compactView, setCompactView] = useState<CompactOperationView>('list');
 
 	const hasUnsavedChanges = useMemo(() => {
 		const current = (watchedValues as OperationProfileFormValues | undefined) ?? baselineValues;
@@ -169,6 +171,10 @@ export const OperationBlockEditor: React.FC<Props> = ({
 		setEditingOpId((prev) => resolveEditingOperationId(prev, initial.operations));
 	}, [initial, reset]);
 
+	useEffect(() => {
+		setCompactView('list');
+	}, [block.blockId]);
+
 	const selectedIndex = useMemo(() => {
 		if (rows.length === 0) return null;
 		if (editingOpId) {
@@ -180,6 +186,7 @@ export const OperationBlockEditor: React.FC<Props> = ({
 
 	const selectedRow = selectedIndex === null ? null : rows.find((row) => row.index === selectedIndex) ?? null;
 	const selectedOpId = selectedRow?.opId ?? null;
+	const workspaceMode = resolveOperationWorkspaceMode({ useSplitLayout, compactView, selectedOpId });
 
 	const saveBlockDraft = useCallback(
 		async (values: OperationProfileFormValues, meta?: unknown) => {
@@ -253,20 +260,26 @@ export const OperationBlockEditor: React.FC<Props> = ({
 		const next = makeDefaultOperation();
 		append(next);
 		setEditingOpId(next.opId);
-	}, [append]);
+		if (!useSplitLayout) setCompactView('inspector');
+	}, [append, useSplitLayout]);
 
-	const moveSelection = useCallback(
-		(direction: 'prev' | 'next') => {
-			if (rows.length === 0) return;
-			const current = selectedOpId ? rows.findIndex((row) => row.opId === selectedOpId) : 0;
-			const safeCurrent = current >= 0 ? current : 0;
-			const nextIndex = direction === 'prev' ? Math.max(0, safeCurrent - 1) : Math.min(rows.length - 1, safeCurrent + 1);
-			const next = rows[nextIndex];
-			if (!next) return;
-			setEditingOpId(next.opId);
+	const selectOperation = useCallback(
+		(opId: string) => {
+			setEditingOpId(opId);
+			if (!useSplitLayout) setCompactView('inspector');
 		},
-		[rows, selectedOpId],
+		[useSplitLayout],
 	);
+
+	const moveSelection = (direction: 'prev' | 'next') => {
+		if (rows.length === 0) return;
+		const current = selectedOpId ? rows.findIndex((row) => row.opId === selectedOpId) : 0;
+		const safeCurrent = current >= 0 ? current : 0;
+		const nextIndex = direction === 'prev' ? Math.max(0, safeCurrent - 1) : Math.min(rows.length - 1, safeCurrent + 1);
+		const next = rows[nextIndex];
+		if (!next) return;
+		setEditingOpId(next.opId);
+	};
 
 	const removeOperationAt = useCallback(
 		(targetIndex: number, targetOpId: string) => {
@@ -275,11 +288,13 @@ export const OperationBlockEditor: React.FC<Props> = ({
 			if (currentPosition < 0) {
 				remove(targetIndex);
 				setEditingOpId(rows[0]?.opId ?? null);
+				if (rows.length <= 1) setCompactView('list');
 				return;
 			}
 			const next = rows[currentPosition + 1]?.opId ?? rows[currentPosition - 1]?.opId ?? null;
 			remove(targetIndex);
 			setEditingOpId(next);
+			if (!next) setCompactView('list');
 		},
 		[remove, rows, t],
 	);
@@ -300,95 +315,25 @@ export const OperationBlockEditor: React.FC<Props> = ({
 
 	return (
 		<FormProvider {...methods}>
-			<Stack gap="md">
-				<Card withBorder className="op-editorCard">
-					<Group
-						justify="space-between"
-						align="center"
-						wrap="nowrap"
-						className="op-sectionToggle"
-						onClick={() => setIsProfileOpen((v) => !v)}
-					>
-						<Group gap="xs" wrap="nowrap">
-							{isProfileOpen ? <LuChevronDown /> : <LuChevronUp />}
-							<Text fw={700}>{t('operationProfiles.blocks.blockSettingsTitle')}</Text>
-						</Group>
-					</Group>
-
-					<Collapse in={isProfileOpen}>
-						<Stack gap="xs" pt="md">
-							<FormInput name="name" label={t('operationProfiles.blocks.blockName')} inputProps={{ style: { flex: 1 } }} />
-							<FormInput name="description" label={t('operationProfiles.sectionsLabels.description')} />
-
-							<Group gap="md" wrap="wrap">
-								<FormSwitch name="enabled" label={t('operationProfiles.blocks.blockEnabled')} />
-							</Group>
-						</Stack>
-					</Collapse>
-				</Card>
-
+			<div className={`op-blockEditorRoot op-blockEditorRoot--${workspaceMode}`}>
+				{shouldShowBlockSettings(workspaceMode) && <BlockSettingsPanel operationCount={rows.length} />}
 				{jsonError && (
 					<Alert color="red" title={t('operationProfiles.profileSettings.invalidJson')}>
 						{jsonError}
 					</Alert>
 				)}
-
-				{rows.length === 0 ? (
-					<Card withBorder className="op-editorCard">
-						<Stack align="flex-start" gap="sm">
-							<Text fw={700}>{t('operationProfiles.operations.title')}</Text>
-							<Text size="sm" c="dimmed">
-								{t('operationProfiles.operations.empty')}
-							</Text>
-							<Button leftSection={<LuPlus />} onClick={addOperation}>
-								{t('operationProfiles.actions.addOperation')}
-							</Button>
-						</Stack>
-					</Card>
-				) : useSplitLayout ? (
-					<div className="op-workspace">
-						<div className={operationListLayout.paneClassName}>
-							<OperationList
-								rows={rows}
-								selectedOpId={selectedOpId}
-								onQuickAdd={addOperation}
-								onMoveSelection={moveSelection}
-								onSelect={(opId) => setEditingOpId(opId)}
-								className={operationListLayout.listClassName}
-								scrollAreaClassName={operationListLayout.scrollAreaClassName}
-							/>
-						</div>
-
-						<div className="op-inspectorPane">
-							<div className="op-editorHeader op-stickyHeader op-inspectorHeader">
-								<Stack gap={2}>
-									<Text fw={700}>{t('operationProfiles.inspector.title')}</Text>
-									<Text className="op-listHint">
-										{selectedIndex === null ? t('operationProfiles.inspector.noneSelected') : t('operationProfiles.inspector.operationNumber', { number: selectedIndex + 1 })}
-									</Text>
-								</Stack>
-							</div>
-
-							{inspectorContent}
-						</div>
-					</div>
-				) : (
-					<>
-						<Card withBorder className="op-editorCard">
-							<OperationList
-								rows={rows}
-								selectedOpId={selectedOpId}
-								onQuickAdd={addOperation}
-								onMoveSelection={moveSelection}
-								onSelect={(opId) => setEditingOpId(opId)}
-								className={operationListLayout.listClassName}
-								scrollAreaClassName={operationListLayout.scrollAreaClassName}
-							/>
-						</Card>
-						<Card withBorder className="op-editorCard">{inspectorContent}</Card>
-					</>
-				)}
-			</Stack>
+				<OperationWorkspace
+					mode={workspaceMode}
+					rows={rows}
+					selectedOpId={selectedOpId}
+					selectedIndex={selectedIndex}
+					inspectorContent={inspectorContent}
+					onAdd={addOperation}
+					onMoveSelection={moveSelection}
+					onSelect={selectOperation}
+					onBackToList={() => setCompactView('list')}
+				/>
+			</div>
 
 			<OperationBlockNodeEditorModal
 				opened={nodeEditorOpened}

@@ -15,6 +15,7 @@ import {
 import { and, desc, eq, or } from "drizzle-orm";
 
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
@@ -136,6 +137,7 @@ async function ensureBuiltInPresets(): Promise<void> {
 }
 
 async function ensureSettings(ownerId: string = DEFAULT_OWNER_ID): Promise<UiThemeSettings> {
+  ownerId = resolveTrustedOwnerId(ownerId);
   await ensureBuiltInPresets();
   const db = await initDb();
   const rows = await db.select().from(uiThemeSettings).where(eq(uiThemeSettings.ownerId, ownerId)).limit(1);
@@ -183,7 +185,7 @@ async function ensureActivePresetExists(ownerId: string): Promise<void> {
 }
 
 export async function listUiThemePresets(params?: { ownerId?: string }): Promise<UiThemePreset[]> {
-  const ownerId = params?.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   await ensureBuiltInPresets();
   const db = await initDb();
   const rows = await db
@@ -202,7 +204,7 @@ export async function getUiThemePresetById(params: {
   presetId: string;
   ownerId?: string;
 }): Promise<UiThemePreset | null> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   await ensureBuiltInPresets();
   const db = await initDb();
   const rows = await db
@@ -226,7 +228,7 @@ export async function createUiThemePreset(params: {
   description?: string;
   payload: UiThemePresetPayload;
 }): Promise<UiThemePreset> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   await ensureBuiltInPresets();
   const db = await initDb();
   const now = new Date();
@@ -257,7 +259,7 @@ export async function updateUiThemePreset(params: {
   description?: string | null;
   payload?: UiThemePresetPayload;
 }): Promise<UiThemePreset> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getUiThemePresetById({ presetId: params.presetId, ownerId });
   if (!current) throw new HttpError(404, "UI theme preset not found", "NOT_FOUND");
   if (current.builtIn) {
@@ -293,7 +295,7 @@ export async function deleteUiThemePreset(params: {
   ownerId?: string;
   presetId: string;
 }): Promise<void> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const preset = await getUiThemePresetById({ presetId: params.presetId, ownerId });
   if (!preset) throw new HttpError(404, "UI theme preset not found", "NOT_FOUND");
   if (preset.builtIn) {
@@ -332,7 +334,7 @@ export async function importUiThemePresets(params: {
   ownerId?: string;
   items: UiThemeExportV1[];
 }): Promise<UiThemePreset[]> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   await ensureBuiltInPresets();
   const existing = await listUiThemePresets({ ownerId });
   const names = new Set(existing.map((x) => x.name));
@@ -353,7 +355,7 @@ export async function importUiThemePresets(params: {
 }
 
 export async function getUiThemeSettings(params?: { ownerId?: string }): Promise<UiThemeSettings> {
-  const ownerId = params?.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   await ensureBuiltInPresets();
   await ensureActivePresetExists(ownerId);
   return ensureSettings(ownerId);
@@ -364,7 +366,7 @@ export async function patchUiThemeSettings(params: {
   activePresetId?: string | null;
   colorScheme?: UiThemeColorScheme;
 }): Promise<UiThemeSettings> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   await ensureBuiltInPresets();
   const current = await ensureSettings(ownerId);
 

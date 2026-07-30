@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
+import { runWithOwnerScope } from "@core/request-context/owner-scope-storage";
+
 import { applyMigrations } from "../../db/apply-migrations";
 import { initDb, resetDbForTests } from "../../db/client";
 import { chatBranches, chats, entityProfiles } from "../../db/schema";
@@ -498,6 +500,44 @@ describe("chat knowledge integration", () => {
       },
     });
     expect(branchB.hits.some((item) => item.record?.key === "branch_a_note")).toBe(false);
+  });
+
+  test("does not add records to another owner's collection", async () => {
+    const firstOwner = "11111111-1111-4111-8111-111111111111";
+    const secondOwner = "22222222-2222-4222-8222-222222222222";
+    await runWithOwnerScope(firstOwner, () =>
+      seedChatScope({ ownerId: firstOwner, chatId: "private-chat" })
+    );
+    const collection = await runWithOwnerScope(firstOwner, () =>
+      createKnowledgeCollection({
+        chatId: "private-chat",
+        branchId: null,
+        scope: "chat",
+        name: "Private collection",
+        origin: "author",
+        layer: "baseline",
+      })
+    );
+
+    await expect(
+      runWithOwnerScope(secondOwner, () =>
+        upsertKnowledgeRecord({
+          ownerId: firstOwner,
+          chatId: "private-chat",
+          branchId: null,
+          collectionId: collection.id,
+          recordType: "note",
+          key: "cross_owner",
+          title: "Cross owner",
+          aliases: [],
+          tags: [],
+          content: { text: "forbidden" },
+          accessMode: "public",
+          layer: "runtime",
+          origin: "llm",
+        })
+      )
+    ).rejects.toThrow("Knowledge collection not found");
   });
 
   test("export/import support baseline and runtime filtering", async () => {

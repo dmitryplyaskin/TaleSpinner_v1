@@ -178,7 +178,10 @@ describe("resolveRunContext", () => {
 
     const { context, profile } = await resolveRunContext({ request: makeRequest() });
 
-    expect(mocks.getOperationProfileById).toHaveBeenCalledWith("profile-1");
+    expect(mocks.getOperationProfileById).toHaveBeenCalledWith({
+      ownerId: "owner-1",
+      profileId: "profile-1",
+    });
     expect(profile).toMatchObject({
       profileId: "profile-1",
       enabled: true,

@@ -1,5 +1,7 @@
 import type {
   ArtifactValue,
+  CommitPhaseReport,
+  OperationExecutionResult,
   PromptDraftMessage,
   RunContext,
   RunDebugStateSnapshotStage,
@@ -55,6 +57,26 @@ export function mergeArtifactsForDebug(
     };
   }
   return merged;
+}
+
+export function buildRequiredOperationFailureMessage(params: {
+  stage: "before" | "after";
+  operationResults: OperationExecutionResult[];
+  commitReport: CommitPhaseReport;
+  requiredCommitError: boolean;
+}): string {
+  const operationIds = params.requiredCommitError
+    ? params.commitReport.effects
+        .filter((effect) => effect.status === "error")
+        .map((effect) => effect.opId)
+    : params.operationResults.map((result) => result.opId);
+  const uniqueOperationIds = Array.from(new Set(operationIds)).sort();
+  const baseMessage = params.requiredCommitError
+    ? `Required ${params.stage} effect commit failed`
+    : `Required ${params.stage} operation did not finish with done`;
+  return uniqueOperationIds.length > 0
+    ? `${baseMessage}: ${uniqueOperationIds.join(", ")}`
+    : baseMessage;
 }
 
 export function createInitialRunState(

@@ -3,7 +3,10 @@ import { HttpError } from "@core/middleware/error-handler";
 import { getOperationBlockById } from "../../../services/operations/operation-blocks-repository";
 import { getOperationProfileById } from "../../../services/operations/operation-profiles-repository";
 
-export async function exportOperationProfileBundle(profileId: string): Promise<{
+export async function exportOperationProfileBundle(params: {
+  ownerId: string;
+  profileId: string;
+}): Promise<{
   type: "operation_profile_bundle";
   version: 2;
   profile: {
@@ -29,12 +32,15 @@ export async function exportOperationProfileBundle(profileId: string): Promise<{
     meta?: unknown;
   }>;
 }> {
-  const item = await getOperationProfileById(profileId);
+  const item = await getOperationProfileById(params);
   if (!item) throw new HttpError(404, "OperationProfile не найден", "NOT_FOUND");
 
   const blocks = [];
   for (const ref of item.blockRefs) {
-    const block = await getOperationBlockById(ref.blockId);
+    const block = await getOperationBlockById({
+      ownerId: params.ownerId,
+      blockId: ref.blockId,
+    });
     if (!block) {
       throw new HttpError(400, "OperationBlock не найден", "VALIDATION_ERROR", {
         profileId: item.profileId,

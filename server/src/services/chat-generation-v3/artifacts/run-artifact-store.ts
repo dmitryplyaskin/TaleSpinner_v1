@@ -1,10 +1,15 @@
+import {
+  assertArtifactHistoryItemLimit,
+  assertArtifactHistoryWithinLimits,
+  assertArtifactValueWithinLimits,
+} from "../../operations/operation-resource-limits";
+
 import type { ArtifactValue } from "../contracts";
 import type {
   ArtifactFormat,
   ArtifactSemantics,
   ArtifactWriteMode,
 } from "@shared/types/operation-profiles";
-
 
 export class RunArtifactStore {
   private readonly byTag = new Map<string, ArtifactValue>();
@@ -30,6 +35,8 @@ export class RunArtifactStore {
     };
     value: unknown;
   }): ArtifactValue {
+    assertArtifactValueWithinLimits(params.value);
+    assertArtifactHistoryItemLimit(params.history.maxItems);
     const existing = this.byTag.get(params.artifactId);
     const nextHistory = existing
       ? [...existing.history, params.value]
@@ -37,6 +44,7 @@ export class RunArtifactStore {
     const history = params.history.enabled
       ? nextHistory.slice(-params.history.maxItems)
       : [];
+    assertArtifactHistoryWithinLimits(history);
 
     if (existing) {
       const next: ArtifactValue = {

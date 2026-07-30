@@ -1,5 +1,7 @@
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { initDb } from "../../db/client";
 import { knowledgeRecords } from "../../db/schema";
 
@@ -133,7 +135,7 @@ export async function searchKnowledgeRecords(params: {
 }): Promise<KnowledgeSearchResult> {
   const db = await initDb();
   const where = [
-    eq(knowledgeRecords.ownerId, params.ownerId ?? "global"),
+    eq(knowledgeRecords.ownerId, resolveTrustedOwnerId(params.ownerId)),
     eq(knowledgeRecords.chatId, params.chatId),
     buildBranchScope(params.branchId),
     eq(knowledgeRecords.status, "active"),

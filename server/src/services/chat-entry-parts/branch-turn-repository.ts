@@ -1,5 +1,6 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { chatBranches } from "../../db/schema";
 
@@ -12,7 +13,12 @@ function readBranchCurrentTurn(db: DbExecutor, branchId: string): number {
   const rows = db
     .select({ currentTurn: chatBranches.currentTurn })
     .from(chatBranches)
-    .where(eq(chatBranches.id, branchId))
+    .where(
+      and(
+        eq(chatBranches.id, branchId),
+        eq(chatBranches.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1)
     .all();
   return rows[0]?.currentTurn ?? 0;
@@ -35,7 +41,12 @@ export function incrementBranchTurn(params: BranchTurnParams): Promise<number> |
     db
       .update(chatBranches)
       .set({ currentTurn: sql`${chatBranches.currentTurn} + 1` })
-      .where(eq(chatBranches.id, params.branchId))
+      .where(
+        and(
+          eq(chatBranches.id, params.branchId),
+          eq(chatBranches.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .run();
 
     return readBranchCurrentTurn(db, params.branchId);

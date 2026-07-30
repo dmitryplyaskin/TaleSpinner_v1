@@ -1,10 +1,11 @@
-import { Badge, Collapse, Group, Loader, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
+import { Badge, Button, Collapse, Group, Loader, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuChevronDown, LuChevronRight, LuCircleCheck, LuCircleMinus, LuCircleX } from 'react-icons/lu';
+import { LuActivity, LuChevronDown, LuChevronRight, LuCircleCheck, LuCircleMinus, LuCircleX, LuMessageCircle } from 'react-icons/lu';
 
 import { $lastRunTrace } from '@model/operation-run-trace';
+import { toggleSidebarOpen } from '@model/sidebars';
 
 import { describeDestination, describeOperationSummary, runStatusColor } from './run-trace-summary';
 
@@ -110,9 +111,29 @@ export const RunTracePanel: React.FC = () => {
 
 	if (!trace) {
 		return (
-			<Text size="sm" c="dimmed">
-				{t('operationProfiles.runTrace.empty')}
-			</Text>
+			<section className="op-runEmpty">
+				<div className="op-runEmptyIcon">
+					<LuActivity size={26} aria-hidden />
+				</div>
+				<Stack gap={6} align="center">
+					<Text fw={700} size="lg">
+						{t('operationProfiles.runTrace.emptyTitle')}
+					</Text>
+					<Text size="sm" c="dimmed" ta="center">
+						{t('operationProfiles.runTrace.empty')}
+					</Text>
+					<Text size="xs" c="dimmed" ta="center">
+						{t('operationProfiles.runTrace.emptyHint')}
+					</Text>
+				</Stack>
+				<Button
+					variant="light"
+					leftSection={<LuMessageCircle />}
+					onClick={() => toggleSidebarOpen({ name: 'operationProfiles', isOpen: false })}
+				>
+					{t('operationProfiles.runTrace.emptyAction')}
+				</Button>
+			</section>
 		);
 	}
 

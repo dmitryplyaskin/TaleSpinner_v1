@@ -331,7 +331,7 @@ export async function executeOrchestratorPlan(args: ExecutePlanArgs): Promise<vo
         const reason = abortReasonToString(ctx.signal) ?? toErrorInfo(error).message;
         emitEvent({
           type: "orch.task.finished",
-          data: { runId: ctx.runId, taskId: task.taskId, status: "aborted" },
+          data: { runId: ctx.runId, taskId: task.taskId, status: "aborted", reason },
         });
         return { taskId: task.taskId, status: "aborted", startedAt, finishedAt, reason };
       }
@@ -339,7 +339,7 @@ export async function executeOrchestratorPlan(args: ExecutePlanArgs): Promise<vo
       const info = toErrorInfo(error);
       emitEvent({
         type: "orch.task.finished",
-        data: { runId: ctx.runId, taskId: task.taskId, status: "error" },
+        data: { runId: ctx.runId, taskId: task.taskId, status: "error", error: info },
       });
       return {
         taskId: task.taskId,

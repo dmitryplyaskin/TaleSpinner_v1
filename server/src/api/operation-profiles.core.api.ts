@@ -57,8 +57,10 @@ router.post(
 
 router.get(
   "/operation-profiles/active",
-  asyncHandler(async () => {
-    const settings = await getOperationProfileSettings();
+  asyncHandler(async (req: Request) => {
+    const settings = await getOperationProfileSettings({
+      ownerId: getRequestOwnerId(req),
+    });
     return { data: settings };
   })
 );
@@ -73,7 +75,10 @@ router.put(
   asyncHandler(async (req: Request) => {
     const body = setActiveBodySchema.parse(req.body);
     return {
-      data: await setActiveOperationProfileWithValidation(body.activeProfileId),
+      data: await setActiveOperationProfileWithValidation({
+        ownerId: getRequestOwnerId(req),
+        activeProfileId: body.activeProfileId,
+      }),
     };
   })
 );
@@ -83,7 +88,10 @@ router.get(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const item = await getOperationProfileById(params.id);
+    const item = await getOperationProfileById({
+      ownerId: getRequestOwnerId(req),
+      profileId: params.id,
+    });
     if (!item) throw new HttpError(404, "OperationProfile не найден", "NOT_FOUND");
     return { data: item };
   })
@@ -109,7 +117,10 @@ router.delete(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    const exists = await getOperationProfileById(params.id);
+    const exists = await getOperationProfileById({
+      ownerId: getRequestOwnerId(req),
+      profileId: params.id,
+    });
     if (!exists) throw new HttpError(404, "OperationProfile не найден", "NOT_FOUND");
     await deleteOperationProfile({ ownerId: getRequestOwnerId(req), profileId: params.id });
     return { data: { id: params.id } };
@@ -123,7 +134,12 @@ router.get(
   validate({ params: idParamsSchema }),
   asyncHandler(async (req: Request) => {
     const params = req.params as unknown as { id: string };
-    return { data: await exportOperationProfileBundle(params.id) };
+    return {
+      data: await exportOperationProfileBundle({
+        ownerId: getRequestOwnerId(req),
+        profileId: params.id,
+      }),
+    };
   })
 );
 

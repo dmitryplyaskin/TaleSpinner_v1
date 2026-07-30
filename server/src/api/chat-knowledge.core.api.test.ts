@@ -40,6 +40,18 @@ async function stopServer(server: Server, tempDir: string) {
   await fs.rm(tempDir, { recursive: true, force: true });
 }
 
+async function setupLocalAccount(baseUrl: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/auth/setup`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: "test-admin", password: "" }),
+  });
+  expect(response.status).toBe(201);
+  const setCookie = response.headers.get("set-cookie");
+  if (!setCookie) throw new Error("Auth setup did not return a session cookie");
+  return setCookie.split(";")[0];
+}
+
 async function seedChatScope(params: { chatId: string; branchId: string }) {
   const db = await initDb();
   const now = new Date();
@@ -100,12 +112,14 @@ describe("chat knowledge api", () => {
   test("creates records, searches previews, and reveals through HTTP routes", async () => {
     const started = await startServer();
     try {
+      const cookie = await setupLocalAccount(started.baseUrl);
       await seedChatScope({ chatId: "chat-api", branchId: "branch-api" });
 
       const collectionResponse = await fetch(`${started.baseUrl}/api/chat-knowledge/collections`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          cookie,
         },
         body: JSON.stringify({
           chatId: "chat-api",
@@ -124,6 +138,7 @@ describe("chat knowledge api", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          cookie,
         },
         body: JSON.stringify({
           chatId: "chat-api",
@@ -153,6 +168,7 @@ describe("chat knowledge api", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          cookie,
         },
         body: JSON.stringify({
           chatId: "chat-api",
@@ -174,6 +190,7 @@ describe("chat knowledge api", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          cookie,
         },
         body: JSON.stringify({
           chatId: "chat-api",
@@ -194,6 +211,7 @@ describe("chat knowledge api", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          cookie,
         },
         body: JSON.stringify({
           chatId: "chat-api",

@@ -5,6 +5,7 @@ import { asyncHandler } from '@core/middleware/async-handler';
 import { HttpError } from '@core/middleware/error-handler';
 import { validate } from '@core/middleware/validate';
 import {
+  checkRagProviderConnection,
   ensureRagPresetState,
   generateRagEmbedding,
   getRagProviderConfig,
@@ -35,6 +36,10 @@ export const ragModelsQuerySchema = z.object({
   providerId: ragProviderIdSchema,
   tokenId: z.string().min(1).optional(),
 });
+export const ragProviderConnectionCheckBodySchema = z.object({
+  tokenId: z.string().min(1).nullable().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+});
 export const ragEmbeddingsBodySchema = z.object({
   input: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
 });
@@ -63,6 +68,21 @@ router.get('/rag/providers/:providerId/config', validate({ params: ragProviderPa
 router.patch('/rag/providers/:providerId/config', validate({ params: ragProviderParamsSchema, body: z.unknown() }), asyncHandler(async (req: Request) => {
   const providerId = req.params.providerId as RagProviderId;
   return { data: { providerId, config: await patchRagProviderConfig(providerId, req.body) } };
+}));
+
+router.post('/rag/providers/:providerId/check', validate({
+  params: ragProviderParamsSchema,
+  body: ragProviderConnectionCheckBodySchema,
+}), asyncHandler(async (req: Request) => {
+  const providerId = req.params.providerId as RagProviderId;
+  const body = ragProviderConnectionCheckBodySchema.parse(req.body);
+  return {
+    data: await checkRagProviderConnection({
+      providerId,
+      tokenId: body.tokenId ?? null,
+      configOverride: body.config,
+    }),
+  };
 }));
 
 router.get('/rag/tokens', validate({ query: ragTokensQuerySchema }), asyncHandler(async (req: Request) => {
