@@ -50,8 +50,23 @@ Operation kinds currently executed in runtime:
 
 - `template`
 - `llm`
+- `guard`
+- `knowledge_search`
+- `knowledge_reveal`
 
-Other kinds are visible in UI as draft but skipped at execution.
+Other kinds are skipped at execution.
+
+System limits protect the runtime from excessive resource use:
+
+- up to 64 operations per block, 16 blocks and 128 compiled operations per profile;
+- at most 4 operations running concurrently;
+- up to 100 artifact history items;
+- up to 256 KiB per artifact value or auxiliary LLM response;
+- up to 1 MiB of serialized artifact history;
+- up to 100,000 characters per template or prompt;
+- up to 3 attempts and 120 seconds per auxiliary LLM call.
+
+Configurations above these limits are rejected during save or activation.
 
 ## Practical advantage over manual prompt assembly
 

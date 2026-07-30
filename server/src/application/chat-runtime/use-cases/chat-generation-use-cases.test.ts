@@ -228,6 +228,42 @@ describe("chat generation application use cases", () => {
     });
   });
 
+  test("createEntryAndStartGeneration removes empty assistant scaffolding on preparation failure", async () => {
+    const fixture = await seedChatFixture();
+    mocks.runChatGenerationV3.mockImplementationOnce(async function* () {
+      yield {
+        runId: "request-prepare-failure",
+        seq: 1,
+        type: "run.preparation_failed",
+        data: {
+          generationId: null,
+          status: "error",
+          code: "generation_preparation_error",
+          message: "profile compilation failed",
+        },
+      } as RunEvent;
+    });
+
+    const session = await createEntryAndStartGeneration({
+      chatId: fixture.chatId,
+      body: {
+        role: "user",
+        content: "Hello there",
+        settings: {},
+        requestId: "request-prepare-failure",
+      },
+    });
+
+    await collectEvents(session.events);
+    const db = await initDb();
+    const assistantRows = await db
+      .select({ softDeleted: chatEntries.softDeleted })
+      .from(chatEntries)
+      .where(eq(chatEntries.entryId, String(session.envBase.assistantEntryId)));
+
+    expect(assistantRows[0]?.softDeleted).toBe(true);
+  });
+
   test("continueGeneration returns session metadata for the latest user turn", async () => {
     const fixture = await seedChatFixture();
     const user = await createEntryWithVariant({

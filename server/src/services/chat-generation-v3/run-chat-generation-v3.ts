@@ -9,10 +9,12 @@ import {
   normalizeOperationActivationConfig,
   resolveOperationActivationState,
 } from "./operations/operation-activation-intervals";
+import { finalizeRunFailure } from "./orchestration/finalize-run-failure";
 import { RunEventStream } from "./orchestration/run-event-stream";
 import { runOperationHookPhase } from "./orchestration/run-operation-hook-phase";
 import {
   buildRunDebugStateSnapshot,
+  buildRequiredOperationFailureMessage,
   buildRunResult,
   cloneLlmMessages,
   clonePromptDraftMessages,
@@ -129,6 +131,7 @@ export async function* runChatGenerationV3(
   let controlLease: Awaited<
     ReturnType<(typeof defaultGenerationControlPort)["acquire"]>
   > | null = null;
+  const prepareStartedAt = Date.now();
   const debugEnabled = isChatGenerationDebugEnabled(request.settings);
   const emit = (type: RunEvent["type"], data: unknown): void => {
     eventStream.emit(type, data);
@@ -151,10 +154,14 @@ export async function* runChatGenerationV3(
   };
 
   try {
-    const prepareStartedAt = Date.now();
     const resolved = await resolveRunContext({ request });
     context = resolved.context;
     eventStream.setRunId(context.runId);
+    runState = createInitialRunState({});
+    emit("run.started", {
+      generationId: context.generationId,
+      trigger: context.trigger,
+    });
     controlLease = await defaultGenerationControlPort.acquire({
       generationId: context.generationId,
       runInstanceId: context.runId,
@@ -169,11 +176,6 @@ export async function* runChatGenerationV3(
       branchId: context.branchId,
       profileId: context.profileSnapshot?.profileId ?? null,
     });
-    emit("run.started", {
-      generationId: context.generationId,
-      trigger: context.trigger,
-    });
-
     const persistedArtifactsSnapshot =
       context.sessionKey && context.profileSnapshot
         ? await ProfileSessionArtifactStore.load({
@@ -182,7 +184,7 @@ export async function* runChatGenerationV3(
           })
         : {};
 
-    runState = createInitialRunState(persistedArtifactsSnapshot);
+    runState.persistedArtifactsSnapshot = persistedArtifactsSnapshot;
     markPhase("prepare_run_context", "done", prepareStartedAt);
     yield* eventStream.flushEvents();
 
@@ -305,10 +307,12 @@ export async function* runChatGenerationV3(
     if (beforeBarrierFailed) {
       runState.finishedStatus = "failed";
       runState.failedType = "before_barrier";
-      runState.errorMessage =
-        commitBefore.requiredError
-          ? "Required before effect commit failed"
-          : "Required before operation did not finish with done";
+      runState.errorMessage = buildRequiredOperationFailureMessage({
+        stage: "before",
+        operationResults: requiredBeforeNotDone,
+        commitReport: commitBefore.report,
+        requiredCommitError: commitBefore.requiredError,
+      });
       markPhase("before_barrier", "failed", barrierStartedAt, runState.errorMessage);
     } else {
       markPhase("before_barrier", "done", barrierStartedAt);
@@ -451,10 +455,12 @@ export async function* runChatGenerationV3(
         if (commitAfter.requiredError || requiredAfterNotDone.length > 0) {
           runState.finishedStatus = "failed";
           runState.failedType = "after_main_llm";
-          runState.errorMessage =
-            commitAfter.requiredError
-              ? "Required after effect commit failed"
-              : "Required after operation did not finish with done";
+          runState.errorMessage = buildRequiredOperationFailureMessage({
+            stage: "after",
+            operationResults: requiredAfterNotDone,
+            commitReport: commitAfter.report,
+            requiredCommitError: commitAfter.requiredError,
+          });
         } else {
           runState.finishedStatus = "done";
         }
@@ -495,26 +501,30 @@ export async function* runChatGenerationV3(
     yield* eventStream.flushEvents();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (runState) {
-      runState.finishedStatus = abortController.signal.aborted ? "aborted" : "error";
-      runState.errorMessage = message;
+    if (!context || !runState) {
+      yield {
+        runId: request.requestId ?? "preparation",
+        seq: 1,
+        type: "run.preparation_failed",
+        data: {
+          generationId: null,
+          status: "error",
+          code: "generation_preparation_error",
+          message,
+        },
+      };
+      return;
     }
-    if (context && runState && !finalized) {
-      const result = buildRunResult({ context, runState });
-      await defaultGenerationPersistencePort.finalize({ context, result });
-      finalized = true;
-      structuredLogger.error("generation.finished_with_error", {
-        event: "generation.finished_with_error",
-        requestId: request.requestId ?? null,
-        generationId: context.generationId,
-        runId: context.runId,
-        chatId: context.chatId,
-        branchId: context.branchId,
-        profileId: context.profileSnapshot?.profileId ?? null,
-        status: result.status,
-        failedType: result.failedType,
+    if (!finalized) {
+      const result = await finalizeRunFailure({
+        requestId: request.requestId,
+        context,
+        runState,
         errorMessage: message,
+        aborted: abortController.signal.aborted,
+        prepareStartedAt,
       });
+      finalized = true;
       emit("run.finished", {
         generationId: context.generationId,
         status: result.status,

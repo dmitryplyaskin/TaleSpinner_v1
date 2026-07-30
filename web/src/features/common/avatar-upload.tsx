@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { toaster } from '@ui/toaster';
 
+import { authFetch } from '../../api/auth-fetch';
 import { BASE_URL } from '../../const';
 
 type LegacySize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -88,7 +89,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 		}
 
 		try {
-			const response = await fetch(`${BASE_URL}/files/upload-image`, {
+			const response = await authFetch(`${BASE_URL}/files/upload-image`, {
 				method: 'POST',
 				body: formData,
 			});

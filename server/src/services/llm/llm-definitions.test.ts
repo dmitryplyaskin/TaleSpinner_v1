@@ -9,6 +9,14 @@ describe("llm-definitions.parseProviderConfig", () => {
       tokenPolicy: { randomize: true, fallbackOnError: true },
       anthropicCache: { enabled: true, depth: 2, ttl: "1h" },
       messageNormalization: { enabled: false },
+      openRouterRouting: {
+        strategy: "priority",
+        providerOrder: ["google-ai-studio", "google-vertex/global"],
+        allowFallbacks: false,
+        zdr: true,
+        dataCollection: "deny",
+        requireParameters: true,
+      },
       custom: "ok",
     });
 
@@ -17,6 +25,14 @@ describe("llm-definitions.parseProviderConfig", () => {
       tokenPolicy: { randomize: true, fallbackOnError: true },
       anthropicCache: { enabled: true, depth: 2, ttl: "1h" },
       messageNormalization: { enabled: false },
+      openRouterRouting: {
+        strategy: "priority",
+        providerOrder: ["google-ai-studio", "google-vertex/global"],
+        allowFallbacks: false,
+        zdr: true,
+        dataCollection: "deny",
+        requireParameters: true,
+      },
       custom: "ok",
     });
   });
@@ -43,12 +59,25 @@ describe("llm-definitions.parseProviderConfig", () => {
     expect(() =>
       parseProviderConfig("openrouter", {
         anthropicCache: { enabled: true, depth: -1, ttl: "1h" },
-      })
+      }),
     ).toThrow();
     expect(() =>
       parseProviderConfig("openrouter", {
         anthropicCache: { enabled: true, depth: 0, ttl: "2h" },
-      })
+      }),
+    ).toThrow();
+  });
+
+  test("throws for invalid OpenRouter routing preferences", () => {
+    expect(() =>
+      parseProviderConfig("openrouter", {
+        openRouterRouting: { strategy: "priority", providerOrder: [] },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseProviderConfig("openrouter", {
+        openRouterRouting: { strategy: "unknown" },
+      }),
     ).toThrow();
   });
 });

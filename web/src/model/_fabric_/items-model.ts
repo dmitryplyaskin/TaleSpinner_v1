@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { asyncHandler } from '@model/utils/async-handler';
 
+import { authFetch } from '../../api/auth-fetch';
 import { BASE_URL } from '../../const';
 import i18n from '../../i18n';
 
@@ -34,7 +35,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const getItemsFx = createEffect<void, { data: ItemType[] }>(() =>
 		asyncHandler(async () => {
-			const response = await fetch(`${BASE_URL}${itemsParams.route}`);
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}`);
 			const json = (await safeReadJson(response)) as { data: ItemType[]; error?: any };
 			if (!response.ok) {
 				const message = json?.error?.message ?? `HTTP error ${response.status}`;
@@ -46,7 +47,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const getItemByIdFx = createEffect<string, { data: ItemType }>((id) =>
 		asyncHandler(async () => {
-			const response = await fetch(`${BASE_URL}${itemsParams.route}/${id}`);
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}/${id}`);
 			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
 			if (!response.ok) {
 				const message = json?.error?.message ?? `HTTP error ${response.status}`;
@@ -58,7 +59,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 
 	const createItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
 		asyncHandler(async () => {
-			const response = await fetch(`${BASE_URL}${itemsParams.route}`, {
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 	const updateItemFx = createEffect<ItemType, { data: ItemType }>((item) =>
 		asyncHandler(async () => {
 			const newItem = { ...item, updatedAt: new Date().toISOString() };
-			const response = await fetch(`${BASE_URL}${itemsParams.route}/${item.id}`, {
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}/${item.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 			if (!skipConfirm && !window.confirm(i18n.t('common.confirmDeleteEntity', { name: fabricName }))) {
 				return;
 			}
-			const response = await fetch(`${BASE_URL}${itemsParams.route}/${id}`, {
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}/${id}`, {
 				method: 'DELETE',
 			});
 			const json = (await safeReadJson(response)) as { data: ItemType; error?: any };
@@ -123,7 +124,7 @@ export const createItemsModel = <ItemType extends CommonModelItemType>(
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 			};
-			const response = await fetch(`${BASE_URL}${itemsParams.route}`, {
+			const response = await authFetch(`${BASE_URL}${itemsParams.route}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

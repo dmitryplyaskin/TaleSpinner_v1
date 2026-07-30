@@ -1,5 +1,6 @@
 import { Badge, Group, Paper, Stack, Text } from '@mantine/core';
 import React, { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { OperationKind } from '@shared/types/operation-profiles';
 
@@ -16,6 +17,7 @@ type OperationRowProps = {
 };
 
 export const OperationRow: React.FC<OperationRowProps> = memo(({ opId, index, name, kind, enabled, required, depsCount, selected, onSelect }) => {
+	const { t } = useTranslation();
 	return (
 		<Paper
 			withBorder
@@ -32,40 +34,39 @@ export const OperationRow: React.FC<OperationRowProps> = memo(({ opId, index, na
 				}
 			}}
 		>
-			<Group justify="space-between" wrap="nowrap" gap="xs">
+			<Group justify="space-between" wrap="nowrap" gap="xs" align="flex-start">
 				<Stack gap={2} style={{ minWidth: 0 }}>
 					<Text size="sm" fw={700} lineClamp={1}>
 						{name}
 					</Text>
 					<Text className="op-rowMeta" lineClamp={1}>
-						{opId}
+						{t(`operationProfiles.kind.${kind}`)}
 					</Text>
 				</Stack>
 
-				<Group gap={6} wrap="wrap" justify="flex-end">
-					<Badge size="sm" variant="light">
-						#{index + 1}
-					</Badge>
-					<Badge size="sm" variant="outline">
-						{kind}
-					</Badge>
+				<Badge size="sm" variant="light">
+					#{index + 1}
+				</Badge>
+			</Group>
+			{(!enabled || required || depsCount > 0) && (
+				<Group gap={6} wrap="wrap" mt="xs">
 					{!enabled && (
 						<Badge size="sm" color="gray" variant="filled">
-							disabled
+							{t('operationProfiles.status.disabled')}
 						</Badge>
 					)}
 					{required && (
 						<Badge size="sm" color="orange" variant="filled">
-							required
+							{t('operationProfiles.sectionsLabels.required')}
 						</Badge>
 					)}
 					{depsCount > 0 && (
 						<Badge size="sm" color="violet" variant="light">
-							deps {depsCount}
+							{t('operationProfiles.operations.dependencies', { count: depsCount })}
 						</Badge>
 					)}
 				</Group>
-			</Group>
+			)}
 		</Paper>
 	);
 });

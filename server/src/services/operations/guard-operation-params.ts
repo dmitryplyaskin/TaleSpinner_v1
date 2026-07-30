@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { OPERATION_RESOURCE_LIMITS } from "./operation-resource-limits";
+
 import type {
   GuardAuxLlmParams,
   GuardLiquidParams,
@@ -26,6 +28,7 @@ const guardOutputDefinitionSchema: z.ZodType<GuardOutputDefinition> = z.object({
 export const guardOutputContractSchema: z.ZodType<GuardOutputContract> = z
   .array(guardOutputDefinitionSchema)
   .min(1)
+  .max(32)
   .superRefine((items, ctx) => {
     const seen = new Set<string>();
     for (const item of items) {
@@ -69,7 +72,7 @@ const samplersSchema: z.ZodType<LlmOperationSamplers> = z
 
 const retrySchema: z.ZodType<LlmOperationRetry> = z
   .object({
-    maxAttempts: z.number().int().min(1).max(10),
+    maxAttempts: z.number().int().min(1).max(3),
     backoffMs: z.number().int().min(0).max(120_000).optional(),
     retryOn: z.array(retryOnSchema).min(1).optional(),
   })
@@ -79,7 +82,7 @@ export const liquidGuardParamsSchema = z
   .object({
     engine: z.literal("liquid"),
     outputContract: guardOutputContractSchema,
-    template: z.string(),
+    template: z.string().max(OPERATION_RESOURCE_LIMITS.templateCharacters),
     strictVariables: z.boolean().optional(),
   })
   .strict();
@@ -91,11 +94,14 @@ export const auxLlmGuardParamsSchema = z
     providerId: z.enum(["openrouter", "openai_compatible"]),
     credentialRef: z.string().trim().min(1),
     model: z.string().trim().min(1).optional(),
-    system: z.string().optional(),
-    prompt: z.string().min(1),
+    system: z.string().max(OPERATION_RESOURCE_LIMITS.templateCharacters).optional(),
+    prompt: z
+      .string()
+      .min(1)
+      .max(OPERATION_RESOURCE_LIMITS.templateCharacters),
     strictVariables: z.boolean().optional(),
     samplers: samplersSchema.optional(),
-    timeoutMs: z.number().int().min(1).max(300_000).optional(),
+    timeoutMs: z.number().int().min(1).max(120_000).optional(),
     retry: retrySchema.optional(),
   })
   .strict();

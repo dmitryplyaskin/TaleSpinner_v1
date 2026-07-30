@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { HttpError } from "@core/middleware/error-handler";
-
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
 import { initDb } from "../../db/client";
@@ -114,6 +114,7 @@ export function resolveAppliedTokenId(params: {
 export async function ensureDefaultLlmPresetSettings(
   ownerId: string = DEFAULT_OWNER_ID
 ): Promise<LlmPresetSettingsDto> {
+  ownerId = resolveTrustedOwnerId(ownerId);
   const db = await initDb();
   const row = await db
     .select()
@@ -139,7 +140,7 @@ export async function ensureDefaultLlmPresetSettings(
 export async function listLlmPresets(params?: {
   ownerId?: string;
 }): Promise<LlmPresetDto[]> {
-  const ownerId = params?.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   const db = await initDb();
   const rows = await db
     .select()
@@ -153,7 +154,7 @@ export async function getLlmPresetById(params: {
   presetId: string;
   ownerId?: string;
 }): Promise<LlmPresetDto | null> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const db = await initDb();
   const rows = await db
     .select()
@@ -170,7 +171,7 @@ export async function createLlmPreset(params: {
   description?: string;
   payload: LlmPresetPayload;
 }): Promise<LlmPresetDto> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const payload = normalizePresetPayload(params.payload);
   const db = await initDb();
   const now = new Date();
@@ -198,7 +199,7 @@ export async function updateLlmPreset(params: {
   description?: string | null;
   payload?: LlmPresetPayload;
 }): Promise<LlmPresetDto> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getLlmPresetById({ presetId: params.presetId, ownerId });
   if (!current) throw new HttpError(404, "LLM preset not found", "NOT_FOUND");
   if (current.builtIn) {
@@ -233,7 +234,7 @@ export async function deleteLlmPreset(params: {
   ownerId?: string;
   presetId: string;
 }): Promise<void> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await getLlmPresetById({ presetId: params.presetId, ownerId });
   if (!current) throw new HttpError(404, "LLM preset not found", "NOT_FOUND");
   if (current.builtIn) {
@@ -254,7 +255,7 @@ export async function deleteLlmPreset(params: {
 export async function getLlmPresetSettings(params?: {
   ownerId?: string;
 }): Promise<LlmPresetSettingsDto> {
-  const ownerId = params?.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params?.ownerId);
   return ensureDefaultLlmPresetSettings(ownerId);
 }
 
@@ -262,7 +263,7 @@ export async function patchLlmPresetSettings(params: {
   ownerId?: string;
   activePresetId?: string | null;
 }): Promise<LlmPresetSettingsDto> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const current = await ensureDefaultLlmPresetSettings(ownerId);
   const nextActivePresetId =
     typeof params.activePresetId === "undefined"
@@ -299,7 +300,7 @@ export async function applyLlmPreset(params: {
   scope?: LlmScope;
   scopeId?: string;
 }): Promise<ApplyLlmPresetResult> {
-  const ownerId = params.ownerId ?? DEFAULT_OWNER_ID;
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const scope = params.scope ?? "global";
   const scopeId = params.scopeId ?? "global";
   const preset = await getLlmPresetById({ presetId: params.presetId, ownerId });

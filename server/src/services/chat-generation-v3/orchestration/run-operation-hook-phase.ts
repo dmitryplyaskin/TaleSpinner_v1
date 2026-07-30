@@ -108,6 +108,9 @@ export async function* runOperationHookPhase(
       runArtifactStore: params.runArtifactStore,
       persistenceTarget: params.persistenceTarget,
       userTurnTarget: params.userTurnTarget,
+      onAssistantTurnCanonicalized: (data) => {
+        params.emit("turn.assistant.canonicalized", data);
+      },
       onUserTurnCanonicalized: (data) => {
         params.emit("turn.user.canonicalized", data);
         if (params.debugEnabled) {

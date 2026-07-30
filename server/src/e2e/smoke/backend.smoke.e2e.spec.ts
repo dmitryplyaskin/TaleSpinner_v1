@@ -2,7 +2,13 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { TestDb } from "../helpers/db";
 import { configureLlmOpenAiCompatible, createEntityProfileAndChat } from "../helpers/fixtures";
-import { collectSse, requestForm, requestJson, type SseEvent } from "../helpers/http";
+import {
+  collectSse,
+  getTestAuthHeaders,
+  requestForm,
+  requestJson,
+  type SseEvent,
+} from "../helpers/http";
 import { startMockAiServer, type RunningMockAiServer } from "../helpers/mock-ai-server";
 import { startInProcessServer, type RunningServer } from "../helpers/test-server";
 import { createTempDataDir, removeTempDataDir } from "../helpers/tmp-dir";
@@ -405,7 +411,9 @@ describe("backend e2e smoke", () => {
     const fileName = uploadRes.data.data.files[0]?.filename;
     expect(fileName).toBeTruthy();
 
-    const getFileRes = await fetch(`${baseUrl}/api/files/${fileName}`);
+    const getFileRes = await fetch(`${baseUrl}/api/files/${fileName}`, {
+      headers: getTestAuthHeaders(baseUrl),
+    });
     expect(getFileRes.status).toBe(200);
 
     const delRes = await requestJson<ApiEnvelope<{ message: string }>>({

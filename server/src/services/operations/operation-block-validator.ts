@@ -35,6 +35,7 @@ import {
 } from "./knowledge-operation-params";
 import { compileLlmJsonSchemaSpec } from "./llm-json-schema-spec";
 import { llmOperationParamsSchema } from "./llm-operation-params";
+import { OPERATION_RESOURCE_LIMITS } from "./operation-resource-limits";
 
 import type {
   KnowledgeRevealOperationParams,
@@ -135,10 +136,16 @@ const artifactConfigSchema = z.object({
   writeMode: artifactWriteModeSchema,
   history: z.object({
     enabled: z.boolean(),
-    maxItems: z.number().int().min(1),
+    maxItems: z
+      .number()
+      .int()
+      .min(1)
+      .max(OPERATION_RESOURCE_LIMITS.artifactHistoryItems),
   }),
   semantics: z.string().trim().min(1).optional(),
-  exposures: z.array(artifactExposureSchema),
+  exposures: z
+    .array(artifactExposureSchema)
+    .max(OPERATION_RESOURCE_LIMITS.exposuresPerArtifact),
 });
 
 const legacyArtifactWriteTargetSchema = z.object({
@@ -186,7 +193,7 @@ const legacyOperationOutputSchema = z.discriminatedUnion("type", [
 ]);
 
 const templateParamsSchema = z.object({
-  template: z.string(),
+  template: z.string().max(OPERATION_RESOURCE_LIMITS.templateCharacters),
   strictVariables: z.boolean().optional(),
   artifact: artifactConfigSchema.optional(),
   output: legacyOperationOutputSchema.optional(),
@@ -219,8 +226,14 @@ const operationConfigBaseSchema = z.object({
   triggers: z.array(operationTriggerSchema).min(1).optional(),
   activation: operationActivationSchema.optional(),
   order: z.number().finite(),
-  dependsOn: z.array(uuidSchema).optional(),
-  runConditions: z.array(runConditionSchema).optional(),
+  dependsOn: z
+    .array(uuidSchema)
+    .max(OPERATION_RESOURCE_LIMITS.dependenciesPerOperation)
+    .optional(),
+  runConditions: z
+    .array(runConditionSchema)
+    .max(OPERATION_RESOURCE_LIMITS.runConditionsPerOperation)
+    .optional(),
 });
 
 const operationConfigTemplateSchema = operationConfigBaseSchema.extend({
@@ -234,7 +247,10 @@ const operationConfigOtherSchema = operationConfigBaseSchema.extend({
 const knowledgeRequestSourceSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("inline"),
-    requestTemplate: z.string().min(1),
+    requestTemplate: z
+      .string()
+      .min(1)
+      .max(OPERATION_RESOURCE_LIMITS.templateCharacters),
     strictVariables: z.boolean().optional(),
   }),
   z.object({
@@ -373,7 +389,9 @@ const upsertInputSchema: z.ZodType<OperationBlockUpsertInput> = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().min(1).optional(),
   enabled: z.boolean(),
-  operations: z.array(operationInProfileSchema),
+  operations: z
+    .array(operationInProfileSchema)
+    .max(OPERATION_RESOURCE_LIMITS.operationsPerBlock),
   meta: z.unknown().optional(),
 });
 

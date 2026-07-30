@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { HttpError } from "../../core/middleware/error-handler";
+import { runWithOwnerScope } from "../../core/request-context/owner-scope-storage";
 
 import { chromaClient } from "./chroma-client";
 import {
@@ -130,6 +131,42 @@ describe("chroma-rag.service", () => {
     });
     expect(byWhere.deletedIds).toBeUndefined();
     expect(byWhere.deletedByWhere).toBe(true);
+  });
+
+  test("namespaces collections and only lists the active owner's names", async () => {
+    const ownerId = "11111111-1111-4111-8111-111111111111";
+    const otherOwnerId = "22222222-2222-4222-8222-222222222222";
+    const collection = createCollectionStub();
+    const getOrCreateCollection = vi.fn(async () => collection);
+    const deleteCollection = vi.fn(async () => undefined);
+    const service = createChromaRagService({
+      chroma: {
+        heartbeat: async () => "ok",
+        listCollections: async () => [
+          { name: "world-info" },
+          { name: `${ownerId}__world-info` },
+          { name: `${otherOwnerId}__world-info` },
+        ],
+        getOrCreateCollection,
+        deleteCollection,
+      },
+      generateEmbedding: async () => ({ embeddings: [[1]] }),
+      listBooksForIndexing: async () => [],
+    });
+
+    await runWithOwnerScope(ownerId, async () => {
+      await expect(service.listCollections()).resolves.toEqual([
+        { name: "world-info" },
+      ]);
+      await service.createCollection({ name: "notes" });
+      await service.deleteCollection("notes");
+    });
+
+    expect(getOrCreateCollection).toHaveBeenCalledWith({
+      name: `${ownerId}__notes`,
+      metadata: {},
+    });
+    expect(deleteCollection).toHaveBeenCalledWith(`${ownerId}__notes`);
   });
 
   test("propagates mapped chroma errors", async () => {

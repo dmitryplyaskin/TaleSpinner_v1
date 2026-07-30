@@ -31,7 +31,10 @@ describe("llm-gateway-adapter", () => {
     const openAiCompatibleDefault = resolveGatewayModel({
       providerId: "openai_compatible",
       runtimeModel: undefined,
-      providerConfig: { baseUrl: "http://localhost:1234/v1", defaultModel: "oa-default" },
+      providerConfig: {
+        baseUrl: "http://localhost:1234/v1",
+        defaultModel: "oa-default",
+      },
     });
     const openAiCompatibleBuiltin = resolveGatewayModel({
       providerId: "openai_compatible",
@@ -40,7 +43,9 @@ describe("llm-gateway-adapter", () => {
     });
 
     expect(openRouterDefault).toBe("router-default");
-    expect(openRouterBuiltin).toBe("google/gemini-2.0-flash-lite-preview-02-05:free");
+    expect(openRouterBuiltin).toBe(
+      "google/gemini-2.0-flash-lite-preview-02-05:free",
+    );
     expect(openAiCompatibleDefault).toBe("oa-default");
     expect(openAiCompatibleBuiltin).toBe("gpt-4o-mini");
   });
@@ -213,5 +218,48 @@ describe("llm-gateway-adapter", () => {
       },
       anthropicCache: { enabled: true, depth: 2, ttl: "1h" },
     });
+  });
+
+  test("buildGatewayStreamRequest maps OpenRouter routing config to provider payload", () => {
+    const req = buildGatewayStreamRequest({
+      providerId: "openrouter",
+      token: "tok",
+      providerConfig: {
+        openRouterRouting: {
+          strategy: "priority",
+          providerOrder: ["google-ai-studio", "google-vertex/global"],
+          allowFallbacks: false,
+          zdr: true,
+          dataCollection: "deny",
+          requireParameters: true,
+        },
+      },
+      runtimeModel: "google/gemini-3-flash-preview",
+      messages: [{ role: "user", content: "hi" }],
+      settings: {},
+    });
+
+    expect(req.extra).toEqual({
+      provider: {
+        order: ["google-ai-studio", "google-vertex/global"],
+        allow_fallbacks: false,
+        zdr: true,
+        data_collection: "deny",
+        require_parameters: true,
+      },
+    });
+  });
+
+  test("buildGatewayStreamRequest maps OpenRouter sort strategies", () => {
+    const req = buildGatewayStreamRequest({
+      providerId: "openrouter",
+      token: "tok",
+      providerConfig: { openRouterRouting: { strategy: "latency" } },
+      runtimeModel: "model-x",
+      messages: [{ role: "user", content: "hi" }],
+      settings: {},
+    });
+
+    expect(req.extra).toEqual({ provider: { sort: "latency" } });
   });
 });

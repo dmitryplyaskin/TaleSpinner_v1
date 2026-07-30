@@ -3,14 +3,16 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getPartWithVariantContextById: vi.fn(),
   createPart: vi.fn(),
+  updatePartPayloadText: vi.fn(),
 }));
 
 vi.mock("../../../chat-entry-parts/parts-repository", () => ({
   getPartWithVariantContextById: mocks.getPartWithVariantContextById,
   createPart: mocks.createPart,
+  updatePartPayloadText: mocks.updatePartPayloadText,
 }));
 
-import { persistUserTurnText } from "./turn-effects";
+import { persistAssistantTurnText, persistUserTurnText } from "./turn-effects";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -47,6 +49,45 @@ beforeEach(() => {
     source: "agent",
     replacesPartId: "part-1",
     tags: ["canonicalization"],
+  });
+  mocks.updatePartPayloadText.mockResolvedValue(undefined);
+});
+
+describe("persistAssistantTurnText", () => {
+  test("updates the assistant main part after validating its entry", async () => {
+    const result = await persistAssistantTurnText({
+      target: {
+        mode: "entry_parts",
+        assistantEntryId: "entry-1",
+        assistantMainPartId: "part-1",
+      },
+      text: "normalized assistant text",
+    });
+
+    expect(mocks.updatePartPayloadText).toHaveBeenCalledWith({
+      partId: "part-1",
+      payloadText: "normalized assistant text",
+      payloadFormat: "markdown",
+    });
+    expect(result).toEqual({
+      previousText: "original user text",
+      assistantEntryId: "entry-1",
+      assistantMainPartId: "part-1",
+    });
+  });
+
+  test("does not write when the assistant entry does not match", async () => {
+    await expect(
+      persistAssistantTurnText({
+        target: {
+          mode: "entry_parts",
+          assistantEntryId: "entry-other",
+          assistantMainPartId: "part-1",
+        },
+        text: "normalized assistant text",
+      })
+    ).rejects.toThrow(/entry mismatch/);
+    expect(mocks.updatePartPayloadText).not.toHaveBeenCalled();
   });
 });
 

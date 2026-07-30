@@ -1,6 +1,7 @@
 import agentCards from './en/agentCards';
 import app from './en/app';
 import appSettings from './en/appSettings';
+import auth from './en/auth';
 import avatar from './en/avatar';
 import chat from './en/chat';
 import common from './en/common';
@@ -22,6 +23,7 @@ import worldInfo from './en/worldInfo';
 const en = {
 	translation: {
 		app,
+		auth,
 		leftRail,
 		drawer,
 		chat,

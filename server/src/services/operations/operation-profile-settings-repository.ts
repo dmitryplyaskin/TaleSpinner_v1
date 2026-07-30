@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { operationProfileSettings } from "../../db/schema";
 
@@ -8,14 +9,13 @@ export type OperationProfileSettingsDto = {
   updatedAt: Date;
 };
 
-const SETTINGS_ROW_ID = "global";
-
-async function ensureSettingsRow(): Promise<OperationProfileSettingsDto> {
+async function ensureSettingsRow(ownerId: string): Promise<OperationProfileSettingsDto> {
+  ownerId = resolveTrustedOwnerId(ownerId);
   const db = await initDb();
   const rows = await db
     .select()
     .from(operationProfileSettings)
-    .where(eq(operationProfileSettings.id, SETTINGS_ROW_ID))
+    .where(eq(operationProfileSettings.id, ownerId))
     .limit(1);
 
   if (rows[0]) {
@@ -27,7 +27,7 @@ async function ensureSettingsRow(): Promise<OperationProfileSettingsDto> {
 
   const now = new Date();
   await db.insert(operationProfileSettings).values({
-    id: SETTINGS_ROW_ID,
+    id: ownerId,
     activeProfileId: null,
     updatedAt: now,
   });
@@ -35,15 +35,20 @@ async function ensureSettingsRow(): Promise<OperationProfileSettingsDto> {
   return { activeProfileId: null, updatedAt: now };
 }
 
-export async function getOperationProfileSettings(): Promise<OperationProfileSettingsDto> {
-  return ensureSettingsRow();
+export async function getOperationProfileSettings(params: {
+  ownerId: string;
+}): Promise<OperationProfileSettingsDto> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
+  return ensureSettingsRow(params.ownerId);
 }
 
 export async function setActiveOperationProfile(params: {
+  ownerId: string;
   activeProfileId: string | null;
 }): Promise<OperationProfileSettingsDto> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
-  const current = await ensureSettingsRow();
+  const current = await ensureSettingsRow(params.ownerId);
   const now = new Date();
 
   await db
@@ -52,7 +57,7 @@ export async function setActiveOperationProfile(params: {
       activeProfileId: params.activeProfileId,
       updatedAt: now,
     })
-    .where(eq(operationProfileSettings.id, SETTINGS_ROW_ID));
+    .where(eq(operationProfileSettings.id, params.ownerId));
 
   return { ...current, activeProfileId: params.activeProfileId, updatedAt: now };
 }

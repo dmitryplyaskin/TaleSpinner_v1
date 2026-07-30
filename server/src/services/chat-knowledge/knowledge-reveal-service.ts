@@ -1,3 +1,5 @@
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
+
 import { getKnowledgeRecordAccessState, upsertKnowledgeAccessState } from "./knowledge-access-repository";
 import { evaluateKnowledgeGate } from "./knowledge-gate-policy";
 import {
@@ -62,7 +64,7 @@ export async function revealKnowledgeRecords(params: {
   branchId: string | null;
   request: KnowledgeRevealRequest;
 }): Promise<KnowledgeRevealResult> {
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const targetRecords = await resolveTargetRecords(params);
   const targetIds = new Set(targetRecords.map((item) => item.id));
   const missingIds = (params.request.recordIds ?? []).filter((item) => !targetIds.has(item));

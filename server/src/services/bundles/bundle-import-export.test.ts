@@ -82,6 +82,7 @@ describe("bundle import/export", () => {
       templateText: "{{char.name}}",
     });
     const block = await createOperationBlock({
+      ownerId: "global",
       input: {
         name: "Scene block",
         enabled: true,
@@ -89,6 +90,7 @@ describe("bundle import/export", () => {
       },
     });
     const profile = await createOperationProfile({
+      ownerId: "global",
       input: {
         name: "Main profile",
         enabled: true,
@@ -121,7 +123,10 @@ describe("bundle import/export", () => {
     expect(imported.applied.operationProfileId).toBe(imported.created.operationProfiles[0]!.profileId);
     expect(imported.skippedApply).toEqual([]);
 
-    const createdProfile = await getOperationProfileById(imported.created.operationProfiles[0]!.profileId);
+    const createdProfile = await getOperationProfileById({
+      ownerId: "global",
+      profileId: imported.created.operationProfiles[0]!.profileId,
+    });
     const blocks = await listOperationBlocks({ ownerId: "global" });
 
     expect(createdProfile?.blockRefs).toHaveLength(1);

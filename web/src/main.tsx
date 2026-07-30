@@ -6,15 +6,15 @@ import '@mantine/notifications/styles.css';
 import App from './App.tsx';
 import './i18n';
 import './index.css';
-import { appStarted } from './model/app-init.ts';
+import { AuthGate } from './features/auth/auth-gate.tsx';
 import { Provider } from './ui/provider.tsx';
-
-appStarted();
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
 		<Provider>
-			<App />
+			<AuthGate>
+				<App />
+			</AuthGate>
 		</Provider>
 	</StrictMode>,
 );

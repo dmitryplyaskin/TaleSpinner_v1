@@ -4,7 +4,6 @@ import { z } from "zod";
 import { asyncHandler } from "@core/middleware/async-handler";
 import { HttpError } from "@core/middleware/error-handler";
 import { validate } from "@core/middleware/validate";
-import { initSse, type SseWriter } from "@core/sse/sse";
 
 import { batchUpdateEntryParts } from "../application/chat-runtime/use-cases/batch-update-entry-parts";
 import { continueGeneration } from "../application/chat-runtime/use-cases/continue-generation";
@@ -21,7 +20,6 @@ import { selectEntryVariant } from "../application/chat-runtime/use-cases/select
 import { setEntryPromptVisibility } from "../application/chat-runtime/use-cases/set-entry-prompt-visibility";
 import { undoPartCanonicalization } from "../application/chat-runtime/use-cases/undo-part-canonicalization";
 import { chatIdParamsSchema } from "../chat-core/schemas";
-import { GenerationControlService } from "../services/chat-core/generation-control-service";
 import {
   getEntryById,
   softDeleteEntry,
@@ -29,9 +27,9 @@ import {
 } from "../services/chat-entry-parts/entries-repository";
 import { softDeletePart } from "../services/chat-entry-parts/parts-repository";
 
+import { streamGenerationSession } from "./chat-generation-stream";
+
 import type { BatchUpdateEntryPartsBody as ChatRuntimeBatchUpdateEntryPartsBody } from "../application/chat-runtime/chat-entry-helpers";
-import type { ChatGenerationSession } from "../application/chat-runtime/contracts";
-import type { RunEvent } from "../services/chat-generation-v3/contracts";
 
 const router = express.Router();
 
@@ -39,148 +37,6 @@ function ensureSseRequested(req: Request): void {
   const accept = String(req.headers.accept ?? "");
   if (!accept.includes("text/event-stream")) {
     throw new HttpError(406, "Нужен Accept: text/event-stream", "NOT_ACCEPTABLE");
-  }
-}
-
-function mapRunStatusToStreamDoneStatus(status: "done" | "failed" | "aborted" | "error"): "done" | "aborted" | "error" {
-  if (status === "done") return "done";
-  if (status === "aborted") return "aborted";
-  return "error";
-}
-
-type RunProxySummary = {
-  runStatus: "done" | "failed" | "aborted" | "error" | null;
-  sawTextDelta: boolean;
-};
-
-async function proxyRunEventsToSse(params: {
-  sse: SseWriter;
-  events: AsyncGenerator<RunEvent>;
-  envBase: Record<string, unknown>;
-  reqClosed: () => boolean;
-  abortController: AbortController;
-  onGenerationId: (generationId: string) => void;
-}): Promise<RunProxySummary> {
-  let generationId: string | null = null;
-  const summary: RunProxySummary = {
-    runStatus: null,
-    sawTextDelta: false,
-  };
-
-  for await (const evt of params.events) {
-    if (evt.type === "run.started") {
-      generationId = evt.data.generationId;
-      params.onGenerationId(generationId);
-      if (params.reqClosed()) {
-        params.abortController.abort();
-        void GenerationControlService.requestAbort(generationId);
-      }
-      params.sse.send("llm.stream.meta", { ...params.envBase, generationId });
-    }
-
-    const eventGenerationId =
-      generationId ?? (evt.type === "run.started" ? evt.data.generationId : null);
-    const eventEnvelope = {
-      ...params.envBase,
-      generationId: eventGenerationId,
-      runId: evt.runId,
-      seq: evt.seq,
-      ...evt.data,
-    };
-    params.sse.send(evt.type, eventEnvelope);
-
-    if (evt.type === "main_llm.delta") {
-      if (evt.data.content.length > 0) summary.sawTextDelta = true;
-      params.sse.send("llm.stream.delta", {
-        ...params.envBase,
-        generationId: eventGenerationId,
-        content: evt.data.content,
-      });
-      continue;
-    }
-
-    if (evt.type === "main_llm.reasoning_delta") {
-      if (evt.data.content.length > 0) summary.sawTextDelta = true;
-      params.sse.send("llm.stream.reasoning_delta", {
-        ...params.envBase,
-        generationId: eventGenerationId,
-        content: evt.data.content,
-      });
-      continue;
-    }
-
-    if (evt.type === "main_llm.finished" && evt.data.status === "error") {
-      params.sse.send("llm.stream.error", {
-        ...params.envBase,
-        generationId: eventGenerationId,
-        code: "generation_error",
-        message: evt.data.message ?? "generation_error",
-      });
-      continue;
-    }
-
-    if (evt.type === "run.finished") {
-      summary.runStatus = evt.data.status;
-      params.sse.send("llm.stream.done", {
-        ...params.envBase,
-        generationId: eventGenerationId,
-        status: mapRunStatusToStreamDoneStatus(evt.data.status),
-      });
-      if (evt.data.status !== "done" && evt.data.message) {
-        params.sse.send("llm.stream.error", {
-          ...params.envBase,
-          generationId: eventGenerationId,
-          code: "generation_error",
-          message: evt.data.message,
-        });
-      }
-      break;
-    }
-  }
-
-  return summary;
-}
-
-async function streamGenerationSession(params: {
-  req: Request;
-  res: Response;
-  buildSession: (abortController: AbortController) => Promise<ChatGenerationSession>;
-}): Promise<void> {
-  const sse = initSse({ res: params.res });
-  let generationId: string | null = null;
-  const runAbortController = new AbortController();
-  let shouldAbortOnClose = false;
-  let reqClosed = false;
-
-  params.res.on("close", () => {
-    reqClosed = true;
-    if (shouldAbortOnClose) {
-      runAbortController.abort();
-      if (generationId) void GenerationControlService.requestAbort(generationId);
-    }
-    sse.close();
-  });
-
-  try {
-    const session = await params.buildSession(runAbortController);
-    shouldAbortOnClose = true;
-    if (reqClosed) {
-      runAbortController.abort();
-      if (generationId) void GenerationControlService.requestAbort(generationId);
-    }
-
-    await proxyRunEventsToSse({
-      sse,
-      envBase: session.envBase,
-      reqClosed: () => reqClosed,
-      abortController: runAbortController,
-      onGenerationId: (id) => {
-        generationId = id;
-      },
-      events: session.events,
-    });
-  } finally {
-    sse.close();
   }
 }
 

@@ -1,5 +1,7 @@
 import { BASE_URL } from '../const';
 
+import { authFetch } from './auth-fetch';
+
 import type { SseEnvelope } from './chat-core';
 import type { Variant, Entry } from '@shared/types/chat-entry-parts';
 import type { ChatOperationRuntimeStateDto } from '@shared/types/chat-runtime-state';
@@ -11,7 +13,7 @@ const CHAT_GENERATION_DEBUG_STORAGE_KEY = 'chat_generation_debug';
 const CHAT_GENERATION_DEBUG_SETTINGS_KEY = '__chatGenerationDebug';
 
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${BASE_URL}${path}`, {
+	const res = await authFetch(`${BASE_URL}${path}`, {
 		...init,
 		headers: {
 			'Content-Type': 'application/json',
@@ -168,7 +170,7 @@ async function* streamSseRequest(params: {
 	body: Record<string, unknown>;
 	signal?: AbortSignal;
 }): AsyncGenerator<SseEnvelope> {
-	const res = await fetch(`${BASE_URL}${params.path}`, {
+	const res = await authFetch(`${BASE_URL}${params.path}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

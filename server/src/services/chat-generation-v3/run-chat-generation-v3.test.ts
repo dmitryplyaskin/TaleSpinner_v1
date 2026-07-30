@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   commitEffectsPhase: vi.fn(),
   runMainLlmPhase: vi.fn(),
   generationControlAcquire: vi.fn(),
+  profileSessionArtifactLoad: vi.fn(),
   finalizeRun: vi.fn(),
   updateGenerationPromptData: vi.fn(),
   updateGenerationDebugJson: vi.fn(),
@@ -66,7 +67,7 @@ vi.mock("../chat-core/generation-runtime", () => ({
 
 vi.mock("./artifacts/profile-session-artifact-store", () => ({
   ProfileSessionArtifactStore: {
-    load: vi.fn(async () => ({})),
+    load: mocks.profileSessionArtifactLoad,
     loadOperationActivationStates: vi.fn(async () => ({})),
     upsertOperationActivationState: vi.fn(async () => undefined),
   },
@@ -186,9 +187,84 @@ beforeEach(() => {
     heartbeat: vi.fn(async () => undefined),
     release: vi.fn(async () => undefined),
   });
+  mocks.profileSessionArtifactLoad.mockResolvedValue({});
 });
 
 describe("runChatGenerationV3", () => {
+  test("reports preparation errors that happen before a generation exists", async () => {
+    mocks.resolveRunContext.mockRejectedValueOnce(new Error("profile compilation failed"));
+
+    const events: any[] = [];
+    for await (const event of runChatGenerationV3(makeRequest())) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "run.preparation_failed",
+        data: {
+          generationId: null,
+          status: "error",
+          code: "generation_preparation_error",
+          message: "profile compilation failed",
+        },
+      }),
+    ]);
+    expect(mocks.generationControlAcquire).not.toHaveBeenCalled();
+    expect(mocks.finalizeRun).not.toHaveBeenCalled();
+  });
+
+  test("finalizes and reports a generation when control lease acquisition fails", async () => {
+    mocks.generationControlAcquire.mockRejectedValueOnce(new Error("control lease failed"));
+
+    const events: any[] = [];
+    for await (const event of runChatGenerationV3(makeRequest())) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual(["run.started", "run.finished"]);
+    expect(events[1]?.data).toMatchObject({
+      generationId: "gen-1",
+      status: "error",
+      message: "control lease failed",
+    });
+    expect(mocks.finalizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ generationId: "gen-1" }),
+        result: expect.objectContaining({
+          generationId: "gen-1",
+          status: "error",
+          errorMessage: "control lease failed",
+        }),
+      })
+    );
+  });
+
+  test("finalizes and reports a generation when persisted artifacts fail to load", async () => {
+    mocks.profileSessionArtifactLoad.mockRejectedValueOnce(new Error("artifact load failed"));
+
+    const events: any[] = [];
+    for await (const event of runChatGenerationV3(makeRequest())) {
+      events.push(event);
+    }
+
+    expect(events.map((event) => event.type)).toEqual(["run.started", "run.finished"]);
+    expect(events[1]?.data).toMatchObject({
+      generationId: "gen-1",
+      status: "error",
+      message: "artifact load failed",
+    });
+    expect(mocks.finalizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          generationId: "gen-1",
+          status: "error",
+          errorMessage: "artifact load failed",
+        }),
+      })
+    );
+  });
+
   test("does not start main LLM when before barrier fails", async () => {
     mocks.executeOperationsPhase.mockResolvedValueOnce([
       {
@@ -218,6 +294,9 @@ describe("runChatGenerationV3", () => {
     const finished = events.find((e) => e.type === "run.finished");
     expect(finished?.data.status).toBe("failed");
     expect(finished?.data.failedType).toBe("before_barrier");
+    expect(finished?.data.message).toBe(
+      "Required before operation did not finish with done: op-1"
+    );
   });
 
   test("does not fail before barrier for required activation_not_reached skip", async () => {
@@ -505,6 +584,47 @@ describe("runChatGenerationV3", () => {
       turnsCounter: 2,
       tokensCounter: 500,
     });
+  });
+
+  test("emits assistant canonicalization after a successful rewrite commit", async () => {
+    mocks.executeOperationsPhase.mockResolvedValue([]);
+    mocks.commitEffectsPhase.mockImplementation(async (params: any) => {
+      if (params.hook === "after_main_llm") {
+        params.onAssistantTurnCanonicalized?.({
+          hook: "after_main_llm",
+          opId: "assistant-rewrite",
+          assistantEntryId: "assistant-entry",
+          assistantMainPartId: "assistant-main-part",
+          beforeText: "raw",
+          afterText: "normalized",
+          committedAt: "2026-07-13T00:00:00.000Z",
+        });
+      }
+      return {
+        report: { hook: params.hook, status: "done", effects: [] },
+        requiredError: false,
+      };
+    });
+    mocks.runMainLlmPhase.mockImplementation(async ({ runState }: any) => {
+      runState.assistantText = "raw";
+      return { status: "done" };
+    });
+
+    const events: any[] = [];
+    for await (const event of runChatGenerationV3(makeRequest())) {
+      events.push(event);
+    }
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "turn.assistant.canonicalized",
+        data: expect.objectContaining({
+          assistantEntryId: "assistant-entry",
+          assistantMainPartId: "assistant-main-part",
+          afterText: "normalized",
+        }),
+      })
+    );
   });
 
   test("streams main_llm.reasoning_delta while main phase is running", async () => {

@@ -319,6 +319,104 @@ beforeEach(() => {
 });
 
 describe("executeOperationsPhase", () => {
+  test("caps concurrent operation execution at four tasks", async () => {
+    let active = 0;
+    let maxActive = 0;
+    mocks.llmGatewayStream.mockImplementation(() =>
+      (async function* () {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        yield { type: "delta", text: "ok" };
+        active -= 1;
+        yield { type: "done", status: "done" };
+      })()
+    );
+
+    const operations = Array.from({ length: 10 }, (_, index) =>
+      makeLlmOp({
+        opId: `llm-${index}`,
+        order: index,
+        prompt: "bounded",
+        output: artifactOutput(`result_${index}`),
+      })
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "bounded-concurrency",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations,
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out.every((item) => item.status === "done")).toBe(true);
+    expect(maxActive).toBe(4);
+  });
+
+  test("rejects auxiliary LLM output larger than 256 KiB", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "delta", text: "x".repeat(256 * 1024 + 1) },
+        { type: "done", status: "done" },
+      ])
+    );
+
+    const out = await executeOperationsPhase({
+      runId: "bounded-output",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "llm-large-output",
+          order: 1,
+          prompt: "bounded",
+          output: artifactOutput("large_output"),
+        }),
+      ],
+      executionMode: "concurrent",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]).toMatchObject({
+      status: "error",
+      error: { code: "LLM_OUTPUT_TOO_LARGE" },
+    });
+  });
+
+  test("rejects oversized template output before effects are created", async () => {
+    const out = await executeOperationsPhase({
+      runId: "bounded-template-output",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeTemplateOp({
+          opId: "large-template-output",
+          order: 1,
+          template: "x".repeat(256 * 1024 + 1),
+          output: artifactOutput("large_template"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+    });
+
+    expect(out[0]).toMatchObject({
+      status: "error",
+      error: { code: "ARTIFACT_VALUE_TOO_LARGE" },
+    });
+  });
+
   test("returns activation skip with skip details", async () => {
     const out = await executeOperationsPhase({
       runId: "run-eligible-filter",
@@ -567,6 +665,11 @@ describe("executeOperationsPhase", () => {
   });
 
   test("returns error for strictVariables with missing variable", async () => {
+    const finishedEvents = collectEvents<{
+      opId: string;
+      status: string;
+      error?: { code: string; message: string };
+    }>();
     const out = await executeOperationsPhase({
       runId: "run-5",
       hook: "before_main_llm",
@@ -585,11 +688,63 @@ describe("executeOperationsPhase", () => {
       baseArtifacts: makeBaseArtifacts(),
       assistantText: "",
       templateContext: makeTemplateContext(),
+      onOperationFinished: (event) => {
+        finishedEvents.push({
+          opId: event.opId,
+          status: event.status,
+          error: event.error,
+        });
+      },
     });
 
     expect(out[0]?.status).toBe("error");
     expect(out[0]?.effects).toEqual([]);
     expect(out[0]?.error?.message.length).toBeGreaterThan(0);
+    expect(finishedEvents.items).toEqual([
+      {
+        opId: "a",
+        status: "error",
+        error: {
+          code: "OPERATION_ERROR",
+          message: expect.stringContaining("missing"),
+        },
+      },
+    ]);
+  });
+
+  test("redacts credentials from operation.finished error messages", async () => {
+    mocks.llmGatewayStream.mockImplementation(() =>
+      streamOf([
+        { type: "error", message: "Authorization: Bearer provider-secret" },
+        { type: "done", status: "error" },
+      ])
+    );
+    const finishedEvents = collectEvents<{ error?: { code: string; message: string } }>();
+
+    await executeOperationsPhase({
+      runId: "run-redacted-error",
+      hook: "before_main_llm",
+      trigger: "generate",
+      operations: [
+        makeLlmOp({
+          opId: "redacted-error",
+          order: 10,
+          prompt: "summarize",
+          output: artifactOutput("summary"),
+        }),
+      ],
+      executionMode: "sequential",
+      baseMessages: makeBaseMessages(),
+      baseArtifacts: makeBaseArtifacts(),
+      assistantText: "",
+      templateContext: makeTemplateContext(),
+      onOperationFinished: (event) => finishedEvents.push({ error: event.error }),
+    });
+
+    expect(finishedEvents.items[0]?.error).toEqual({
+      code: "LLM_PROVIDER_ERROR",
+      message: "Authorization: [REDACTED]",
+    });
   });
 
   test("blocks dependent node when ancestor fails", async () => {

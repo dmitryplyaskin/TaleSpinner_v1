@@ -1,9 +1,11 @@
 ﻿const ruDrawer = {
-			toggleFullscreen: 'Переключить fullscreen',
-			togglePlacement: 'Переключить сторону',
+			toggleFullscreen: 'Переключить полноэкранный режим',
+			togglePlacement: 'Переместить панель',
 			close: 'Закрыть панель',
-			enterFullscreen: 'Открыть в fullscreen',
-			exitFullscreen: 'Выйти из fullscreen',
+			enterFullscreen: 'Развернуть на весь экран',
+			exitFullscreen: 'Вернуть в боковую панель',
+			moveToStart: 'Переместить панель влево',
+			moveToEnd: 'Переместить панель вправо',
 		};
 
 export default ruDrawer;

@@ -1,8 +1,8 @@
-import { Button, Group, Select, Stack, Tabs, Text } from '@mantine/core';
+import { Button, Select, Stack, Tabs, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuGitFork, LuSave, LuUndo2 } from 'react-icons/lu';
+import { LuGitFork } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -34,13 +34,16 @@ import { resolveBundleAutoApplyTargets } from '../common/bundle-helpers';
 import { OperationBlockEditor, type OperationBlockToolbarState } from './operation-block-editor';
 import { OperationProfileBlocksEditor, type OperationProfileBlocksToolbarState } from './operation-profile-blocks-editor';
 import './operation-profiles.css';
+import './operation-workspace.css';
 import { BlockActions } from './ui/block-actions';
+import { EditorSaveActions } from './ui/editor-save-actions';
 import { ProfileActions } from './ui/profile-actions';
 import { ProfilePicker } from './ui/profile-picker';
+import { RunTracePanel } from './ui/run-trace-panel';
 
 const TOOLBAR_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
-type TabValue = 'profiles' | 'blocks';
+type TabValue = 'profiles' | 'blocks' | 'run';
 
 export const OperationProfilesSidebar: React.FC = () => {
 	const { t } = useTranslation();
@@ -133,7 +136,9 @@ export const OperationProfilesSidebar: React.FC = () => {
 
 	const sidebarState = sidebars.operationProfiles;
 	const preferSplitLayout = sidebarState.isFullscreen || sidebarState.size === 'full';
-	const uiClassName = preferSplitLayout ? 'op-ui' : 'op-ui op-ui--drawer';
+	const uiClassName = preferSplitLayout
+		? `op-ui op-ui--fullscreen op-ui--${activeTab}`
+		: `op-ui op-ui--drawer op-ui--${activeTab}`;
 
 	return (
 		<Drawer name="operationProfiles" title={t('operationProfiles.sidebar.title')}>
@@ -142,6 +147,7 @@ export const OperationProfilesSidebar: React.FC = () => {
 					<Tabs.List>
 						<Tabs.Tab value="profiles">{t('operationProfiles.tabs.profiles')}</Tabs.Tab>
 						<Tabs.Tab value="blocks">{t('operationProfiles.tabs.blocks')}</Tabs.Tab>
+						<Tabs.Tab value="run">{t('operationProfiles.tabs.run')}</Tabs.Tab>
 					</Tabs.List>
 				</Tabs>
 
@@ -182,52 +188,13 @@ export const OperationProfilesSidebar: React.FC = () => {
 								/>
 							</div>
 
-							{selectedProfile && profileToolbarState && (
+							{selectedProfile && profileToolbarState && preferSplitLayout && (
 								<div className="op-commandRow op-commandRowSecondary">
-									<Group gap="xs" wrap="nowrap" className="op-editorToolbarActions">
-										{preferSplitLayout ? (
-											<>
-												<Button size="sm" leftSection={<LuSave />} disabled={!profileToolbarState.canSave} onClick={profileToolbarState.onSave}>
-													{t('common.save')}
-												</Button>
-												<Button
-													size="sm"
-													variant="default"
-													leftSection={<LuUndo2 />}
-													disabled={!profileToolbarState.canDiscard}
-													onClick={profileToolbarState.onDiscard}
-												>
-													{t('operationProfiles.actions.discard')}
-												</Button>
-											</>
-										) : (
-											<>
-												<IconButtonWithTooltip
-													aria-label={t('common.save')}
-													tooltip={t('common.save')}
-													icon={<LuSave />}
-													size="input-sm"
-													variant="ghost"
-													tooltipSettings={TOOLBAR_TOOLTIP_SETTINGS}
-													disabled={!profileToolbarState.canSave}
-													onClick={profileToolbarState.onSave}
-												/>
-												<IconButtonWithTooltip
-													aria-label={t('operationProfiles.actions.discard')}
-													tooltip={t('operationProfiles.actions.discard')}
-													icon={<LuUndo2 />}
-													size="input-sm"
-													variant="ghost"
-													tooltipSettings={TOOLBAR_TOOLTIP_SETTINGS}
-													disabled={!profileToolbarState.canDiscard}
-													onClick={profileToolbarState.onDiscard}
-												/>
-											</>
-										)}
-									</Group>
+									<EditorSaveActions state={profileToolbarState} />
 								</div>
 							)}
 						</Stack>
+						{!preferSplitLayout && <EditorSaveActions state={profileToolbarState} compact />}
 
 						{!selectedProfile ? (
 							<Text size="sm" c="dimmed">
@@ -315,51 +282,12 @@ export const OperationProfilesSidebar: React.FC = () => {
 									/>
 								)}
 
-								{selectedBlock && blockToolbarState && (
-									<Group gap="xs" wrap="nowrap" className="op-editorToolbarActions">
-										{preferSplitLayout ? (
-											<>
-												<Button size="sm" leftSection={<LuSave />} disabled={!blockToolbarState.canSave} onClick={blockToolbarState.onSave}>
-													{t('common.save')}
-												</Button>
-												<Button
-													size="sm"
-													variant="default"
-													leftSection={<LuUndo2 />}
-													disabled={!blockToolbarState.canDiscard}
-													onClick={blockToolbarState.onDiscard}
-												>
-													{t('operationProfiles.actions.discard')}
-												</Button>
-											</>
-										) : (
-											<>
-												<IconButtonWithTooltip
-													aria-label={t('common.save')}
-													tooltip={t('common.save')}
-													icon={<LuSave />}
-													size="input-sm"
-													variant="ghost"
-													tooltipSettings={TOOLBAR_TOOLTIP_SETTINGS}
-													disabled={!blockToolbarState.canSave}
-													onClick={blockToolbarState.onSave}
-												/>
-												<IconButtonWithTooltip
-													aria-label={t('operationProfiles.actions.discard')}
-													tooltip={t('operationProfiles.actions.discard')}
-													icon={<LuUndo2 />}
-													size="input-sm"
-													variant="ghost"
-													tooltipSettings={TOOLBAR_TOOLTIP_SETTINGS}
-													disabled={!blockToolbarState.canDiscard}
-													onClick={blockToolbarState.onDiscard}
-												/>
-											</>
-										)}
-									</Group>
+								{selectedBlock && blockToolbarState && preferSplitLayout && (
+									<EditorSaveActions state={blockToolbarState} />
 								)}
 							</div>
 						</Stack>
+						{!preferSplitLayout && <EditorSaveActions state={blockToolbarState} compact />}
 
 						{!selectedBlock ? (
 							<Text size="sm" c="dimmed">
@@ -376,6 +304,8 @@ export const OperationProfilesSidebar: React.FC = () => {
 						)}
 					</>
 				)}
+
+				{activeTab === 'run' && <RunTracePanel />}
 			</Stack>
 		</Drawer>
 	);

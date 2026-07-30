@@ -3,6 +3,8 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { HttpError } from "../../core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { type DbExecutor, initDb } from "../../db/client";
 import { entryVariants, variantParts } from "../../db/schema";
 
@@ -69,7 +71,12 @@ export async function listPartsForVariants(params: {
   const rows = await db
     .select()
     .from(variantParts)
-    .where(inArray(variantParts.variantId, params.variantIds));
+    .where(
+      and(
+        inArray(variantParts.variantId, params.variantIds),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   const map = new Map<string, Part[]>();
   for (const r of rows) {
@@ -108,7 +115,21 @@ export function createPart(params: CreatePartParams & { executor: DbExecutor }):
 export function createPart(params: CreatePartParams): Promise<Part>;
 export function createPart(params: CreatePartParams): Promise<Part> | Part {
   const run = (db: DbExecutor): Part => {
-    const ownerId = params.ownerId ?? "global";
+    const ownerId = resolveTrustedOwnerId(params.ownerId);
+    const parent = db
+      .select({ variantId: entryVariants.variantId })
+      .from(entryVariants)
+      .where(
+        and(
+          eq(entryVariants.variantId, params.variantId),
+          eq(entryVariants.ownerId, ownerId)
+        )
+      )
+      .limit(1)
+      .get();
+    if (!parent) {
+      throw new HttpError(404, "Entry variant not found", "NOT_FOUND");
+    }
     const partId = uuidv4();
 
     const payloadJson = safeJsonStringify({
@@ -192,7 +213,12 @@ export async function updatePartPayloadText(params: {
   const rows = await db
     .select({ payloadJson: variantParts.payloadJson })
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const existing = safeJsonParse<StoredPayload>(rows[0]?.payloadJson, {
     format: "text",
@@ -207,7 +233,12 @@ export async function updatePartPayloadText(params: {
   await db
     .update(variantParts)
     .set({ payloadJson: safeJsonStringify(payload) })
-    .where(eq(variantParts.partId, params.partId));
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export async function getPartPayloadTextById(params: {
@@ -217,7 +248,12 @@ export async function getPartPayloadTextById(params: {
   const rows = await db
     .select({ payloadJson: variantParts.payloadJson })
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
 
   const existing = safeJsonParse<StoredPayload | null>(rows[0]?.payloadJson, null);
@@ -233,7 +269,12 @@ export async function getPartById(params: {
   const rows = await db
     .select()
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const row = rows[0];
   return row ? partRowToDomain(row) : null;
@@ -254,7 +295,12 @@ export async function getPartWithVariantContextById(params: {
   const partRows = await db
     .select()
     .from(variantParts)
-    .where(eq(variantParts.partId, params.partId))
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const partRow = partRows[0];
   if (!partRow) return null;
@@ -265,7 +311,12 @@ export async function getPartWithVariantContextById(params: {
       entryId: entryVariants.entryId,
     })
     .from(entryVariants)
-    .where(eq(entryVariants.variantId, partRow.variantId))
+    .where(
+      and(
+        eq(entryVariants.variantId, partRow.variantId),
+        eq(entryVariants.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const variant = variantRows[0];
   if (!variant) return null;
@@ -297,7 +348,12 @@ export function applyManualEditToPart(
     const rows = db
       .select({ payloadJson: variantParts.payloadJson })
       .from(variantParts)
-      .where(eq(variantParts.partId, params.partId))
+      .where(
+        and(
+          eq(variantParts.partId, params.partId),
+          eq(variantParts.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .limit(1)
       .all();
 
@@ -321,7 +377,12 @@ export function applyManualEditToPart(
         model: null,
         requestId: params.requestId ?? null,
       })
-      .where(eq(variantParts.partId, params.partId))
+      .where(
+        and(
+          eq(variantParts.partId, params.partId),
+          eq(variantParts.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .run();
   };
 
@@ -349,7 +410,12 @@ export function softDeletePart(params: SoftDeletePartParams): Promise<void> | vo
         softDeletedAt: new Date(),
         softDeletedBy: params.by,
       })
-      .where(eq(variantParts.partId, params.partId))
+      .where(
+        and(
+          eq(variantParts.partId, params.partId),
+          eq(variantParts.ownerId, resolveTrustedOwnerId())
+        )
+      )
       .run();
   };
 
@@ -368,7 +434,12 @@ export async function updatePartReplacesPartId(params: {
   await db
     .update(variantParts)
     .set({ replacesPartId: params.replacesPartId })
-    .where(eq(variantParts.partId, params.partId));
+    .where(
+      and(
+        eq(variantParts.partId, params.partId),
+        eq(variantParts.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 
 export type PartMutableBatchPatch = {
@@ -407,7 +478,13 @@ export async function applyPartMutableBatchPatches(params: {
     for (const partId of params.deletePartIds ?? []) {
       tx
         .delete(variantParts)
-        .where(and(eq(variantParts.partId, partId), eq(variantParts.variantId, params.variantId)))
+        .where(
+          and(
+            eq(variantParts.partId, partId),
+            eq(variantParts.variantId, params.variantId),
+            eq(variantParts.ownerId, resolveTrustedOwnerId())
+          )
+        )
         .run();
     }
 
@@ -435,7 +512,8 @@ export async function applyPartMutableBatchPatches(params: {
         .where(
           and(
             eq(variantParts.partId, patch.partId),
-            eq(variantParts.variantId, params.variantId)
+            eq(variantParts.variantId, params.variantId),
+            eq(variantParts.ownerId, resolveTrustedOwnerId())
           )
         )
         .run();

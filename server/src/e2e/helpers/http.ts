@@ -3,6 +3,38 @@ export type JsonResponse<T = unknown> = {
   data: T;
 };
 
+const testAuthHeaders = new Map<string, Record<string, string>>();
+
+export function getTestAuthHeaders(baseUrl: string): Record<string, string> {
+  return testAuthHeaders.get(baseUrl) ?? {};
+}
+
+export function clearTestAuthHeaders(baseUrl: string): void {
+  testAuthHeaders.delete(baseUrl);
+}
+
+export async function setupTestAccount(baseUrl: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/auth/setup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "e2e-admin", password: "" }),
+  });
+  if (response.status !== 201) {
+    throw new Error(`Failed to set up E2E account: ${response.status}`);
+  }
+  const cookie = response.headers.get("set-cookie")?.split(";")[0];
+  const payload = (await response.json()) as {
+    data?: { csrfToken?: string };
+  };
+  if (!cookie) throw new Error("E2E auth setup did not return a cookie");
+  testAuthHeaders.set(baseUrl, {
+    Cookie: cookie,
+    ...(payload.data?.csrfToken
+      ? { "X-CSRF-Token": payload.data.csrfToken }
+      : {}),
+  });
+}
+
 export async function requestJson<T = unknown>(params: {
   baseUrl: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -14,6 +46,7 @@ export async function requestJson<T = unknown>(params: {
     method: params.method,
     headers: {
       ...(params.body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...getTestAuthHeaders(params.baseUrl),
       ...(params.headers ?? {}),
     },
     body: params.body === undefined ? undefined : JSON.stringify(params.body),
@@ -42,6 +75,7 @@ export async function requestForm<T = unknown>(params: {
   const response = await fetch(`${params.baseUrl}${params.path}`, {
     method: params.method,
     headers: {
+      ...getTestAuthHeaders(params.baseUrl),
       ...(params.headers ?? {}),
     },
     body: params.form,
@@ -114,6 +148,7 @@ export async function collectSse(params: {
       headers: {
         Accept: "text/event-stream",
         ...(params.body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...getTestAuthHeaders(params.baseUrl),
         ...(params.headers ?? {}),
       },
       body: params.body === undefined ? undefined : JSON.stringify(params.body),

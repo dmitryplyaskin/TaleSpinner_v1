@@ -1,12 +1,14 @@
 import { randomUUID as uuidv4 } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 
 import {
   decryptSecret,
   encryptSecret,
   maskToken,
 } from "@core/crypto/secret-box";
+import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb, type Db } from "../../db/client";
 import {
@@ -34,6 +36,9 @@ export type LlmTokenListItem = {
   providerId: LlmProviderId;
   name: string;
   tokenHint: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastUsedAt: Date | null;
 };
 
 export type ProviderConfigRow = {
@@ -62,11 +67,22 @@ function nowDate(): Date {
   return new Date();
 }
 
+function storageScopeId(scopeId: string): string {
+  const ownerId = resolveTrustedOwnerId();
+  return `${ownerId}:${scopeId}`;
+}
+
+function providerConfigId(ownerId: string, providerId: LlmProviderId): string {
+  return ownerId === "global" ? providerId : `${ownerId}:${providerId}`;
+}
+
 function parseConfigJson(raw: string): unknown {
   try {
     return JSON.parse(raw) as unknown;
   } catch (error) {
-    console.warn("Failed to parse provider config JSON. Falling back to {}", { error });
+    console.warn("Failed to parse provider config JSON. Falling back to {}", {
+      error,
+    });
     return {};
   }
 }
@@ -98,21 +114,22 @@ export async function ensureDefaultProviders(): Promise<void> {
 
 export async function ensureDefaultRuntimeGlobal(): Promise<void> {
   const database = await db();
+  const persistedScopeId = storageScopeId("global");
   const existing = await database
     .select()
     .from(llmRuntimeSettings)
     .where(
       and(
         eq(llmRuntimeSettings.scope, "global"),
-        eq(llmRuntimeSettings.scopeId, "global")
-      )
+        eq(llmRuntimeSettings.scopeId, persistedScopeId),
+      ),
     );
 
   if (existing.length > 0) return;
 
   await database.insert(llmRuntimeSettings).values({
     scope: "global",
-    scopeId: "global",
+    scopeId: persistedScopeId,
     activeProviderId: "openrouter",
     activeTokenId: null,
     activeModel: null,
@@ -134,17 +151,18 @@ export async function listProviders(): Promise<
 
 export async function getRuntime(
   scope: LlmScope,
-  scopeId: string
+  scopeId: string,
 ): Promise<LlmRuntimeRow> {
   const database = await db();
+  const persistedScopeId = storageScopeId(scopeId);
   const rows = await database
     .select()
     .from(llmRuntimeSettings)
     .where(
       and(
         eq(llmRuntimeSettings.scope, scope),
-        eq(llmRuntimeSettings.scopeId, scopeId)
-      )
+        eq(llmRuntimeSettings.scopeId, persistedScopeId),
+      ),
     );
 
   if (rows[0]) {
@@ -168,7 +186,7 @@ export async function getRuntime(
 
   await database.insert(llmRuntimeSettings).values({
     scope,
-    scopeId,
+    scopeId: persistedScopeId,
     activeProviderId: fallback.activeProviderId,
     activeTokenId: null,
     activeModel: null,
@@ -179,16 +197,34 @@ export async function getRuntime(
 }
 
 export async function upsertRuntime(
-  runtime: LlmRuntimeRow
+  runtime: LlmRuntimeRow,
 ): Promise<LlmRuntimeRow> {
   const database = await db();
   const ts = nowDate();
+  const persistedScopeId = storageScopeId(runtime.scopeId);
+  const ownerId = resolveTrustedOwnerId();
+
+  if (runtime.activeTokenId) {
+    const token = await database
+      .select({ id: llmTokens.id })
+      .from(llmTokens)
+      .where(
+        and(
+          eq(llmTokens.id, runtime.activeTokenId),
+          eq(llmTokens.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!token[0]) {
+      throw new HttpError(404, "LLM token not found", "NOT_FOUND");
+    }
+  }
 
   await database
     .insert(llmRuntimeSettings)
     .values({
       scope: runtime.scope,
-      scopeId: runtime.scopeId,
+      scopeId: persistedScopeId,
       activeProviderId: runtime.activeProviderId,
       activeTokenId: runtime.activeTokenId,
       activeModel: runtime.activeModel,
@@ -213,15 +249,16 @@ export async function getRuntimeProviderState(params: {
   providerId: LlmProviderId;
 }): Promise<LlmRuntimeProviderStateRow> {
   const database = await db();
+  const persistedScopeId = storageScopeId(params.scopeId);
   const rows = await database
     .select()
     .from(llmRuntimeProviderState)
     .where(
       and(
         eq(llmRuntimeProviderState.scope, params.scope),
-        eq(llmRuntimeProviderState.scopeId, params.scopeId),
-        eq(llmRuntimeProviderState.providerId, params.providerId)
-      )
+        eq(llmRuntimeProviderState.scopeId, persistedScopeId),
+        eq(llmRuntimeProviderState.providerId, params.providerId),
+      ),
     );
 
   const row = rows[0];
@@ -236,7 +273,7 @@ export async function getRuntimeProviderState(params: {
   }
   return {
     scope: row.scope,
-    scopeId: row.scopeId,
+    scopeId: params.scopeId,
     providerId: row.providerId as LlmProviderId,
     lastTokenId: row.lastTokenId ?? null,
     lastModel: row.lastModel ?? null,
@@ -244,15 +281,32 @@ export async function getRuntimeProviderState(params: {
 }
 
 export async function upsertRuntimeProviderState(
-  params: LlmRuntimeProviderStateRow
+  params: LlmRuntimeProviderStateRow,
 ): Promise<void> {
   const database = await db();
   const ts = nowDate();
+  const persistedScopeId = storageScopeId(params.scopeId);
+  const ownerId = resolveTrustedOwnerId();
+  if (params.lastTokenId) {
+    const token = await database
+      .select({ id: llmTokens.id })
+      .from(llmTokens)
+      .where(
+        and(
+          eq(llmTokens.id, params.lastTokenId),
+          eq(llmTokens.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!token[0]) {
+      throw new HttpError(404, "LLM token not found", "NOT_FOUND");
+    }
+  }
   await database
     .insert(llmRuntimeProviderState)
     .values({
       scope: params.scope,
-      scopeId: params.scopeId,
+      scopeId: persistedScopeId,
       providerId: params.providerId,
       lastTokenId: params.lastTokenId,
       lastModel: params.lastModel,
@@ -273,13 +327,19 @@ export async function upsertRuntimeProviderState(
 }
 
 export async function getProviderConfig(
-  providerId: LlmProviderId
+  providerId: LlmProviderId,
 ): Promise<ProviderConfigRow> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmProviderConfigs)
-    .where(eq(llmProviderConfigs.id, providerId));
+    .where(
+      and(
+        eq(llmProviderConfigs.ownerId, ownerId),
+        eq(llmProviderConfigs.providerId, providerId)
+      )
+    );
 
   if (!rows[0]) {
     return { providerId, config: {} };
@@ -291,16 +351,18 @@ export async function getProviderConfig(
 
 export async function upsertProviderConfig(
   providerId: LlmProviderId,
-  config: unknown
+  config: unknown,
 ): Promise<ProviderConfigRow> {
   const database = await db();
   const ts = nowDate();
   const configJson = JSON.stringify(config ?? {});
+  const ownerId = resolveTrustedOwnerId();
 
   await database
     .insert(llmProviderConfigs)
     .values({
-      id: providerId,
+      id: providerConfigId(ownerId, providerId),
+      ownerId,
       providerId,
       configJson,
       createdAt: ts,
@@ -315,18 +377,27 @@ export async function upsertProviderConfig(
 }
 
 export async function listTokens(
-  providerId: LlmProviderId
+  providerId: LlmProviderId,
 ): Promise<LlmTokenListItem[]> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmTokens)
-    .where(eq(llmTokens.providerId, providerId));
+    .where(
+      and(
+        eq(llmTokens.ownerId, ownerId),
+        eq(llmTokens.providerId, providerId)
+      )
+    );
   return rows.map((r) => ({
     id: r.id,
     providerId: r.providerId as LlmProviderId,
     name: r.name,
     tokenHint: r.tokenHint,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    lastUsedAt: r.lastUsedAt,
   }));
 }
 
@@ -336,6 +407,7 @@ export async function createToken(params: {
   token: string;
 }): Promise<LlmTokenListItem> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const id = uuidv4();
   const ts = nowDate();
   const ciphertext = encryptSecret(params.token);
@@ -343,6 +415,7 @@ export async function createToken(params: {
 
   await database.insert(llmTokens).values({
     id,
+    ownerId,
     providerId: params.providerId,
     name: params.name,
     ciphertext,
@@ -352,7 +425,15 @@ export async function createToken(params: {
     lastUsedAt: null,
   });
 
-  return { id, providerId: params.providerId, name: params.name, tokenHint };
+  return {
+    id,
+    providerId: params.providerId,
+    name: params.name,
+    tokenHint,
+    createdAt: ts,
+    updatedAt: ts,
+    lastUsedAt: null,
+  };
 }
 
 export async function updateToken(params: {
@@ -361,6 +442,7 @@ export async function updateToken(params: {
   token?: string;
 }): Promise<void> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const ts = nowDate();
 
   const set: Partial<typeof llmTokens.$inferInsert> = { updatedAt: ts };
@@ -372,16 +454,52 @@ export async function updateToken(params: {
     set.tokenHint = maskToken(params.token.trim());
   }
 
-  await database.update(llmTokens).set(set).where(eq(llmTokens.id, params.id));
+  await database
+    .update(llmTokens)
+    .set(set)
+    .where(and(eq(llmTokens.id, params.id), eq(llmTokens.ownerId, ownerId)));
 }
 
 export async function deleteToken(id: string): Promise<void> {
   const database = await db();
-  await database.delete(llmTokens).where(eq(llmTokens.id, id));
+  const ownerId = resolveTrustedOwnerId();
+  const ownedToken = await database
+    .select({ id: llmTokens.id })
+    .from(llmTokens)
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)))
+    .limit(1);
+  if (!ownedToken[0]) return;
+
+  database.transaction((tx) => {
+    tx
+      .update(llmRuntimeSettings)
+      .set({ activeTokenId: null, updatedAt: nowDate() })
+      .where(
+        and(
+          eq(llmRuntimeSettings.activeTokenId, id),
+          like(llmRuntimeSettings.scopeId, `${ownerId}:%`)
+        )
+      )
+      .run();
+    tx
+      .update(llmRuntimeProviderState)
+      .set({ lastTokenId: null, updatedAt: nowDate() })
+      .where(
+        and(
+          eq(llmRuntimeProviderState.lastTokenId, id),
+          like(llmRuntimeProviderState.scopeId, `${ownerId}:%`)
+        )
+      )
+      .run();
+    tx
+      .delete(llmTokens)
+      .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)))
+      .run();
+  });
 }
 
 function classifyDecryptFailure(
-  error: unknown
+  error: unknown,
 ): Extract<TokenPlaintextLookupResult, { status: "decrypt_failed" }> {
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.trim().toLowerCase();
@@ -399,13 +517,14 @@ function classifyDecryptFailure(
 }
 
 export async function getTokenPlaintextResult(
-  id: string
+  id: string,
 ): Promise<TokenPlaintextLookupResult> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await database
     .select()
     .from(llmTokens)
-    .where(eq(llmTokens.id, id));
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
   const row = rows[0];
   if (!row) return { status: "missing" };
   try {
@@ -433,8 +552,9 @@ export async function getTokenPlaintext(id: string): Promise<string | null> {
 
 export async function touchTokenLastUsed(id: string): Promise<void> {
   const database = await db();
+  const ownerId = resolveTrustedOwnerId();
   await database
     .update(llmTokens)
     .set({ lastUsedAt: nowDate(), updatedAt: nowDate() })
-    .where(eq(llmTokens.id, id));
+    .where(and(eq(llmTokens.id, id), eq(llmTokens.ownerId, ownerId)));
 }

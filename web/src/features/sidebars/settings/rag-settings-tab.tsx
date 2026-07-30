@@ -1,36 +1,50 @@
-import { Button, Divider, Group, Input, Select, Stack, Switch, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Divider, Group, Stack, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { LuRotateCcw } from 'react-icons/lu';
 
 import { ragProviderModel } from '@model/rag-provider';
 import { toaster } from '@ui/toaster';
 
-import { PresetControls } from './preset-controls';
+import { LlmDisclosureSection } from '../../llm-provider/llm-disclosure-section';
 
-import type { RagPreset, RagProviderConfig, RagProviderId } from '@shared/types/rag';
+import { RagConnectionEditor } from './rag-connection-editor';
+import { RagPresetManager } from './rag-preset-manager';
+import { RagProviderAdvancedConfig } from './rag-provider-advanced-config';
+import {
+	createRagProviderDraft,
+	normalizeRagProviderConfig,
+	type RagProviderDraft,
+} from './rag-provider-draft';
 
-
-const toProviderTokenKey = (providerId: RagProviderId, tokenId: string | null): string => `${providerId}:${tokenId ?? 'none'}`;
-
-const normalizePayload = (payload: RagPreset['payload']) => ({
-	activeProviderId: payload.activeProviderId,
-	activeTokenId: payload.activeTokenId ?? null,
-	activeModel: payload.activeModel ?? null,
-	providerConfigsById: {
-		openrouter: payload.providerConfigsById.openrouter ?? {},
-		ollama: payload.providerConfigsById.ollama ?? {},
-	},
-});
-
-const isPayloadEqual = (
-	left: ReturnType<typeof normalizePayload>,
-	right: ReturnType<typeof normalizePayload>,
-): boolean => JSON.stringify(left) === JSON.stringify(right);
+import type { RagPresetPayload, RagProviderConnectionCheckResult, RagProviderId } from '@shared/types/rag';
 
 export const RagSettingsTab = () => {
 	const { t } = useTranslation();
-	const [providers, runtime, configs, tokens, modelsByProviderTokenKey, presets, presetSettings] = useUnit([
+	const [
+		providers,
+		runtime,
+		configs,
+		tokensByProvider,
+		modelsByKey,
+		presets,
+		presetSettings,
+		mount,
+		loadConfigFx,
+		loadTokensFx,
+		loadModelsFx,
+		checkConnectionFx,
+		saveConnectionFx,
+		createPresetFx,
+		updatePresetFx,
+		deletePresetFx,
+		applyPresetFx,
+		isLoadingModels,
+		isChecking,
+		isSaving,
+	] = useUnit([
 		ragProviderModel.$providers,
 		ragProviderModel.$runtime,
 		ragProviderModel.$configs,
@@ -38,283 +52,211 @@ export const RagSettingsTab = () => {
 		ragProviderModel.$modelsByProviderTokenKey,
 		ragProviderModel.$presets,
 		ragProviderModel.$presetSettings,
+		ragProviderModel.ragMounted,
+		ragProviderModel.loadConfigFx,
+		ragProviderModel.loadTokensFx,
+		ragProviderModel.loadModelsFx,
+		ragProviderModel.checkConnectionFx,
+		ragProviderModel.saveConnectionFx,
+		ragProviderModel.createPresetFx,
+		ragProviderModel.updatePresetFx,
+		ragProviderModel.deletePresetFx,
+		ragProviderModel.applyPresetFx,
+		ragProviderModel.loadModelsFx.pending,
+		ragProviderModel.checkConnectionFx.pending,
+		ragProviderModel.saveConnectionFx.pending,
 	]);
 
-	const [configDraft, setConfigDraft] = useState<RagProviderConfig>({});
-	const [modelDraft, setModelDraft] = useState('');
+	const form = useForm<RagProviderDraft>({
+		defaultValues: createRagProviderDraft('openrouter'),
+	});
+	const { control, formState, getValues, reset, setValue } = form;
+	const providerId = useWatch({ control, name: 'providerId' });
+	const tokenId = useWatch({ control, name: 'tokenId' });
+	const modelId = useWatch({ control, name: 'modelId' });
+	const config = useWatch({ control, name: 'config' });
+	const initializedSignature = useRef('');
+	const draftsByProvider = useRef<Partial<Record<RagProviderId, RagProviderDraft>>>({});
+	const [connectionResult, setConnectionResult] = useState<RagProviderConnectionCheckResult | null>(null);
 
+	useEffect(() => mount(), [mount]);
 	useEffect(() => {
-		ragProviderModel.ragMounted();
-	}, []);
+		if (!runtime) return;
+		const runtimeConfig = configs[runtime.activeProviderId];
+		const signature = JSON.stringify([runtime, runtimeConfig ?? null, presetSettings?.selectedId ?? null]);
+		if (signature === initializedSignature.current) return;
+		initializedSignature.current = signature;
+		const draft = createRagProviderDraft(runtime.activeProviderId, runtimeConfig, runtime);
+		draftsByProvider.current[runtime.activeProviderId] = draft;
+		reset(draft);
+	}, [configs, presetSettings?.selectedId, reset, runtime]);
+	useEffect(() => setConnectionResult(null), [config, modelId, providerId, tokenId]);
 
-	const activeProviderId = runtime?.activeProviderId ?? 'openrouter';
-	const activeTokenId = runtime?.activeTokenId ?? null;
-	const activeConfig = useMemo(() => configs[activeProviderId] ?? {}, [configs, activeProviderId]);
-	const activeModelsKey = toProviderTokenKey(activeProviderId, activeTokenId);
-	const activeModels = modelsByProviderTokenKey[activeModelsKey] ?? [];
-	const canLoadModels = Boolean(activeTokenId && activeProviderId === 'openrouter');
+	const tokens = tokensByProvider[providerId] ?? [];
+	const models = modelsByKey[`${providerId}:${tokenId ?? 'none'}`] ?? [];
+	const activePreset = presets.find((preset) => preset.id === presetSettings?.selectedId) ?? null;
 
-	useEffect(() => {
-		setConfigDraft(activeConfig);
-	}, [activeProviderId, activeConfig]);
-
-	useEffect(() => {
-		setModelDraft(runtime?.activeModel ?? '');
-	}, [runtime?.activeModel]);
-
-	const activeTokens = tokens[activeProviderId] ?? [];
-
-	const providerOptions = providers.map((x) => ({ value: x.id, label: x.name }));
-	const tokenOptions = activeTokens.map((x) => ({ value: x.id, label: `${x.name} (${x.tokenHint})` }));
-	const modelOptions = activeModels.map((x) => ({ value: x.id, label: x.name }));
-	const presetOptions = presets.map((x) => ({ value: x.id, label: x.name }));
-	const activePresetId = presetSettings?.selectedId ?? null;
-	const activePreset = presets.find((x) => x.id === activePresetId) ?? null;
-	const activeProvider = useMemo(() => providers.find((item) => item.id === activeProviderId), [providers, activeProviderId]);
-
-	const buildPayload = () => ({
-		activeProviderId,
-		activeTokenId: runtime?.activeTokenId ?? null,
-		activeModel: runtime?.activeModel ?? null,
+	const buildPayload = (draft = getValues()): RagPresetPayload => ({
+		activeProviderId: draft.providerId,
+		activeTokenId: draft.providerId === 'openrouter' ? draft.tokenId : null,
+		activeModel: draft.modelId,
 		providerConfigsById: {
-			openrouter: configs.openrouter ?? {},
-			ollama: configs.ollama ?? {},
+			openrouter:
+				draft.providerId === 'openrouter'
+					? draft.config
+					: normalizeRagProviderConfig('openrouter', configs.openrouter),
+			ollama:
+				draft.providerId === 'ollama' ? draft.config : normalizeRagProviderConfig('ollama', configs.ollama),
 		},
 	});
-	const hasUnsavedPresetChanges = activePreset
-		? !isPayloadEqual(normalizePayload(activePreset.payload), normalizePayload(buildPayload()))
-		: false;
-	const hasUnsavedConfigDraft = JSON.stringify(configDraft ?? {}) !== JSON.stringify(activeConfig ?? {});
-	const hasUnsavedModelDraft = (modelDraft ?? '').trim() !== (runtime?.activeModel ?? '');
-	const hasUnsavedChanges = hasUnsavedPresetChanges || hasUnsavedConfigDraft || hasUnsavedModelDraft;
 
-	const askValue = (prompt: string, defaultValue: string): string | null => {
-		const value = window.prompt(prompt, defaultValue)?.trim();
-		return value && value.length > 0 ? value : null;
+	const changeProvider = async (nextProviderId: RagProviderId) => {
+		draftsByProvider.current[providerId] = getValues();
+		const [loadedConfig] = await Promise.all([loadConfigFx(nextProviderId), loadTokensFx(nextProviderId)]);
+		const nextDraft =
+			draftsByProvider.current[nextProviderId] ??
+			createRagProviderDraft(nextProviderId, loadedConfig.config, runtime);
+		draftsByProvider.current[nextProviderId] = nextDraft;
+		setValue('providerId', nextProviderId, { shouldDirty: true });
+		setValue('tokenId', nextDraft.tokenId, { shouldDirty: true });
+		setValue('modelId', nextDraft.modelId, { shouldDirty: true });
+		setValue('config', nextDraft.config, { shouldDirty: true });
+		if (nextDraft.tokenId) await loadModelsFx({ providerId: nextProviderId, tokenId: nextDraft.tokenId });
 	};
 
-	const applyModelDraft = () => {
-		const next = modelDraft.trim();
-		ragProviderModel.ragModelSelected(next.length > 0 ? next : null);
+	const changeToken = async (nextTokenId: string | null) => {
+		setValue('tokenId', nextTokenId, { shouldDirty: true });
+		if (nextTokenId) await loadModelsFx({ providerId, tokenId: nextTokenId });
 	};
 
-	const createPreset = async () => {
-		const name = askValue(t('rag.presets.actions.createPrompt'), t('rag.presets.defaults.newPresetName'));
-		if (!name) return;
-		try {
-			await ragProviderModel.createPresetFx({ name, payload: buildPayload() });
-		} catch (error) {
-			toaster.error({ title: t('provider.presets.toasts.failed'), description: error instanceof Error ? error.message : String(error) });
+	const changeModel = async (nextModelId: string | null) => {
+		setValue('modelId', nextModelId, { shouldDirty: true });
+	};
+
+	const refreshModels = async () => {
+		if (!tokenId) return;
+		const result = await loadModelsFx({ providerId, tokenId });
+		if (result.models.length === 0) toaster.warning({ title: t('rag.toasts.modelsEmpty') });
+	};
+
+	const validate = (draft: RagProviderDraft) =>
+		Boolean(
+			draft.modelId?.trim() &&
+				(draft.providerId !== 'openrouter' || draft.tokenId) &&
+				(draft.providerId !== 'ollama' || String(draft.config.baseUrl ?? '').trim()),
+		);
+
+	const save = async () => {
+		const draft = getValues();
+		if (!validate(draft)) {
+			toaster.error({ title: t('rag.toasts.incompleteConnection') });
+			return;
 		}
-	};
-
-	const renamePreset = async () => {
-		if (!activePreset) return;
-		const name = askValue(t('rag.presets.actions.renamePrompt'), activePreset.name);
-		if (!name) return;
 		try {
-			await ragProviderModel.updatePresetFx({ ...activePreset, name });
-		} catch (error) {
-			toaster.error({ title: t('provider.presets.toasts.failed'), description: error instanceof Error ? error.message : String(error) });
-		}
-	};
-
-	const duplicatePreset = async () => {
-		if (!activePreset) return;
-		try {
-			await ragProviderModel.createPresetFx({ name: `${activePreset.name} copy`, payload: activePreset.payload });
-		} catch (error) {
-			toaster.error({ title: t('provider.presets.toasts.failed'), description: error instanceof Error ? error.message : String(error) });
-		}
-	};
-
-	const deletePreset = async () => {
-		if (!activePreset) return;
-		if (!window.confirm(t('rag.presets.confirm.delete'))) return;
-		try {
-			await ragProviderModel.deletePresetFx(activePreset.id);
-		} catch (error) {
-			toaster.error({ title: t('provider.presets.toasts.failed'), description: error instanceof Error ? error.message : String(error) });
-		}
-	};
-
-	const savePreset = async () => {
-		if (!activePreset) return;
-		try {
-			await ragProviderModel.updatePresetFx({
-				...activePreset,
-				payload: buildPayload(),
+			const payload = buildPayload(draft);
+			await saveConnectionFx({
+				providerId: draft.providerId,
+				tokenId: draft.tokenId,
+				model: draft.modelId,
+				config: draft.config,
+				preset: activePreset
+					? { ...activePreset, payload, updatedAt: new Date().toISOString() }
+					: undefined,
 			});
-			toaster.success({ title: t('provider.presets.toasts.saved'), description: activePreset.name });
+			draftsByProvider.current[draft.providerId] = draft;
+			reset(draft);
+			toaster.success({ title: t('rag.toasts.connectionSaved') });
 		} catch (error) {
-			toaster.error({ title: t('provider.presets.toasts.failed'), description: error instanceof Error ? error.message : String(error) });
+			toaster.error({
+				title: t('rag.toasts.connectionSaveFailed'),
+				description: error instanceof Error ? error.message : String(error),
+			});
 		}
+	};
+
+	const checkConnection = async () => {
+		try {
+			setConnectionResult(await checkConnectionFx({ providerId, tokenId, config }));
+		} catch (error) {
+			toaster.error({
+				title: t('rag.toasts.connectionCheckFailed'),
+				description: error instanceof Error ? error.message : String(error),
+			});
+		}
+	};
+
+	const resetChanges = () => {
+		if (!runtime) return;
+		const draft = createRagProviderDraft(runtime.activeProviderId, configs[runtime.activeProviderId], runtime);
+		draftsByProvider.current = { [runtime.activeProviderId]: draft };
+		reset(draft);
+	};
+
+	const selectPreset = async (id: string, options?: { skipUnsavedConfirm?: boolean }) => {
+		if (id === presetSettings?.selectedId) return;
+		if (formState.isDirty && !options?.skipUnsavedConfirm && !window.confirm(t('rag.presets.confirm.discardChanges')))
+			return;
+		const result = await applyPresetFx(id);
+		if (result.preset) toaster.success({ title: t('rag.presets.toasts.applied') });
 	};
 
 	return (
-		<Stack gap="md">
-			<PresetControls
-				labels={{
-					title: t('rag.presets.title'),
-					active: t('rag.presets.active'),
-					create: t('rag.presets.actions.create'),
-					rename: t('rag.presets.actions.rename'),
-					duplicate: t('rag.presets.actions.duplicate'),
-					save: t('rag.presets.actions.save'),
-					delete: t('rag.presets.actions.delete'),
-				}}
-				options={presetOptions}
-				value={activePresetId}
-				onChange={(value) => {
-					if (value === activePresetId) return;
-					if (hasUnsavedChanges && !window.confirm(t('rag.presets.confirm.discardChanges'))) {
-						return;
-					}
-					ragProviderModel.ragPresetSelected(value ?? null);
-				}}
-				onCreate={() => void createPreset()}
-				onRename={() => void renamePreset()}
-				onDuplicate={() => void duplicatePreset()}
-				onSave={() => void savePreset()}
-				onDelete={() => void deletePreset()}
-				disableRename={!activePreset}
-				disableDuplicate={!activePreset}
-				disableSave={!activePreset || !hasUnsavedChanges}
-				disableDelete={!activePreset}
-			/>
-
-			<Divider />
-
-			<Input.Wrapper label={t('rag.providerLabel')}>
-				<Select
-					data={providerOptions}
-					value={activeProviderId}
-					onChange={(value) => ragProviderModel.ragProviderSelected((value ?? 'openrouter') as RagProviderId)}
-					allowDeselect={false}
-					comboboxProps={{ withinPortal: false }}
+		<FormProvider {...form}>
+			<Stack gap="lg">
+				<RagPresetManager
+					presets={presets}
+					settings={presetSettings}
+					hasUnsavedChanges={formState.isDirty}
+					buildPayload={() => buildPayload()}
+					onCreate={createPresetFx}
+					onUpdate={updatePresetFx}
+					onDelete={deletePresetFx}
+					onSelect={selectPreset}
+					onSaveCurrent={save}
 				/>
-			</Input.Wrapper>
-
-			{activeProviderId === 'openrouter' && (
-				<Input.Wrapper label={t('rag.tokens.title')}>
-					<Select
-						data={tokenOptions}
-						value={runtime?.activeTokenId ?? null}
-						onChange={(value) => ragProviderModel.ragTokenSelected(value ?? null)}
-						comboboxProps={{ withinPortal: false }}
-						clearable
-					/>
-				</Input.Wrapper>
-			)}
-
-			<Stack gap="xs">
-				<Group justify="space-between">
-					<Text fw={600}>{t('rag.model.manual')}</Text>
-					<Button size="xs" variant="outline" onClick={() => ragProviderModel.ragModelsRefreshRequested()} disabled={!canLoadModels}>
-						{t('provider.model.load')}
-					</Button>
-				</Group>
-				<Select
-					data={modelOptions}
-					value={runtime?.activeModel ?? null}
-					onChange={(value) => {
-						setModelDraft(value ?? '');
-						ragProviderModel.ragModelSelected(value ?? null);
+				<Divider />
+				<RagConnectionEditor
+					providers={providers}
+					providerId={providerId}
+					tokens={tokens}
+					tokenId={tokenId}
+					models={models}
+					modelId={modelId}
+					config={config}
+					isLoadingModels={isLoadingModels}
+					isChecking={isChecking}
+					onProviderChange={changeProvider}
+					onTokenChange={changeToken}
+					onModelChange={changeModel}
+					onConfigChange={(next) => setValue('config', next, { shouldDirty: true })}
+					onRefreshModels={refreshModels}
+					onRefreshTokens={async () => {
+						await loadTokensFx(providerId);
 					}}
-					placeholder={canLoadModels ? t('provider.placeholders.selectModel') : t('provider.placeholders.selectTokenFirst')}
-					disabled={!canLoadModels}
-					clearable
-					searchable
-					comboboxProps={{ withinPortal: false }}
+					onCheckConnection={checkConnection}
 				/>
-				<Group align="flex-end" wrap="nowrap">
-					<TextInput
-						label={t('rag.model.manual')}
-						value={modelDraft}
-						onChange={(event) => setModelDraft(event.currentTarget.value)}
-						onBlur={applyModelDraft}
-						placeholder={t('rag.model.manualPlaceholder')}
-						style={{ flex: 1 }}
+				<LlmDisclosureSection title={t('rag.config.advancedTitle')}>
+					<RagProviderAdvancedConfig
+						providerId={providerId}
+						config={config}
+						onChange={(next) => setValue('config', next, { shouldDirty: true })}
 					/>
-					<Button size="xs" variant="light" onClick={applyModelDraft}>
-						{t('provider.model.applyManual')}
+				</LlmDisclosureSection>
+				{connectionResult ? (
+					<Alert color={connectionResult.ok ? 'green' : 'red'} title={t(connectionResult.ok ? 'rag.connection.success' : 'rag.connection.error')}>
+						<Text size="sm">{connectionResult.message}</Text>
+					</Alert>
+				) : null}
+				<Divider />
+				<Group justify="space-between" wrap="wrap">
+					<Button variant="subtle" leftSection={<LuRotateCcw />} disabled={!formState.isDirty} onClick={resetChanges}>
+						{t('rag.actions.reset')}
+					</Button>
+					<Button loading={isSaving} disabled={!formState.isDirty || !validate(getValues())} onClick={() => void save()}>
+						{t('rag.actions.saveChanges')}
 					</Button>
 				</Group>
 			</Stack>
-
-			<Text fw={600}>{t('rag.config.title')}</Text>
-
-			{activeProvider?.configFields.map((field) => {
-				if (field.type === 'select') {
-					return (
-						<Select
-							key={field.key}
-							label={field.label}
-							data={field.options ?? []}
-							value={typeof configDraft[field.key] === 'string' ? (configDraft[field.key] as string) : null}
-							onChange={(value) => {
-								setConfigDraft((prev) => ({ ...prev, [field.key]: value ?? undefined }));
-								ragProviderModel.ragConfigPatched({ providerId: activeProviderId, config: { [field.key]: value ?? undefined } });
-							}}
-							comboboxProps={{ withinPortal: false }}
-						/>
-					);
-				}
-
-				if (field.key === 'truncate') {
-					return (
-						<Switch
-							key={field.key}
-							label={field.label}
-							checked={Boolean(configDraft[field.key])}
-							onChange={(event) => {
-								const checked = event.currentTarget.checked;
-								setConfigDraft((prev) => ({ ...prev, [field.key]: checked }));
-								ragProviderModel.ragConfigPatched({ providerId: activeProviderId, config: { [field.key]: checked } });
-							}}
-						/>
-					);
-				}
-
-				const currentValue = configDraft[field.key];
-				const inputValue = typeof currentValue === 'number' ? String(currentValue) : (currentValue as string | undefined) ?? '';
-
-				return (
-					<TextInput
-						key={field.key}
-						label={field.label}
-						type={field.type === 'number' ? 'number' : 'text'}
-						value={inputValue}
-						placeholder={field.placeholder}
-						onChange={(event) => {
-							const value = event.currentTarget.value;
-							setConfigDraft((prev) => ({ ...prev, [field.key]: value }));
-						}}
-						onBlur={(event) => {
-							const rawValue = event.currentTarget.value;
-							if (field.type === 'number') {
-								const normalized = rawValue.trim();
-								if (normalized.length === 0) {
-									setConfigDraft((prev) => ({ ...prev, [field.key]: undefined }));
-									ragProviderModel.ragConfigPatched({ providerId: activeProviderId, config: { [field.key]: undefined } });
-									return;
-								}
-								const parsed = Number(normalized);
-								if (!Number.isFinite(parsed) || parsed <= 0) {
-									return;
-								}
-								setConfigDraft((prev) => ({ ...prev, [field.key]: parsed }));
-								ragProviderModel.ragConfigPatched({ providerId: activeProviderId, config: { [field.key]: parsed } });
-								return;
-							}
-
-							const nextValue = rawValue.trim().length > 0 ? rawValue : undefined;
-							setConfigDraft((prev) => ({ ...prev, [field.key]: nextValue }));
-							ragProviderModel.ragConfigPatched({ providerId: activeProviderId, config: { [field.key]: nextValue } });
-						}}
-					/>
-				);
-			})}
-		</Stack>
+		</FormProvider>
 	);
 };

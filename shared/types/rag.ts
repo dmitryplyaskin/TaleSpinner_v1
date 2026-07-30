@@ -39,6 +39,25 @@ export type RagRuntime = {
   activeTokenHint: string | null;
 };
 
+export type RagProviderConnectionIssueCode =
+  | 'TOKEN_MISSING'
+  | 'TOKEN_NOT_FOUND'
+  | 'AUTH_ERROR'
+  | 'ENDPOINT_NOT_FOUND'
+  | 'NETWORK_ERROR'
+  | 'PROVIDER_ERROR'
+  | null;
+
+export type RagProviderConnectionCheckResult = {
+  ok: boolean;
+  providerId: RagProviderId;
+  issueCode: RagProviderConnectionIssueCode;
+  message: string;
+  checkedUrl: string;
+  statusCode: number | null;
+  modelCount: number;
+};
+
 export type RagPresetPayload = {
   activeProviderId: RagProviderId;
   activeTokenId: string | null;

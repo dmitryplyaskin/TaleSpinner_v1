@@ -20,6 +20,7 @@ import ragRoutes from "./rag.api";
 import samplersRoutes from "./samplers.api";
 import settingsRoutes from "./settings.api";
 import sidebarsRoutes from "./sidebars.api";
+import sillytavernImportRoutes from "./sillytavern-import.api";
 import uiThemeCoreRoutes from "./ui-theme.core.api";
 import userPersonsCoreRoutes from "./user-persons.core.api";
 import worldInfoCoreRoutes from "./world-info.core.api";
@@ -43,6 +44,7 @@ export const routes = [
   appBackgroundsRoutes,
   generateRoutes,
   sidebarsRoutes,
+  sillytavernImportRoutes,
   ragRoutes,
   ragChromaRoutes,
   llmPresetsRoutes,

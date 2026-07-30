@@ -3,7 +3,13 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { configureLlmOpenAiCompatible, createEntityProfileAndChat } from "./helpers/fixtures";
-import { collectSse, requestForm, requestJson, type SseEvent } from "./helpers/http";
+import {
+  collectSse,
+  getTestAuthHeaders,
+  requestForm,
+  requestJson,
+  type SseEvent,
+} from "./helpers/http";
 import { startMockAiServer, type RunningMockAiServer } from "./helpers/mock-ai-server";
 import { startInProcessServer, type RunningServer } from "./helpers/test-server";
 import { createTempDataDir, removeTempDataDir } from "./helpers/tmp-dir";
@@ -403,7 +409,13 @@ describe("backend e2e full matrix", () => {
     expect(uploadRes.status).toBe(200);
     const uploadedFilename = uploadRes.data.data.files[0]?.filename;
     expect(uploadedFilename).toBeTruthy();
-    expect((await fetch(`${baseUrl}/api/files/${uploadedFilename}`)).status).toBe(200);
+    expect(
+      (
+        await fetch(`${baseUrl}/api/files/${uploadedFilename}`, {
+          headers: getTestAuthHeaders(baseUrl),
+        })
+      ).status
+    ).toBe(200);
     expect((await requestJson({ baseUrl, method: "DELETE", path: `/api/files/${uploadedFilename}` })).status).toBe(200);
 
     expect((await requestJson({ baseUrl, method: "GET", path: "/api/models" })).status).toBe(200);

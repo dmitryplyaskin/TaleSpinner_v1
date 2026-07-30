@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { resolveSafePath } from "@core/files/safe-path";
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 
 import { initDb } from "../../db/client";
 import { uiAppBackgrounds, uiAppSettings } from "../../db/schema";
@@ -20,8 +21,9 @@ import type {
   AppBackgroundCatalog,
 } from "@shared/types/app-background";
 
-const SETTINGS_ROW_ID = "global";
-const APP_BACKGROUNDS_FOLDER = createDataPath("media", "images", "app-backgrounds");
+function getAppBackgroundsFolder(): string {
+  return createDataPath("media", "images", "app-backgrounds");
+}
 
 type AppBackgroundRow = typeof uiAppBackgrounds.$inferSelect;
 
@@ -30,7 +32,10 @@ function rowToAsset(row: AppBackgroundRow): AppBackgroundAsset {
     id: row.id,
     name: row.name,
     source: "uploaded",
-    imageUrl: `/media/images/app-backgrounds/${encodeURIComponent(row.fileName)}`,
+    imageUrl: `/media/images/app-backgrounds/${row.fileName
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`,
     deletable: true,
   };
 }
@@ -40,13 +45,28 @@ function resolveUploadedBackgroundName(originalName: string): string {
   return baseName.length > 0 ? baseName : "Imported background";
 }
 
+function resolveBackgroundFilePath(fileName: string, ownerId: string): string {
+  const segments = fileName.split("/").filter(Boolean);
+  if (segments.length === 1 && ownerId === "global") {
+    return resolveSafePath(getAppBackgroundsFolder(), segments[0]);
+  }
+  if (segments.length !== 2 || segments[0] !== ownerId) {
+    throw new HttpError(404, "App background not found", "NOT_FOUND");
+  }
+  const ownerFolder = resolveSafePath(getAppBackgroundsFolder(), ownerId);
+  return resolveSafePath(ownerFolder, segments[1]);
+}
+
 async function ensureSettingsRow(): Promise<void> {
   await getAppSettings();
 }
 
 async function listUploadedBackgrounds(): Promise<AppBackgroundAsset[]> {
   const db = await initDb();
-  const rows = await db.select().from(uiAppBackgrounds);
+  const rows = await db
+    .select()
+    .from(uiAppBackgrounds)
+    .where(eq(uiAppBackgrounds.ownerId, resolveTrustedOwnerId()));
   return rows.map(rowToAsset);
 }
 
@@ -56,7 +76,7 @@ async function readStoredActiveBackgroundId(): Promise<string | null> {
   const rows = await db
     .select({ activeAppBackgroundId: uiAppSettings.activeAppBackgroundId })
     .from(uiAppSettings)
-    .where(eq(uiAppSettings.id, SETTINGS_ROW_ID))
+    .where(eq(uiAppSettings.id, resolveTrustedOwnerId()))
     .limit(1);
   return rows[0]?.activeAppBackgroundId ?? null;
 }
@@ -70,7 +90,7 @@ async function persistActiveBackgroundId(activeBackgroundId: string | null): Pro
       activeAppBackgroundId: activeBackgroundId,
       updatedAt: new Date(),
     })
-    .where(eq(uiAppSettings.id, SETTINGS_ROW_ID));
+    .where(eq(uiAppSettings.id, resolveTrustedOwnerId()));
 }
 
 export function mergeAppBackgroundAssets(
@@ -140,11 +160,14 @@ export async function importAppBackground(params: {
   fileBuffer: Buffer;
   originalName: string;
 }): Promise<AppBackgroundAsset> {
-  await fs.mkdir(APP_BACKGROUNDS_FOLDER, { recursive: true });
+  const ownerId = resolveTrustedOwnerId();
+  const ownerFolder = resolveSafePath(getAppBackgroundsFolder(), ownerId);
+  await fs.mkdir(ownerFolder, { recursive: true });
 
   const extension = path.extname(params.originalName).toLowerCase();
-  const filename = `${randomUUID()}${extension}`;
-  const filePath = resolveSafePath(APP_BACKGROUNDS_FOLDER, filename);
+  const storedFileName = `${randomUUID()}${extension}`;
+  const filename = `${ownerId}/${storedFileName}`;
+  const filePath = resolveSafePath(ownerFolder, storedFileName);
   await fs.writeFile(filePath, params.fileBuffer);
 
   const now = new Date();
@@ -152,6 +175,7 @@ export async function importAppBackground(params: {
   const db = await initDb();
   await db.insert(uiAppBackgrounds).values({
     id,
+    ownerId,
     name: resolveUploadedBackgroundName(params.originalName),
     fileName: filename,
     createdAt: now,
@@ -160,6 +184,7 @@ export async function importAppBackground(params: {
 
   return rowToAsset({
     id,
+    ownerId,
     name: resolveUploadedBackgroundName(params.originalName),
     fileName: filename,
     createdAt: now,
@@ -178,15 +203,27 @@ export async function deleteAppBackground(params: {
   const rows = await db
     .select()
     .from(uiAppBackgrounds)
-    .where(eq(uiAppBackgrounds.id, params.id))
+    .where(
+      and(
+        eq(uiAppBackgrounds.id, params.id),
+        eq(uiAppBackgrounds.ownerId, resolveTrustedOwnerId())
+      )
+    )
     .limit(1);
   const row = rows[0];
   if (!row) {
     throw new HttpError(404, "App background not found", "NOT_FOUND");
   }
 
-  await db.delete(uiAppBackgrounds).where(eq(uiAppBackgrounds.id, params.id));
-  await fs.rm(resolveSafePath(APP_BACKGROUNDS_FOLDER, row.fileName), {
+  await db
+    .delete(uiAppBackgrounds)
+    .where(
+      and(
+        eq(uiAppBackgrounds.id, params.id),
+        eq(uiAppBackgrounds.ownerId, resolveTrustedOwnerId())
+      )
+    );
+  await fs.rm(resolveBackgroundFilePath(row.fileName, resolveTrustedOwnerId()), {
     force: true,
   });
 

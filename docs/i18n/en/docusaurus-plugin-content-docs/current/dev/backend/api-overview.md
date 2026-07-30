@@ -22,6 +22,26 @@ app.use('/api', routes)
 
 Therefore `/chats/:id` in router files becomes `/api/chats/:id`.
 
+## Network boundary
+
+By default, the backend binds only to `127.0.0.1`. `TALESPINNER_HOST` is ignored
+until LAN mode is explicitly enabled:
+
+```bash
+TALESPINNER_LAN_MODE=true
+TALESPINNER_HOST=0.0.0.0
+TALESPINNER_CORS_ORIGINS=http://192.168.1.20:5173
+```
+
+`TALESPINNER_CORS_ORIGINS` is a comma-separated origin allowlist. Without this
+setting, only the development origins `http://localhost:5173` and
+`http://127.0.0.1:5173` are allowed; requests without an `Origin` header remain
+available to local native clients. Requests from other origins receive `403`.
+
+LAN mode exposes the API to other devices on the network. The current local model
+does not provide full authentication, so enable it only on a trusted network and
+protect the port with the system firewall.
+
 ## Main API groups
 
 - chats / branches

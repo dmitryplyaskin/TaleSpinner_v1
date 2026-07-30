@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 import {
   type BaseConfig,
   type Logger,
@@ -11,11 +12,15 @@ import { createDataPath } from "../../utils";
 
 export abstract class ConfigService<T extends BaseConfig> {
   protected readonly configPath: string;
+  private readonly configDir: string;
+  private readonly fileName: string;
   protected readonly logger?: Logger;
   private readonly ready: Promise<void>;
 
   constructor(fileName: string, options?: ServiceOptions) {
     const configDir = options?.dataDir || createDataPath("config");
+    this.configDir = configDir;
+    this.fileName = fileName;
     this.configPath = path.join(configDir, fileName);
     this.logger = options?.logger;
     this.ready = this.ensureConfigDirectory();
@@ -32,6 +37,21 @@ export abstract class ConfigService<T extends BaseConfig> {
 
   protected async ensureReady(): Promise<void> {
     await this.ready;
+    await fs.mkdir(path.dirname(this.getOwnerConfigPath()), {
+      recursive: true,
+    });
+  }
+
+  private getOwnerConfigPath(): string {
+    const ownerId = resolveTrustedOwnerId();
+    return ownerId === "global"
+      ? this.configPath
+      : path.join(
+          this.configDir,
+          "owners",
+          encodeURIComponent(ownerId),
+          this.fileName
+        );
   }
 
   protected abstract getDefaultConfig(): T;
@@ -39,7 +59,7 @@ export abstract class ConfigService<T extends BaseConfig> {
   async getConfig(): Promise<T> {
     await this.ensureReady();
     try {
-      const content = await fs.readFile(this.configPath, "utf8");
+      const content = await fs.readFile(this.getOwnerConfigPath(), "utf8");
       return JSON.parse(content);
     } catch {
       const defaultConfig = this.getDefaultConfig();
@@ -51,7 +71,10 @@ export abstract class ConfigService<T extends BaseConfig> {
   async saveConfig(config: T): Promise<T> {
     await this.ensureReady();
     try {
-      await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
+      await fs.writeFile(
+        this.getOwnerConfigPath(),
+        JSON.stringify(config, null, 2)
+      );
       return config;
     } catch (error) {
       this.logger?.error("Failed to save config", { error });

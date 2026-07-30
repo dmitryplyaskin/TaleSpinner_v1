@@ -259,6 +259,16 @@ export type TurnUserCanonicalizationRecord = {
   committedAt: string;
 };
 
+export type TurnAssistantCanonicalizationRecord = {
+  hook: OperationHook;
+  opId: string;
+  assistantEntryId: string;
+  assistantMainPartId: string;
+  beforeText: string;
+  afterText: string;
+  committedAt: string;
+};
+
 export type PhaseReport = {
   phase:
     | "prepare_run_context"
@@ -315,6 +325,17 @@ export type RunDebugStateSnapshotStage =
   | "post_commit_after";
 
 export type RunEvent =
+  | {
+      runId: string;
+      seq: number;
+      type: "run.preparation_failed";
+      data: {
+        generationId: null;
+        status: "error";
+        code: "generation_preparation_error";
+        message: string;
+      };
+    }
   | {
       runId: string;
       seq: number;
@@ -442,6 +463,12 @@ export type RunEvent =
           supportsCurrentTrigger: boolean;
         }>;
       };
+    }
+  | {
+      runId: string;
+      seq: number;
+      type: "turn.assistant.canonicalized";
+      data: TurnAssistantCanonicalizationRecord;
     }
   | {
       runId: string;

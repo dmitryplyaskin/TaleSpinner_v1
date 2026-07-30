@@ -1,10 +1,10 @@
-import { Button, Group, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Badge, Button, Group, Popover, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuPlus, LuSearch } from 'react-icons/lu';
+import { LuPlus, LuSearch, LuSlidersHorizontal } from 'react-icons/lu';
 
 import { isOperationKind } from '../utils/operation-kind';
 
@@ -151,6 +151,7 @@ export const OperationList: React.FC<Props> = ({
 		if (!selectedOpId) return -1;
 		return filteredRows.findIndex((row) => row.opId === selectedOpId);
 	}, [filteredRows, selectedOpId]);
+	const activeFilterCount = [filters.kind, filters.enabled, filters.required].filter((value) => value !== 'all').length;
 
 	useEffect(() => {
 		if (!shouldVirtualize) return;
@@ -195,65 +196,60 @@ export const OperationList: React.FC<Props> = ({
 				</Group>
 			</div>
 
-			<TextInput
-				value={filters.query}
-				onChange={(event) => setFilters((prev) => ({ ...prev, query: event.currentTarget.value }))}
-				placeholder={t('operationProfiles.filters.searchPlaceholder')}
-				leftSection={<LuSearch />}
-				aria-label={t('operationProfiles.filters.searchAria')}
-			/>
-
-			<Group grow wrap="wrap">
-				<Select
-					data={kindOptions}
-					value={filters.kind}
-					onChange={(next) =>
-						setFilters((prev) => ({
-							...prev,
-							kind: next === 'all' || next === null ? 'all' : (next as OperationFilterState['kind']),
-						}))
-					}
-					comboboxProps={{ withinPortal: false }}
-					aria-label={t('operationProfiles.filters.byKindAria')}
+			<Group gap="xs" wrap="nowrap">
+				<TextInput
+					value={filters.query}
+					onChange={(event) => setFilters((prev) => ({ ...prev, query: event.currentTarget.value }))}
+					placeholder={t('operationProfiles.filters.searchPlaceholder')}
+					leftSection={<LuSearch />}
+					aria-label={t('operationProfiles.filters.searchAria')}
+					style={{ flex: 1 }}
 				/>
-				<Select
-					data={[
-						{ value: 'all', label: t('operationProfiles.filters.allStates') },
-						{ value: 'enabled', label: t('operationProfiles.filters.enabledOnly') },
-						{ value: 'disabled', label: t('operationProfiles.filters.disabledOnly') },
-					]}
-					value={filters.enabled}
-					onChange={(next) =>
-						setFilters((prev) => ({
-							...prev,
-							enabled:
-								next === 'enabled' || next === 'disabled' || next === 'all'
-									? next
-									: DEFAULT_FILTERS.enabled,
-						}))
-					}
-					comboboxProps={{ withinPortal: false }}
-					aria-label={t('operationProfiles.filters.byEnabledAria')}
-				/>
-				<Select
-					data={[
-						{ value: 'all', label: t('operationProfiles.filters.allRequiredStates') },
-						{ value: 'required', label: t('operationProfiles.filters.requiredOnly') },
-						{ value: 'optional', label: t('operationProfiles.filters.optionalOnly') },
-					]}
-					value={filters.required}
-					onChange={(next) =>
-						setFilters((prev) => ({
-							...prev,
-							required:
-								next === 'required' || next === 'optional' || next === 'all'
-									? next
-									: DEFAULT_FILTERS.required,
-						}))
-					}
-					comboboxProps={{ withinPortal: false }}
-					aria-label={t('operationProfiles.filters.byRequiredAria')}
-				/>
+				<Popover width={280} position="bottom-end" shadow="md" withinPortal={false}>
+					<Popover.Target>
+						<Button
+							variant="default"
+							px="sm"
+							leftSection={<LuSlidersHorizontal />}
+							rightSection={activeFilterCount > 0 ? <Badge size="xs">{activeFilterCount}</Badge> : undefined}
+						>
+							{t('operationProfiles.filters.title')}
+						</Button>
+					</Popover.Target>
+					<Popover.Dropdown>
+						<Stack gap="xs">
+							<Select
+								label={t('operationProfiles.filters.kindLabel')}
+								data={kindOptions}
+								value={filters.kind}
+								onChange={(next) => setFilters((prev) => ({ ...prev, kind: next === 'all' || next === null ? 'all' : (next as OperationFilterState['kind']) }))}
+								comboboxProps={{ withinPortal: false }}
+							/>
+							<Select
+								label={t('operationProfiles.filters.stateLabel')}
+								data={[
+									{ value: 'all', label: t('operationProfiles.filters.allStates') },
+									{ value: 'enabled', label: t('operationProfiles.filters.enabledOnly') },
+									{ value: 'disabled', label: t('operationProfiles.filters.disabledOnly') },
+								]}
+								value={filters.enabled}
+								onChange={(next) => setFilters((prev) => ({ ...prev, enabled: next === 'enabled' || next === 'disabled' || next === 'all' ? next : DEFAULT_FILTERS.enabled }))}
+								comboboxProps={{ withinPortal: false }}
+							/>
+							<Select
+								label={t('operationProfiles.filters.requirementLabel')}
+								data={[
+									{ value: 'all', label: t('operationProfiles.filters.allRequiredStates') },
+									{ value: 'required', label: t('operationProfiles.filters.requiredOnly') },
+									{ value: 'optional', label: t('operationProfiles.filters.optionalOnly') },
+								]}
+								value={filters.required}
+								onChange={(next) => setFilters((prev) => ({ ...prev, required: next === 'required' || next === 'optional' || next === 'all' ? next : DEFAULT_FILTERS.required }))}
+								comboboxProps={{ withinPortal: false }}
+							/>
+						</Stack>
+					</Popover.Dropdown>
+				</Popover>
 			</Group>
 
 			<div ref={scrollRef} className={scrollAreaClassName}>

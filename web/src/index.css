@@ -735,6 +735,12 @@ a {
     padding: 8px 6px;
   }
 
+  .ts-sidebar-container--drawer {
+    width: 100% !important;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+
   .ts-rail-button-wrap[data-active='true']::before {
     left: -6px;
   }

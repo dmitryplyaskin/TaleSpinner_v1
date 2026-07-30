@@ -17,6 +17,7 @@ import { getRequestOwnerId } from "../core/request-context/request-context";
 import {
   listChatsByEntityProfile,
 } from "../services/chat-core/chats-repository";
+import { resolveEntityProfileMediaPath } from "../services/chat-core/entity-profile-media";
 import {
   createEntityProfile,
   deleteEntityProfile,
@@ -24,7 +25,6 @@ import {
   listEntityProfiles,
   updateEntityProfile,
 } from "../services/chat-core/entity-profiles-repository";
-import { createDataPath } from "../utils";
 
 const router = express.Router();
 
@@ -111,15 +111,8 @@ function injectChunkBeforeIEND(basePng: Buffer, chunk: Buffer): Buffer {
   return Buffer.concat([basePng, chunk]);
 }
 
-function toProfileMediaPath(avatarAssetId: string | null): string | null {
-  if (!avatarAssetId) return null;
-  if (!avatarAssetId.startsWith("/media/")) return null;
-  return createDataPath(avatarAssetId.replace(/^\/media\//, "media/"));
-}
-
 async function buildCharSpecPngBuffer(profile: { name: string; spec: unknown; avatarAssetId: string | null }): Promise<Buffer> {
-  const relPath = profile.avatarAssetId?.replace(/^\/media\//, "") ?? null;
-  const filePath = relPath ? createDataPath("media", relPath) : null;
+  const filePath = resolveEntityProfileMediaPath(profile.avatarAssetId);
 
   let basePng = Buffer.from(FALLBACK_PNG_BASE64, "base64");
   if (filePath) {
@@ -207,8 +200,8 @@ router.put(
     });
 
     // Best-effort cleanup when avatar is replaced/cleared (avoid orphaned files).
-    const beforePath = toProfileMediaPath(before?.avatarAssetId ?? null);
-    const afterPath = toProfileMediaPath(updated?.avatarAssetId ?? null);
+    const beforePath = resolveEntityProfileMediaPath(before?.avatarAssetId ?? null);
+    const afterPath = resolveEntityProfileMediaPath(updated?.avatarAssetId ?? null);
     if (beforePath && beforePath !== afterPath) {
       await fs.unlink(beforePath).catch(() => undefined);
     }
@@ -264,12 +257,8 @@ router.delete(
     await deleteEntityProfile(params.id);
 
     // Best-effort cleanup for imported avatars (avoid orphaned files).
-    const avatarPath = profile?.avatarAssetId ?? null;
-    if (avatarPath && avatarPath.startsWith("/media/images/entity-profiles/")) {
-      const rel = avatarPath.replace(/^\/media\//, ""); // -> images/entity-profiles/...
-      const filePath = createDataPath("media", rel);
-      await fs.unlink(filePath).catch(() => undefined);
-    }
+    const filePath = resolveEntityProfileMediaPath(profile?.avatarAssetId ?? null);
+    if (filePath) await fs.unlink(filePath).catch(() => undefined);
 
     return { data: { id: params.id } };
   })

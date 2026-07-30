@@ -1,7 +1,7 @@
 import { apiJson } from './api-json';
 
 import type { LlmTokenListItem } from '@shared/types/llm';
-import type { RagModel, RagPreset, RagPresetSettings, RagProviderConfig, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
+import type { RagModel, RagPreset, RagPresetSettings, RagProviderConfig, RagProviderConnectionCheckResult, RagProviderDefinition, RagProviderId, RagRuntime } from '@shared/types/rag';
 
 export async function getRagProviders(): Promise<RagProviderDefinition[]> {
   const data = await apiJson<{ providers: RagProviderDefinition[] }>('/rag/providers');
@@ -24,6 +24,17 @@ export async function patchRagProviderConfig(providerId: RagProviderId, config: 
   return apiJson<{ providerId: RagProviderId; config: RagProviderConfig }>(`/rag/providers/${encodeURIComponent(providerId)}/config`, {
     method: 'PATCH',
     body: JSON.stringify(config),
+  });
+}
+
+export async function checkRagProviderConnection(params: {
+  providerId: RagProviderId;
+  tokenId: string | null;
+  config: RagProviderConfig;
+}): Promise<RagProviderConnectionCheckResult> {
+  return apiJson<RagProviderConnectionCheckResult>(`/rag/providers/${encodeURIComponent(params.providerId)}/check`, {
+    method: 'POST',
+    body: JSON.stringify({ tokenId: params.tokenId, config: params.config }),
   });
 }
 

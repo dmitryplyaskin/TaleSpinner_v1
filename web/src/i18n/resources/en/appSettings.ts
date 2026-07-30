@@ -4,6 +4,7 @@
 				general: 'General',
 				theming: 'Theming',
 				backgrounds: 'Backgrounds',
+				sillytavern: 'SillyTavern',
 				debug: 'Debug',
 			},
 			sections: {
@@ -165,6 +166,34 @@
 					selectFailed: 'Failed to apply background',
 					deleteDone: 'Background deleted',
 					deleteFailed: 'Failed to delete background',
+				},
+			},
+			sillytavern: {
+				rootPath: 'SillyTavern root path',
+				scanTitle: 'Detected data',
+				resultTitle: 'Import result',
+				selectedCount: 'Selected: {{count}}',
+				totalCount: 'Total: {{count}}',
+				resultSummary: 'Created: {{created}}, skipped: {{skipped}}, failed: {{failed}}',
+				actions: {
+					scan: 'Scan',
+					importSelected: 'Import selected',
+				},
+				kinds: {
+					character: 'Cards ({{count}})',
+					persona: 'Personas ({{count}})',
+					world_info: 'Lorebooks ({{count}})',
+					instruction: 'ST presets ({{count}})',
+					sampler: 'Samplers ({{count}})',
+					chat: 'Chats ({{count}})',
+				},
+				kindLabels: {
+					character: 'Cards',
+					persona: 'Personas',
+					world_info: 'Lorebooks',
+					instruction: 'ST presets',
+					sampler: 'Samplers',
+					chat: 'Chats',
 				},
 			},
 			language: {

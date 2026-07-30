@@ -8,6 +8,7 @@ import {
   operationInProfileSchema,
   type ValidatedOperationBlockInput,
 } from "./operation-block-validator";
+import { OPERATION_RESOURCE_LIMITS } from "./operation-resource-limits";
 
 import type {
   OperationExecutionMode,
@@ -32,7 +33,7 @@ const upsertInputSchema: z.ZodType<OperationProfileUpsertInput> = z.object({
   enabled: z.boolean(),
   executionMode: executionModeSchema,
   operationProfileSessionId: uuidSchema,
-  blockRefs: z.array(blockRefSchema),
+  blockRefs: z.array(blockRefSchema).max(OPERATION_RESOURCE_LIMITS.blocksPerProfile),
   meta: z.unknown().optional(),
 });
 
@@ -93,7 +94,7 @@ const bundleProfileSchema: z.ZodType<OperationProfileBundleProfile> = z.object({
   enabled: z.boolean(),
   executionMode: executionModeSchema,
   operationProfileSessionId: uuidSchema,
-  blockRefs: z.array(blockRefSchema),
+  blockRefs: z.array(blockRefSchema).max(OPERATION_RESOURCE_LIMITS.blocksPerProfile),
   meta: z.unknown().optional(),
 });
 
@@ -106,9 +107,11 @@ const bundleImportSchema: z.ZodType<OperationProfileExportV2> = z.object({
     name: z.string(),
     description: z.string().optional(),
     enabled: z.boolean(),
-    operations: z.array(operationInProfileSchema),
+    operations: z
+      .array(operationInProfileSchema)
+      .max(OPERATION_RESOURCE_LIMITS.operationsPerBlock),
     meta: z.unknown().optional(),
-  })),
+  })).max(OPERATION_RESOURCE_LIMITS.blocksPerProfile),
 });
 
 const legacyImportSchema: z.ZodType<OperationProfileLegacyExportV1> = z.object({
@@ -118,7 +121,9 @@ const legacyImportSchema: z.ZodType<OperationProfileLegacyExportV1> = z.object({
   enabled: z.boolean(),
   executionMode: executionModeSchema,
   operationProfileSessionId: uuidSchema,
-  operations: z.array(operationInProfileSchema),
+  operations: z
+    .array(operationInProfileSchema)
+    .max(OPERATION_RESOURCE_LIMITS.operationsPerProfile),
   meta: z.unknown().optional(),
 });
 

@@ -3,11 +3,13 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, desc, eq, lt, ne } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import {
   chatBranches,
   chatMessages,
   chats,
+  entityProfiles,
   messageVariants,
   instructions,
 } from "../../db/schema";
@@ -137,7 +139,7 @@ export async function listChatsByEntityProfile(params: {
     .from(chats)
     .where(
       and(
-        eq(chats.ownerId, params.ownerId ?? "global"),
+        eq(chats.ownerId, resolveTrustedOwnerId(params.ownerId)),
         eq(chats.entityProfileId, params.entityProfileId),
         // Show non-deleted by default in list
         ne(chats.status, "deleted")
@@ -149,7 +151,12 @@ export async function listChatsByEntityProfile(params: {
 
 export async function getChatById(id: string): Promise<ChatDto | null> {
   const db = await initDb();
-  const rows = await db.select().from(chats).where(eq(chats.id, id));
+  const rows = await db
+    .select()
+    .from(chats)
+    .where(
+      and(eq(chats.id, id), eq(chats.ownerId, resolveTrustedOwnerId()))
+    );
   return rows[0] ? chatRowToDto(rows[0]) : null;
 }
 
@@ -160,12 +167,24 @@ export async function createChat(params: {
   meta?: unknown;
 }): Promise<{ chat: ChatDto; mainBranch: ChatBranchDto }> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
   const ts = new Date();
   const chatId = uuidv4();
   const mainBranchId = uuidv4();
 
   await db.transaction((tx) => {
+    const profile = tx
+      .select({ id: entityProfiles.id })
+      .from(entityProfiles)
+      .where(
+        and(
+          eq(entityProfiles.id, params.entityProfileId),
+          eq(entityProfiles.ownerId, ownerId)
+        )
+      )
+      .get();
+    if (!profile) throw new Error("EntityProfile не найден");
+
     const templateRows = tx
       .select({ id: instructions.id })
       .from(instructions)
@@ -234,7 +253,20 @@ export async function setChatInstruction(params: {
   instructionId: string | null;
 }): Promise<ChatDto | null> {
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  if (params.instructionId) {
+    const instruction = await db
+      .select({ id: instructions.id })
+      .from(instructions)
+      .where(
+        and(
+          eq(instructions.id, params.instructionId),
+          eq(instructions.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!instruction[0]) throw new Error("Instruction не найдена");
+  }
   const ts = new Date();
   await db
     .update(chats)
@@ -246,10 +278,11 @@ export async function setChatInstruction(params: {
 export async function softDeleteChat(id: string): Promise<ChatDto | null> {
   const db = await initDb();
   const ts = new Date();
+  const ownerId = resolveTrustedOwnerId();
   await db
     .update(chats)
     .set({ status: "deleted", updatedAt: ts, version: 0 })
-    .where(eq(chats.id, id));
+    .where(and(eq(chats.id, id), eq(chats.ownerId, ownerId)));
   return getChatById(id);
 }
 
@@ -259,10 +292,11 @@ export async function updateChatTitle(params: {
 }): Promise<ChatDto | null> {
   const db = await initDb();
   const ts = new Date();
+  const ownerId = resolveTrustedOwnerId();
   await db
     .update(chats)
     .set({ title: params.title, updatedAt: ts })
-    .where(eq(chats.id, params.chatId));
+    .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)));
   return getChatById(params.chatId);
 }
 
@@ -270,10 +304,16 @@ export async function listChatBranches(params: {
   chatId: string;
 }): Promise<ChatBranchDto[]> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await db
     .select()
     .from(chatBranches)
-    .where(eq(chatBranches.chatId, params.chatId))
+    .where(
+      and(
+        eq(chatBranches.chatId, params.chatId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
     .orderBy(desc(chatBranches.createdAt));
   return rows.map(branchRowToDto);
 }
@@ -288,10 +328,32 @@ export async function createChatBranch(params: {
   const db = await initDb();
   const ts = new Date();
   const id = uuidv4();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+
+  const chat = await db
+    .select({ id: chats.id })
+    .from(chats)
+    .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)))
+    .limit(1);
+  if (!chat[0]) throw new Error("Chat не найден");
+  if (params.parentBranchId) {
+    const parent = await db
+      .select({ id: chatBranches.id })
+      .from(chatBranches)
+      .where(
+        and(
+          eq(chatBranches.id, params.parentBranchId),
+          eq(chatBranches.chatId, params.chatId),
+          eq(chatBranches.ownerId, ownerId)
+        )
+      )
+      .limit(1);
+    if (!parent[0]) throw new Error("Parent branch не найден");
+  }
 
   await db.insert(chatBranches).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     chatId: params.chatId,
     title: params.title ?? null,
     createdAt: ts,
@@ -308,7 +370,7 @@ export async function createChatBranch(params: {
   const rows = await db
     .select()
     .from(chatBranches)
-    .where(eq(chatBranches.id, id));
+    .where(and(eq(chatBranches.id, id), eq(chatBranches.ownerId, ownerId)));
   if (!rows[0]) throw new Error("Не удалось создать ветку (внутренняя ошибка).");
 
   return branchRowToDto(rows[0]);
@@ -321,15 +383,28 @@ export async function updateChatBranchTitle(params: {
 }): Promise<ChatBranchDto | null> {
   const db = await initDb();
   const ts = new Date();
+  const ownerId = resolveTrustedOwnerId();
   await db
     .update(chatBranches)
     .set({ title: params.title, updatedAt: ts })
-    .where(and(eq(chatBranches.id, params.branchId), eq(chatBranches.chatId, params.chatId)));
+    .where(
+      and(
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.chatId, params.chatId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    );
 
   const rows = await db
     .select()
     .from(chatBranches)
-    .where(and(eq(chatBranches.id, params.branchId), eq(chatBranches.chatId, params.chatId)))
+    .where(
+      and(
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.chatId, params.chatId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
     .limit(1);
   return rows[0] ? branchRowToDto(rows[0]) : null;
 }
@@ -358,18 +433,35 @@ export async function deleteChatBranch(params: {
   const ts = new Date();
   const shouldSwitchActive = chat.activeBranchId === params.branchId;
 
-  await db.delete(chatBranches).where(eq(chatBranches.id, params.branchId));
+  await db
+    .delete(chatBranches)
+    .where(
+      and(
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.ownerId, resolveTrustedOwnerId())
+      )
+    );
 
   if (shouldSwitchActive) {
     await db
       .update(chats)
       .set({ activeBranchId: fallback.id, updatedAt: ts })
-      .where(eq(chats.id, params.chatId));
+      .where(
+        and(
+          eq(chats.id, params.chatId),
+          eq(chats.ownerId, resolveTrustedOwnerId())
+        )
+      );
   } else {
     await db
       .update(chats)
       .set({ updatedAt: ts })
-      .where(eq(chats.id, params.chatId));
+      .where(
+        and(
+          eq(chats.id, params.chatId),
+          eq(chats.ownerId, resolveTrustedOwnerId())
+        )
+      );
   }
 
   const updatedChat = await getChatById(params.chatId);
@@ -384,11 +476,24 @@ export async function activateBranch(params: {
 }): Promise<ChatDto | null> {
   const db = await initDb();
   const ts = new Date();
+  const ownerId = resolveTrustedOwnerId();
+  const branch = await db
+    .select({ id: chatBranches.id })
+    .from(chatBranches)
+    .where(
+      and(
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.chatId, params.chatId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!branch[0]) return null;
 
   await db
     .update(chats)
     .set({ activeBranchId: params.branchId, updatedAt: ts })
-    .where(eq(chats.id, params.chatId));
+    .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)));
 
   return getChatById(params.chatId);
 }
@@ -403,6 +508,7 @@ export async function listChatMessages(params: {
   const where = [
     eq(chatMessages.chatId, params.chatId),
     eq(chatMessages.branchId, params.branchId),
+    eq(chatMessages.ownerId, resolveTrustedOwnerId()),
   ];
   if (typeof params.before === "number") {
     where.push(lt(chatMessages.createdAt, new Date(params.before)));
@@ -435,10 +541,25 @@ export async function createChatMessage(params: {
   const db = await initDb();
   const ts = nowMonotonicDate();
   const id = uuidv4();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const branch = await db
+    .select({ id: chatBranches.id })
+    .from(chatBranches)
+    .innerJoin(chats, eq(chats.id, chatBranches.chatId))
+    .where(
+      and(
+        eq(chats.id, params.chatId),
+        eq(chats.ownerId, ownerId),
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!branch[0]) throw new Error("Chat branch не найден");
 
   await db.insert(chatMessages).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId,
     chatId: params.chatId,
     branchId: params.branchId,
     role: params.role,
@@ -461,12 +582,12 @@ export async function createChatMessage(params: {
       lastMessagePreview: buildPreview(params.promptText ?? ""),
       updatedAt: ts,
     })
-    .where(eq(chats.id, params.chatId));
+    .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)));
 
   const rows = await db
     .select()
     .from(chatMessages)
-    .where(eq(chatMessages.id, id));
+    .where(and(eq(chatMessages.id, id), eq(chatMessages.ownerId, ownerId)));
   if (!rows[0])
     throw new Error("Не удалось создать сообщение (внутренняя ошибка).");
   return messageRowToDto(rows[0]);
@@ -483,6 +604,21 @@ export async function createAssistantMessageWithVariant(params: {
 }> {
   const db = await initDb();
   const ts = nowMonotonicDate();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const branch = await db
+    .select({ id: chatBranches.id })
+    .from(chatBranches)
+    .innerJoin(chats, eq(chats.id, chatBranches.chatId))
+    .where(
+      and(
+        eq(chats.id, params.chatId),
+        eq(chats.ownerId, ownerId),
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!branch[0]) throw new Error("Chat branch не найден");
 
   const assistantMessageId = uuidv4();
   const variantId = uuidv4();
@@ -490,7 +626,7 @@ export async function createAssistantMessageWithVariant(params: {
   await db.transaction((tx) => {
     tx.insert(chatMessages).values({
       id: assistantMessageId,
-      ownerId: params.ownerId ?? "global",
+      ownerId,
       chatId: params.chatId,
       branchId: params.branchId,
       role: "assistant",
@@ -504,7 +640,7 @@ export async function createAssistantMessageWithVariant(params: {
 
     tx.insert(messageVariants).values({
       id: variantId,
-      ownerId: params.ownerId ?? "global",
+      ownerId,
       messageId: assistantMessageId,
       createdAt: ts,
       kind: "generation",
@@ -531,6 +667,21 @@ export async function createImportedAssistantMessage(params: {
 }> {
   const db = await initDb();
   const ts = nowMonotonicDate();
+  const ownerId = resolveTrustedOwnerId(params.ownerId);
+  const branch = await db
+    .select({ id: chatBranches.id })
+    .from(chatBranches)
+    .innerJoin(chats, eq(chats.id, chatBranches.chatId))
+    .where(
+      and(
+        eq(chats.id, params.chatId),
+        eq(chats.ownerId, ownerId),
+        eq(chatBranches.id, params.branchId),
+        eq(chatBranches.ownerId, ownerId)
+      )
+    )
+    .limit(1);
+  if (!branch[0]) throw new Error("Chat branch не найден");
 
   const assistantMessageId = uuidv4();
   const variantId = uuidv4();
@@ -539,7 +690,7 @@ export async function createImportedAssistantMessage(params: {
   await db.transaction((tx) => {
     tx.insert(chatMessages).values({
       id: assistantMessageId,
-      ownerId: params.ownerId ?? "global",
+      ownerId,
       chatId: params.chatId,
       branchId: params.branchId,
       role: "assistant",
@@ -556,7 +707,7 @@ export async function createImportedAssistantMessage(params: {
 
     tx.insert(messageVariants).values({
       id: variantId,
-      ownerId: params.ownerId ?? "global",
+      ownerId,
       messageId: assistantMessageId,
       createdAt: ts,
       kind: "import",
@@ -573,7 +724,7 @@ export async function createImportedAssistantMessage(params: {
         lastMessagePreview: buildPreview(text),
         updatedAt: ts,
       })
-      .where(eq(chats.id, params.chatId))
+      .where(and(eq(chats.id, params.chatId), eq(chats.ownerId, ownerId)))
       .run();
   });
 
@@ -586,15 +737,26 @@ export async function updateAssistantText(params: {
   text: string;
 }): Promise<void> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId();
   await db
     .update(messageVariants)
     .set({ promptText: params.text })
-    .where(eq(messageVariants.id, params.variantId));
+    .where(
+      and(
+        eq(messageVariants.id, params.variantId),
+        eq(messageVariants.ownerId, ownerId)
+      )
+    );
 
   await db
     .update(chatMessages)
     .set({ promptText: params.text, activeVariantId: params.variantId })
-    .where(eq(chatMessages.id, params.assistantMessageId));
+    .where(
+      and(
+        eq(chatMessages.id, params.assistantMessageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    );
 }
 
 export async function updateMessagePromptText(params: {
@@ -602,13 +764,19 @@ export async function updateMessagePromptText(params: {
   text: string;
 }): Promise<void> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId();
   const rows = await db
     .select({
       id: chatMessages.id,
       activeVariantId: chatMessages.activeVariantId,
     })
     .from(chatMessages)
-    .where(eq(chatMessages.id, params.messageId))
+    .where(
+      and(
+        eq(chatMessages.id, params.messageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    )
     .limit(1);
 
   const row = rows[0];
@@ -618,13 +786,23 @@ export async function updateMessagePromptText(params: {
     await db
       .update(messageVariants)
       .set({ promptText: params.text })
-      .where(eq(messageVariants.id, row.activeVariantId));
+      .where(
+        and(
+          eq(messageVariants.id, row.activeVariantId),
+          eq(messageVariants.ownerId, ownerId)
+        )
+      );
   }
 
   await db
     .update(chatMessages)
     .set({ promptText: params.text })
-    .where(eq(chatMessages.id, params.messageId));
+    .where(
+      and(
+        eq(chatMessages.id, params.messageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    );
 }
 
 export async function updateAssistantBlocks(params: {
@@ -633,18 +811,29 @@ export async function updateAssistantBlocks(params: {
   blocks: unknown[];
 }): Promise<void> {
   const db = await initDb();
+  const ownerId = resolveTrustedOwnerId();
   const blocksJson = safeJsonStringify(params.blocks ?? [], "[]");
 
   await db
     .update(messageVariants)
     .set({ blocksJson })
-    .where(eq(messageVariants.id, params.variantId));
+    .where(
+      and(
+        eq(messageVariants.id, params.variantId),
+        eq(messageVariants.ownerId, ownerId)
+      )
+    );
 
   // Keep message cache in sync with the selected variant.
   await db
     .update(chatMessages)
     .set({ blocksJson, activeVariantId: params.variantId })
-    .where(eq(chatMessages.id, params.assistantMessageId));
+    .where(
+      and(
+        eq(chatMessages.id, params.assistantMessageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    );
 }
 
 export async function listMessagesForPrompt(params: {
@@ -660,7 +849,8 @@ export async function listMessagesForPrompt(params: {
     .where(
       and(
         eq(chatMessages.chatId, params.chatId),
-        eq(chatMessages.branchId, params.branchId)
+        eq(chatMessages.branchId, params.branchId),
+        eq(chatMessages.ownerId, resolveTrustedOwnerId())
       )
     )
     .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
@@ -683,11 +873,17 @@ export async function softDeleteChatMessage(params: {
 }): Promise<{ id: string }> {
   const db = await initDb();
   const ts = new Date().toISOString();
+  const ownerId = resolveTrustedOwnerId();
 
   const rows = await db
     .select()
     .from(chatMessages)
-    .where(eq(chatMessages.id, params.messageId))
+    .where(
+      and(
+        eq(chatMessages.id, params.messageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    )
     .limit(1);
   const row = rows[0];
   if (!row) throw new Error("Message не найден");
@@ -716,7 +912,12 @@ export async function softDeleteChatMessage(params: {
       blocksJson: "[]",
       metaJson: safeJsonStringify(nextMeta),
     })
-    .where(eq(chatMessages.id, params.messageId));
+    .where(
+      and(
+        eq(chatMessages.id, params.messageId),
+        eq(chatMessages.ownerId, ownerId)
+      )
+    );
 
   return { id: params.messageId };
 }

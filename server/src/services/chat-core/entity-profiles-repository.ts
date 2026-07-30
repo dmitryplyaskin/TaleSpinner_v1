@@ -1,8 +1,9 @@
 import { randomUUID as uuidv4 } from "node:crypto";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { entityProfiles } from "../../db/schema";
 
@@ -41,7 +42,7 @@ export async function listEntityProfiles(params?: {
   const rows = await db
     .select()
     .from(entityProfiles)
-    .where(eq(entityProfiles.ownerId, params?.ownerId ?? "global"))
+    .where(eq(entityProfiles.ownerId, resolveTrustedOwnerId(params?.ownerId)))
     .orderBy(asc(entityProfiles.name));
   return rows.map(rowToDto);
 }
@@ -51,7 +52,12 @@ export async function getEntityProfileById(id: string): Promise<EntityProfileDto
   const rows = await db
     .select()
     .from(entityProfiles)
-    .where(eq(entityProfiles.id, id));
+    .where(
+      and(
+        eq(entityProfiles.id, id),
+        eq(entityProfiles.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
@@ -70,7 +76,7 @@ export async function createEntityProfile(params: {
 
   await db.insert(entityProfiles).values({
     id,
-    ownerId: params.ownerId ?? "global",
+    ownerId: resolveTrustedOwnerId(params.ownerId),
     name: params.name,
     kind: params.kind ?? "CharSpec",
     specJson: safeJsonStringify(params.spec, "{}"),
@@ -86,7 +92,7 @@ export async function createEntityProfile(params: {
   if (!created) {
     return {
       id,
-      ownerId: params.ownerId ?? "global",
+      ownerId: resolveTrustedOwnerId(params.ownerId),
       name: params.name,
       kind: params.kind ?? "CharSpec",
       spec: params.spec,
@@ -120,12 +126,27 @@ export async function updateEntityProfile(params: {
   if (typeof params.isFavorite === "boolean") set.isFavorite = params.isFavorite;
   if (typeof params.avatarAssetId !== "undefined") set.avatarAssetId = params.avatarAssetId;
 
-  await db.update(entityProfiles).set(set).where(eq(entityProfiles.id, params.id));
+  await db
+    .update(entityProfiles)
+    .set(set)
+    .where(
+      and(
+        eq(entityProfiles.id, params.id),
+        eq(entityProfiles.ownerId, resolveTrustedOwnerId())
+      )
+    );
   return getEntityProfileById(params.id);
 }
 
 export async function deleteEntityProfile(id: string): Promise<void> {
   const db = await initDb();
-  await db.delete(entityProfiles).where(eq(entityProfiles.id, id));
+  await db
+    .delete(entityProfiles)
+    .where(
+      and(
+        eq(entityProfiles.id, id),
+        eq(entityProfiles.ownerId, resolveTrustedOwnerId())
+      )
+    );
 }
 

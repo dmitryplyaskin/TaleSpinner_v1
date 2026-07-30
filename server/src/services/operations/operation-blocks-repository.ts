@@ -3,6 +3,7 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 
 import { safeJsonParse, safeJsonStringify } from "../../chat-core/json";
+import { resolveTrustedOwnerId } from "../../core/request-context/owner-scope-storage";
 import { initDb } from "../../db/client";
 import { operationBlocks } from "../../db/schema";
 
@@ -57,37 +58,43 @@ export function resolveImportedOperationBlockName(input: string, existingNames: 
   return `${base} (imported ${Date.now()})`;
 }
 
-export async function listOperationBlocks(params?: {
-  ownerId?: string;
+export async function listOperationBlocks(params: {
+  ownerId: string;
 }): Promise<OperationBlock[]> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
-  const ownerId = params?.ownerId ?? "global";
   const rows = await db
     .select()
     .from(operationBlocks)
-    .where(eq(operationBlocks.ownerId, ownerId))
+    .where(eq(operationBlocks.ownerId, params.ownerId))
     .orderBy(asc(operationBlocks.name));
   return rows.map(rowToDto);
 }
 
 export async function getOperationBlockById(
-  id: string
+  params: { ownerId: string; blockId: string }
 ): Promise<OperationBlock | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
   const rows = await db
     .select()
     .from(operationBlocks)
-    .where(eq(operationBlocks.id, id))
+    .where(
+      and(
+        eq(operationBlocks.id, params.blockId),
+        eq(operationBlocks.ownerId, params.ownerId)
+      )
+    )
     .limit(1);
   return rows[0] ? rowToDto(rows[0]) : null;
 }
 
 export async function createOperationBlock(params: {
-  ownerId?: string;
+  ownerId: string;
   input: OperationBlockUpsertInput;
 }): Promise<OperationBlock> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
   const ts = new Date();
   const blockId = uuidv4();
 
@@ -95,7 +102,7 @@ export async function createOperationBlock(params: {
 
   await db.insert(operationBlocks).values({
     id: blockId,
-    ownerId,
+    ownerId: params.ownerId,
     name: validated.name,
     description: validated.description ?? null,
     enabled: validated.enabled,
@@ -106,11 +113,14 @@ export async function createOperationBlock(params: {
     updatedAt: ts,
   });
 
-  const created = await getOperationBlockById(blockId);
+  const created = await getOperationBlockById({
+    ownerId: params.ownerId,
+    blockId,
+  });
   if (created) return created;
   return {
     blockId,
-    ownerId,
+    ownerId: params.ownerId,
     name: validated.name,
     description: validated.description,
     enabled: validated.enabled,
@@ -123,13 +133,16 @@ export async function createOperationBlock(params: {
 }
 
 export async function updateOperationBlock(params: {
-  ownerId?: string;
+  ownerId: string;
   blockId: string;
   patch: Partial<OperationBlockUpsertInput>;
 }): Promise<OperationBlock | null> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
-  const current = await getOperationBlockById(params.blockId);
+  const current = await getOperationBlockById({
+    ownerId: params.ownerId,
+    blockId: params.blockId,
+  });
   if (!current) return null;
 
   const nextInput: OperationBlockUpsertInput = {
@@ -163,18 +176,33 @@ export async function updateOperationBlock(params: {
       metaJson: validated.meta === null ? null : safeJsonStringify(validated.meta),
       updatedAt: ts,
     })
-    .where(and(eq(operationBlocks.id, params.blockId), eq(operationBlocks.ownerId, ownerId)));
+    .where(
+      and(
+        eq(operationBlocks.id, params.blockId),
+        eq(operationBlocks.ownerId, params.ownerId)
+      )
+    );
 
-  return getOperationBlockById(params.blockId);
+  return getOperationBlockById({
+    ownerId: params.ownerId,
+    blockId: params.blockId,
+  });
 }
 
 export async function deleteOperationBlock(params: {
-  ownerId?: string;
+  ownerId: string;
   blockId: string;
-}): Promise<void> {
+}): Promise<boolean> {
+  params = { ...params, ownerId: resolveTrustedOwnerId(params.ownerId) };
   const db = await initDb();
-  const ownerId = params.ownerId ?? "global";
-  await db
+  const deleted = await db
     .delete(operationBlocks)
-    .where(and(eq(operationBlocks.id, params.blockId), eq(operationBlocks.ownerId, ownerId)));
+    .where(
+      and(
+        eq(operationBlocks.id, params.blockId),
+        eq(operationBlocks.ownerId, params.ownerId)
+      )
+    )
+    .returning({ id: operationBlocks.id });
+  return deleted.length > 0;
 }

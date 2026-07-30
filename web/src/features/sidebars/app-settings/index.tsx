@@ -11,6 +11,7 @@ import { Drawer } from "@ui/drawer";
 import { BackgroundsTab } from "./backgrounds-tab";
 import { DebugTab } from "./debug-tab";
 import { GeneralTab } from "./general-tab";
+import { SillyTavernImportTab } from "./sillytavern-import-tab";
 import { ThemingTab } from "./theming-tab";
 import { type AppSettingsTab } from "./types";
 
@@ -49,6 +50,7 @@ export const AppSettingsSidebar: React.FC = () => {
             <Tabs.Tab value="general">{t("appSettings.tabs.general")}</Tabs.Tab>
             <Tabs.Tab value="theming">{t("appSettings.tabs.theming")}</Tabs.Tab>
             <Tabs.Tab value="backgrounds">{t("appSettings.tabs.backgrounds")}</Tabs.Tab>
+            <Tabs.Tab value="sillytavern">{t("appSettings.tabs.sillytavern")}</Tabs.Tab>
             <Tabs.Tab value="debug">{t("appSettings.tabs.debug")}</Tabs.Tab>
           </Tabs.List>
 
@@ -60,6 +62,9 @@ export const AppSettingsSidebar: React.FC = () => {
           </Tabs.Panel>
           <Tabs.Panel value="backgrounds">
             <BackgroundsTab />
+          </Tabs.Panel>
+          <Tabs.Panel value="sillytavern">
+            <SillyTavernImportTab />
           </Tabs.Panel>
           <Tabs.Panel value="debug">
             <DebugTab />

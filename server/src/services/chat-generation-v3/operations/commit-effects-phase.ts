@@ -3,7 +3,10 @@ import { type RunArtifactStore } from "../artifacts/run-artifact-store";
 
 import { applyArtifactEffect } from "./effect-handlers/artifact-effects";
 import { applyPromptEffect } from "./effect-handlers/prompt-effects";
-import { persistUserTurnText } from "./effect-handlers/turn-effects";
+import {
+  persistAssistantTurnText,
+  persistUserTurnText,
+} from "./effect-handlers/turn-effects";
 import { persistUiInlineEffect } from "./effect-handlers/ui-effects";
 import { validateEffectForHook } from "./effect-policy";
 
@@ -13,6 +16,7 @@ import type {
   RuntimeEffect,
   RunPersistenceTarget,
   RunState,
+  TurnAssistantCanonicalizationRecord,
   TurnUserCanonicalizationRecord,
   UserTurnTarget,
 } from "../contracts";
@@ -109,6 +113,7 @@ export async function commitEffectsPhase(params: {
   persistenceTarget?: RunPersistenceTarget;
   userTurnTarget?: UserTurnTarget;
   onUserTurnCanonicalized?: (payload: TurnUserCanonicalizationRecord) => void;
+  onAssistantTurnCanonicalized?: (payload: TurnAssistantCanonicalizationRecord) => void;
   onCommitEvent?: (event: {
     type: "commit.effect_applied" | "commit.effect_skipped" | "commit.effect_error";
     data: { hook: OperationHook; opId: string; effectType: RuntimeEffect["type"]; message?: string };
@@ -254,7 +259,20 @@ export async function commitEffectsPhase(params: {
           continue;
         }
 
+        const persisted = await persistAssistantTurnText({
+          target: params.persistenceTarget,
+          text: effect.text,
+        });
         params.runState.assistantText = effect.text;
+        params.onAssistantTurnCanonicalized?.({
+          hook: params.hook,
+          opId: opResult.opId,
+          assistantEntryId: persisted.assistantEntryId,
+          assistantMainPartId: persisted.assistantMainPartId,
+          beforeText: persisted.previousText ?? "",
+          afterText: effect.text,
+          committedAt: new Date().toISOString(),
+        });
         effectsReport.push({
           opId: opResult.opId,
           effectType: effect.type,

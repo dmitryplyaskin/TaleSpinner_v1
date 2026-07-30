@@ -3,6 +3,7 @@ import { attach, createEffect, createStore } from 'effector';
 
 import { asyncHandler } from '@model/utils/async-handler';
 
+import { authFetch } from '../../api/auth-fetch';
 import { BASE_URL } from '../../const';
 
 import { type FabricSettings } from './types';
@@ -25,7 +26,7 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 
 	const getSettingsFx = createEffect<void, { data: SettingsType }>(() =>
 		asyncHandler(async () => {
-			const response = await fetch(`${BASE_URL}${fabricParams.route}`);
+			const response = await authFetch(`${BASE_URL}${fabricParams.route}`);
 			const json = (await safeReadJson(response)) as { data: SettingsType; error?: any };
 			if (!response.ok) {
 				const message = json?.error?.message ?? `HTTP error ${response.status}`;
@@ -38,7 +39,7 @@ export const createSettingsModel = <SettingsType extends CommonModelSettingsType
 	const updateSettingsFx = createEffect<Partial<SettingsType>, void>((settings) =>
 		asyncHandler(async () => {
 			if (!settings) throw new Error(`Settings are not found for ${fabricName}`);
-			const response = await fetch(`${BASE_URL}${fabricParams.route}`, {
+			const response = await authFetch(`${BASE_URL}${fabricParams.route}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

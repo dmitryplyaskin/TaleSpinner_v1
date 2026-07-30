@@ -1,6 +1,7 @@
 import agentCards from './ru/agentCards';
 import app from './ru/app';
 import appSettings from './ru/appSettings';
+import auth from './ru/auth';
 import avatar from './ru/avatar';
 import chat from './ru/chat';
 import common from './ru/common';
@@ -22,6 +23,7 @@ import worldInfo from './ru/worldInfo';
 const ru = {
 	translation: {
 		app,
+		auth,
 		leftRail,
 		drawer,
 		chat,

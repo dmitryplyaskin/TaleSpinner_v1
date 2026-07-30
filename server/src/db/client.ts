@@ -57,3 +57,17 @@ export function resetDbForTests(): void {
   }
 }
 
+export async function backupCurrentDatabase(
+  destinationPath: string
+): Promise<void> {
+  if (!_sqlite) {
+    throw new Error("Database must be initialized before creating a backup.");
+  }
+  await fs.mkdir(path.dirname(destinationPath), { recursive: true });
+  await _sqlite.backup(destinationPath);
+}
+
+export function getCurrentDbPath(): string | null {
+  return _sqlite?.name ? path.resolve(_sqlite.name) : null;
+}
+

@@ -188,6 +188,7 @@ export type LlmOperationParams = {
   providerId: "openrouter" | "openai_compatible";
   credentialRef: string;
   model?: string;
+  llmPresetId?: string;
   system?: string;
   prompt: string;
   strictVariables?: boolean;

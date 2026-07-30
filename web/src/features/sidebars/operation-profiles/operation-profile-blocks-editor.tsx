@@ -1,15 +1,14 @@
-import { ActionIcon, Alert, Button, Card, Group, NumberInput, Select, Stack, Switch, Text } from '@mantine/core';
+import { ActionIcon, Alert, Button, Group, NumberInput, Select, Stack, Switch, Text } from '@mantine/core';
 import { useUnit } from 'effector-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { LuArrowDown, LuArrowUp, LuPencil, LuPlus, LuRotateCcw, LuTrash2 } from 'react-icons/lu';
+import { LuArrowDown, LuArrowUp, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 import { updateOperationProfileFx } from '@model/operation-profiles';
-import { FormInput, FormSelect, FormSwitch } from '@ui/form-components';
-import { IconButtonWithTooltip } from '@ui/icon-button-with-tooltip';
-import { TOOLTIP_PORTAL_SETTINGS } from '@ui/z-index';
+
+import { ProfileSettingsPanel } from './ui/profile-settings-panel';
 
 import type { OperationBlockDto, OperationProfileDto } from '../../../api/chat-core';
 import type { OperationProfileUpsertInput } from '@shared/types/operation-profiles';
@@ -29,7 +28,6 @@ type Props = {
 };
 
 type FormValues = OperationProfileUpsertInput;
-const ACTION_TOOLTIP_SETTINGS = TOOLTIP_PORTAL_SETTINGS;
 
 function toFormValues(profile: OperationProfileDto): FormValues {
 	return {
@@ -107,43 +105,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 	return (
 		<FormProvider {...methods}>
 			<Stack gap="md">
-				<Card withBorder className="op-editorCard">
-					<Stack gap="xs">
-						<FormInput name="name" label={t('operationProfiles.profileSettings.profileName')} />
-						<FormInput name="description" label={t('operationProfiles.sectionsLabels.description')} />
-						<Group gap="md" wrap="wrap">
-							<FormSwitch name="enabled" label={t('operationProfiles.profileSettings.profileEnabled')} />
-							<FormSelect
-								name="executionMode"
-								label={t('operationProfiles.profileSettings.executionMode')}
-								selectProps={{
-									comboboxProps: { withinPortal: false },
-									options: [
-										{ value: 'concurrent', label: 'concurrent' },
-										{ value: 'sequential', label: 'sequential' },
-									],
-									style: { width: 220 },
-								}}
-							/>
-						</Group>
-						<div className="op-sessionIdRow">
-							<FormInput
-								name="operationProfileSessionId"
-								label={t('operationProfiles.profileSettings.sessionId')}
-								infoTip={t('operationProfiles.profileSettings.sessionIdInfo')}
-							/>
-							<IconButtonWithTooltip
-								aria-label={t('operationProfiles.actions.resetSessionId')}
-								tooltip={t('operationProfiles.actions.resetSessionId')}
-								icon={<LuRotateCcw />}
-								size="input-sm"
-								variant="ghost"
-								tooltipSettings={ACTION_TOOLTIP_SETTINGS}
-								onClick={onResetSessionId}
-							/>
-						</div>
-					</Stack>
-				</Card>
+				<ProfileSettingsPanel blockCount={fields.length} onResetSessionId={onResetSessionId} />
 
 				{error && (
 					<Alert color="red" title={t('operationProfiles.profileSettings.invalidJson')}>
@@ -151,7 +113,7 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 					</Alert>
 				)}
 
-				<Card withBorder className="op-editorCard">
+				<section className="op-compositionPanel">
 					<Stack gap="sm">
 						<Text fw={700}>{t('operationProfiles.blocks.profileCompositionTitle')}</Text>
 						<Group gap="xs" align="flex-end">
@@ -189,22 +151,25 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 							fields.map((field, index) => {
 								const block = blocks.find((item) => item.blockId === field.blockId);
 								return (
-									<Card key={field._key} withBorder radius="md" p="sm">
+									<div key={field._key} className="op-compositionRow">
 										<Group justify="space-between" align="flex-start" wrap="nowrap">
 											<Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
 												<Text fw={600} lineClamp={1}>
 													{block?.name ?? field.blockId}
 												</Text>
-												<Text size="xs" c="dimmed" lineClamp={1}>
-													{field.blockId}
-												</Text>
 											</Stack>
 											<Group gap={4} wrap="nowrap">
-												<ActionIcon variant="subtle" onClick={() => index > 0 && move(index, index - 1)} disabled={index === 0}>
+												<ActionIcon
+													variant="subtle"
+													aria-label={t('operationProfiles.blocks.actions.moveBlockUp')}
+													onClick={() => index > 0 && move(index, index - 1)}
+													disabled={index === 0}
+												>
 													<LuArrowUp size={16} />
 												</ActionIcon>
 												<ActionIcon
 													variant="subtle"
+													aria-label={t('operationProfiles.blocks.actions.moveBlockDown')}
 													onClick={() => index < fields.length - 1 && move(index, index + 1)}
 													disabled={index >= fields.length - 1}
 												>
@@ -219,37 +184,45 @@ export const OperationProfileBlocksEditor: React.FC<Props> = ({ profile, blocks,
 												>
 													<LuPencil size={16} />
 												</ActionIcon>
-												<ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>
+												<ActionIcon
+													color="red"
+													variant="subtle"
+													aria-label={t('operationProfiles.blocks.actions.removeBlockRef')}
+													onClick={() => remove(index)}
+												>
 													<LuTrash2 size={16} />
 												</ActionIcon>
 											</Group>
 										</Group>
 
-										<Group mt="xs" gap="md" wrap="wrap">
-											<Switch
-												label={t('operationProfiles.blocks.blockRefEnabled')}
-												checked={Boolean(methods.watch(`blockRefs.${index}.enabled`))}
-												onChange={(event) => {
-													setValue(`blockRefs.${index}.enabled`, event.currentTarget.checked, { shouldDirty: true });
-												}}
-											/>
-											<NumberInput
+								<div className="op-blockRefControls">
+									<div className="op-switchField">
+										<Switch
+											label={t('operationProfiles.blocks.blockRefEnabled')}
+											checked={Boolean(methods.watch(`blockRefs.${index}.enabled`))}
+											onChange={(event) => {
+												setValue(`blockRefs.${index}.enabled`, event.currentTarget.checked, { shouldDirty: true });
+											}}
+										/>
+									</div>
+									<NumberInput
 												label={t('operationProfiles.blocks.blockOrder')}
-												value={Number(methods.watch(`blockRefs.${index}.order`) ?? 0)}
+											value={Number(methods.watch(`blockRefs.${index}.order`) ?? 0)}
+											hideControls
 												onChange={(value) => {
 													const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0;
 													setValue(`blockRefs.${index}.order`, numeric, { shouldDirty: true });
 												}}
 												step={10}
-												style={{ width: 160 }}
-											/>
-										</Group>
-									</Card>
+										style={{ width: 160 }}
+									/>
+								</div>
+									</div>
 								);
 							})
 						)}
 					</Stack>
-				</Card>
+				</section>
 			</Stack>
 		</FormProvider>
 	);

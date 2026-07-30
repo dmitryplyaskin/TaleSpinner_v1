@@ -2,6 +2,10 @@ import { createTaskSkip, runOrchestrator } from "@core/operation-orchestrator";
 
 import { renderLiquidTemplate } from "../../chat-core/prompt-template-renderer";
 import {
+  assertArtifactValueWithinLimits,
+  OPERATION_RESOURCE_LIMITS,
+} from "../../operations/operation-resource-limits";
+import {
   compileArtifactExposureEffect,
   getArtifactPrimaryEffectType,
   type OperationFinishedEventData,
@@ -17,6 +21,7 @@ import { executeGuardOperation } from "./guard-operation-executor";
 import { evaluateGuardRunConditions } from "./guard-run-conditions";
 import { executeKnowledgeOperation } from "./knowledge-operation-executor";
 import { executeLlmOperation } from "./llm-operation-executor";
+import { toSafeOperationError } from "./operation-error";
 
 import type { TaskResult } from "../../../core/operation-orchestrator/types";
 import type { InstructionRenderContext } from "../../chat-core/prompt-template-renderer";
@@ -329,10 +334,11 @@ function mapTaskResult(params: {
       order: op.config.order,
       dependsOn: op.config.dependsOn ?? [],
       effects: [],
-      error: {
-        code: task.error.code ?? "OPERATION_ERROR",
+      error: toSafeOperationError({
+        code: task.error.code,
         message: task.error.message,
-      },
+        fallbackCode: "OPERATION_ERROR",
+      }),
     };
   }
 
@@ -346,12 +352,10 @@ function mapTaskResult(params: {
       order: op.config.order,
       dependsOn: op.config.dependsOn ?? [],
       effects: [],
-      error: task.reason
-        ? {
-            code: "OPERATION_ABORTED",
-            message: task.reason,
-          }
-        : undefined,
+      error: toSafeOperationError({
+        message: task.reason ?? "Operation aborted",
+        fallbackCode: "OPERATION_ABORTED",
+      }),
     };
   }
 
@@ -539,6 +543,7 @@ export async function executeOperationsPhase(params: {
         hook: params.hook,
         trigger: params.trigger,
         executionMode: params.executionMode,
+        concurrency: OPERATION_RESOURCE_LIMITS.concurrentTasks,
         signal: params.abortSignal,
         tasks: executableOps.map((op) => ({
           taskId: op.opId,
@@ -615,6 +620,7 @@ export async function executeOperationsPhase(params: {
               return knowledgeResult;
             }
 
+            assertArtifactValueWithinLimits(resolvedRendered);
             const artifact = op.config.params.artifact;
             const effects: RuntimeEffect[] = [
               {
@@ -732,11 +738,25 @@ export async function executeOperationsPhase(params: {
             }
             const result =
               evt.data.status === "done" ? taskResultByOpId.get(op.opId) : undefined;
+            const error =
+              evt.data.status === "error"
+                ? toSafeOperationError({
+                    code: evt.data.error.code,
+                    message: evt.data.error.message,
+                    fallbackCode: "OPERATION_ERROR",
+                  })
+                : evt.data.status === "aborted"
+                  ? toSafeOperationError({
+                      message: evt.data.reason ?? "Operation aborted",
+                      fallbackCode: "OPERATION_ABORTED",
+                    })
+                  : undefined;
             params.onOperationFinished?.({
               hook: params.hook,
               opId: op.opId,
               name: op.name,
               status: evt.data.status,
+              error,
               result,
             });
           }

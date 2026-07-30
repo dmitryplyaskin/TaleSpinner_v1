@@ -4,6 +4,7 @@
 				general: 'Основные',
 				theming: 'Темизация',
 				backgrounds: 'Фоны',
+				sillytavern: 'SillyTavern',
 				debug: 'Debug',
 			},
 			sections: {
@@ -165,6 +166,34 @@
 					selectFailed: 'Не удалось применить фон',
 					deleteDone: 'Фон удалён',
 					deleteFailed: 'Не удалось удалить фон',
+				},
+			},
+			sillytavern: {
+				rootPath: 'Путь к корню SillyTavern',
+				scanTitle: 'Найденные данные',
+				resultTitle: 'Результат импорта',
+				selectedCount: 'Выбрано: {{count}}',
+				totalCount: 'Всего: {{count}}',
+				resultSummary: 'Создано: {{created}}, пропущено: {{skipped}}, ошибок: {{failed}}',
+				actions: {
+					scan: 'Сканировать',
+					importSelected: 'Импортировать выбранное',
+				},
+				kinds: {
+					character: 'Карточки ({{count}})',
+					persona: 'Персоны ({{count}})',
+					world_info: 'Лорабуки ({{count}})',
+					instruction: 'Пресеты ST ({{count}})',
+					sampler: 'Сэмплеры ({{count}})',
+					chat: 'Чаты ({{count}})',
+				},
+				kindLabels: {
+					character: 'Карточки',
+					persona: 'Персоны',
+					world_info: 'Лорабуки',
+					instruction: 'Пресеты ST',
+					sampler: 'Сэмплеры',
+					chat: 'Чаты',
 				},
 			},
 			language: {

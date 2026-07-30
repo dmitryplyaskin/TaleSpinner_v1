@@ -1,6 +1,7 @@
 import { BASE_URL } from '../const';
 
 import { getApiErrorMessage } from './api-error';
+import { authFetch } from './auth-fetch';
 
 import type {
 	OperationBlock,
@@ -17,7 +18,7 @@ type ApiEnvelope<T> = { data: T; error?: unknown };
 export const BACKEND_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
 
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${BASE_URL}${path}`, {
+	const res = await authFetch(`${BASE_URL}${path}`, {
 		...init,
 		headers: {
 			'Content-Type': 'application/json',
@@ -38,7 +39,7 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function apiForm<T>(path: string, form: FormData, init?: Omit<RequestInit, 'body'>): Promise<T> {
-	const res = await fetch(`${BASE_URL}${path}`, {
+	const res = await authFetch(`${BASE_URL}${path}`, {
 		...init,
 		method: init?.method ?? 'POST',
 		body: form,
@@ -169,7 +170,7 @@ export async function exportEntityProfileFile(params: {
 	format: 'json' | 'png';
 	preferredName?: string;
 }): Promise<{ blob: Blob; filename: string; contentType: string }> {
-	const res = await fetch(
+	const res = await authFetch(
 		`${BASE_URL}/entity-profiles/${encodeURIComponent(params.id)}/export?format=${encodeURIComponent(params.format)}`,
 		{
 			method: 'GET',

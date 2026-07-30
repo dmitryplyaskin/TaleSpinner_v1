@@ -3,7 +3,9 @@ import { randomUUID as uuidv4 } from "node:crypto";
 import path from "path";
 
 
+import { resolveSafePath } from "@core/files/safe-path";
 import { HttpError } from "@core/middleware/error-handler";
+import { resolveTrustedOwnerId } from "@core/request-context/owner-scope-storage";
 import { type BaseEntity, type Logger, type ServiceOptions } from "@core/types/common";
 
 import { createDataPath } from "../../utils";
@@ -34,6 +36,7 @@ export class BaseService<T extends BaseEntity> {
 
   protected async ensureReady(): Promise<void> {
     await this.ready;
+    await fs.mkdir(this.getOwnerDirectory(), { recursive: true });
   }
 
   protected createUUID(): string {
@@ -41,7 +44,14 @@ export class BaseService<T extends BaseEntity> {
   }
 
   protected getFilePath(id: string): string {
-    return path.join(this.dir, `${id}.json`);
+    return resolveSafePath(this.getOwnerDirectory(), `${id}.json`);
+  }
+
+  private getOwnerDirectory(): string {
+    const ownerId = resolveTrustedOwnerId();
+    return ownerId === "global"
+      ? this.dir
+      : path.join(this.dir, "owners", encodeURIComponent(ownerId));
   }
 
   protected async readEntity(id: string): Promise<T> {
@@ -89,7 +99,7 @@ export class BaseService<T extends BaseEntity> {
   async getAll(): Promise<T[]> {
     await this.ensureReady();
     try {
-      const files = await fs.readdir(this.dir);
+      const files = await fs.readdir(this.getOwnerDirectory());
       const jsonFiles = files
         .filter((file) => file.endsWith(".json"))
         .map((file) => file.replace(".json", ""));
