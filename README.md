@@ -61,7 +61,7 @@ TaleSpinner is especially useful if you:
 
 ### Requirements
 
-- Node.js 20+
+- Node.js 22.22.2+
 - Yarn Classic 1.x
 
 > Use `yarn` for this repository, not `npm` or `pnpm`.

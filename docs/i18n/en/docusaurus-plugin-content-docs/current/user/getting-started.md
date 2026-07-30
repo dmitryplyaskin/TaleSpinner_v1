@@ -20,7 +20,7 @@ After this guide you will have:
 
 Requirements:
 
-- Node.js 20+
+- Node.js 22.22.2+
 - Yarn 1.x
 
 ## Step 1. Install dependencies

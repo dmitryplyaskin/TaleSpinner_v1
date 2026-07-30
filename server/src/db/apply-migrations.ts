@@ -16,7 +16,7 @@ export function resolveMigrationsFolder(): string {
     return cwdPath;
   }
 
-  // ts-node/dev fallback when started from nested working directories.
+  // TypeScript runner fallback when started from nested working directories.
   const sourceRelativePath = path.resolve(__dirname, "../../drizzle");
   if (fs.existsSync(path.join(sourceRelativePath, "meta", "_journal.json"))) {
     return sourceRelativePath;

@@ -31,7 +31,7 @@ type VirtualMeasuredRowProps = {
 	index: number;
 	start: number;
 	width: string;
-	measure: (element: HTMLElement | null | undefined) => void;
+	measure: (element: Element | null) => void;
 	children: ReactNode;
 };
 

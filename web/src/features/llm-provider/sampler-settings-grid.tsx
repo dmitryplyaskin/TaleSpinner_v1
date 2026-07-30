@@ -1,14 +1,13 @@
 import { ActionIcon, Box, Group, NumberInput, Select, SimpleGrid, Slider, Switch, Text, Tooltip } from '@mantine/core';
-import React from 'react';
-import { useController, type Control } from 'react-hook-form';
+import { useController, type Control, type FieldPath, type FieldValues } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import { InfoIcon } from '@ui/icons';
 
 import type { LLMSettingField } from '@model/llm-settings';
 
-type Props = {
-	control: Control<any>;
+type Props<TFieldValues extends FieldValues> = {
+	control: Control<TFieldValues>;
 	fields: LLMSettingField[];
 	fieldPrefix?: string;
 	columns?: number;
@@ -26,7 +25,12 @@ function toBoolean(value: unknown, fallback: boolean): boolean {
 	return typeof value === 'boolean' ? value : fallback;
 }
 
-export const SamplerSettingsGrid: React.FC<Props> = ({ control, fields, fieldPrefix, columns = 3 }) => {
+export function SamplerSettingsGrid<TFieldValues extends FieldValues>({
+	control,
+	fields,
+	fieldPrefix,
+	columns = 3,
+}: Props<TFieldValues>) {
 	return (
 		<SimpleGrid cols={columns} spacing="sm">
 			{fields.map((field) => (
@@ -35,18 +39,18 @@ export const SamplerSettingsGrid: React.FC<Props> = ({ control, fields, fieldPre
 					columns={columns}
 					control={control}
 					field={field}
-					name={buildFieldName(fieldPrefix, field.key)}
+					name={buildFieldName(fieldPrefix, field.key) as FieldPath<TFieldValues>}
 				/>
 			))}
 		</SimpleGrid>
 	);
-};
+}
 
-type ItemProps = {
+type ItemProps<TFieldValues extends FieldValues> = {
 	columns: number;
-	control: Control<any>;
+	control: Control<TFieldValues>;
 	field: LLMSettingField;
-	name: string;
+	name: FieldPath<TFieldValues>;
 };
 
 const FIELD_CONTAINER_STYLE = {
@@ -57,7 +61,12 @@ const FIELD_CONTAINER_STYLE = {
 
 const NUMBER_INPUT_WIDTH = 108;
 
-const SamplerSettingsGridItem: React.FC<ItemProps> = ({ columns, control, field, name }) => {
+function SamplerSettingsGridItem<TFieldValues extends FieldValues>({
+	columns,
+	control,
+	field,
+	name,
+}: ItemProps<TFieldValues>) {
 	const { t } = useTranslation();
 	const formField = useController({
 		name,
@@ -155,4 +164,4 @@ const SamplerSettingsGridItem: React.FC<ItemProps> = ({ columns, control, field,
 			) : null}
 		</Box>
 	);
-};
+}

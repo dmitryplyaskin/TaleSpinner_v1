@@ -1,6 +1,6 @@
 import js from "@eslint/js";
 import globals from "globals";
-import importPlugin from "eslint-plugin-import";
+import importPlugin from "eslint-plugin-import-x";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -15,10 +15,10 @@ export default tseslint.config(
       sourceType: "module",
     },
     plugins: {
-      import: importPlugin,
+      "import-x": importPlugin,
     },
     settings: {
-      "import/resolver": {
+      "import-x/resolver": {
         typescript: {
           project: "./tsconfig.json",
         },
@@ -28,6 +28,9 @@ export default tseslint.config(
       // Practical correctness
       eqeqeq: ["error", "always"],
       "no-debugger": "error",
+      // ESLint 10 additions need a dedicated cleanup pass before becoming blocking.
+      "no-useless-assignment": "off",
+      "preserve-caught-error": "off",
 
       // Keep server lint non-blocking for now (repo has existing console usage)
       "no-console": "off",
@@ -36,9 +39,9 @@ export default tseslint.config(
       "@typescript-eslint/ban-ts-comment": "warn",
 
       // Imports hygiene
-      "import/no-duplicates": "warn",
-      "import/newline-after-import": "warn",
-      "import/order": [
+      "import-x/no-duplicates": "warn",
+      "import-x/newline-after-import": "warn",
+      "import-x/order": [
         "warn",
         {
           groups: [
